@@ -40,7 +40,7 @@ use num_cpus;
 use rpc::{IpcConfiguration, HttpConfiguration, WsConfiguration};
 use parity_rpc::NetworkSettings;
 use cache::CacheConfig;
-use helpers::{to_duration, to_mode, to_block_id, to_u256, to_pending_set, to_price, geth_ipc_path, parity_ipc_path, to_bootnodes, to_addresses, to_address, to_queue_strategy, to_queue_penalization};
+use helpers::{to_duration, to_mode, to_block_id, to_u256, to_pending_set, to_price, parity_ipc_path, to_bootnodes, to_addresses, to_address, to_queue_strategy, to_queue_penalization};
 use dir::helpers::{replace_home, replace_home_and_local};
 use params::{ResealPolicy, AccountsConfig, GasPricerConfig, MinerExtras, SpecType};
 use ethcore_logger::Config as LogConfig;
@@ -54,7 +54,7 @@ use types::data_format::DataFormat;
 use blockchain::{BlockchainCmd, ImportBlockchain, ExportBlockchain, KillBlockchain, ExportState, ResetBlockchain};
 use export_hardcoded_sync::ExportHsyncCmd;
 use presale::ImportWallet;
-use account::{AccountCmd, NewAccount, ListAccounts, ImportAccounts, ImportFromGethAccounts};
+use account::{AccountCmd, NewAccount, ListAccounts, ImportAccounts};
 use snapshot::{self, SnapshotCommand};
 use network::{IpFilter};
 
@@ -141,7 +141,6 @@ impl Configuration {
 		let fat_db = self.args.arg_fat_db.parse()?;
 		let compaction = self.args.arg_db_compaction.parse()?;
 		let warp_sync = !self.args.flag_no_warp;
-		let geth_compatibility = self.args.flag_geth;
 		let experimental_rpcs = self.args.flag_jsonrpc_experimental;
 		let ipfs_conf = self.ipfs_config();
 		let secretstore_conf = self.secretstore_config()?;
@@ -226,15 +225,6 @@ impl Configuration {
 			} else {
 				unreachable!();
 			};
-			Cmd::Account(account_cmd)
-		} else if self.args.flag_import_geth_keys {
-				let account_cmd = AccountCmd::ImportFromGeth(
-				ImportFromGethAccounts {
-					spec: spec,
-					to: dirs.keys,
-					testnet: self.args.flag_testnet
-				}
-			);
 			Cmd::Account(account_cmd)
 		} else if self.args.cmd_wallet {
 			let presale_cmd = ImportWallet {
@@ -397,7 +387,6 @@ impl Configuration {
 				vm_type: vm_type,
 				warp_sync: warp_sync,
 				warp_barrier: self.args.arg_warp_barrier,
-				geth_compatibility: geth_compatibility,
 				experimental_rpcs,
 				net_settings: self.network_settings()?,
 				ipfs_conf: ipfs_conf,
@@ -451,7 +440,7 @@ impl Configuration {
 	}
 
 	fn author(&self) -> Result<Address, String> {
-		to_address(self.args.arg_etherbase.clone().or(self.args.arg_author.clone()))
+		to_address(self.args.arg_author.clone())
 	}
 
 	fn engine_signer(&self) -> Result<Address, String> {
@@ -468,7 +457,7 @@ impl Configuration {
 	}
 
 	fn cache_config(&self) -> CacheConfig {
-		match self.args.arg_cache_size.or(self.args.arg_cache) {
+		match self.args.arg_cache_size {
 			Some(size) => CacheConfig::new_with_total_cache_size(size),
 			None => CacheConfig::new(
 				self.args.arg_cache_size_db,
@@ -489,13 +478,7 @@ impl Configuration {
 	}
 
 	fn chain(&self) -> Result<SpecType, String> {
-		let name = if self.args.flag_testnet {
-			"testnet".to_owned()
-		} else {
-			self.args.arg_chain.clone()
-		};
-
-		Ok(name.parse()?)
+		Ok(self.args.arg_chain.parse()?)
 	}
 
 	fn is_dev_chain(&self) -> Result<bool, String> {
@@ -539,7 +522,7 @@ impl Configuration {
 		let cfg = AccountsConfig {
 			iterations: keys_iterations,
 			refresh_time: self.args.arg_accounts_refresh,
-			testnet: self.args.flag_testnet,
+			testnet: false,
 			password_files: self.args.arg_password.iter().map(|s| replace_home(&self.directories().base, s)).collect(),
 			unlocked_accounts: to_addresses(&self.args.arg_unlock)?,
 			enable_fast_unlock: self.args.flag_fast_unlock,
@@ -660,9 +643,7 @@ impl Configuration {
 			U256::from_dec_str(&format!("{:.0}", wei_per_gas)).unwrap()
 		}
 
-		if let Some(dec) = self.args.arg_gasprice.as_ref() {
-			return Ok(GasPricerConfig::Fixed(to_u256(dec)?));
-		} else if let Some(dec) = self.args.arg_min_gas_price {
+		if let Some(dec) = self.args.arg_min_gas_price {
 			return Ok(GasPricerConfig::Fixed(U256::from(dec)));
 		} else if self.chain()? != SpecType::Foundation {
 			return Ok(GasPricerConfig::Fixed(U256::zero()));
@@ -696,7 +677,7 @@ impl Configuration {
 	}
 
 	fn extra_data(&self) -> Result<Bytes, String> {
-		match self.args.arg_extradata.as_ref().or(self.args.arg_extra_data.as_ref()) {
+		match &self.args.arg_extra_data {
 			Some(x) if x.len() <= 32 => Ok(x.as_bytes().to_owned()),
 			None => Ok(version_data()),
 			Some(_) => Err("Extra data must be at most 32 characters".into()),
@@ -765,7 +746,7 @@ impl Configuration {
 			Some(Ok(key)) => Some(key),
 			Some(Err(err)) => return Err(err),
 		};
-		ret.discovery_enabled = !self.args.flag_no_discovery && !self.args.flag_nodiscover;
+		ret.discovery_enabled = !self.args.flag_no_discovery;
 		ret.max_peers = self.max_peers();
 		ret.min_peers = self.min_peers();
 		ret.snapshot_peers = self.snapshot_peers();
@@ -789,21 +770,11 @@ impl Configuration {
 	}
 
 	fn network_id(&self) -> Option<u64> {
-		self.args.arg_network_id.or(self.args.arg_networkid)
+		self.args.arg_network_id
 	}
 
 	fn rpc_apis(&self) -> String {
-		let mut apis: Vec<&str> = self.args.arg_rpcapi
-			.as_ref()
-			.unwrap_or(&self.args.arg_jsonrpc_apis)
-			.split(",")
-			.collect();
-
-		if self.args.flag_geth {
-			apis.insert(0, "personal");
-		}
-
-		apis.join(",")
+		self.args.arg_jsonrpc_apis.clone()
 	}
 
 	fn cors(cors: &str) -> Option<Vec<String>> {
@@ -817,7 +788,7 @@ impl Configuration {
 	}
 
 	fn rpc_cors(&self) -> Option<Vec<String>> {
-		let cors = self.args.arg_rpccorsdomain.clone().unwrap_or_else(|| self.args.arg_jsonrpc_cors.to_owned());
+		let cors = self.args.arg_jsonrpc_cors.to_owned();
 		Self::cors(&cors)
 	}
 
@@ -869,18 +840,9 @@ impl Configuration {
 
 	fn ipc_config(&self) -> Result<IpcConfiguration, String> {
 		let conf = IpcConfiguration {
-			enabled: !(self.args.flag_ipcdisable || self.args.flag_ipc_off || self.args.flag_no_ipc),
+			enabled: !self.args.flag_no_ipc,
 			socket_addr: self.ipc_path(),
-			apis: {
-				let mut apis = self.args.arg_ipcapi.clone().unwrap_or(self.args.arg_ipc_apis.clone());
-				if self.args.flag_geth {
-					if !apis.is_empty() {
- 						apis.push_str(",");
- 					}
-					apis.push_str("personal");
-				}
-				apis.parse()?
-			},
+			apis: self.args.arg_ipc_apis.parse()?,
 		};
 
 		Ok(conf)
@@ -890,7 +852,7 @@ impl Configuration {
 		let conf = HttpConfiguration {
 			enabled: self.rpc_enabled(),
 			interface: self.rpc_interface(),
-			port: self.args.arg_ports_shift + self.args.arg_rpcport.unwrap_or(self.args.arg_jsonrpc_port),
+			port: self.args.arg_ports_shift + self.args.arg_jsonrpc_port,
 			apis: self.rpc_apis().parse()?,
 			hosts: self.rpc_hosts(),
 			cors: self.rpc_cors(),
@@ -997,7 +959,7 @@ impl Configuration {
 
 	fn directories(&self) -> Directories {
 		let local_path = default_local_path();
-		let base_path = self.args.arg_base_path.as_ref().or_else(|| self.args.arg_datadir.as_ref()).map_or_else(|| default_data_path(), |s| s.clone());
+		let base_path = self.args.arg_base_path.as_ref().map_or_else(|| default_data_path(), |s| s.clone());
 		let data_path = replace_home("", &base_path);
 		let is_using_base_path = self.args.arg_base_path.is_some();
 		// If base_path is set and db_path is not we default to base path subdir instead of LOCAL.
@@ -1031,15 +993,11 @@ impl Configuration {
 	}
 
 	fn ipc_path(&self) -> String {
-		if self.args.flag_geth {
-			geth_ipc_path(self.args.flag_testnet)
-		} else {
-			parity_ipc_path(
-				&self.directories().base,
-				&self.args.arg_ipcpath.clone().unwrap_or(self.args.arg_ipc_path.clone()),
-				self.args.arg_ports_shift,
-			)
-		}
+		parity_ipc_path(
+			&self.directories().base,
+			&self.args.arg_ipc_path,
+			self.args.arg_ports_shift,
+		)
 	}
 
 	fn interface(&self, interface: &str) -> String {
@@ -1055,8 +1013,7 @@ impl Configuration {
 	}
 
 	fn rpc_interface(&self) -> String {
-		let rpc_interface = self.args.arg_rpcaddr.clone().unwrap_or(self.args.arg_jsonrpc_interface.clone());
-		self.interface(&rpc_interface)
+		self.interface(&self.args.arg_jsonrpc_interface)
 	}
 
 	fn ws_interface(&self) -> String {
@@ -1123,7 +1080,7 @@ impl Configuration {
 	}
 
 	fn rpc_enabled(&self) -> bool {
-		!self.args.flag_jsonrpc_off && !self.args.flag_no_jsonrpc
+		!self.args.flag_no_jsonrpc
 	}
 
 	fn ws_enabled(&self) -> bool {
@@ -1466,7 +1423,6 @@ mod tests {
 			tracing: Default::default(),
 			compaction: Default::default(),
 			vm_type: Default::default(),
-			geth_compatibility: false,
 			experimental_rpcs: false,
 			net_settings: Default::default(),
 			ipfs_conf: Default::default(),
@@ -1568,7 +1524,7 @@ mod tests {
 		// given
 
 		// when
-		let conf = parse(&["parity", "--testnet", "--identity", "testname"]);
+		let conf = parse(&["parity", "--chain", "goerli", "--identity", "testname"]);
 
 		// then
 		assert_eq!(conf.network_settings(), Ok(NetworkSettings {
@@ -1580,37 +1536,6 @@ mod tests {
 			rpc_interface: "127.0.0.1".to_owned(),
 			rpc_port: 8545,
 		}));
-	}
-
-	#[test]
-	fn should_parse_rpc_settings_with_geth_compatiblity() {
-		// given
-		fn assert(conf: Configuration) {
-			let net = conf.network_settings().unwrap();
-			assert_eq!(net.rpc_enabled, true);
-			assert_eq!(net.rpc_interface, "0.0.0.0".to_owned());
-			assert_eq!(net.rpc_port, 8000);
-			assert_eq!(conf.rpc_cors(), None);
-			assert_eq!(conf.rpc_apis(), "web3,eth".to_owned());
-		}
-
-		// when
-		let conf1 = parse(&["parity", "-j",
-						 "--jsonrpc-port", "8000",
-						 "--jsonrpc-interface", "all",
-						 "--jsonrpc-cors", "*",
-						 "--jsonrpc-apis", "web3,eth"
-						 ]);
-		let conf2 = parse(&["parity", "--rpc",
-							"--rpcport", "8000",
-							"--rpcaddr", "all",
-							"--rpccorsdomain", "*",
-							"--rpcapi", "web3,eth"
-							]);
-
-		// then
-		assert(conf1);
-		assert(conf2);
 	}
 
 	#[test]
@@ -1668,26 +1593,9 @@ mod tests {
 
 		// when
 		let conf0 = parse(&["parity", "--ui-path=signer"]);
-		let conf1 = parse(&["parity", "--ui-path=signer", "--ui-no-validation"]);
-		let conf2 = parse(&["parity", "--ui-path=signer", "--ui-port", "3123"]);
-		let conf3 = parse(&["parity", "--ui-path=signer", "--ui-interface", "test"]);
-		let conf4 = parse(&["parity", "--ui-path=signer", "--force-ui"]);
 
 		// then
 		assert_eq!(conf0.directories().signer, "signer".to_owned());
-
-		assert!(conf1.ws_config().unwrap().hosts.is_some());
-		assert_eq!(conf1.ws_config().unwrap().origins, Some(vec!["parity://*".into(), "chrome-extension://*".into(), "moz-extension://*".into()]));
-		assert_eq!(conf1.directories().signer, "signer".to_owned());
-
-		assert!(conf2.ws_config().unwrap().hosts.is_some());
-		assert_eq!(conf2.directories().signer, "signer".to_owned());
-
-		assert!(conf3.ws_config().unwrap().hosts.is_some());
-		assert_eq!(conf3.directories().signer, "signer".to_owned());
-
-		assert!(conf4.ws_config().unwrap().hosts.is_some());
-		assert_eq!(conf4.directories().signer, "signer".to_owned());
 	}
 
 	#[test]
@@ -1772,7 +1680,7 @@ mod tests {
 					ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
 					_ => panic!("Incorrect rpc apis"),
 				}
-				// "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
+				// "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
 				assert_eq!(c.http_conf.hosts, None);
 				assert_eq!(c.ipfs_conf.hosts, None);
 			},
@@ -1795,7 +1703,7 @@ mod tests {
 					ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
 					_ => panic!("Incorrect rpc apis"),
 				}
-				// "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
+				// "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
 				assert_eq!(c.http_conf.hosts, None);
 				assert_eq!(c.ipfs_conf.hosts, None);
 			},

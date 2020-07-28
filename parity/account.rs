@@ -22,7 +22,6 @@ pub enum AccountCmd {
 	New(NewAccount),
 	List(ListAccounts),
 	Import(ImportAccounts),
-	ImportFromGeth(ImportFromGethAccounts)
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,17 +45,6 @@ pub struct ImportAccounts {
 	pub spec: SpecType,
 }
 
-/// Parameters for geth accounts' import
-#[derive(Debug, PartialEq)]
-pub struct ImportFromGethAccounts {
-	/// import mainnet (false) or testnet (true) accounts
-	pub testnet: bool,
-	/// directory to import accounts to
-	pub to: String,
-	pub spec: SpecType,
-}
-
-
 #[cfg(not(feature = "accounts"))]
 pub fn execute(_cmd: AccountCmd) -> Result<String, String> {
 		Err("Account management is deprecated. Please see #9997 for alternatives:\nhttps://github.com/paritytech/parity-ethereum/issues/9997".into())
@@ -67,7 +55,7 @@ mod command {
 	use super::*;
 	use std::path::PathBuf;
 	use accounts::{AccountProvider, AccountProviderSettings};
-	use ethstore::{EthStore, SecretStore, SecretVaultRef, import_account, import_accounts, read_geth_accounts};
+	use ethstore::{EthStore, import_account, import_accounts};
 	use ethstore::accounts_dir::RootDiskDirectory;
 	use helpers::{password_prompt, password_from_file};
 
@@ -76,7 +64,6 @@ mod command {
 			AccountCmd::New(new_cmd) => new(new_cmd),
 			AccountCmd::List(list_cmd) => list(list_cmd),
 			AccountCmd::Import(import_cmd) => import(import_cmd),
-			AccountCmd::ImportFromGeth(import_geth_cmd) => import_geth(import_geth_cmd)
 		}
 	}
 
@@ -136,20 +123,6 @@ mod command {
 		}
 
 		Ok(format!("{} account(s) imported", imported))
-	}
-
-	fn import_geth(i: ImportFromGethAccounts) -> Result<String, String> {
-		use std::io::ErrorKind;
-		use ethstore::Error;
-
-		let dir = Box::new(keys_dir(i.to, i.spec)?);
-		let secret_store = Box::new(secret_store(dir, None)?);
-		let geth_accounts = read_geth_accounts(i.testnet);
-		match secret_store.import_geth_accounts(SecretVaultRef::Root, geth_accounts, i.testnet) {
-			Ok(v) => Ok(format!("Successfully imported {} account(s) from geth.", v.len())),
-			Err(Error::Io(ref io_err)) if io_err.kind() == ErrorKind::NotFound => Err("Failed to find geth keys folder.".into()),
-			Err(err) => Err(format!("Import geth accounts failed. {}", err))
-		}
 	}
 }
 

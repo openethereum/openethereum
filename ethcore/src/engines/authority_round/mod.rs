@@ -1011,7 +1011,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
 		}
 
 		let rlp = Rlp::new(rlp);
-		let empty_step: EmptyStep = rlp.as_val().map_err(fmt_err)?;;
+		let empty_step: EmptyStep = rlp.as_val().map_err(fmt_err)?;
 
 		if empty_step.verify(&*self.validators).unwrap_or(false) {
 			if self.step.inner.check_future(empty_step.step).is_ok() {

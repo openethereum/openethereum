@@ -19,7 +19,6 @@ use serde::{Deserialize, Deserializer};
 use serde::de::{Error, Visitor};
 
 use ethereum_types::H256;
-use ethstore;
 
 /// Type of derivation
 pub enum DerivationType {
@@ -33,6 +32,7 @@ pub enum DerivationType {
 #[derive(Deserialize)]
 pub struct DeriveHash {
 	hash: H256,
+	#[allow(dead_code)]
 	#[serde(rename = "type")]
 	d_type: DerivationType,
 }
@@ -41,6 +41,7 @@ pub struct DeriveHash {
 #[derive(Deserialize)]
 pub struct DeriveHierarchicalItem {
 	index: u64,
+	#[allow(dead_code)]
 	#[serde(rename = "type")]
 	d_type: DerivationType,
 }

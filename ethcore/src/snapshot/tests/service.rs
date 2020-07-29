@@ -192,7 +192,7 @@ fn keep_ancient_blocks() {
 		0
 	).unwrap();
 
-	let manifest = ::snapshot::ManifestData {
+	let manifest = ManifestData {
 		version: 2,
 		state_hashes,
 		state_root,

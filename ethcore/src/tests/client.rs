@@ -36,7 +36,6 @@ use client::traits::{
 	BlockInfo, BlockChainClient, BlockChainReset, ChainInfo,
 	ImportExportBlocks, ImportBlock
 };
-use spec;
 use ethereum;
 use executive::{Executive, TransactOptions};
 use miner::{Miner, PendingOrdering, MinerService};

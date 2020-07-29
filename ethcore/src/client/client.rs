@@ -19,7 +19,7 @@ use std::collections::{HashSet, BTreeMap, VecDeque};
 use std::str::FromStr;
 use std::str::from_utf8;
 use std::convert::TryFrom;
-use std::sync::atomic::{AtomicUsize, AtomicI64, AtomicBool, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicI64, AtomicBool, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 use std::io::{BufReader, BufRead};
 use std::time::{Duration, Instant};
@@ -68,8 +68,8 @@ use client::bad_blocks;
 use engines::{MAX_UNCLE_AGE, EthEngine, EpochTransition, ForkChoice, EngineError};
 use engines::epoch::PendingTransition;
 use error::{
-	ImportErrorKind, ExecutionError, CallError, BlockError, ImportError,
-	QueueError, QueueErrorKind, Error as EthcoreError, EthcoreResult, ErrorKind as EthcoreErrorKind
+	ImportErrorKind, ExecutionError, CallError, BlockError,
+	Error as EthcoreError, EthcoreResult, ErrorKind as EthcoreErrorKind
 };
 use executive::{Executive, Executed, TransactOptions, contract_address};
 use factory::{Factories, VmFactory};
@@ -2810,7 +2810,7 @@ impl IoChannelQueue {
 
 #[cfg(test)]
 mod tests {
-	use test_helpers::{generate_dummy_client, generate_dummy_client_with_data, generate_dummy_client_with_spec_and_data, get_good_dummy_block_hash};
+	use test_helpers::{generate_dummy_client_with_spec_and_data};
 	use blockchain::{BlockProvider, ExtrasInsert};
 	use spec::Spec;
 

@@ -612,7 +612,7 @@ impl SessionResultComputer for LargestSupportResultComputer {
 mod tests {
 	use std::sync::Arc;
 	use std::collections::{VecDeque, BTreeMap, BTreeSet};
-	use ethereum_types::{H512, H160, Address};
+	use ethereum_types::{H512, H160};
 	use ethkey::public_to_address;
 	use key_server_cluster::{NodeId, SessionId, Error, KeyStorage, DummyKeyStorage,
 		DocumentKeyShare, DocumentKeyShareVersion};

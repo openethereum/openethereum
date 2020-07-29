@@ -1243,7 +1243,7 @@ mod tests {
 		ext.tracing = true;
 
 		let gas_left = {
-			let mut vm = interpreter(params, &ext);
+			let vm = interpreter(params, &ext);
 			test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
 		};
 
@@ -1265,7 +1265,7 @@ mod tests {
 		ext.tracing = true;
 
 		let err = {
-			let mut vm = interpreter(params, &ext);
+			let vm = interpreter(params, &ext);
 			test_finalize(vm.exec(&mut ext).ok().unwrap()).err().unwrap()
 		};
 

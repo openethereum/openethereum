@@ -16,6 +16,8 @@
 
 // Based on original work by David Levy https://raw.githubusercontent.com/dlevy47/rust-interfaces
 
+#![allow(unstable_name_collisions)]
+
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::io;
 use igd::{PortMappingProtocol, search_gateway_from_timeout};

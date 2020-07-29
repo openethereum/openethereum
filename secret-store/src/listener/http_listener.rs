@@ -84,12 +84,12 @@ struct KeyServerHttpHandler {
 
 /// Shared http handler
 struct KeyServerSharedHttpHandler {
-	key_server: Weak<KeyServer>,
+	key_server: Weak<dyn KeyServer>,
 }
 
 impl KeyServerHttpListener {
 	/// Start KeyServer http listener
-	pub fn start(listener_address: NodeAddress, key_server: Weak<KeyServer>, executor: Executor) -> Result<Self, Error> {
+	pub fn start(listener_address: NodeAddress, key_server: Weak<dyn KeyServer>, executor: Executor) -> Result<Self, Error> {
 		let shared_handler = Arc::new(KeyServerSharedHttpHandler {
 			key_server: key_server,
 		});
@@ -222,7 +222,7 @@ impl Service for KeyServerHttpHandler {
 	type ReqBody = Body;
 	type ResBody = Body;
 	type Error = hyper::Error;
-	type Future = Box<Future<Item = HttpResponse<Self::ResBody>, Error=Self::Error> + Send>;
+	type Future = Box<dyn Future<Item = HttpResponse<Self::ResBody>, Error=Self::Error> + Send>;
 
 	fn call(&mut self, req: HttpRequest<Body>) -> Self::Future {
 		if req.headers().contains_key(header::ORIGIN) {
@@ -437,7 +437,7 @@ mod tests {
 
 	#[test]
 	fn http_listener_successfully_drops() {
-		let key_server: Arc<KeyServer> = Arc::new(DummyKeyServer::default());
+		let key_server: Arc<dyn KeyServer> = Arc::new(DummyKeyServer::default());
 		let address = NodeAddress { address: "127.0.0.1".into(), port: 9000 };
 		let runtime = Runtime::with_thread_count(1);
 		let listener = KeyServerHttpListener::start(address, Arc::downgrade(&key_server),

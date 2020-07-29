@@ -40,19 +40,19 @@ mod accounts {
 		Ok(AccountProvider)
 	}
 
-	pub fn miner_local_accounts(_: Arc<AccountProvider>) -> AccountProvider {
+	pub fn miner_local_accounts(_: Arc<dyn AccountProvider>) -> AccountProvider {
 		AccountProvider
 	}
 
-	pub fn miner_author(_spec: &SpecType, _dirs: &Directories, _account_provider: &Arc<AccountProvider>, _engine_signer: Address, _passwords: &[Password]) -> Result<Option<::ethcore::miner::Author>, String> {
+	pub fn miner_author(_spec: &SpecType, _dirs: &Directories, _account_provider: &Arc<dyn AccountProvider>, _engine_signer: Address, _passwords: &[Password]) -> Result<Option<::ethcore::miner::Author>, String> {
 		Ok(None)
 	}
 
-	pub fn private_tx_signer(_account_provider: Arc<AccountProvider>, _passwords: &[Password]) -> Result<Arc<::ethcore_private_tx::Signer>, String> {
+	pub fn private_tx_signer(_account_provider: Arc<dyn AccountProvider>, _passwords: &[Password]) -> Result<Arc<dyn ethcore_private_tx::Signer>, String> {
 		Ok(Arc::new(::ethcore_private_tx::DummySigner))
 	}
 
-	pub fn accounts_list(_account_provider: Arc<AccountProvider>) -> Arc<Fn() -> Vec<Address> + Send + Sync> {
+	pub fn accounts_list(_account_provider: Arc<dyn AccountProvider>) -> Arc<dyn Fn() -> Vec<Address> + Send + Sync> {
 		Arc::new(|| vec![])
 	}
 }
@@ -199,14 +199,14 @@ mod accounts {
 		}
 	}
 
-	pub fn private_tx_signer(accounts: Arc<AccountProvider>, passwords: &[Password]) -> Result<Arc<::ethcore_private_tx::Signer>, String> {
+	pub fn private_tx_signer(accounts: Arc<AccountProvider>, passwords: &[Password]) -> Result<Arc<dyn crate::ethcore_private_tx::Signer>, String> {
 		Ok(Arc::new(self::private_tx::AccountSigner {
 			accounts,
 			passwords: passwords.to_vec(),
 		}))
 	}
 
-	pub fn accounts_list(account_provider: Arc<AccountProvider>) -> Arc<Fn() -> Vec<Address> + Send + Sync> {
+	pub fn accounts_list(account_provider: Arc<AccountProvider>) -> Arc<dyn Fn() -> Vec<Address> + Send + Sync> {
 		Arc::new(move || account_provider.accounts().unwrap_or_default())
 	}
 

@@ -40,7 +40,7 @@ use super::{error_negatively_reference_hash};
 #[derive(Clone)]
 pub struct OverlayDB {
 	overlay: MemoryDB<KeccakHasher, DBValue>,
-	backing: Arc<KeyValueDB>,
+	backing: Arc<dyn KeyValueDB>,
 	column: Option<u32>,
 }
 
@@ -79,7 +79,7 @@ impl Decodable for Payload {
 
 impl OverlayDB {
 	/// Create a new instance of OverlayDB given a `backing` database.
-	pub fn new(backing: Arc<KeyValueDB>, col: Option<u32>) -> OverlayDB {
+	pub fn new(backing: Arc<dyn KeyValueDB>, col: Option<u32>) -> OverlayDB {
 		OverlayDB{ overlay: ::new_memory_db(), backing: backing, column: col }
 	}
 

@@ -156,7 +156,7 @@ pub struct ClusterSessionsContainer<S: ClusterSession, SC: ClusterSessionCreator
 	/// Active sessions.
 	sessions: RwLock<BTreeMap<S::Id, QueuedSession<S>>>,
 	/// Listeners. Lock order: sessions -> listeners.
-	listeners: Mutex<Vec<Weak<ClusterSessionsListener<S>>>>,
+	listeners: Mutex<Vec<Weak<dyn ClusterSessionsListener<S>>>>,
 	/// Sessions container state.
 	container_state: Arc<Mutex<ClusterSessionsContainerState>>,
 	/// Do not actually remove sessions.
@@ -170,7 +170,7 @@ pub struct QueuedSession<S> {
 	/// Session master.
 	pub master: NodeId,
 	/// Cluster view.
-	pub cluster_view: Arc<Cluster>,
+	pub cluster_view: Arc<dyn Cluster>,
 	/// Last keep alive time.
 	pub last_keep_alive_time: Instant,
 	/// Last received message time.
@@ -194,7 +194,7 @@ pub enum ClusterSessionsContainerState {
 
 impl ClusterSessions {
 	/// Create new cluster sessions container.
-	pub fn new(config: &ClusterConfiguration, servers_set_change_session_creator_connector: Arc<ServersSetChangeSessionCreatorConnector>) -> Self {
+	pub fn new(config: &ClusterConfiguration, servers_set_change_session_creator_connector: Arc<dyn ServersSetChangeSessionCreatorConnector>) -> Self {
 		let container_state = Arc::new(Mutex::new(ClusterSessionsContainerState::Idle));
 		let creator_core = Arc::new(SessionCreatorCore::new(config));
 		ClusterSessions {
@@ -291,7 +291,7 @@ impl<S, SC, D> ClusterSessionsContainer<S, SC, D> where S: ClusterSession, SC: C
 		}
 	}
 
-	pub fn add_listener(&self, listener: Arc<ClusterSessionsListener<S>>) {
+	pub fn add_listener(&self, listener: Arc<dyn ClusterSessionsListener<S>>) {
 		self.listeners.lock().push(Arc::downgrade(&listener));
 	}
 
@@ -316,7 +316,7 @@ impl<S, SC, D> ClusterSessionsContainer<S, SC, D> where S: ClusterSession, SC: C
 		self.sessions.read().values().nth(0).map(|s| s.session.clone())
 	}
 
-	pub fn insert(&self, cluster: Arc<Cluster>, master: NodeId, session_id: S::Id, session_nonce: Option<u64>, is_exclusive_session: bool, creation_data: Option<D>) -> Result<Arc<S>, Error> {
+	pub fn insert(&self, cluster: Arc<dyn Cluster>, master: NodeId, session_id: S::Id, session_nonce: Option<u64>, is_exclusive_session: bool, creation_data: Option<D>) -> Result<Arc<S>, Error> {
 		let mut sessions = self.sessions.write();
 		if sessions.contains_key(&session_id) {
 			return Err(Error::DuplicateSessionId);
@@ -402,7 +402,7 @@ impl<S, SC, D> ClusterSessionsContainer<S, SC, D> where S: ClusterSession, SC: C
 		}
 	}
 
-	fn notify_listeners<F: Fn(&ClusterSessionsListener<S>) -> ()>(&self, callback: F) {
+	fn notify_listeners<F: Fn(&dyn ClusterSessionsListener<S>) -> ()>(&self, callback: F) {
 		let mut listeners = self.listeners.lock();
 		let mut listener_index = 0;
 		while listener_index < listeners.len() {
@@ -569,7 +569,7 @@ impl ClusterSession for AdminSession {
 	}
 }
 
-pub fn create_cluster_view(self_key_pair: Arc<NodeKeyPair>, connections: Arc<ConnectionProvider>, requires_all_connections: bool) -> Result<Arc<Cluster>, Error> {
+pub fn create_cluster_view(self_key_pair: Arc<dyn NodeKeyPair>, connections: Arc<dyn ConnectionProvider>, requires_all_connections: bool) -> Result<Arc<dyn Cluster>, Error> {
 	let mut connected_nodes = connections.connected_nodes()?;
 	let disconnected_nodes = connections.disconnected_nodes();
 

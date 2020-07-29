@@ -61,10 +61,10 @@ pub trait Kind: 'static + Sized + Send + Sync {
 	type Verified: Sized + Send + BlockLike + HeapSizeOf;
 
 	/// Attempt to create the `Unverified` item from the input.
-	fn create(input: Self::Input, engine: &EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)>;
+	fn create(input: Self::Input, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)>;
 
 	/// Attempt to verify the `Unverified` item using the given engine.
-	fn verify(unverified: Self::Unverified, engine: &EthEngine, check_seal: bool) -> Result<Self::Verified, Error>;
+	fn verify(unverified: Self::Unverified, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Verified, Error>;
 }
 
 /// The blocks verification module.
@@ -89,7 +89,7 @@ pub mod blocks {
 		type Unverified = Unverified;
 		type Verified = PreverifiedBlock;
 
-		fn create(input: Self::Input, engine: &EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)> {
+		fn create(input: Self::Input, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)> {
 			match verify_block_basic(&input, engine, check_seal) {
 				Ok(()) => Ok(input),
 				Err(Error(ErrorKind::Block(BlockError::TemporarilyInvalid(oob)), _)) => {
@@ -103,7 +103,7 @@ pub mod blocks {
 			}
 		}
 
-		fn verify(un: Self::Unverified, engine: &EthEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+		fn verify(un: Self::Unverified, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Verified, Error> {
 			let hash = un.hash();
 			match verify_block_unordered(un, engine, check_seal) {
 				Ok(verified) => Ok(verified),
@@ -221,14 +221,14 @@ pub mod headers {
 		type Unverified = Header;
 		type Verified = Header;
 
-		fn create(input: Self::Input, engine: &EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)> {
+		fn create(input: Self::Input, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Unverified, (Self::Input, Error)> {
 			match verify_header_params(&input, engine, true, check_seal) {
 				Ok(_) => Ok(input),
 				Err(err) => Err((input, err))
 			}
 		}
 
-		fn verify(unverified: Self::Unverified, engine: &EthEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+		fn verify(unverified: Self::Unverified, engine: &dyn EthEngine, check_seal: bool) -> Result<Self::Verified, Error> {
 			match check_seal {
 				true => engine.verify_block_unordered(&unverified,).map(|_| unverified),
 				false => Ok(unverified),

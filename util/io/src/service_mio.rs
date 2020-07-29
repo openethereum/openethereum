@@ -45,7 +45,7 @@ pub enum IoMessage<Message> where Message: Send + Sized {
 	Shutdown,
 	/// Register a new protocol handler.
 	AddHandler {
-		handler: Arc<IoHandler<Message>+Send>,
+		handler: Arc<dyn IoHandler<Message>+Send>,
 	},
 	RemoveHandler {
 		handler_id: HandlerId,
@@ -182,7 +182,7 @@ struct UserTimer {
 /// Root IO handler. Manages user handlers, messages and IO timers.
 pub struct IoManager<Message> where Message: Send + Sync {
 	timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
-	handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>>>>,
+	handlers: Arc<RwLock<Slab<Arc<dyn IoHandler<Message>>>>>,
 	workers: Vec<Worker>,
 	worker_channel: deque::Worker<Work<Message>>,
 	work_ready: Arc<Condvar>,
@@ -192,7 +192,7 @@ impl<Message> IoManager<Message> where Message: Send + Sync + 'static {
 	/// Creates a new instance and registers it with the event loop.
 	pub fn start(
 		event_loop: &mut EventLoop<IoManager<Message>>,
-		handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>>>>
+		handlers: Arc<RwLock<Slab<Arc<dyn IoHandler<Message>>>>>
 	) -> Result<(), IoError> {
 		let (worker, stealer) = deque::fifo();
 		let num_workers = 4;
@@ -334,8 +334,8 @@ impl<Message> Handler for IoManager<Message> where Message: Send + Sync + 'stati
 }
 
 enum Handlers<Message> where Message: Send {
-	SharedCollection(Weak<RwLock<Slab<Arc<IoHandler<Message>>>>>),
-	Single(Weak<IoHandler<Message>>),
+	SharedCollection(Weak<RwLock<Slab<Arc<dyn IoHandler<Message>>>>>),
+	Single(Weak<dyn IoHandler<Message>>),
 }
 
 impl<Message: Send> Clone for Handlers<Message> {
@@ -413,13 +413,13 @@ impl<Message> IoChannel<Message> where Message: Send + Sync + 'static {
 	}
 
 	/// Create a new synchronous channel to a given handler.
-	pub fn to_handler(handler: Weak<IoHandler<Message>>) -> IoChannel<Message> {
+	pub fn to_handler(handler: Weak<dyn IoHandler<Message>>) -> IoChannel<Message> {
 		IoChannel {
 			channel: None,
 			handlers: Handlers::Single(handler),
 		}
 	}
-	fn new(channel: Sender<IoMessage<Message>>, handlers: Weak<RwLock<Slab<Arc<IoHandler<Message>>>>>) -> IoChannel<Message> {
+	fn new(channel: Sender<IoMessage<Message>>, handlers: Weak<RwLock<Slab<Arc<dyn IoHandler<Message>>>>>) -> IoChannel<Message> {
 		IoChannel {
 			channel: Some(channel),
 			handlers: Handlers::SharedCollection(handlers),
@@ -432,7 +432,7 @@ impl<Message> IoChannel<Message> where Message: Send + Sync + 'static {
 pub struct IoService<Message> where Message: Send + Sync + 'static {
 	thread: Option<JoinHandle<()>>,
 	host_channel: Mutex<Sender<IoMessage<Message>>>,
-	handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>>>>,
+	handlers: Arc<RwLock<Slab<Arc<dyn IoHandler<Message>>>>>,
 }
 
 impl<Message> IoService<Message> where Message: Send + Sync + 'static {
@@ -469,7 +469,7 @@ impl<Message> IoService<Message> where Message: Send + Sync + 'static {
 	}
 
 	/// Regiter an IO handler with the event loop.
-	pub fn register_handler(&self, handler: Arc<IoHandler<Message>+Send>) -> Result<(), IoError> {
+	pub fn register_handler(&self, handler: Arc<dyn IoHandler<Message> + Send>) -> Result<(), IoError> {
 		self.host_channel.lock().send(IoMessage::AddHandler {
 			handler: handler,
 		})?;

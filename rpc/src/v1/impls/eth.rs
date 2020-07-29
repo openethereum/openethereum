@@ -109,7 +109,7 @@ pub struct EthClient<C, SN: ?Sized, S: ?Sized, M, EM> where
 	client: Arc<C>,
 	snapshot: Arc<SN>,
 	sync: Arc<S>,
-	accounts: Arc<Fn() -> Vec<Address> + Send + Sync>,
+	accounts: Arc<dyn Fn() -> Vec<Address> + Send + Sync>,
 	miner: Arc<M>,
 	external_miner: Arc<EM>,
 	seed_compute: Mutex<SeedHashCompute>,
@@ -189,7 +189,7 @@ impl<C, SN: ?Sized, S: ?Sized, M, EM, T: StateInfo + 'static> EthClient<C, SN, S
 		client: &Arc<C>,
 		snapshot: &Arc<SN>,
 		sync: &Arc<S>,
-		accounts: &Arc<Fn() -> Vec<Address> + Send + Sync>,
+		accounts: &Arc<dyn Fn() -> Vec<Address> + Send + Sync>,
 		miner: &Arc<M>,
 		em: &Arc<EM>,
 		options: EthClientOptions

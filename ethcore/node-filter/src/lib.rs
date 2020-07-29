@@ -49,13 +49,13 @@ use_contract!(peer_set, "res/peer_set.json");
 
 /// Connection filter that uses a contract to manage permissions.
 pub struct NodeFilter {
-	client: Weak<BlockChainClient>,
+	client: Weak<dyn BlockChainClient>,
 	contract_address: Address,
 }
 
 impl NodeFilter {
 	/// Create a new instance. Accepts a contract address.
-	pub fn new(client: Weak<BlockChainClient>, contract_address: Address) -> NodeFilter {
+	pub fn new(client: Weak<dyn BlockChainClient>, contract_address: Address) -> NodeFilter {
 		NodeFilter {
 			client,
 			contract_address,
@@ -116,7 +116,7 @@ mod test {
 			Arc::new(Miner::new_for_tests(&spec, None)),
 			IoChannel::disconnected(),
 		).unwrap();
-		let filter = NodeFilter::new(Arc::downgrade(&client) as Weak<BlockChainClient>, contract_addr);
+		let filter = NodeFilter::new(Arc::downgrade(&client) as Weak<dyn BlockChainClient>, contract_addr);
 		let self1: NodeId = "00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002".into();
 		let self2: NodeId = "00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003".into();
 		let node1: NodeId = "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000012".into();

@@ -36,13 +36,13 @@ pub struct KeyServerImpl {
 
 /// Secret store key server data.
 pub struct KeyServerCore {
-	cluster: Arc<ClusterClient>,
+	cluster: Arc<dyn ClusterClient>,
 }
 
 impl KeyServerImpl {
 	/// Create new key server instance
-	pub fn new(config: &ClusterConfiguration, key_server_set: Arc<KeyServerSet>, self_key_pair: Arc<NodeKeyPair>,
-		acl_storage: Arc<AclStorage>, key_storage: Arc<KeyStorage>, executor: Executor) -> Result<Self, Error>
+	pub fn new(config: &ClusterConfiguration, key_server_set: Arc<dyn KeyServerSet>, self_key_pair: Arc<dyn NodeKeyPair>,
+		acl_storage: Arc<dyn AclStorage>, key_storage: Arc<dyn KeyStorage>, executor: Executor) -> Result<Self, Error>
 	{
 		Ok(KeyServerImpl {
 			data: Arc::new(Mutex::new(KeyServerCore::new(config, key_server_set, self_key_pair, acl_storage, key_storage, executor)?)),
@@ -50,7 +50,7 @@ impl KeyServerImpl {
 	}
 
 	/// Get cluster client reference.
-	pub fn cluster(&self) -> Arc<ClusterClient> {
+	pub fn cluster(&self) -> Arc<dyn ClusterClient> {
 		self.data.lock().cluster.clone()
 	}
 }
@@ -188,8 +188,8 @@ impl MessageSigner for KeyServerImpl {
 }
 
 impl KeyServerCore {
-	pub fn new(config: &ClusterConfiguration, key_server_set: Arc<KeyServerSet>, self_key_pair: Arc<NodeKeyPair>,
-		acl_storage: Arc<AclStorage>, key_storage: Arc<KeyStorage>, executor: Executor) -> Result<Self, Error>
+	pub fn new(config: &ClusterConfiguration, key_server_set: Arc<dyn KeyServerSet>, self_key_pair: Arc<dyn NodeKeyPair>,
+		acl_storage: Arc<dyn AclStorage>, key_storage: Arc<dyn KeyStorage>, executor: Executor) -> Result<Self, Error>
 	{
 		let cconfig = NetClusterConfiguration {
 			self_key_pair: self_key_pair.clone(),

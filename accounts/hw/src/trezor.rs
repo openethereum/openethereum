@@ -199,7 +199,7 @@ impl Manager {
 		}
 	}
 
-	fn send_device_message(&self, device: &hidapi::HidDevice, msg_type: MessageType, msg: &Message) -> Result<usize, Error> {
+	fn send_device_message(&self, device: &hidapi::HidDevice, msg_type: MessageType, msg: &dyn Message) -> Result<usize, Error> {
 		let msg_id = msg_type as u16;
 		let mut message = msg.write_to_bytes()?;
 		let msg_size = message.len();

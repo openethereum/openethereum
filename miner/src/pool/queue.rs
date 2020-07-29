@@ -569,7 +569,7 @@ impl TransactionQueue {
 	}
 
 	/// Add a callback to be notified about all transactions entering the pool.
-	pub fn add_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
+	pub fn add_listener(&self, f: Box<dyn Fn(&[H256]) + Send + Sync>) {
 		let mut pool = self.pool.write();
 		(pool.listener_mut().1).0.add(f);
 	}

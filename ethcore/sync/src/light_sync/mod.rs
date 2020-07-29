@@ -117,7 +117,7 @@ impl AncestorSearch {
 		}
 	}
 
-	fn process_response<L>(self, ctx: &ResponseContext, client: &L) -> AncestorSearch
+	fn process_response<L>(self, ctx: &dyn ResponseContext, client: &L) -> AncestorSearch
 		where L: AsLightClient
 	{
 		let client = client.as_light_client();
@@ -255,7 +255,7 @@ impl Deref for SyncStateWrapper {
 struct ResponseCtx<'a> {
 	peer: PeerId,
 	req_id: ReqId,
-	ctx: &'a BasicContext,
+	ctx: &'a dyn BasicContext,
 	data: &'a [encoded::Header],
 }
 
@@ -288,7 +288,7 @@ struct PendingReq {
 impl<L: AsLightClient + Send + Sync> Handler for LightSync<L> {
 	fn on_connect(
 		&self,
-		ctx: &EventContext,
+		ctx: &dyn EventContext,
 		status: &Status,
 		capabilities: &Capabilities
 	) -> PeerStatus {
@@ -315,7 +315,7 @@ impl<L: AsLightClient + Send + Sync> Handler for LightSync<L> {
 		}
 	}
 
-	fn on_disconnect(&self, ctx: &EventContext, unfulfilled: &[ReqId]) {
+	fn on_disconnect(&self, ctx: &dyn EventContext, unfulfilled: &[ReqId]) {
 		let peer_id = ctx.peer();
 
 		let peer = match self.peers.write().remove(&peer_id).map(|p| p.into_inner()) {
@@ -366,7 +366,7 @@ impl<L: AsLightClient + Send + Sync> Handler for LightSync<L> {
 		self.maintain_sync(ctx.as_basic());
 	}
 
-	fn on_announcement(&self, ctx: &EventContext, announcement: &Announcement) {
+	fn on_announcement(&self, ctx: &dyn EventContext, announcement: &Announcement) {
 		let (last_td, chain_info) = {
 			let peers = self.peers.read();
 			match peers.get(&ctx.peer()) {
@@ -402,7 +402,7 @@ impl<L: AsLightClient + Send + Sync> Handler for LightSync<L> {
 		self.maintain_sync(ctx.as_basic());
 	}
 
-	fn on_responses(&self, ctx: &EventContext, req_id: ReqId, responses: &[request::Response]) {
+	fn on_responses(&self, ctx: &dyn EventContext, req_id: ReqId, responses: &[request::Response]) {
 		let peer = ctx.peer();
 		if !self.peers.read().contains_key(&peer) {
 			return
@@ -444,7 +444,7 @@ impl<L: AsLightClient + Send + Sync> Handler for LightSync<L> {
 		self.maintain_sync(ctx.as_basic());
 	}
 
-	fn tick(&self, ctx: &BasicContext) {
+	fn tick(&self, ctx: &dyn BasicContext) {
 		self.maintain_sync(ctx);
 	}
 }
@@ -476,7 +476,7 @@ impl<L: AsLightClient> LightSync<L> {
 	}
 
 	// handles request dispatch, block import, state machine transitions, and timeouts.
-	fn maintain_sync(&self, ctx: &BasicContext) {
+	fn maintain_sync(&self, ctx: &dyn BasicContext) {
 		use ethcore::error::{Error as EthcoreError, ErrorKind as EthcoreErrorKind, ImportErrorKind};
 
 		const DRAIN_AMOUNT: usize = 128;

@@ -44,7 +44,7 @@ pub struct NetPoolHandle {
 	/// Pool handle.
 	handle: Arc<WhisperNetwork<Arc<FilterManager>>>,
 	/// Network manager.
-	net: Arc<ManageNetwork>,
+	net: Arc<dyn ManageNetwork>,
 }
 
 impl PoolHandle for NetPoolHandle {
@@ -71,7 +71,7 @@ pub struct RpcFactory {
 }
 
 impl RpcFactory {
-	pub fn make_handler(&self, net: Arc<ManageNetwork>) -> WhisperClient<NetPoolHandle, Metadata> {
+	pub fn make_handler(&self, net: Arc<dyn ManageNetwork>) -> WhisperClient<NetPoolHandle, Metadata> {
 		let handle = NetPoolHandle { handle: self.net.clone(), net: net };
 		WhisperClient::new(handle, self.manager.clone())
 	}

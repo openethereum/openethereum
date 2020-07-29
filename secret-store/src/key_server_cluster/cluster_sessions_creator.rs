@@ -53,7 +53,7 @@ pub trait ClusterSessionCreator<S: ClusterSession, D> {
 	fn make_error_message(sid: S::Id, nonce: u64, err: Error) -> Message;
 
 	/// Create cluster session.
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: S::Id, creation_data: Option<D>) -> Result<Arc<S>, Error>;
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: S::Id, creation_data: Option<D>) -> Result<Arc<S>, Error>;
 }
 
 /// Message with session id.
@@ -66,9 +66,9 @@ pub struct SessionCreatorCore {
 	/// Self node id.
 	self_node_id: NodeId,
 	/// Reference to key storage
-	key_storage: Arc<KeyStorage>,
+	key_storage: Arc<dyn KeyStorage>,
 	/// Reference to ACL storage
-	acl_storage: Arc<AclStorage>,
+	acl_storage: Arc<dyn AclStorage>,
 	/// Always-increasing sessions counter. Is used as session nonce to prevent replay attacks:
 	/// 1) during handshake, KeyServers generate new random key to encrypt messages
 	/// => there's no way to use messages from previous connections for replay attacks
@@ -143,7 +143,7 @@ impl ClusterSessionCreator<GenerationSessionImpl, ()> for GenerationSessionCreat
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, _creation_data: Option<()>) -> Result<Arc<GenerationSessionImpl>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, _creation_data: Option<()>) -> Result<Arc<GenerationSessionImpl>, Error> {
 		// check that there's no finished encryption session with the same id
 		if self.core.key_storage.contains(&id) {
 			return Err(Error::ServerKeyAlreadyGenerated);
@@ -182,7 +182,7 @@ impl ClusterSessionCreator<EncryptionSessionImpl, ()> for EncryptionSessionCreat
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, _creation_data: Option<()>) -> Result<Arc<EncryptionSessionImpl>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, _creation_data: Option<()>) -> Result<Arc<EncryptionSessionImpl>, Error> {
 		let encrypted_data = self.core.read_key_share(&id)?;
 		let nonce = self.core.check_session_nonce(&master, nonce)?;
 		Ok(Arc::new(EncryptionSessionImpl::new(EncryptionSessionParams {
@@ -223,7 +223,7 @@ impl ClusterSessionCreator<DecryptionSessionImpl, Requester> for DecryptionSessi
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<DecryptionSessionImpl>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<DecryptionSessionImpl>, Error> {
 		let encrypted_data = self.core.read_key_share(&id.id)?;
 		let nonce = self.core.check_session_nonce(&master, nonce)?;
 		Ok(Arc::new(DecryptionSessionImpl::new(DecryptionSessionParams {
@@ -271,7 +271,7 @@ impl ClusterSessionCreator<SchnorrSigningSessionImpl, Requester> for SchnorrSign
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<SchnorrSigningSessionImpl>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<SchnorrSigningSessionImpl>, Error> {
 		let encrypted_data = self.core.read_key_share(&id.id)?;
 		let nonce = self.core.check_session_nonce(&master, nonce)?;
 		Ok(Arc::new(SchnorrSigningSessionImpl::new(SchnorrSigningSessionParams {
@@ -319,7 +319,7 @@ impl ClusterSessionCreator<EcdsaSigningSessionImpl, Requester> for EcdsaSigningS
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<EcdsaSigningSessionImpl>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, requester: Option<Requester>) -> Result<Arc<EcdsaSigningSessionImpl>, Error> {
 		let encrypted_data = self.core.read_key_share(&id.id)?;
 		let nonce = self.core.check_session_nonce(&master, nonce)?;
 		Ok(Arc::new(EcdsaSigningSessionImpl::new(EcdsaSigningSessionParams {
@@ -359,7 +359,7 @@ impl ClusterSessionCreator<KeyVersionNegotiationSessionImpl<VersionNegotiationTr
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, _creation_data: Option<()>) -> Result<Arc<KeyVersionNegotiationSessionImpl<VersionNegotiationTransport>>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionIdWithSubSession, _creation_data: Option<()>) -> Result<Arc<KeyVersionNegotiationSessionImpl<VersionNegotiationTransport>>, Error> {
 		let configured_nodes_count = cluster.configured_nodes_count();
 		let connected_nodes_count = cluster.connected_nodes_count();
 		let encrypted_data = self.core.read_key_share(&id.id)?;
@@ -395,7 +395,7 @@ pub struct AdminSessionCreator {
 	/// Administrator public.
 	pub admin_public: Option<Public>,
 	/// Servers set change sessions creator connector.
-	pub servers_set_change_session_creator_connector: Arc<ServersSetChangeSessionCreatorConnector>,
+	pub servers_set_change_session_creator_connector: Arc<dyn ServersSetChangeSessionCreatorConnector>,
 }
 
 impl ClusterSessionCreator<AdminSession, AdminSessionCreationData> for AdminSessionCreator {
@@ -424,7 +424,7 @@ impl ClusterSessionCreator<AdminSession, AdminSessionCreationData> for AdminSess
 		}))
 	}
 
-	fn create(&self, cluster: Arc<Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, creation_data: Option<AdminSessionCreationData>) -> Result<Arc<AdminSession>, Error> {
+	fn create(&self, cluster: Arc<dyn Cluster>, master: NodeId, nonce: Option<u64>, id: SessionId, creation_data: Option<AdminSessionCreationData>) -> Result<Arc<AdminSession>, Error> {
 		let nonce = self.core.check_session_nonce(&master, nonce)?;
 		Ok(Arc::new(match creation_data {
 			Some(AdminSessionCreationData::ShareAdd(version)) => {

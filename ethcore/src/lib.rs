@@ -119,6 +119,8 @@ extern crate blooms_db;
 extern crate env_logger;
 #[cfg(test)]
 extern crate rlp_compress;
+#[cfg(any(test, feature = "test-helpers"))]
+extern crate kvdb_memorydb;
 #[cfg(test)]
 #[macro_use]
 extern crate hex_literal;

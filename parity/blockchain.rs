@@ -27,13 +27,12 @@ use ethereum_types::{U256, H256, Address};
 use bytes::ToPretty;
 use rlp::PayloadInfo;
 use ethcore::client::{
-	Mode, DatabaseCompactionProfile, VMType, Nonce, Balance, BlockChainClient, BlockId, BlockInfo, ImportBlock, BlockChainReset, ImportExportBlocks
+	Mode, DatabaseCompactionProfile, VMType, Nonce, Balance, BlockChainClient, BlockId, BlockChainReset, ImportExportBlocks
 };
 use types::data_format::DataFormat;
 use ethcore::error::{ImportErrorKind, ErrorKind as EthcoreErrorKind, Error as EthcoreError};
 use ethcore::miner::Miner;
 use ethcore::verification::queue::VerifierSettings;
-use ethcore::verification::queue::kind::blocks::Unverified;
 use ethcore_service::ClientService;
 use cache::CacheConfig;
 use informant::{Informant, FullNodeInformantData, MillisecondDuration};

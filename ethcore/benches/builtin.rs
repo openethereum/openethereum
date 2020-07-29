@@ -29,7 +29,6 @@ use criterion::{Criterion, Bencher};
 use bytes::BytesRef;
 use ethcore_builtin::Builtin;
 use ethcore::machine::EthereumMachine;
-use ethereum_types::U256;
 use ethcore::ethereum::new_byzantium_test_machine;
 use rustc_hex::FromHex;
 

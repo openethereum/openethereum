@@ -67,7 +67,6 @@ use std::time;
 use std::time::{Instant, Duration, SystemTime, UNIX_EPOCH};
 
 use block::ExecutedBlock;
-use bytes::Bytes;
 use client::{BlockId, EngineClient, traits::ForceUpdateSealing};
 use engines::clique::util::{extract_signers, recover_creator};
 use engines::{Engine, EngineError, Seal};

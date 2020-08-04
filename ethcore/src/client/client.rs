@@ -1536,8 +1536,12 @@ impl ImportBlock for Client {
 				Ok(hash)
 			},
 			// we only care about block errors (not import errors)
-			Err((block, EthcoreError(EthcoreErrorKind::Block(err), _))) => {
-				self.importer.bad_blocks.report(block.bytes, format!("{:?}", err));
+			Err((Some(block), EthcoreError(EthcoreErrorKind::Block(err), _))) => {
+				self.importer.bad_blocks.report(block.bytes, err.to_string());
+				bail!(EthcoreErrorKind::Block(err))
+			},
+			Err((None, EthcoreError(EthcoreErrorKind::Block(err), _))) => {
+				error!(target: "client", "BlockError {} detected but it was missing raw_bytes of the block", err);
 				bail!(EthcoreErrorKind::Block(err))
 			},
 			Err((_, e)) => Err(e),

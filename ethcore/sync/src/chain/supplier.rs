@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::time::{Duration, Instant};
+
 use bytes::Bytes;
 use enum_primitive::FromPrimitive;
 use ethereum_types::H256;
+use log::{debug, trace, warn};
 use network::{self, PeerId};
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
@@ -53,6 +56,8 @@ use super::{
 	MAX_BODIES_TO_SEND,
 	MAX_HEADERS_TO_SEND,
 	MAX_NODE_DATA_TO_SEND,
+	MAX_NODE_DATA_TOTAL_DURATION,
+	MAX_NODE_DATA_SINGLE_DURATION,
 	MAX_RECEIPTS_HEADERS_TO_SEND,
 };
 
@@ -250,9 +255,9 @@ impl SyncSupplier {
 
 	/// Respond to GetNodeData request
 	fn return_node_data(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-		let payload_soft_limit = io.payload_soft_limit();
+		let payload_soft_limit = io.payload_soft_limit(); // 4Mb
 		let mut count = r.item_count().unwrap_or(0);
-		trace!(target: "sync", "{} -> GetNodeData: {} entries", peer_id, count);
+		trace!(target: "sync", "{} -> GetNodeData: {} entries requested", peer_id, count);
 		if count == 0 {
 			debug!(target: "sync", "Empty GetNodeData request, ignoring.");
 			return Ok(None);
@@ -261,10 +266,20 @@ impl SyncSupplier {
 		let mut added = 0usize;
 		let mut data = Vec::new();
 		let mut total_bytes = 0;
+		let mut total_elpsd = Duration::from_secs(0);
 		for i in 0..count {
-			if let Some(node) = io.chain().state_data(&r.val_at::<H256>(i)?) {
+			let hash = &r.val_at(i)?;
+			let elpsd = Instant::now();
+			let state = io.chain().state_data(hash);
+
+			total_elpsd += elpsd.elapsed();
+			if elpsd.elapsed() > MAX_NODE_DATA_SINGLE_DURATION || total_elpsd > MAX_NODE_DATA_TOTAL_DURATION {
+				warn!(target: "sync", "{} -> GetNodeData:   item {}/{} – slow state fetch for hash {:?}; took {:?}",
+					peer_id, i, count, hash, elpsd);
+				break;
+			}
+			if let Some(node) = state {
 				total_bytes += node.len();
-				// Check that the packet won't be oversized
 				if total_bytes > payload_soft_limit {
 					break;
 				}
@@ -272,7 +287,8 @@ impl SyncSupplier {
 				added += 1;
 			}
 		}
-		trace!(target: "sync", "{} -> GetNodeData: return {} entries", peer_id, added);
+		trace!(target: "sync", "{} -> GetNodeData: returning {}/{} entries ({} bytes total in {:?})",
+			peer_id, added, count, total_bytes, total_elpsd);
 		let mut rlp = RlpStream::new_list(added);
 		for d in data {
 			rlp.append(&d);
@@ -500,7 +516,7 @@ mod test {
 		let rlp_result = result.unwrap();
 		assert!(rlp_result.is_some());
 
-		// the length of one rlp-encoded hashe
+		// the length of one rlp-encoded hash
 		let rlp = rlp_result.unwrap().1.out();
 		let rlp = Rlp::new(&rlp);
 		assert_eq!(Ok(1), rlp.item_count());

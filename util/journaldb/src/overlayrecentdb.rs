@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-//! `JournalDB` over in-memory overlay
+// `JournalDB` over in-memory overlay
 
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use std::io;
-use std::sync::Arc;
+use std::{
+	collections::{HashMap, hash_map::Entry},
+	io,
+	sync::Arc,
+};
 
 use bytes::Bytes;
 use ethereum_types::H256;
@@ -298,11 +299,23 @@ impl JournalDB for OverlayRecentDB {
 	fn earliest_era(&self) -> Option<u64> { self.journal_overlay.read().earliest_era }
 
 	fn state(&self, key: &H256) -> Option<Bytes> {
-		let journal_overlay = self.journal_overlay.read();
 		let key = to_short_key(key);
-		journal_overlay.backing_overlay.get(&key).map(|v| v.into_vec())
-		.or_else(|| journal_overlay.pending_overlay.get(&key).map(|d| d.clone().into_vec()))
-		.or_else(|| self.backing.get_by_prefix(self.column, &key[0..DB_PREFIX_LEN]).map(|b| b.into_vec()))
+		// Hold the read lock for shortest possible amount of time.
+		let maybe_state_data = {
+			let journal_overlay = self.journal_overlay.read();
+			journal_overlay
+				.backing_overlay
+				.get(&key)
+				.map(|v| v.to_vec())
+				.or_else(|| journal_overlay.pending_overlay.get(&key).map(|d| d.clone().to_vec()))
+		};
+
+		maybe_state_data.or_else(|| {
+			let pkey = &key[0..DB_PREFIX_LEN];
+			self.backing
+				.get_by_prefix(self.column, &pkey)
+				.map(|b| b.to_vec())
+		})
 	}
 
 	fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: &H256) -> io::Result<u32> {

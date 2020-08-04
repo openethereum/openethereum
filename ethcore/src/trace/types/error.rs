@@ -34,6 +34,12 @@ pub enum Error {
 	StackUnderflow,
 	/// When execution would exceed defined Stack Limit
 	OutOfStack,
+	/// When there is not enough subroutine stack elements to return from
+	SubStackUnderflow,
+	/// When execution would exceed defined subroutine Stack Limit
+	OutOfSubStack,
+	/// When the code walks into a subroutine, that is not allowed
+	InvalidSubEntry,
 	/// When builtin contract failed on input data
 	BuiltIn,
 	/// Returned on evm internal error. Should never be ignored during development.
@@ -57,7 +63,9 @@ impl<'a> From<&'a VmError> for Error {
 			VmError::BadInstruction { .. } => Error::BadInstruction,
 			VmError::StackUnderflow { .. } => Error::StackUnderflow,
 			VmError::OutOfStack { .. } => Error::OutOfStack,
-			VmError::BuiltIn { .. } => Error::BuiltIn,
+			VmError::SubStackUnderflow { .. } => Error::SubStackUnderflow,
+			VmError::OutOfSubStack { .. } => Error::OutOfSubStack,
+			VmError::InvalidSubEntry { .. } => Error::InvalidSubEntry,			VmError::BuiltIn { .. } => Error::BuiltIn,
 			VmError::Wasm { .. } => Error::Wasm,
 			VmError::Internal(_) => Error::Internal,
 			VmError::MutableCallInStaticContext => Error::MutableCallInStaticContext,
@@ -82,8 +90,9 @@ impl fmt::Display for Error {
 			BadInstruction => "Bad instruction",
 			StackUnderflow => "Stack underflow",
 			OutOfStack => "Out of stack",
-			BuiltIn => "Built-in failed",
-			Wasm => "Wasm runtime error",
+			SubStackUnderflow => "Subroutine stack underflow",
+			OutOfSubStack => "Subroutine stack overflow",			BuiltIn => "Built-in failed",
+			InvalidSubEntry => "Invalid subroutine entry",			Wasm => "Wasm runtime error",
 			Internal => "Internal error",
 			MutableCallInStaticContext => "Mutable Call In Static Context",
 			OutOfBounds => "Out of bounds",
@@ -108,6 +117,9 @@ impl Encodable for Error {
 			Wasm => 8,
 			OutOfBounds => 9,
 			Reverted => 10,
+			SubStackUnderflow => 11,
+			OutOfSubStack => 12,
+			InvalidSubEntry => 13,
 		};
 
 		s.append_internal(&value);
@@ -130,6 +142,9 @@ impl Decodable for Error {
 			8 => Ok(Wasm),
 			9 => Ok(OutOfBounds),
 			10 => Ok(Reverted),
+			11 => Ok(SubStackUnderflow),
+			12 => Ok(OutOfSubStack),
+			13 => Ok(InvalidSubEntry),
 			_ => Err(DecoderError::Custom("Invalid error type")),
 		}
 	}

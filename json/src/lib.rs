@@ -23,6 +23,9 @@ extern crate ethereum_types;
 #[cfg(test)]
 extern crate macros;
 
+#[cfg(test)]
+#[macro_use] extern crate maplit;
+
 pub mod hash;
 pub mod uint;
 pub mod bytes;

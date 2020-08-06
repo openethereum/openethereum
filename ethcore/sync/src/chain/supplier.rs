@@ -255,6 +255,7 @@ impl SyncSupplier {
 
 	/// Respond to GetNodeData request
 	fn return_node_data(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
+		return Ok(None);
 		let payload_soft_limit = io.payload_soft_limit(); // 4Mb
 		let mut count = r.item_count().unwrap_or(0);
 		trace!(target: "sync", "{} -> GetNodeData: {} entries requested", peer_id, count);
@@ -513,7 +514,9 @@ mod test {
 		let result = SyncSupplier::return_node_data(&io, &Rlp::new(&node_request.clone()), 0);
 
 		assert!(result.is_ok());
-		let rlp_result = result.unwrap();
+		rlp_result = result.unwrap();
+		assert!(rlp_result.is_none());
+		/*let rlp_result = result.unwrap();
 		assert!(rlp_result.is_some());
 
 		// the length of one rlp-encoded hash
@@ -524,7 +527,7 @@ mod test {
 		io.sender = Some(2usize);
 
 		SyncSupplier::dispatch_packet(&RwLock::new(sync), &mut io, 0usize, GetNodeDataPacket.id(), &node_request);
-		assert_eq!(1, io.packets.len());
+		assert_eq!(1, io.packets.len());*/
 	}
 
 	#[test]

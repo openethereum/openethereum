@@ -30,7 +30,6 @@ use dir::helpers::replace_home;
 use upgrade::{upgrade, upgrade_data_paths};
 use sync::{validate_node_url, self};
 use db::migrate;
-use path;
 use ethkey::Password;
 
 pub fn to_duration(s: &str) -> Result<Duration, String> {
@@ -145,21 +144,6 @@ pub fn join_set(set: Option<&HashSet<String>>) -> Option<String> {
 /// Flush output buffer.
 pub fn flush_stdout() {
 	io::stdout().flush().expect("stdout is flushable; qed");
-}
-
-/// Returns default geth ipc path.
-pub fn geth_ipc_path(testnet: bool) -> String {
-	// Windows path should not be hardcoded here.
-	// Instead it should be a part of path::ethereum
-	if cfg!(windows) {
-		return r"\\.\pipe\geth.ipc".to_owned();
-	}
-
-	if testnet {
-		path::ethereum::with_testnet("geth.ipc").to_str().unwrap().to_owned()
-	} else {
-		path::ethereum::with_default("geth.ipc").to_str().unwrap().to_owned()
-	}
 }
 
 /// Formats and returns parity ipc path.
@@ -341,7 +325,7 @@ mod tests {
 	use ethcore::client::{Mode, BlockId};
 	use ethcore::miner::PendingSet;
 	use ethkey::Password;
-	use super::{to_duration, to_mode, to_block_id, to_u256, to_pending_set, to_address, to_addresses, to_price, geth_ipc_path, to_bootnodes, join_set, password_from_file};
+	use super::{to_duration, to_mode, to_block_id, to_u256, to_pending_set, to_address, to_addresses, to_price, to_bootnodes, join_set, password_from_file};
 
 	#[test]
 	fn test_to_duration() {
@@ -454,21 +438,6 @@ but the first password is trimmed
 		assert_eq!(to_price("1").unwrap(), 1.0);
 		assert_eq!(to_price("2.3").unwrap(), 2.3);
 		assert_eq!(to_price("2.33").unwrap(), 2.33);
-	}
-
-	#[test]
-	#[cfg(windows)]
-	fn test_geth_ipc_path() {
-		assert_eq!(geth_ipc_path(true), r"\\.\pipe\geth.ipc".to_owned());
-		assert_eq!(geth_ipc_path(false), r"\\.\pipe\geth.ipc".to_owned());
-	}
-
-	#[test]
-	#[cfg(not(windows))]
-	fn test_geth_ipc_path() {
-		use path;
-		assert_eq!(geth_ipc_path(true), path::ethereum::with_testnet("geth.ipc").to_str().unwrap().to_owned());
-		assert_eq!(geth_ipc_path(false), path::ethereum::with_default("geth.ipc").to_str().unwrap().to_owned());
 	}
 
 	#[test]

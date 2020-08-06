@@ -19,8 +19,7 @@ use std::path::Path;
 use std::fs;
 
 use ethkey::Address;
-use accounts_dir::{KeyDirectory, RootDiskDirectory, DiskKeyFileManager, KeyFileManager};
-use dir;
+use accounts_dir::{KeyDirectory, DiskKeyFileManager, KeyFileManager};
 use Error;
 
 /// Import an account from a file.
@@ -48,30 +47,6 @@ pub fn import_accounts(src: &dyn KeyDirectory, dst: &dyn KeyDirectory) -> Result
 
 	accounts.into_iter()
 		.filter(|a| !existing_accounts.contains(&a.address))
-		.map(|a| {
-			let address = a.address.clone();
-			dst.insert(a)?;
-			Ok(address)
-		}).collect()
-}
-
-/// Provide a `HashSet` of all accounts available for import from the Geth keystore.
-pub fn read_geth_accounts(testnet: bool) -> Vec<Address> {
-	RootDiskDirectory::at(dir::geth(testnet))
-		.load()
-		.map(|d| d.into_iter().map(|a| a.address).collect())
-		.unwrap_or_else(|_| Vec::new())
-}
-
-/// Import specific `desired` accounts from the Geth keystore into `dst`.
-pub fn import_geth_accounts(dst: &dyn KeyDirectory, desired: HashSet<Address>, testnet: bool) -> Result<Vec<Address>, Error> {
-	let src = RootDiskDirectory::at(dir::geth(testnet));
-	let accounts = src.load()?;
-	let existing_accounts = dst.load()?.into_iter().map(|a| a.address).collect::<HashSet<_>>();
-
-	accounts.into_iter()
-		.filter(|a| !existing_accounts.contains(&a.address))
-		.filter(|a| desired.contains(&a.address))
 		.map(|a| {
 			let address = a.address.clone();
 			dst.insert(a)?;

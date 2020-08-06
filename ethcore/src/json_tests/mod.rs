@@ -16,31 +16,14 @@
 
 //! Helpers and tests for operating on jsontests.
 
-#[macro_use]
 mod test_common;
-
 mod transaction;
 mod executive;
 mod state;
 mod chain;
 mod trie;
-mod skip;
-
-#[cfg(test)]
+pub mod runner;
 mod difficulty;
 
-pub use self::test_common::HookType;
-
-pub use self::transaction::run_test_path as run_transaction_test_path;
-pub use self::transaction::run_test_file as run_transaction_test_file;
-pub use self::executive::run_test_path as run_executive_test_path;
-pub use self::executive::run_test_file as run_executive_test_file;
-pub use self::state::run_test_path as run_state_test_path;
-pub use self::state::run_test_file as run_state_test_file;
-pub use self::chain::run_test_path as run_chain_test_path;
-pub use self::chain::run_test_file as run_chain_test_file;
-pub use self::trie::run_generic_test_path as run_generic_trie_test_path;
-pub use self::trie::run_generic_test_file as run_generic_trie_test_file;
-pub use self::trie::run_secure_test_path as run_secure_trie_test_path;
-pub use self::trie::run_secure_test_file as run_secure_trie_test_file;
-use self::skip::SKIP_TEST_STATE;
+pub use self::test_common::{HookType, find_json_files_recursive};
+pub use self::executive::json_executive_test;

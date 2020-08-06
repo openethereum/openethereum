@@ -23,32 +23,24 @@ use types::header::Header;
 use types::transaction::UnverifiedTransaction;
 use transaction_ext::Transaction;
 
-/// Run transaction jsontests on a given folder.
-pub fn run_test_path<H: FnMut(&str, HookType)>(p: &Path, skip: &[&'static str], h: &mut H) {
-	::json_tests::test_common::run_test_path(p, skip, do_json_test, h)
-}
+pub fn json_transaction_test<H: FnMut(&str, HookType)>(path: &Path, json_data: &[u8], start_stop_hook: &mut H) -> Vec<String> {
+	// Block number used to run the tests.
+	// Make sure that all the specified features are activated.
+	const BLOCK_NUMBER: u64 = 0x6ffffffffffffe;
 
-/// Run transaction jsontests on a given file.
-pub fn run_test_file<H: FnMut(&str, HookType)>(p: &Path, h: &mut H) {
-	::json_tests::test_common::run_test_file(p, do_json_test, h)
-}
-
-// Block number used to run the tests.
-// Make sure that all the specified features are activated.
-const BLOCK_NUMBER: u64 = 0x6ffffffffffffe;
-
-fn do_json_test<H: FnMut(&str, HookType)>(json_data: &[u8], start_stop_hook: &mut H) -> Vec<String> {
-	let tests = ethjson::transaction::Test::load(json_data).unwrap();
+	let tests = ethjson::transaction::Test::load(json_data)
+		.expect(&format!("Could not parse JSON transaction test data from {}", path.display()));
 	let mut failed = Vec::new();
 	for (name, test) in tests.into_iter() {
 		start_stop_hook(&name, HookType::OnStart);
+
+		println!("   - tx: {} ", name);
 
 		for (spec_name, result) in test.post_state {
 			let spec = match EvmTestClient::spec_from_json(&spec_name) {
 				Some(spec) => spec,
 				None => {
-					println!("   - {} | {:?} Ignoring tests because of missing spec", name, spec_name);
-					continue;
+					failed.push(format!("{}-{:?} (missing spec)", name, spec_name));					continue;
 				}
 			};
 
@@ -99,14 +91,3 @@ fn do_json_test<H: FnMut(&str, HookType)>(json_data: &[u8], start_stop_hook: &mu
 	}
 	failed
 }
-
-declare_test!{TransactionTests_ttAddress, "TransactionTests/ttAddress"}
-declare_test!{TransactionTests_ttData, "TransactionTests/ttData"}
-declare_test!{TransactionTests_ttGasLimit, "TransactionTests/ttGasLimit"}
-declare_test!{TransactionTests_ttGasPrice, "TransactionTests/ttGasPrice"}
-declare_test!{TransactionTests_ttNonce, "TransactionTests/ttNonce"}
-declare_test!{TransactionTests_ttRSValue, "TransactionTests/ttRSValue"}
-declare_test!{TransactionTests_ttSignature, "TransactionTests/ttSignature"}
-declare_test!{TransactionTests_ttValue, "TransactionTests/ttValue"}
-declare_test!{TransactionTests_ttVValue, "TransactionTests/ttVValue"}
-declare_test!{TransactionTests_ttWrongRLP, "TransactionTests/ttWrongRLP"}

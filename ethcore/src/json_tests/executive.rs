@@ -19,7 +19,7 @@ use std::sync::Arc;
 use super::test_common::*;
 use state::{Backend as StateBackend, State, Substate};
 use executive::*;
-use evm::{VMType, Finalize};
+use evm::Finalize;
 use vm::{
 	self, ActionParams, CallType, Schedule, Ext,
 	ContractCreateResult, EnvInfo, MessageCallResult,
@@ -38,15 +38,6 @@ use machine::EthereumMachine as Machine;
 
 use super::HookType;
 
-/// Run executive jsontests on a given folder.
-pub fn run_test_path<H: FnMut(&str, HookType)>(p: &Path, skip: &[&'static str], h: &mut H) {
-	::json_tests::test_common::run_test_path(p, skip, do_json_test, h)
-}
-
-/// Run executive jsontests on a given file.
-pub fn run_test_file<H: FnMut(&str, HookType)>(p: &Path, h: &mut H) {
-	::json_tests::test_common::run_test_file(p, do_json_test, h)
-}
 
 #[derive(Debug, PartialEq, Clone)]
 struct CallCreate {
@@ -229,26 +220,22 @@ impl<'a, T: 'a, V: 'a, B: 'a> Ext for TestExt<'a, T, V, B>
 	}
 }
 
-fn do_json_test<H: FnMut(&str, HookType)>(json_data: &[u8], h: &mut H) -> Vec<String> {
-	let vms = VMType::all();
-	vms
-		.iter()
-		.flat_map(|vm| do_json_test_for(vm, json_data, h))
-		.collect()
-}
-
-fn do_json_test_for<H: FnMut(&str, HookType)>(vm_type: &VMType, json_data: &[u8], start_stop_hook: &mut H) -> Vec<String> {
-	let tests = ethjson::vm::Test::load(json_data).unwrap();
+pub fn json_executive_test<H: FnMut(&str, HookType)>(
+	path: &Path,
+	json_data: &[u8],
+	start_stop_hook: &mut H
+) -> Vec<String> {
+	let tests = ethjson::vm::Test::load(json_data)
+		.expect(&format!("Could not parse JSON executive test data from {}", path.display()));
 	let mut failed = Vec::new();
 
 	for (name, vm) in tests.into_iter() {
-		start_stop_hook(&format!("{}-{}", name, vm_type), HookType::OnStart);
+		start_stop_hook(&format!("{}", name), HookType::OnStart);
 
-		info!(target: "jsontests", "name: {:?}", name);
 		let mut fail = false;
 
 		let mut fail_unless = |cond: bool, s: &str | if !cond && !fail {
-			failed.push(format!("[{}] {}: {}", vm_type, name, s));
+			failed.push(format!("{}: {}", name, s));
 			fail = true
 		};
 
@@ -330,19 +317,26 @@ fn do_json_test_for<H: FnMut(&str, HookType)>(vm_type: &VMType, json_data: &[u8]
 
 				for (address, account) in vm.post_state.unwrap().into_iter() {
 					let address = address.into();
-					let code: Vec<u8> = account.code.into();
-					let found_code = try_fail!(state.code(&address));
+					if let Some(code) = account.code {
+						let code: Vec<u8> = code.into();
+						let found_code = try_fail!(state.code(&address));
+						fail_unless(found_code.as_ref().map_or_else(|| code.is_empty(), |c| &**c == &code), "code is incorrect");	
+					}
 					let found_balance = try_fail!(state.balance(&address));
 					let found_nonce = try_fail!(state.nonce(&address));
-
-					fail_unless(found_code.as_ref().map_or_else(|| code.is_empty(), |c| &**c == &code), "code is incorrect");
-					fail_unless(found_balance == account.balance.into(), "balance is incorrect");
-					fail_unless(found_nonce == account.nonce.into(), "nonce is incorrect");
-					for (k, v) in account.storage {
-						let key: U256 = k.into();
-						let value: U256 = v.into();
-						let found_storage = try_fail!(state.storage_at(&address, &From::from(key)));
-						fail_unless(found_storage == From::from(value), "storage is incorrect");
+					if let Some(balance) = account.balance {
+						fail_unless(found_balance == balance.into(), "balance is incorrect");
+					}
+					if let Some(nonce) = account.nonce {
+						fail_unless(found_nonce == nonce.into(), "nonce is incorrect");
+					}
+					if let Some(storage) = account.storage {
+						for (k, v) in storage {
+							let key: U256 = k.into();
+							let value: U256 = v.into();
+							let found_storage = try_fail!(state.storage_at(&address, &From::from(&key)));
+							fail_unless(found_storage == From::from(&value), "storage is incorrect");
+						}	
 					}
 				}
 
@@ -351,26 +345,14 @@ fn do_json_test_for<H: FnMut(&str, HookType)>(vm_type: &VMType, json_data: &[u8]
 			}
 		};
 
-		start_stop_hook(&format!("{}-{}", name, vm_type), HookType::OnStop);
-	}
+		if fail {
+			println!("   - vm: {:?}...FAILED", name);
+		} else {
+			println!("   - vm: {:?}...OK", name);
+		}
 
-	for f in &failed {
-		error!("FAILED: {:?}", f);
+		start_stop_hook(&format!("{}", name), HookType::OnStop);
 	}
 
 	failed
 }
-
-declare_test!{ExecutiveTests_vmArithmeticTest, "VMTests/vmArithmeticTest"}
-declare_test!{ExecutiveTests_vmBitwiseLogicOperationTest, "VMTests/vmBitwiseLogicOperation"}
-declare_test!{ExecutiveTests_vmBlockInfoTest, "VMTests/vmBlockInfoTest"}
- // TODO [todr] Fails with Signal 11 when using JIT
-declare_test!{ExecutiveTests_vmEnvironmentalInfoTest, "VMTests/vmEnvironmentalInfo"}
-declare_test!{ExecutiveTests_vmIOandFlowOperationsTest, "VMTests/vmIOandFlowOperations"}
-declare_test!{ExecutiveTests_vmLogTest, "VMTests/vmLogTest"}
-declare_test!{heavy => ExecutiveTests_vmPerformance, "VMTests/vmPerformance"}
-declare_test!{ExecutiveTests_vmPushDupSwapTest, "VMTests/vmPushDupSwapTest"}
-declare_test!{ExecutiveTests_vmRandomTest, "VMTests/vmRandomTest"}
-declare_test!{ExecutiveTests_vmSha3Test, "VMTests/vmSha3Test"}
-declare_test!{ExecutiveTests_vmSystemOperationsTest, "VMTests/vmSystemOperations"}
-declare_test!{ExecutiveTests_vmTests, "VMTests/vmTests"}

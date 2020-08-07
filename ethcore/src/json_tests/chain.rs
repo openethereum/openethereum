@@ -171,13 +171,13 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(test: &ethjson::test::ChainTest
 					match block {
 						Ok(block) => {
 							let num = block.header.number();
-//							let hash = block.hash();
-//							trace!(target: "json-tests", "{} – Importing {} bytes. Block #{}/{}", name, bytes_len, num, hash);
+							trace!(target: "json-tests", "{} – Importing {} bytes. Block #{}", name, bytes_len, num);
 							let res = client.import_block(block);
 							if let Err(e) = res {
-//								warn!(target: "json-tests", "{} – Error importing block #{}/{}: {:?}", name, num, hash, e);
+								warn!(target: "json-tests", "{} – Error importing block #{}: {:?}", name, num, e);
 							}
 							client.flush_queue();
+							client.import_verified_blocks();
 						},
 						Err(decoder_err) => {
 							warn!(target: "json-tests", "Error decoding test block: {:?} ({} bytes)", decoder_err, bytes_len);

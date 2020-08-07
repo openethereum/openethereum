@@ -16,7 +16,6 @@
 
 //! Account management (personal) rpc implementation
 use std::sync::Arc;
-use std::time::Duration;
 
 use accounts::AccountProvider;
 use bytes::Bytes;
@@ -46,7 +45,6 @@ use v1::types::{
 pub struct PersonalClient<D: Dispatcher> {
 	accounts: Arc<AccountProvider>,
 	dispatcher: D,
-	allow_perm_unlock: bool,
 	allow_experimental_rpcs: bool,
 	deprecation_notice: DeprecationNotice,
 }
@@ -56,13 +54,11 @@ impl<D: Dispatcher> PersonalClient<D> {
 	pub fn new(
 		accounts: &Arc<AccountProvider>,
 		dispatcher: D,
-		allow_perm_unlock: bool,
 		allow_experimental_rpcs: bool,
 	) -> Self {
 		PersonalClient {
 			accounts: accounts.clone(),
 			dispatcher,
-			allow_perm_unlock,
 			allow_experimental_rpcs,
 			deprecation_notice: DeprecationNotice::default(),
 		}
@@ -137,15 +133,12 @@ impl<D: Dispatcher + 'static> Personal for PersonalClient<D> {
 			},
 		};
 
-		let r = match (self.allow_perm_unlock, duration) {
-			(false, None) => store.unlock_account_temporarily(account, account_pass.into()),
-			(false, _) => return Err(errors::unsupported(
+		let r = match duration {
+			None => store.unlock_account_temporarily(account, account_pass.into()),
+			_ => return Err(errors::unsupported(
 				"Time-unlocking is not supported when permanent unlock is disabled.",
-				Some("Use personal_sendTransaction or enable permanent unlocking, instead."),
+				Some("Use personal_sendTransaction instead."),
 			)),
-			(true, Some(0)) => store.unlock_account_permanently(account, account_pass.into()),
-			(true, Some(d)) => store.unlock_account_timed(account, account_pass.into(), Duration::from_secs(d.into())),
-			(true, None) => store.unlock_account_timed(account, account_pass.into(), Duration::from_secs(300)),
 		};
 		match r {
 			Ok(_) => Ok(true),

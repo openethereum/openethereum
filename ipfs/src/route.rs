@@ -105,23 +105,19 @@ impl IpfsHandler {
     }
 
     /// Get state trie node by hash and return as raw binary.
-    fn state_trie(&self, hash: H256) -> Result<Out> {
-        let data = self
-            .client()
-            .state_data(&hash)
-            .ok_or(Error::StateRootNotFound)?;
+    fn state_trie(&self, _hash: H256) -> Result<Out> {
+        Err(Error::ContractNotFound)
+        //let data = self.client().state_data(&hash).ok_or(Error::StateRootNotFound)?;
 
-        Ok(Out::OctetStream(data))
+        //Ok(Out::OctetStream(data))
     }
 
     /// Get state trie node by hash and return as raw binary.
-    fn contract_code(&self, hash: H256) -> Result<Out> {
-        let data = self
-            .client()
-            .state_data(&hash)
-            .ok_or(Error::ContractNotFound)?;
+    fn contract_code(&self, _hash: H256) -> Result<Out> {
+        Err(Error::ContractNotFound)
+        // let data = self.client().state_data(&hash).ok_or(Error::ContractNotFound)?;
 
-        Ok(Out::OctetStream(data))
+        // Ok(Out::OctetStream(data))
     }
 }
 

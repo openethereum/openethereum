@@ -246,9 +246,10 @@ impl<T: ProvingBlockChainClient + ?Sized> Provider for T {
         .map(|(proof, item)| ::request::StorageResponse { proof, value: item })
     }
 
-    fn contract_code(&self, req: request::CompleteCodeRequest) -> Option<request::CodeResponse> {
-        self.state_data(&req.code_hash)
-            .map(|code| ::request::CodeResponse { code })
+    fn contract_code(&self, _req: request::CompleteCodeRequest) -> Option<request::CodeResponse> {
+        None
+        //self.state_data(&req.code_hash)
+        //	.map(|code| ::request::CodeResponse { code })
     }
 
     fn header_proof(

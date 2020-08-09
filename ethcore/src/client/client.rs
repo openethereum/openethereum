@@ -91,8 +91,10 @@ use trace::{
 use transaction_ext::Transaction;
 use verification::{
     self,
-    queue::kind::{blocks::Unverified, BlockLike},
-    BlockQueue, PreverifiedBlock, Verifier,
+    {
+        queue::kind::{blocks::Unverified, BlockLike},
+        BlockQueue, PreverifiedBlock, Verifier,
+    },
 };
 use vm::Schedule;
 // re-export
@@ -2292,10 +2294,6 @@ impl BlockChainClient for Client {
 
     fn find_uncles(&self, hash: &H256) -> Option<Vec<H256>> {
         self.chain.read().find_uncle_hashes(hash, MAX_UNCLE_AGE)
-    }
-
-    fn state_data(&self, hash: &H256) -> Option<Bytes> {
-        self.state_db.read().journal_db().state(hash)
     }
 
     fn block_receipts(&self, hash: &H256) -> Option<BlockReceipts> {

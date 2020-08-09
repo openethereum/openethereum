@@ -46,7 +46,7 @@ pub enum SyncPacket {
     NewBlockPacket = 0x07,
 
     GetNodeDataPacket = 0x0d,
-    NodeDataPacket = 0x0e,
+    //NodeDataPacket = 0x0e,
     GetReceiptsPacket = 0x0f,
     ReceiptsPacket = 0x10,
 
@@ -74,27 +74,32 @@ pub trait PacketInfo {
 impl PacketInfo for SyncPacket {
     fn protocol(&self) -> ProtocolId {
         match self {
-            StatusPacket
-            | NewBlockHashesPacket
-            | TransactionsPacket
-            | GetBlockHeadersPacket
-            | BlockHeadersPacket
-            | GetBlockBodiesPacket
-            | BlockBodiesPacket
-            | NewBlockPacket
-            | GetNodeDataPacket
-            | NodeDataPacket
-            | GetReceiptsPacket
-            | ReceiptsPacket => ETH_PROTOCOL,
+			StatusPacket |
+			NewBlockHashesPacket |
+			TransactionsPacket |
+			GetBlockHeadersPacket |
+			BlockHeadersPacket |
+			GetBlockBodiesPacket |
+			BlockBodiesPacket |
+			NewBlockPacket |
 
-            GetSnapshotManifestPacket
-            | SnapshotManifestPacket
-            | GetSnapshotDataPacket
-            | SnapshotDataPacket
-            | ConsensusDataPacket
-            | PrivateTransactionPacket
-            | SignedPrivateTransactionPacket => WARP_SYNC_PROTOCOL_ID,
-        }
+			GetNodeDataPacket|
+			//NodeDataPacket |
+			GetReceiptsPacket |
+			ReceiptsPacket
+
+				=> ETH_PROTOCOL,
+
+			GetSnapshotManifestPacket|
+			SnapshotManifestPacket |
+			GetSnapshotDataPacket |
+			SnapshotDataPacket |
+			ConsensusDataPacket |
+			PrivateTransactionPacket |
+			SignedPrivateTransactionPacket
+
+				=> WARP_SYNC_PROTOCOL_ID,
+		}
     }
 
     fn id(&self) -> PacketId {

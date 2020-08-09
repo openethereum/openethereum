@@ -131,7 +131,6 @@ impl Default for SharedCache {
 #[cfg(test)]
 mod test {
     use super::*;
-    use hex_literal::hex;
 
     #[test]
     fn test_find_jump_destinations() {

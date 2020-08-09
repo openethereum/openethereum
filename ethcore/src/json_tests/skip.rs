@@ -28,5 +28,6 @@ lazy_static! {
 
 #[cfg(not(feature = "ci-skip-tests"))]
 lazy_static! {
-    pub static ref SKIP_TEST_STATE: ethjson::test::SkipStates = ethjson::test::SkipStates::empty();
+    pub static ref SKIP_TEST_STATE: ethjson::test::SkipStates =
+        { ethjson::test::SkipStates::empty() };
 }

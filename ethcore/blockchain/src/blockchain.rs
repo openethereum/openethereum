@@ -650,42 +650,40 @@ impl BlockChain {
         };
 
         // load best block
-        let best_block_hash = match bc
-            .db
-            .key_value()
-            .get(db::COL_EXTRA, b"best")
-            .expect("Low-level database error when fetching 'best' block. Some issue with disk?")
-        {
-            Some(best) => H256::from_slice(&best),
-            None => {
-                // best block does not exist
-                // we need to insert genesis into the cache
-                let block = view!(BlockView, genesis);
-                let header = block.header_view();
-                let hash = block.hash();
+        let best_block_hash =
+            match bc.db.key_value().get(db::COL_EXTRA, b"best").expect(
+                "Low-level database error when fetching 'best' block. Some issue with disk?",
+            ) {
+                Some(best) => H256::from_slice(&best),
+                None => {
+                    // best block does not exist
+                    // we need to insert genesis into the cache
+                    let block = view!(BlockView, genesis);
+                    let header = block.header_view();
+                    let hash = block.hash();
 
-                let details = BlockDetails {
-                    number: header.number(),
-                    total_difficulty: header.difficulty(),
-                    parent: header.parent_hash(),
-                    children: vec![],
-                    is_finalized: false,
-                };
+                    let details = BlockDetails {
+                        number: header.number(),
+                        total_difficulty: header.difficulty(),
+                        parent: header.parent_hash(),
+                        children: vec![],
+                        is_finalized: false,
+                    };
 
-                let mut batch = DBTransaction::new();
-                batch.put(db::COL_HEADERS, &hash, block.header_rlp().as_raw());
-                batch.put(db::COL_BODIES, &hash, &Self::block_to_body(genesis));
+                    let mut batch = DBTransaction::new();
+                    batch.put(db::COL_HEADERS, &hash, block.header_rlp().as_raw());
+                    batch.put(db::COL_BODIES, &hash, &Self::block_to_body(genesis));
 
-                batch.write(db::COL_EXTRA, &hash, &details);
-                batch.write(db::COL_EXTRA, &header.number(), &hash);
+                    batch.write(db::COL_EXTRA, &hash, &details);
+                    batch.write(db::COL_EXTRA, &header.number(), &hash);
 
-                batch.put(db::COL_EXTRA, b"best", &hash);
-                bc.db.key_value().write(batch).expect(
+                    batch.put(db::COL_EXTRA, b"best", &hash);
+                    bc.db.key_value().write(batch).expect(
                     "Low level database error when fetching 'best' block. Some issue with disk?",
                 );
-                hash
-            }
-        };
+                    hash
+                }
+            };
 
         {
             // Fetch best block details

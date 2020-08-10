@@ -91,10 +91,8 @@ use trace::{
 use transaction_ext::Transaction;
 use verification::{
     self,
-    {
-        queue::kind::{blocks::Unverified, BlockLike},
-        BlockQueue, PreverifiedBlock, Verifier,
-    },
+    queue::kind::{blocks::Unverified, BlockLike},
+    BlockQueue, PreverifiedBlock, Verifier,
 };
 use vm::Schedule;
 // re-export

@@ -1388,19 +1388,6 @@ impl ChainSync {
 			.collect::<Vec<_>>()
     }
 
-    fn get_consensus_peers(&self) -> Vec<PeerId> {
-        self.peers
-            .iter()
-            .filter_map(|(id, p)| {
-                if p.protocol_version >= PAR_PROTOCOL_VERSION_2.0 {
-                    Some(*id)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     /// Maintain other peers. Send out any new blocks and transactions
     pub fn maintain_sync(&mut self, io: &mut dyn SyncIo) {
         self.maybe_start_snapshot_sync(io);
@@ -1416,15 +1403,13 @@ impl ChainSync {
         enacted: &[H256],
         _retracted: &[H256],
         sealed: &[H256],
-        proposed: &[Bytes],
     ) {
         let queue_info = io.chain().queue_info();
         let is_syncing = self.status().is_syncing(queue_info);
 
-        if !is_syncing || !sealed.is_empty() || !proposed.is_empty() {
+        if !is_syncing || !sealed.is_empty() {
             trace!(target: "sync", "Propagating blocks, state={:?}", self.state);
             SyncPropagator::propagate_latest_blocks(self, io, sealed);
-            SyncPropagator::propagate_proposed_blocks(self, io, proposed);
         }
         if !invalid.is_empty() {
             trace!(target: "sync", "Bad blocks in the queue, restarting");
@@ -1466,11 +1451,6 @@ impl ChainSync {
                 false
             }
         });
-    }
-
-    /// Broadcast consensus message to peers.
-    pub fn propagate_consensus_packet(&mut self, io: &mut dyn SyncIo, packet: Bytes) {
-        SyncPropagator::propagate_consensus_packet(self, io, packet);
     }
 }
 
@@ -1707,7 +1687,7 @@ pub mod tests {
             io.chain
                 .miner
                 .chain_new_blocks(io.chain, &[], &[], &[], &good_blocks, false);
-            sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[], &[]);
+            sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[]);
             assert_eq!(
                 io.chain
                     .miner
@@ -1733,7 +1713,7 @@ pub mod tests {
                 &retracted_blocks,
                 false,
             );
-            sync.chain_new_blocks(&mut io, &[], &[], &good_blocks, &retracted_blocks, &[], &[]);
+            sync.chain_new_blocks(&mut io, &[], &[], &good_blocks, &retracted_blocks, &[]);
         }
 
         // then
@@ -1763,9 +1743,9 @@ pub mod tests {
         let mut io = TestIo::new(&mut client, &ss, &queue, None);
 
         // when
-        sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[], &[]);
+        sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[]);
         assert_eq!(io.chain.miner.queue_status().status.transaction_count, 0);
-        sync.chain_new_blocks(&mut io, &[], &[], &good_blocks, &retracted_blocks, &[], &[]);
+        sync.chain_new_blocks(&mut io, &[], &[], &good_blocks, &retracted_blocks, &[]);
 
         // then
         let status = io.chain.miner.queue_status();

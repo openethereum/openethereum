@@ -22,8 +22,8 @@ use chain::{
 };
 use ethcore::{
     client::{
-        BlockChainClient, ChainMessageType, ChainNotify, Client as EthcoreClient, ClientConfig,
-        ClientIoMessage, NewBlocks, TestBlockChainClient,
+        BlockChainClient, ChainNotify, Client as EthcoreClient, ClientConfig, ClientIoMessage,
+        NewBlocks, TestBlockChainClient,
     },
     miner::Miner,
     snapshot::SnapshotService,
@@ -195,7 +195,6 @@ struct NewBlockMessage {
     enacted: Vec<H256>,
     retracted: Vec<H256>,
     sealed: Vec<H256>,
-    proposed: Vec<Bytes>,
 }
 
 /// Abstract messages between peers.
@@ -242,9 +241,6 @@ pub trait Peer {
     /// Restart sync for a peer.
     fn restart_sync(&self);
 
-    /// Process the queue of pending io messages
-    fn process_all_io_messages(&self);
-
     /// Process the queue of new block messages
     fn process_all_new_block_messages(&self);
 }
@@ -258,7 +254,6 @@ where
     pub snapshot_service: Arc<TestSnapshotService>,
     pub sync: RwLock<ChainSync>,
     pub queue: RwLock<VecDeque<TestPacket>>,
-    pub io_queue: RwLock<VecDeque<ChainMessageType>>,
     new_blocks_queue: RwLock<VecDeque<NewBlockMessage>>,
 }
 
@@ -266,21 +261,8 @@ impl<C> EthPeer<C>
 where
     C: FlushingBlockChainClient,
 {
-    fn is_io_queue_empty(&self) -> bool {
-        self.io_queue.read().is_empty()
-    }
-
     fn is_new_blocks_queue_empty(&self) -> bool {
         self.new_blocks_queue.read().is_empty()
-    }
-
-    fn process_io_message(&self, message: ChainMessageType) {
-        let mut io = TestIo::new(&*self.chain, &self.snapshot_service, &self.queue, None);
-        match message {
-            ChainMessageType::Consensus(data) => {
-                self.sync.write().propagate_consensus_packet(&mut io, data)
-            }
-        }
     }
 
     fn process_new_block_message(&self, message: NewBlockMessage) {
@@ -292,7 +274,6 @@ where
             &message.enacted,
             &message.retracted,
             &message.sealed,
-            &message.proposed,
         );
     }
 }
@@ -341,7 +322,7 @@ impl<C: FlushingBlockChainClient> Peer for EthPeer<C> {
     }
 
     fn is_done(&self) -> bool {
-        self.queue.read().is_empty() && self.is_io_queue_empty() && self.is_new_blocks_queue_empty()
+        self.queue.read().is_empty() && self.is_new_blocks_queue_empty()
     }
 
     fn sync_step(&self) {
@@ -360,14 +341,6 @@ impl<C: FlushingBlockChainClient> Peer for EthPeer<C> {
             &self.queue,
             None,
         ));
-    }
-
-    fn process_all_io_messages(&self) {
-        if !self.is_io_queue_empty() {
-            while let Some(message) = self.io_queue.write().pop_front() {
-                self.process_io_message(message);
-            }
-        }
     }
 
     fn process_all_new_block_messages(&self) {
@@ -412,7 +385,6 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
                 chain: Arc::new(chain),
                 miner: Arc::new(Miner::new_for_tests(&Spec::new_test(), None)),
                 queue: RwLock::new(VecDeque::new()),
-                io_queue: RwLock::new(VecDeque::new()),
                 new_blocks_queue: RwLock::new(VecDeque::new()),
             }));
         }
@@ -461,7 +433,6 @@ impl TestNet<EthPeer<EthcoreClient>> {
             chain: client,
             miner,
             queue: RwLock::new(VecDeque::new()),
-            io_queue: RwLock::new(VecDeque::new()),
             new_blocks_queue: RwLock::new(VecDeque::new()),
         });
         peer.chain.add_notify(peer.clone());
@@ -531,7 +502,6 @@ where
         let mut total_steps = 0;
         while !self.done() {
             self.sync_step();
-            self.deliver_io_messages();
             self.deliver_new_block_messages();
             total_steps += 1;
         }
@@ -542,12 +512,6 @@ where
         self.start();
         for _ in 0..count {
             self.sync_step();
-        }
-    }
-
-    pub fn deliver_io_messages(&mut self) {
-        for peer in self.peers.iter() {
-            peer.process_all_io_messages();
         }
     }
 
@@ -567,7 +531,6 @@ impl<C: FlushingBlockChainClient> TestNet<EthPeer<C>> {
         let peer = &mut self.peers[peer_id];
         peer.sync.write().chain_new_blocks(
             &mut TestIo::new(&*peer.chain, &peer.snapshot_service, &peer.queue, None),
-            &[],
             &[],
             &[],
             &[],
@@ -611,15 +574,6 @@ impl ChainNotify for EthPeer<EthcoreClient> {
             enacted,
             retracted,
             sealed: new_blocks.sealed,
-            proposed: new_blocks.proposed,
         });
-    }
-
-    fn start(&self) {}
-
-    fn stop(&self) {}
-
-    fn broadcast(&self, message_type: ChainMessageType) {
-        self.io_queue.write().push_back(message_type)
     }
 }

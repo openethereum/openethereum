@@ -54,7 +54,6 @@ pub enum SyncPacket {
     SnapshotManifestPacket = 0x12,
     GetSnapshotDataPacket = 0x13,
     SnapshotDataPacket = 0x14,
-    ConsensusDataPacket = 0x15,
 }
 }
 
@@ -88,8 +87,7 @@ impl PacketInfo for SyncPacket {
             GetSnapshotManifestPacket
             | SnapshotManifestPacket
             | GetSnapshotDataPacket
-            | SnapshotDataPacket
-            | ConsensusDataPacket => PAR_PROTOCOL,
+            | SnapshotDataPacket => PAR_PROTOCOL,
         }
     }
 
@@ -123,11 +121,5 @@ mod tests {
     fn when_status_packet_then_id_and_protocol_match() {
         assert_eq!(StatusPacket.id(), StatusPacket as PacketId);
         assert_eq!(StatusPacket.protocol(), ETH_PROTOCOL);
-    }
-
-    #[test]
-    fn when_consensus_data_packet_then_id_and_protocol_match() {
-        assert_eq!(ConsensusDataPacket.id(), ConsensusDataPacket as PacketId);
-        assert_eq!(ConsensusDataPacket.protocol(), PAR_PROTOCOL);
     }
 }

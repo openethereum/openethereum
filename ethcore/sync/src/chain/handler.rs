@@ -94,12 +94,6 @@ impl SyncHandler {
         }
     }
 
-    /// Called when peer sends us new consensus packet
-    pub fn on_consensus_packet(io: &mut dyn SyncIo, peer_id: PeerId, r: &Rlp) {
-        trace!(target: "sync", "Received consensus packet from {:?}", peer_id);
-        io.chain().queue_consensus_message(r.as_raw().to_vec());
-    }
-
     /// Called by peer when it is disconnecting
     pub fn on_peer_aborting(sync: &mut ChainSync, io: &mut dyn SyncIo, peer_id: PeerId) {
         trace!(target: "sync", "== Disconnecting {}: {}", peer_id, io.peer_version(peer_id));

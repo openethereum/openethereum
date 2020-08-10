@@ -34,7 +34,7 @@ use chain::{
     ETH_PROTOCOL_VERSION_63, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
 use ethcore::{
-    client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
+    client::{BlockChainClient, ChainNotify, NewBlocks},
     snapshot::SnapshotService,
 };
 use ethereum_types::{H256, H512, U256};
@@ -537,7 +537,6 @@ impl ChainNotify for EthSync {
                 new_blocks.route.enacted(),
                 new_blocks.route.retracted(),
                 &new_blocks.sealed,
-                &new_blocks.proposed,
             );
         });
     }
@@ -575,24 +574,6 @@ impl ChainNotify for EthSync {
     fn stop(&self) {
         self.eth_handler.snapshot_service.abort_restore();
         self.network.stop();
-    }
-
-    fn broadcast(&self, message_type: ChainMessageType) {
-        self.network.with_context(PAR_PROTOCOL, |context| {
-            let mut sync_io = NetSyncIo::new(
-                context,
-                &*self.eth_handler.chain,
-                &*self.eth_handler.snapshot_service,
-                &self.eth_handler.overlay,
-            );
-            match message_type {
-                ChainMessageType::Consensus(message) => self
-                    .eth_handler
-                    .sync
-                    .write()
-                    .propagate_consensus_packet(&mut sync_io, message),
-            }
-        });
     }
 
     fn transactions_received(&self, txs: &[UnverifiedTransaction], peer_id: PeerId) {

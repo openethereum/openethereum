@@ -1,4 +1,4 @@
-
+use super::find_json_files_recursive;
 use ethjson::test::{
     ChainTests, DifficultyTests, EthereumTestSuite, ExecutiveTests, StateTests, TestChainSpec,
     TestTrieSpec, TransactionTests, TrieTests,
@@ -9,7 +9,6 @@ use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use trie::TrieSpec;
-use super::find_json_files_recursive;
 
 /// Result of tests execution
 pub struct TestResult {
@@ -235,10 +234,10 @@ impl TestRunner {
 fn ethereum_json_tests() {
     let content = std::fs::read("res/ethereum/runner/full.json")
         .expect("cannot open ethereum tests spec file");
-    let runner = TestRunner::load(content.as_slice())
-        .expect("cannot load ethereum tests spec file");
-        println!("----------------------------------------------------");
-        let result = runner.run();
+    let runner =
+        TestRunner::load(content.as_slice()).expect("cannot load ethereum tests spec file");
+    println!("----------------------------------------------------");
+    let result = runner.run();
     println!("----------------------------------------------------");
     flushln!(
         "SUCCESS: {} FAILED: {} {:?}",

@@ -14,80 +14,92 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::path::Path;
 use super::test_common::*;
 use client::EvmTestClient;
 use ethjson;
 use rlp::Rlp;
-use types::header::Header;
-use types::transaction::UnverifiedTransaction;
+use std::path::Path;
 use transaction_ext::Transaction;
+use types::{header::Header, transaction::UnverifiedTransaction};
 
-pub fn json_transaction_test<H: FnMut(&str, HookType)>(path: &Path, json_data: &[u8], start_stop_hook: &mut H) -> Vec<String> {
-	// Block number used to run the tests.
-	// Make sure that all the specified features are activated.
-	const BLOCK_NUMBER: u64 = 0x6ffffffffffffe;
+pub fn json_transaction_test<H: FnMut(&str, HookType)>(
+    path: &Path,
+    json_data: &[u8],
+    start_stop_hook: &mut H,
+) -> Vec<String> {
+    // Block number used to run the tests.
+    // Make sure that all the specified features are activated.
+    const BLOCK_NUMBER: u64 = 0x6ffffffffffffe;
 
-	let tests = ethjson::transaction::Test::load(json_data)
-		.expect(&format!("Could not parse JSON transaction test data from {}", path.display()));
-	let mut failed = Vec::new();
-	for (name, test) in tests.into_iter() {
-		start_stop_hook(&name, HookType::OnStart);
+    let tests = ethjson::transaction::Test::load(json_data).expect(&format!(
+        "Could not parse JSON transaction test data from {}",
+        path.display()
+    ));
+    let mut failed = Vec::new();
+    for (name, test) in tests.into_iter() {
+        start_stop_hook(&name, HookType::OnStart);
 
-		println!("   - tx: {} ", name);
+        println!("   - tx: {} ", name);
 
-		for (spec_name, result) in test.post_state {
-			let spec = match EvmTestClient::spec_from_json(&spec_name) {
-				Some(spec) => spec,
-				None => {
-					failed.push(format!("{}-{:?} (missing spec)", name, spec_name));					continue;
-				}
-			};
+        for (spec_name, result) in test.post_state {
+            let spec = match EvmTestClient::spec_from_json(&spec_name) {
+                Some(spec) => spec,
+                None => {
+                    failed.push(format!("{}-{:?} (missing spec)", name, spec_name));
+                    continue;
+                }
+            };
 
-			let mut fail_unless = |cond: bool, title: &str| if !cond {
-				failed.push(format!("{}-{:?}", name, spec_name));
-				println!("Transaction failed: {:?}-{:?}: {:?}", name, spec_name, title);
-			};
+            let mut fail_unless = |cond: bool, title: &str| {
+                if !cond {
+                    failed.push(format!("{}-{:?}", name, spec_name));
+                    println!(
+                        "Transaction failed: {:?}-{:?}: {:?}",
+                        name, spec_name, title
+                    );
+                }
+            };
 
-			let rlp: Vec<u8> = test.rlp.clone().into();
-			let res = Rlp::new(&rlp)
-				.as_val()
-				.map_err(::error::Error::from)
-				.and_then(|t: UnverifiedTransaction| {
-					let mut header: Header = Default::default();
-					// Use high enough number to activate all required features.
-					header.set_number(BLOCK_NUMBER);
+            let rlp: Vec<u8> = test.rlp.clone().into();
+            let res = Rlp::new(&rlp)
+                .as_val()
+                .map_err(::error::Error::from)
+                .and_then(|t: UnverifiedTransaction| {
+                    let mut header: Header = Default::default();
+                    // Use high enough number to activate all required features.
+                    header.set_number(BLOCK_NUMBER);
 
-					let minimal = t.gas_required(&spec.engine.schedule(header.number())).into();
-					if t.gas < minimal {
-						return Err(::types::transaction::Error::InsufficientGas {
-							minimal, got: t.gas,
-						}.into());
-					}
-					spec.engine.verify_transaction_basic(&t, &header)?;
-					Ok(spec.engine.verify_transaction_unordered(t, &header)?)
-				});
+                    let minimal = t
+                        .gas_required(&spec.engine.schedule(header.number()))
+                        .into();
+                    if t.gas < minimal {
+                        return Err(::types::transaction::Error::InsufficientGas {
+                            minimal,
+                            got: t.gas,
+                        }
+                        .into());
+                    }
+                    spec.engine.verify_transaction_basic(&t, &header)?;
+                    Ok(spec.engine.verify_transaction_unordered(t, &header)?)
+                });
 
-			match (res, result.hash, result.sender) {
-				(Ok(t), Some(hash), Some(sender)) => {
-					fail_unless(t.sender() == sender.into(), "sender mismatch");
-					fail_unless(t.hash() == hash.into(), "hash mismatch");
-				},
-				(Err(_), None, None) => {},
-				data => {
-					fail_unless(
-						false,
-						&format!("Validity different: {:?}", data)
-					);
-				}
-			}
-		}
+            match (res, result.hash, result.sender) {
+                (Ok(t), Some(hash), Some(sender)) => {
+                    fail_unless(t.sender() == sender.into(), "sender mismatch");
+                    fail_unless(t.hash() == hash.into(), "hash mismatch");
+                }
+                (Err(_), None, None) => {}
+                data => {
+                    fail_unless(false, &format!("Validity different: {:?}", data));
+                }
+            }
+        }
 
-		start_stop_hook(&name, HookType::OnStop);
-	}
+        start_stop_hook(&name, HookType::OnStop);
+    }
 
-	for f in &failed {
-		println!("FAILED: {:?}", f);
-	}
-	failed
+    for f in &failed {
+        println!("FAILED: {:?}", f);
+    }
+    failed
 }

@@ -14,49 +14,51 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethjson;
-use types::header::Header;
 use ethereum_types::U256;
+use ethjson;
 use spec::Spec;
 use std::path::Path;
+use types::header::Header;
 
 use super::HookType;
 
 pub fn json_difficulty_test<H: FnMut(&str, HookType)>(
-	path: &Path,
-	json_data: &[u8],
-	spec: Spec,
-	start_stop_hook: &mut H
+    path: &Path,
+    json_data: &[u8],
+    spec: Spec,
+    start_stop_hook: &mut H,
 ) -> Vec<String> {
-	let mut ret = Vec::new();
-	let _ = env_logger::try_init();
-	let tests = ethjson::test::DifficultyTest::load(json_data)
-		.expect(&format!("Could not parse JSON difficulty test data from {}", path.display()));
-	let engine = &spec.engine;
+    let mut ret = Vec::new();
+    let _ = env_logger::try_init();
+    let tests = ethjson::test::DifficultyTest::load(json_data).expect(&format!(
+        "Could not parse JSON difficulty test data from {}",
+        path.display()
+    ));
+    let engine = &spec.engine;
 
-	for (name, test) in tests.into_iter() {
-		start_stop_hook(&name, HookType::OnStart);
+    for (name, test) in tests.into_iter() {
+        start_stop_hook(&name, HookType::OnStart);
 
-		let mut parent_header = Header::new();
-		let block_number: u64 = test.current_block_number.into();
-		parent_header.set_number(block_number - 1);
-		parent_header.set_gas_limit(0x20000.into());
-		parent_header.set_timestamp(test.parent_timestamp.into());
-		parent_header.set_difficulty(test.parent_difficulty.into());
-		parent_header.set_uncles_hash(test.parent_uncles.into());
-		let mut header = Header::new();
-		header.set_number(block_number);
-		header.set_timestamp(test.current_timestamp.into());
-		engine.populate_from_parent(&mut header, &parent_header);
-		let expected_difficulty: U256 = test.current_difficulty.into();
-		if header.difficulty() == &expected_difficulty {
-			flushln!("   - difficulty: {}...OK",name);
-		} else {
-			flushln!("   - difficulty: {}...FAILED",name);
-			ret.push(format!("{}:{}",path.to_string_lossy(),name));
-		}
+        let mut parent_header = Header::new();
+        let block_number: u64 = test.current_block_number.into();
+        parent_header.set_number(block_number - 1);
+        parent_header.set_gas_limit(0x20000.into());
+        parent_header.set_timestamp(test.parent_timestamp.into());
+        parent_header.set_difficulty(test.parent_difficulty.into());
+        parent_header.set_uncles_hash(test.parent_uncles.into());
+        let mut header = Header::new();
+        header.set_number(block_number);
+        header.set_timestamp(test.current_timestamp.into());
+        engine.populate_from_parent(&mut header, &parent_header);
+        let expected_difficulty: U256 = test.current_difficulty.into();
+        if header.difficulty() == &expected_difficulty {
+            flushln!("   - difficulty: {}...OK", name);
+        } else {
+            flushln!("   - difficulty: {}...FAILED", name);
+            ret.push(format!("{}:{}", path.to_string_lossy(), name));
+        }
 
-		start_stop_hook(&name, HookType::OnStop);
-	}
-	ret
+        start_stop_hook(&name, HookType::OnStop);
+    }
+    ret
 }

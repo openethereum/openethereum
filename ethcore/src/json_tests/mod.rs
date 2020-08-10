@@ -16,14 +16,16 @@
 
 //! Helpers and tests for operating on jsontests.
 
+mod chain;
+mod difficulty;
+mod executive;
+pub mod runner;
+mod state;
 mod test_common;
 mod transaction;
-mod executive;
-mod state;
-mod chain;
 mod trie;
-pub mod runner;
-mod difficulty;
 
-pub use self::test_common::{HookType, find_json_files_recursive};
-pub use self::executive::json_executive_test;
+pub use self::{
+    executive::json_executive_test,
+    test_common::{find_json_files_recursive, HookType},
+};

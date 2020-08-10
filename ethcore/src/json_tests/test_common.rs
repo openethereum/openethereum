@@ -14,24 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-pub use ethereum_types::{H256, U256, Address};
-use walkdir::{DirEntry, WalkDir};
+pub use ethereum_types::{Address, H256, U256};
 use std::path::PathBuf;
+use walkdir::{DirEntry, WalkDir};
 
 /// Indicate when to run the hook passed to test functions.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum HookType {
-	/// Hook to code to run on test start.
-	OnStart,
-	/// Hook to code to run on test end.
-	OnStop
+    /// Hook to code to run on test start.
+    OnStart,
+    /// Hook to code to run on test end.
+    OnStop,
 }
 
 pub fn find_json_files_recursive(path: &PathBuf) -> Vec<PathBuf> {
-	WalkDir::new(path)
-		.into_iter()
-		.filter_map(|e| e.ok())
-		.filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
-		.map(DirEntry::into_path)
-		.collect::<Vec<PathBuf>>()
+    WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
+        .map(DirEntry::into_path)
+        .collect::<Vec<PathBuf>>()
 }

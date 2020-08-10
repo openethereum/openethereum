@@ -18,7 +18,7 @@
 
 #![allow(unstable_name_collisions)]
 
-use igd::{search_gateway, PortMappingProtocol, SearchOptions};
+use igd::{search_gateway_from_timeout, PortMappingProtocol};
 use ipnetwork::IpNetwork;
 use node_table::NodeEndpoint;
 use std::{
@@ -335,12 +335,7 @@ pub fn map_external_address(local: &NodeEndpoint) -> Option<NodeEndpoint> {
         let local_udp_port = local.udp_port;
 
         let search_gateway_child = ::std::thread::spawn(move || {
-            let search_opts = SearchOptions {
-                timeout: Some(Duration::from_secs(5)),
-                bind_addr: SocketAddr::V4(SocketAddrV4::new(local_ip, 0)),
-                ..Default::default()
-            };
-            match search_gateway(search_opts) {
+            match search_gateway_from_timeout(local_ip, Duration::new(5, 0)) {
                 Err(ref err) => debug!("Gateway search error: {}", err),
                 Ok(gateway) => match gateway.get_external_ip() {
                     Err(ref err) => {

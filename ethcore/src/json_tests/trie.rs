@@ -36,6 +36,11 @@ pub fn json_trie_test<H: FnMut(&str, HookType)>(
     let mut failed = vec![];
 
     for (name, test) in tests.into_iter() {
+
+        if !super::debug_include_test(&name) {
+            continue;
+        }
+
         start_stop_hook(&name, HookType::OnStart);
 
         let mut memdb = journaldb::new_memory_db();

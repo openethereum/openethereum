@@ -74,6 +74,7 @@ extern crate ethcore_miner;
 extern crate ethereum_types;
 extern crate ethjson;
 extern crate ethkey;
+extern crate globset;
 extern crate hash_db;
 extern crate heapsize;
 extern crate itertools;
@@ -96,12 +97,14 @@ extern crate rlp;
 extern crate rustc_hex;
 extern crate serde;
 extern crate stats;
+extern crate tempfile;
 extern crate time_utils;
 extern crate trie_db as trie;
 extern crate triehash_ethereum as triehash;
 extern crate unexpected;
 extern crate using_queue;
 extern crate vm;
+extern crate walkdir;
 extern crate wasm;
 
 #[cfg(any(test, feature = "blooms-db"))]

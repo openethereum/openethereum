@@ -37,7 +37,6 @@ pub fn json_transaction_test<H: FnMut(&str, HookType)>(
     ));
     let mut failed = Vec::new();
     for (name, test) in tests.into_iter() {
-
         if !super::debug_include_test(&name) {
             continue;
         }

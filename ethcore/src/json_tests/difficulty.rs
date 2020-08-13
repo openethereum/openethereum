@@ -37,7 +37,6 @@ pub fn json_difficulty_test<H: FnMut(&str, HookType)>(
     let engine = &spec.engine;
 
     for (name, test) in tests.into_iter() {
-
         if !super::debug_include_test(&name) {
             continue;
         }

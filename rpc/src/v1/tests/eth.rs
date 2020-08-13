@@ -173,7 +173,8 @@ impl EthTester {
 
 #[test]
 fn harness_works() {
-    let chain: BlockChain = extract_chain!("BlockchainTests/ValidBlocks/bcWalletTest/wallet2outOf3txs");
+    let chain: BlockChain =
+        extract_chain!("BlockchainTests/ValidBlocks/bcWalletTest/wallet2outOf3txs");
     let _ = EthTester::from_chain(&chain);
 }
 

@@ -36,7 +36,6 @@ pub fn json_trie_test<H: FnMut(&str, HookType)>(
     let mut failed = vec![];
 
     for (name, test) in tests.into_iter() {
-
         if !super::debug_include_test(&name) {
             continue;
         }

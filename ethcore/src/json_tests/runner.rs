@@ -238,7 +238,7 @@ fn ethereum_json_tests() {
     println!("----------------------------------------------------");
     let result = match std::env::var_os("TEST_DEBUG") {
         Some(_) => runner.run_without_par(),
-        _ => runner.run()
+        _ => runner.run(),
     };
     println!("----------------------------------------------------");
     flushln!(

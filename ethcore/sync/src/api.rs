@@ -62,7 +62,7 @@ use types::{pruning_info::PruningInfo, transaction::UnverifiedTransaction, Block
 use super::light_sync::SyncInfo;
 
 /// Parity sync protocol
-pub const WARP_SYNC_PROTOCOL_ID: ProtocolId = *b"par";
+pub const PAR_PROTOCOL: ProtocolId = *b"par";
 /// Ethereum sync protocol
 pub const ETH_PROTOCOL: ProtocolId = *b"eth";
 /// Ethereum light protocol
@@ -214,27 +214,6 @@ impl From<light_net::Status> for PipProtocolInfo {
     }
 }
 
-/// Configuration to attach alternate protocol handlers.
-/// Only works when IPC is disabled.
-pub struct AttachedProtocol {
-    /// The protocol handler in question.
-    pub handler: Arc<dyn NetworkProtocolHandler + Send + Sync>,
-    /// 3-character ID for the protocol.
-    pub protocol_id: ProtocolId,
-    /// Supported versions and their packet counts.
-    pub versions: &'static [(u8, u8)],
-}
-
-impl AttachedProtocol {
-    fn register(&self, network: &NetworkService) {
-        let res = network.register_protocol(self.handler.clone(), self.protocol_id, self.versions);
-
-        if let Err(e) = res {
-            warn!(target: "sync", "Error attaching protocol {:?}: {:?}", self.protocol_id, e);
-        }
-    }
-}
-
 /// A prioritized tasks run in a specialised timer.
 /// Every task should be completed within a hard deadline,
 /// if it's not it's either cancelled or split into multiple tasks.
@@ -282,8 +261,6 @@ pub struct Params {
     pub provider: Arc<dyn crate::light::Provider>,
     /// Network layer configuration.
     pub network_config: NetworkConfiguration,
-    /// Other protocols to attach.
-    pub attached_protos: Vec<AttachedProtocol>,
 }
 
 /// Ethereum network protocol handler
@@ -294,8 +271,6 @@ pub struct EthSync {
     eth_handler: Arc<SyncProtocolHandler>,
     /// Light (pip) protocol handler
     light_proto: Option<Arc<LightProtocol>>,
-    /// Other protocols to attach.
-    attached_protos: Vec<AttachedProtocol>,
     /// The main subprotocol name
     subprotocol_name: [u8; 3],
     /// Light subprotocol name.
@@ -387,7 +362,6 @@ impl EthSync {
             light_proto: light_proto,
             subprotocol_name: params.config.subprotocol_name,
             light_subprotocol_name: params.config.light_subprotocol_name,
-            attached_protos: params.attached_protos,
             priority_tasks: Mutex::new(priority_tasks_tx),
         });
 
@@ -475,7 +449,7 @@ struct SyncProtocolHandler {
 
 impl NetworkProtocolHandler for SyncProtocolHandler {
     fn initialize(&self, io: &dyn NetworkContext) {
-        if io.subprotocol_name() != WARP_SYNC_PROTOCOL_ID {
+        if io.subprotocol_name() != PAR_PROTOCOL {
             io.register_timer(PEERS_TIMER, Duration::from_millis(700))
                 .expect("Error registering peers timer");
             io.register_timer(MAINTAIN_SYNC_TIMER, Duration::from_millis(1100))
@@ -502,11 +476,8 @@ impl NetworkProtocolHandler for SyncProtocolHandler {
     fn connected(&self, io: &dyn NetworkContext, peer: &PeerId) {
         trace_time!("sync::connected");
         // If warp protocol is supported only allow warp handshake
-        let warp_protocol = io
-            .protocol_version(WARP_SYNC_PROTOCOL_ID, *peer)
-            .unwrap_or(0)
-            != 0;
-        let warp_context = io.subprotocol_name() == WARP_SYNC_PROTOCOL_ID;
+        let warp_protocol = io.protocol_version(PAR_PROTOCOL, *peer).unwrap_or(0) != 0;
+        let warp_context = io.subprotocol_name() == PAR_PROTOCOL;
         if warp_protocol == warp_context {
             self.sync.write().on_peer_connected(
                 &mut NetSyncIo::new(io, &*self.chain, &*self.snapshot_service, &self.overlay),
@@ -517,7 +488,7 @@ impl NetworkProtocolHandler for SyncProtocolHandler {
 
     fn disconnected(&self, io: &dyn NetworkContext, peer: &PeerId) {
         trace_time!("sync::disconnected");
-        if io.subprotocol_name() != WARP_SYNC_PROTOCOL_ID {
+        if io.subprotocol_name() != PAR_PROTOCOL {
             self.sync.write().on_peer_aborting(
                 &mut NetSyncIo::new(io, &*self.chain, &*self.snapshot_service, &self.overlay),
                 *peer,
@@ -624,7 +595,7 @@ impl ChainNotify for EthSync {
         self.network
             .register_protocol(
                 self.eth_handler.clone(),
-                WARP_SYNC_PROTOCOL_ID,
+                PAR_PROTOCOL,
                 &[
                     PAR_PROTOCOL_VERSION_1,
                     PAR_PROTOCOL_VERSION_2,
@@ -643,11 +614,6 @@ impl ChainNotify for EthSync {
                 )
                 .unwrap_or_else(|e| warn!("Error registering light client protocol: {:?}", e));
         }
-
-        // register any attached protocols.
-        for proto in &self.attached_protos {
-            proto.register(&self.network)
-        }
     }
 
     fn stop(&self) {
@@ -656,7 +622,7 @@ impl ChainNotify for EthSync {
     }
 
     fn broadcast(&self, message_type: ChainMessageType) {
-        self.network.with_context(WARP_SYNC_PROTOCOL_ID, |context| {
+        self.network.with_context(PAR_PROTOCOL, |context| {
             let mut sync_io = NetSyncIo::new(
                 context,
                 &*self.eth_handler.chain,
@@ -858,7 +824,7 @@ impl NetworkConfiguration {
             max_peers: self.max_peers,
             min_peers: self.min_peers,
             max_handshakes: self.max_pending_peers,
-            reserved_protocols: hash_map![WARP_SYNC_PROTOCOL_ID => self.snapshot_peers],
+            reserved_protocols: hash_map![PAR_PROTOCOL => self.snapshot_peers],
             reserved_nodes: self.reserved_nodes,
             ip_filter: self.ip_filter,
             non_reserved_mode: if self.allow_non_reserved {
@@ -890,10 +856,7 @@ impl From<BasicNetworkConfiguration> for NetworkConfiguration {
             max_peers: other.max_peers,
             min_peers: other.min_peers,
             max_pending_peers: other.max_handshakes,
-            snapshot_peers: *other
-                .reserved_protocols
-                .get(&WARP_SYNC_PROTOCOL_ID)
-                .unwrap_or(&0),
+            snapshot_peers: *other.reserved_protocols.get(&PAR_PROTOCOL).unwrap_or(&0),
             reserved_nodes: other.reserved_nodes,
             ip_filter: other.ip_filter,
             allow_non_reserved: match other.non_reserved_mode {
@@ -979,15 +942,12 @@ pub struct LightSyncParams<L> {
     pub subprotocol_name: [u8; 3],
     /// Other handlers to attach.
     pub handlers: Vec<Arc<dyn LightHandler>>,
-    /// Other subprotocols to run.
-    pub attached_protos: Vec<AttachedProtocol>,
 }
 
 /// Service for light synchronization.
 pub struct LightSync {
     proto: Arc<LightProtocol>,
     sync: Arc<dyn SyncInfo + Sync + Send>,
-    attached_protos: Vec<AttachedProtocol>,
     network: NetworkService,
     subprotocol_name: [u8; 3],
     network_id: u64,
@@ -1031,7 +991,6 @@ impl LightSync {
         Ok(LightSync {
             proto: light_proto,
             sync: sync,
-            attached_protos: params.attached_protos,
             network: service,
             subprotocol_name: params.subprotocol_name,
             network_id: params.network_id,
@@ -1104,10 +1063,6 @@ impl ManageNetwork for LightSync {
                 ::light::net::PROTOCOL_VERSIONS,
             )
             .unwrap_or_else(|e| warn!("Error registering light client protocol: {:?}", e));
-
-        for proto in &self.attached_protos {
-            proto.register(&self.network)
-        }
     }
 
     fn stop_network(&self) {

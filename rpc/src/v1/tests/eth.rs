@@ -31,19 +31,14 @@ use ethjson::{blockchain::BlockChain, spec::ForkSpec};
 use io::IoChannel;
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
-use parking_lot::Mutex;
 use types::ids::BlockId;
 
 use jsonrpc_core::IoHandler;
 use v1::{
-    helpers::{
-        dispatch::{self, FullDispatcher},
-        nonce,
-    },
-    impls::{EthClient, EthClientOptions, SigningUnsafeClient},
+    impls::{EthClient, EthClientOptions},
     metadata::Metadata,
     tests::helpers::{Config, TestSnapshotService, TestSyncProvider},
-    traits::{Eth, EthSigning},
+    traits::Eth,
 };
 
 fn account_provider() -> Arc<AccountProvider> {
@@ -149,16 +144,8 @@ impl EthTester {
             },
         );
 
-        let reservations = Arc::new(Mutex::new(nonce::Reservations::new(runtime.executor())));
-
-        let dispatcher =
-            FullDispatcher::new(client.clone(), miner_service.clone(), reservations, 50);
-        let signer = Arc::new(dispatch::Signer::new(account_provider.clone())) as _;
-        let eth_sign = SigningUnsafeClient::new(&signer, dispatcher);
-
         let mut handler = IoHandler::default();
         handler.extend_with(eth_client.to_delegate());
-        handler.extend_with(eth_sign.to_delegate());
 
         EthTester {
             _miner: miner_service,
@@ -423,17 +410,10 @@ fn eth_transaction_count() {
 
     let req_send_trans = r#"{
 		"jsonrpc": "2.0",
-		"method": "eth_sendTransaction",
-		"params": [{
-			"from": ""#
-        .to_owned()
-        + format!("0x{:x}", address).as_ref()
-        + r#"",
-			"to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
-			"gas": "0x30000",
-			"gasPrice": "0x1",
-			"value": "0x9184e72a"
-		}],
+		"method": "eth_sendRawTransaction",
+		"params": [
+            "0xf86480018303000094d46e8dd67c5d32be8058bb8eb970870f07244567849184e72a8026a0b89495e95fff7b64cd2a26b43f770c4fb54756c333e72963169f3d0d77d4eef4a05fd06bcbfc5cd22b9c8f25ca71807b42dae9f972564b13f2d1a12b726f48c38a"
+        ],
 		"id": 16
 	}"#;
 

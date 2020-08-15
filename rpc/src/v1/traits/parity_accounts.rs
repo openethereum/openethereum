@@ -17,7 +17,7 @@
 //! Parity Accounts-related rpc interface.
 use std::collections::BTreeMap;
 
-use ethereum_types::{H160, H256, H520};
+use ethereum_types::{H160, H256};
 use ethkey::Password;
 use ethstore::KeyFile;
 use jsonrpc_core::Result;
@@ -142,8 +142,4 @@ pub trait ParityAccounts {
     /// Exports an account with given address if provided password matches.
     #[rpc(name = "parity_exportAccount")]
     fn export_account(&self, _: H160, _: Password) -> Result<KeyFile>;
-
-    /// Sign raw hash with the key corresponding to address and password.
-    #[rpc(name = "parity_signMessage")]
-    fn sign_message(&self, _: H160, _: Password, _: H256) -> Result<H520>;
 }

@@ -54,7 +54,6 @@ use parity_version::version;
 use rpc;
 use rpc_apis;
 use secretstore;
-use signer;
 use sync::{self, SyncConfig};
 use user_defaults::UserDefaults;
 
@@ -184,10 +183,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     execute_upgrades(&cmd.dirs.base, &db_dirs, algorithm, &cmd.compaction)?;
 
     // create dirs used by parity
-    cmd.dirs.create_dirs(
-        cmd.acc_conf.unlocked_accounts.len() == 0,
-        cmd.secretstore_conf.enabled,
-    )?;
+    cmd.dirs.create_dirs(cmd.secretstore_conf.enabled)?;
 
     //print out running parity environment
     print_running_environment(&spec.data_dir, &cmd.dirs, &db_dirs);
@@ -462,10 +458,8 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     // set up dependencies for rpc servers
     let rpc_stats = Arc::new(informant::RpcStats::default());
     let secret_store = account_provider.clone();
-    let signer_service = Arc::new(signer::new_service(&cmd.ws_conf, &cmd.logger_config));
 
     let deps_for_rpc_apis = Arc::new(rpc_apis::FullDependencies {
-        signer_service: signer_service,
         snapshot: snapshot_service.clone(),
         client: client.clone(),
         sync: sync_provider.clone(),

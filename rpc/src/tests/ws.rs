@@ -21,17 +21,13 @@ use std::sync::Arc;
 use jsonrpc_core::MetaIoHandler;
 use ws;
 
-use tests::{
-    helpers::{GuardedAuthCodes, Server},
-    http_client,
-};
+use tests::{helpers::Server, http_client};
 use v1::{extractors, informant};
 
 /// Setup a mock signer for tests
-pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
+pub fn serve() -> (Server<ws::Server>, usize) {
     let address = "127.0.0.1:0".parse().unwrap();
     let io = MetaIoHandler::default();
-    let authcodes = GuardedAuthCodes::default();
     let stats = Arc::new(informant::RpcStats::default());
 
     let res = Server::new(|_| {
@@ -41,15 +37,15 @@ pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
             ws::DomainsValidation::Disabled,
             ws::DomainsValidation::Disabled,
             5,
-            extractors::WsExtractor::new(Some(&authcodes.path)),
-            extractors::WsExtractor::new(Some(&authcodes.path)),
+            extractors::WsExtractor::new(),
+            extractors::WsExtractor::new(),
             extractors::WsStats::new(stats),
         )
         .unwrap()
     });
     let port = res.addr().port() as usize;
 
-    (res, port, authcodes)
+    (res, port)
 }
 
 /// Test a single request to running server
@@ -66,7 +62,7 @@ mod testing {
     #[test]
     fn should_not_redirect_to_parity_host() {
         // given
-        let (server, port, _) = serve();
+        let (server, port) = serve();
 
         // when
         let response = request(
@@ -90,7 +86,7 @@ mod testing {
     #[test]
     fn should_block_if_authorization_is_incorrect() {
         // given
-        let (server, port, _) = serve();
+        let (server, port) = serve();
 
         // when
         let response = request(
@@ -119,9 +115,7 @@ mod testing {
     #[test]
     fn should_allow_if_authorization_is_correct() {
         // given
-        let (server, port, mut authcodes) = serve();
-        let code = authcodes.generate_new().unwrap().replace("-", "");
-        authcodes.to_file(&authcodes.path).unwrap();
+        let (server, port) = serve();
         let timestamp = time::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
         // when
@@ -139,7 +133,7 @@ mod testing {
 				{{}}
 			",
                 port,
-                keccak(format!("{}:{}", code, timestamp)),
+                keccak(format!("{}", timestamp)),
                 timestamp,
             ),
         );
@@ -154,10 +148,9 @@ mod testing {
     #[test]
     fn should_not_allow_initial_connection_even_once() {
         // given
-        let (server, port, authcodes) = serve();
+        let (server, port) = serve();
         let code = "initial";
         let timestamp = time::UNIX_EPOCH.elapsed().unwrap().as_secs();
-        assert!(authcodes.is_empty());
 
         // when
         let response1 = http_client::request(

@@ -24,9 +24,7 @@ mod block;
 mod block_number;
 mod bytes;
 mod call_request;
-mod confirmations;
 mod derivation;
-mod eip191;
 mod filter;
 mod histogram;
 mod index;
@@ -52,13 +50,7 @@ pub use self::{
     block_number::{block_number_to_id, BlockNumber},
     bytes::Bytes,
     call_request::CallRequest,
-    confirmations::{
-        ConfirmationPayload, ConfirmationRequest, ConfirmationResponse,
-        ConfirmationResponseWithToken, DecryptRequest, EIP191SignRequest, Either, EthSignRequest,
-        TransactionModification,
-    },
     derivation::{Derive, DeriveHash, DeriveHierarchical},
-    eip191::{EIP191Version, PresignedTransaction},
     filter::{Filter, FilterChanges},
     histogram::Histogram,
     index::Index,

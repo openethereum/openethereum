@@ -146,37 +146,6 @@ usage! {
             }
         }
 
-        CMD cmd_signer
-        {
-            "Manage signer",
-
-            CMD cmd_signer_new_token {
-                "Generate a new signer-authentication token for the given --chain (default: mainnet)",
-            }
-
-            CMD cmd_signer_list {
-                "List the signer-authentication tokens from given --chain (default: mainnet)",
-            }
-
-            CMD cmd_signer_sign
-            {
-                "Sign",
-
-                ARG arg_signer_sign_id: (Option<usize>) = None,
-                "[ID]",
-                "ID",
-            }
-
-            CMD cmd_signer_reject
-            {
-                "Reject",
-
-                ARG arg_signer_reject_id: (Option<usize>) = None,
-                "<ID>",
-                "ID",
-            }
-        }
-
         CMD cmd_snapshot
         {
             "Make a snapshot of the database of the given --chain (default: mainnet)",
@@ -299,11 +268,6 @@ usage! {
             ARG arg_password: (Vec<String>) = Vec::new(), or |c: &Config| c.account.as_ref()?.password.clone(),
             "--password=[FILE]...",
             "Provide a file containing a password for unlocking an account. Leading and trailing whitespace is trimmed.",
-
-        ["UI Options"]
-            ARG arg_ui_path: (String) = "$BASE/signer", or |c: &Config| c.ui.as_ref()?.path.clone(),
-            "--ui-path=[PATH]",
-            "Specify directory where Trusted UIs tokens should be stored.",
 
         ["Networking Options"]
             FLAG flag_no_warp: (bool) = false, or |c: &Config| c.network.as_ref()?.warp.clone().map(|w| !w),
@@ -797,7 +761,6 @@ usage! {
 struct Config {
     parity: Option<Operating>,
     account: Option<Account>,
-    ui: Option<Ui>,
     network: Option<Network>,
     rpc: Option<Rpc>,
     websockets: Option<Ws>,
@@ -832,12 +795,6 @@ struct Account {
     keys_iterations: Option<u32>,
     refresh_time: Option<u64>,
     fast_unlock: Option<bool>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Ui {
-    path: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1201,11 +1158,6 @@ mod tests {
                 cmd_export: false,
                 cmd_export_blocks: false,
                 cmd_export_state: false,
-                cmd_signer: false,
-                cmd_signer_list: false,
-                cmd_signer_sign: false,
-                cmd_signer_reject: false,
-                cmd_signer_new_token: false,
                 cmd_snapshot: false,
                 cmd_restore: false,
                 cmd_tools: false,
@@ -1226,8 +1178,6 @@ mod tests {
                 arg_restore_file: None,
                 arg_tools_hash_file: None,
 
-                arg_signer_sign_id: None,
-                arg_signer_reject_id: None,
                 arg_account_import_path: None,
                 arg_wallet_import_path: None,
                 arg_db_reset_num: 10,
@@ -1254,8 +1204,6 @@ mod tests {
                 arg_keys_iterations: 10240u32,
                 arg_accounts_refresh: 5u64,
                 flag_fast_unlock: false,
-
-                arg_ui_path: "$HOME/.parity/signer".into(),
 
                 // -- Networking Options
                 flag_no_warp: false,
@@ -1457,7 +1405,6 @@ mod tests {
                     refresh_time: None,
                     fast_unlock: None,
                 }),
-                ui: None,
                 network: Some(Network {
                     warp: Some(false),
                     warp_barrier: None,

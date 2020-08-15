@@ -21,10 +21,7 @@ pub mod block_import;
 pub mod deprecated;
 pub mod dispatch;
 #[cfg(any(test, feature = "accounts"))]
-pub mod eip191;
-#[cfg(any(test, feature = "accounts"))]
 pub mod engine_signer;
-pub mod external_signer;
 pub mod fake_sign;
 pub mod nonce;
 #[cfg(any(test, feature = "accounts"))]
@@ -44,10 +41,7 @@ pub use self::{
     network_settings::NetworkSettings,
     poll_filter::{limit_logs, PollFilter, SyncPollFilter},
     poll_manager::PollManager,
-    requests::{
-        CallRequest, ConfirmationPayload, ConfirmationRequest, FilledTransactionRequest,
-        TransactionRequest,
-    },
+    requests::{CallRequest, FilledTransactionRequest, TransactionRequest},
     signature::verify_signature,
     subscribers::Subscribers,
     subscription_manager::GenericPollManager,

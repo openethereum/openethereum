@@ -15,9 +15,9 @@
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
+use ethereum_types::{Address, U256};
 
-use v1::types::{Origin, TransactionCondition};
+use v1::types::TransactionCondition;
 
 /// Transaction request coming from RPC
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
@@ -95,42 +95,4 @@ pub struct CallRequest {
     pub data: Option<Vec<u8>>,
     /// Nonce
     pub nonce: Option<U256>,
-}
-
-/// Confirmation object
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct ConfirmationRequest {
-    /// Id of this confirmation
-    pub id: U256,
-    /// Payload to confirm
-    pub payload: ConfirmationPayload,
-    /// Request origin
-    pub origin: Origin,
-}
-
-/// Payload to confirm in Trusted Signer
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum ConfirmationPayload {
-    /// Transaction
-    SendTransaction(FilledTransactionRequest),
-    /// Sign Transaction
-    SignTransaction(FilledTransactionRequest),
-    /// Sign a message with an Ethereum specific security prefix.
-    EthSignMessage(Address, Bytes),
-    /// Sign a message
-    SignMessage(Address, H256),
-    /// Decrypt request
-    Decrypt(Address, Bytes),
-}
-
-impl ConfirmationPayload {
-    pub fn sender(&self) -> Address {
-        match *self {
-            ConfirmationPayload::SendTransaction(ref request) => request.from,
-            ConfirmationPayload::SignTransaction(ref request) => request.from,
-            ConfirmationPayload::EthSignMessage(ref address, _) => *address,
-            ConfirmationPayload::SignMessage(ref address, _) => *address,
-            ConfirmationPayload::Decrypt(ref address, _) => *address,
-        }
-    }
 }

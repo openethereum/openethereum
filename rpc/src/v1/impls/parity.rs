@@ -35,11 +35,8 @@ use version::version_data;
 
 use v1::{
     helpers::{
-        self,
-        block_import::is_major_importing,
-        errors,
-        external_signer::{SignerService, SigningQueue},
-        fake_sign, verify_signature, NetworkSettings,
+        self, block_import::is_major_importing, errors, fake_sign, verify_signature,
+        NetworkSettings,
     },
     metadata::Metadata,
     traits::Parity,
@@ -59,7 +56,6 @@ pub struct ParityClient<C, M> {
     net: Arc<dyn ManageNetwork>,
     logger: Arc<RotatingLogger>,
     settings: Arc<NetworkSettings>,
-    signer: Option<Arc<SignerService>>,
     ws_address: Option<Host>,
     snapshot: Option<Arc<dyn SnapshotService>>,
 }
@@ -76,7 +72,6 @@ where
         net: Arc<dyn ManageNetwork>,
         logger: Arc<RotatingLogger>,
         settings: Arc<NetworkSettings>,
-        signer: Option<Arc<SignerService>>,
         ws_address: Option<Host>,
         snapshot: Option<Arc<dyn SnapshotService>>,
     ) -> Self {
@@ -87,7 +82,6 @@ where
             net,
             logger,
             settings,
-            signer,
             ws_address,
             snapshot,
         }
@@ -194,13 +188,6 @@ where
                 .ok_or_else(errors::not_enough_data)
                 .map(Into::into),
         ))
-    }
-
-    fn unsigned_transactions_count(&self) -> Result<usize> {
-        match self.signer {
-            None => Err(errors::signer_disabled()),
-            Some(ref signer) => Ok(signer.len()),
-        }
     }
 
     fn generate_secret_phrase(&self) -> Result<String> {

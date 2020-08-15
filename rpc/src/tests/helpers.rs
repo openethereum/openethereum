@@ -14,15 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-};
-use tempdir::TempDir;
+use std::ops::Deref;
 
 use parity_runtime::{Runtime, TaskExecutor};
-
-use authcodes::AuthCodes;
 
 /// Server with event loop
 pub struct Server<T> {
@@ -52,39 +46,5 @@ impl<T> Deref for Server<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.server
-    }
-}
-
-/// Struct representing authcodes
-pub struct GuardedAuthCodes {
-    authcodes: AuthCodes,
-    _tempdir: TempDir,
-    /// The path to the mock authcodes
-    pub path: PathBuf,
-}
-
-impl Default for GuardedAuthCodes {
-    fn default() -> Self {
-        let tempdir = TempDir::new("").unwrap();
-        let path = tempdir.path().join("file");
-
-        GuardedAuthCodes {
-            authcodes: AuthCodes::from_file(&path).unwrap(),
-            _tempdir: tempdir,
-            path,
-        }
-    }
-}
-
-impl Deref for GuardedAuthCodes {
-    type Target = AuthCodes;
-    fn deref(&self) -> &Self::Target {
-        &self.authcodes
-    }
-}
-
-impl DerefMut for GuardedAuthCodes {
-    fn deref_mut(&mut self) -> &mut AuthCodes {
-        &mut self.authcodes
     }
 }

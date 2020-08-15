@@ -16,8 +16,6 @@
 
 use std::{cmp::PartialEq, collections::HashSet, str::FromStr, sync::Arc};
 
-pub use parity_rpc::signer::SignerService;
-
 use account_utils::{self, AccountProvider};
 use ethcore::{client::Client, miner::Miner, snapshot::SnapshotService};
 use ethcore_logger::RotatingLogger;
@@ -25,12 +23,10 @@ use fetch::Client as FetchClient;
 use jsonrpc_core::{self as core, MetaIoHandler};
 use miner::external::ExternalMiner;
 use parity_rpc::{
-    dispatch::FullDispatcher,
     informant::{ActivityNotifier, ClientNotifier},
     Host, Metadata, NetworkSettings,
 };
 use parity_runtime::Executor;
-use parking_lot::Mutex;
 use sync::{ManageNetwork, SyncProvider};
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
@@ -43,10 +39,6 @@ pub enum Api {
     Eth,
     /// Eth Pub-Sub (Safe)
     EthPubSub,
-    /// Geth-compatible "personal" API (DEPRECATED; only used in `--geth` mode.)
-    Personal,
-    /// Signer - Confirm transactions in Signer (UNSAFE: Passwords, List of transactions)
-    Signer,
     /// Parity - Custom extensions (Safe)
     Parity,
     /// Traces (Safe)
@@ -78,10 +70,8 @@ impl FromStr for Api {
             "parity_accounts" => Ok(ParityAccounts),
             "parity_pubsub" => Ok(ParityPubSub),
             "parity_set" => Ok(ParitySet),
-            "personal" => Ok(Personal),
             "pubsub" => Ok(EthPubSub),
             "secretstore" => Ok(SecretStore),
-            "signer" => Ok(Signer),
             "traces" => Ok(Traces),
             "web3" => Ok(Web3),
             api => Err(format!("Unknown api: {}", api)),
@@ -146,26 +136,6 @@ impl FromStr for ApiSet {
     }
 }
 
-macro_rules! add_signing_methods {
-    ($namespace:ident, $handler:expr, $deps:expr, $dispatch:expr) => {{
-        let deps = &$deps;
-        let (dispatcher, accounts) = $dispatch;
-        if deps.signer_service.is_enabled() {
-            $handler.extend_with($namespace::to_delegate(SigningQueueClient::new(
-                &deps.signer_service,
-                dispatcher.clone(),
-                deps.executor.clone(),
-                accounts,
-            )))
-        } else {
-            $handler.extend_with($namespace::to_delegate(SigningUnsafeClient::new(
-                accounts,
-                dispatcher.clone(),
-            )))
-        }
-    }};
-}
-
 /// RPC dependencies can be used to initialize RPC endpoints from APIs.
 pub trait Dependencies {
     type Notifier: ActivityNotifier;
@@ -181,7 +151,6 @@ pub trait Dependencies {
 
 /// RPC dependencies for a full node.
 pub struct FullDependencies {
-    pub signer_service: Arc<SignerService>,
     pub client: Arc<Client>,
     pub snapshot: Arc<dyn SnapshotService>,
     pub sync: Arc<dyn SyncProvider>,
@@ -213,16 +182,6 @@ impl FullDependencies {
     {
         use parity_rpc::v1::*;
 
-        let nonces = Arc::new(Mutex::new(dispatch::Reservations::new(
-            self.executor.clone(),
-        )));
-        let dispatcher = FullDispatcher::new(
-            self.client.clone(),
-            self.miner.clone(),
-            nonces.clone(),
-            self.gas_price_percentile,
-        );
-        let account_signer = Arc::new(dispatch::Signer::new(self.accounts.clone())) as _;
         let accounts = account_utils::accounts_list(self.accounts.clone());
 
         for api in apis {
@@ -260,13 +219,6 @@ impl FullDependencies {
                             self.poll_lifetime,
                         );
                         handler.extend_with(filter_client.to_delegate());
-
-                        add_signing_methods!(
-                            EthSigning,
-                            handler,
-                            self,
-                            (&dispatcher, &account_signer)
-                        );
                     }
                 }
                 Api::EthPubSub => {
@@ -287,33 +239,7 @@ impl FullDependencies {
                         handler.extend_with(client.to_delegate());
                     }
                 }
-                Api::Personal => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(
-                        PersonalClient::new(
-                            &self.accounts,
-                            dispatcher.clone(),
-                            self.experimental_rpcs,
-                        )
-                        .to_delegate(),
-                    );
-                }
-                Api::Signer => {
-                    handler.extend_with(
-                        SignerClient::new(
-                            account_signer.clone(),
-                            dispatcher.clone(),
-                            &self.signer_service,
-                            self.executor.clone(),
-                        )
-                        .to_delegate(),
-                    );
-                }
                 Api::Parity => {
-                    let signer = match self.signer_service.is_enabled() {
-                        true => Some(self.signer_service.clone()),
-                        false => None,
-                    };
                     handler.extend_with(
                         ParityClient::new(
                             self.client.clone(),
@@ -322,7 +248,6 @@ impl FullDependencies {
                             self.net_service.clone(),
                             self.logger.clone(),
                             self.settings.clone(),
-                            signer,
                             self.ws_address.clone(),
                             self.snapshot.clone().into(),
                         )
@@ -332,15 +257,6 @@ impl FullDependencies {
                     handler.extend_with(ParityAccountsInfo::to_delegate(
                         ParityAccountsClient::new(&self.accounts),
                     ));
-
-                    if !for_generic_pubsub {
-                        add_signing_methods!(
-                            ParitySigning,
-                            handler,
-                            self,
-                            (&dispatcher, &account_signer)
-                        );
-                    }
                 }
                 Api::ParityPubSub => {
                     if !for_generic_pubsub {
@@ -434,8 +350,6 @@ impl ApiSet {
                 public_list.insert(Api::ParityPubSub);
                 public_list.insert(Api::ParityAccounts);
                 public_list.insert(Api::ParitySet);
-                public_list.insert(Api::Signer);
-                public_list.insert(Api::Personal);
                 public_list.insert(Api::SecretStore);
                 public_list
             }
@@ -464,8 +378,6 @@ mod test {
         assert_eq!(Api::Net, "net".parse().unwrap());
         assert_eq!(Api::Eth, "eth".parse().unwrap());
         assert_eq!(Api::EthPubSub, "pubsub".parse().unwrap());
-        assert_eq!(Api::Personal, "personal".parse().unwrap());
-        assert_eq!(Api::Signer, "signer".parse().unwrap());
         assert_eq!(Api::Parity, "parity".parse().unwrap());
         assert_eq!(Api::ParityAccounts, "parity_accounts".parse().unwrap());
         assert_eq!(Api::ParitySet, "parity_set".parse().unwrap());
@@ -539,8 +451,6 @@ mod test {
                     Api::SecretStore,
                     Api::ParityAccounts,
                     Api::ParitySet,
-                    Api::Signer,
-                    Api::Personal,
                     Api::Debug,
                 ]
                 .into_iter()
@@ -565,7 +475,6 @@ mod test {
                     Api::SecretStore,
                     Api::ParityAccounts,
                     Api::ParitySet,
-                    Api::Signer,
                     Api::Debug,
                 ]
                 .into_iter()

@@ -24,7 +24,7 @@ use std::{
 };
 
 use accounts::AccountProvider;
-use ethereum_types::{Address, H160, H256, H520};
+use ethereum_types::{Address, H160, H256};
 use ethkey::{Brain, Generator, Password, Secret};
 use ethstore::KeyFile;
 use jsonrpc_core::Result;
@@ -353,13 +353,5 @@ impl ParityAccounts for ParityAccountsClient {
             .export_account(&addr, password)
             .map(Into::into)
             .map_err(|e| errors::account("Could not export account.", e))
-    }
-
-    fn sign_message(&self, addr: H160, password: Password, message: H256) -> Result<H520> {
-        self.deprecation_notice("parity_signMessage");
-        self.accounts
-            .sign(addr.into(), Some(password), message.into())
-            .map(Into::into)
-            .map_err(|e| errors::account("Could not sign message.", e))
     }
 }

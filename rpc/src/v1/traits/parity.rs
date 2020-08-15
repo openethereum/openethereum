@@ -88,11 +88,6 @@ pub trait Parity {
     #[rpc(name = "parity_gasPriceHistogram")]
     fn gas_price_histogram(&self) -> BoxFuture<Histogram>;
 
-    /// Returns number of unsigned transactions waiting in the signer queue (if signer enabled)
-    /// Returns error when signer is disabled
-    #[rpc(name = "parity_unsignedTransactionsCount")]
-    fn unsigned_transactions_count(&self) -> Result<usize>;
-
     /// Returns a cryptographically random phrase sufficient for securely seeding a secret key.
     #[rpc(name = "parity_generateSecretPhrase")]
     fn generate_secret_phrase(&self) -> Result<String>;

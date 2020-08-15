@@ -207,10 +207,6 @@ Replacing `<spec>` with one of the following from the details section below (i.e
   ```bash
   chainspec
   ```
-* Parity CLI Signer Tool & RPC Client
-  ```bash
-  cli-signer parity-rpc-client
-  ```
 * Parity Ethereum Ethash & ProgPoW Implementations
   ```bash
   ethash

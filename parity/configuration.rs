@@ -81,22 +81,6 @@ pub enum Cmd {
     Account(AccountCmd),
     ImportPresaleWallet(ImportWallet),
     Blockchain(BlockchainCmd),
-    SignerToken(WsConfiguration, LogConfig),
-    SignerSign {
-        id: Option<usize>,
-        pwfile: Option<PathBuf>,
-        port: u16,
-        authfile: PathBuf,
-    },
-    SignerList {
-        port: u16,
-        authfile: PathBuf,
-    },
-    SignerReject {
-        id: Option<usize>,
-        port: u16,
-        authfile: PathBuf,
-    },
     Snapshot(SnapshotCommand),
     Hash(Option<String>),
 }
@@ -163,37 +147,6 @@ impl Configuration {
 
         let cmd = if self.args.flag_version {
             Cmd::Version
-        } else if self.args.cmd_signer {
-            let authfile = ::signer::codes_path(&ws_conf.signer_path);
-
-            if self.args.cmd_signer_new_token {
-                Cmd::SignerToken(ws_conf, logger_config.clone())
-            } else if self.args.cmd_signer_sign {
-                let pwfile = self
-                    .accounts_config()?
-                    .password_files
-                    .first()
-                    .map(|pwfile| PathBuf::from(pwfile));
-                Cmd::SignerSign {
-                    id: self.args.arg_signer_sign_id,
-                    pwfile: pwfile,
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else if self.args.cmd_signer_reject {
-                Cmd::SignerReject {
-                    id: self.args.arg_signer_reject_id,
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else if self.args.cmd_signer_list {
-                Cmd::SignerList {
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else {
-                unreachable!();
-            }
         } else if self.args.cmd_tools && self.args.cmd_tools_hash {
             Cmd::Hash(self.args.arg_tools_hash_file)
         } else if self.args.cmd_db && self.args.cmd_db_reset {
@@ -934,10 +887,6 @@ impl Configuration {
     }
 
     fn ws_config(&self) -> Result<WsConfiguration, String> {
-        let support_token_api =
-			// enabled when not unlocking
-			self.args.arg_unlock.is_none();
-
         let conf = WsConfiguration {
             enabled: self.ws_enabled(),
             interface: self.ws_interface(),
@@ -945,8 +894,6 @@ impl Configuration {
             apis: self.args.arg_ws_apis.parse()?,
             hosts: self.ws_hosts(),
             origins: self.ws_origins(),
-            signer_path: self.directories().signer.into(),
-            support_token_api,
             max_connections: self.args.arg_ws_max_connections,
         };
 
@@ -1007,14 +954,12 @@ impl Configuration {
         let cache_path = replace_home_and_local(&data_path, &local_path, cache_path);
         let keys_path = replace_home(&data_path, &self.args.arg_keys_path);
         let secretstore_path = replace_home(&data_path, &self.args.arg_secretstore_path);
-        let ui_path = replace_home(&data_path, &self.args.arg_ui_path);
 
         Directories {
             keys: keys_path,
             base: data_path,
             cache: cache_path,
             db: db_path,
-            signer: ui_path,
             secretstore: secretstore_path,
         }
     }
@@ -1442,38 +1387,6 @@ mod tests {
     }
 
     #[test]
-    fn test_command_signer_new_token() {
-        let args = vec!["parity", "signer", "new-token"];
-        let conf = parse(&args);
-        let expected = Directories::default().signer;
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::SignerToken(
-                WsConfiguration {
-                    enabled: true,
-                    interface: "127.0.0.1".into(),
-                    port: 8546,
-                    apis: ApiSet::UnsafeContext,
-                    origins: Some(vec![
-                        "parity://*".into(),
-                        "chrome-extension://*".into(),
-                        "moz-extension://*".into()
-                    ]),
-                    hosts: Some(vec![]),
-                    signer_path: expected.into(),
-                    support_token_api: true,
-                    max_connections: 100,
-                },
-                LogConfig {
-                    color: !cfg!(windows),
-                    mode: None,
-                    file: None,
-                }
-            )
-        );
-    }
-
-    #[test]
     fn test_ws_max_connections() {
         let args = vec!["parity", "--ws-max-connections", "1"];
         let conf = parse(&args);
@@ -1606,17 +1519,6 @@ mod tests {
             conf3.rpc_hosts(),
             Some(vec!["parity.io".into(), "something.io".into()])
         );
-    }
-
-    #[test]
-    fn should_parse_ui_configuration() {
-        // given
-
-        // when
-        let conf0 = parse(&["parity", "--ui-path=signer"]);
-
-        // then
-        assert_eq!(conf0.directories().signer, "signer".to_owned());
     }
 
     #[test]

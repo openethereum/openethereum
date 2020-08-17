@@ -31,7 +31,6 @@ use json::{self, OpaqueKeyFile, Uuid};
 use random::Random;
 use Derivation;
 use Error;
-use OpaqueSecret;
 use SecretStore;
 use SecretVaultRef;
 use SimpleSecretStore;
@@ -226,8 +225,8 @@ impl SecretStore for EthStore {
         &self,
         account: &StoreAccountRef,
         password: &Password,
-    ) -> Result<OpaqueSecret, Error> {
-        Ok(OpaqueSecret(self.get(account)?.crypto.secret(password)?))
+    ) -> Result<ethkey::Secret, Error> {
+        Ok(self.get(account)?.crypto.secret(password)?)
     }
 
     fn import_wallet(

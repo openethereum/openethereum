@@ -39,16 +39,12 @@ use v1::{
 pub mod accounts {
     use super::*;
     use accounts::AccountProvider;
-    use v1::{
-        helpers::{deprecated::DeprecationNotice, engine_signer::EngineSigner},
-        traits::ParitySetAccounts,
-    };
+    use v1::traits::ParitySetAccounts;
 
     /// Parity-specific account-touching RPC interfaces.
     pub struct ParitySetAccountsClient<M> {
         miner: Arc<M>,
         accounts: Arc<AccountProvider>,
-        deprecation_notice: DeprecationNotice,
     }
 
     impl<M> ParitySetAccountsClient<M> {
@@ -57,24 +53,21 @@ pub mod accounts {
             ParitySetAccountsClient {
                 accounts: accounts.clone(),
                 miner: miner.clone(),
-                deprecation_notice: Default::default(),
             }
         }
     }
 
     impl<M: MinerService + 'static> ParitySetAccounts for ParitySetAccountsClient<M> {
         fn set_engine_signer(&self, address: H160, password: String) -> Result<bool> {
-            self.deprecation_notice.print(
-                "parity_setEngineSigner",
-                "use `parity_setEngineSignerSecret` instead. See #9997 for context.",
-            );
-
-            let signer = Box::new(EngineSigner::new(
-                self.accounts.clone(),
-                address.clone().into(),
-                password.into(),
+            let secret = self
+                .accounts
+                .get_secret(address, password.into())
+                .map_err(|e| errors::account("Failed to get secret", e))?;
+            let keypair = ethkey::KeyPair::from_secret(secret)
+                .map_err(|e| errors::account("Invalid secret", e))?;
+            self.miner.set_author(miner::Author::Sealer(
+                ethcore::engines::signer::from_keypair(keypair),
             ));
-            self.miner.set_author(miner::Author::Sealer(signer));
             Ok(true)
         }
     }

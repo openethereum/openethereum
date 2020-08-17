@@ -72,6 +72,3 @@ pub use self::{
         StoreAccountRef,
     },
 };
-
-/// An opaque wrapper for secret.
-pub struct OpaqueSecret(::ethkey::Secret);

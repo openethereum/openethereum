@@ -23,7 +23,6 @@ use std::{
     path::PathBuf,
 };
 use Error;
-use OpaqueSecret;
 
 /// Key directory reference
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -166,15 +165,15 @@ pub trait SecretStore: SimpleSecretStore {
         &self,
         account: &StoreAccountRef,
         password: &Password,
-    ) -> Result<OpaqueSecret, Error>;
+    ) -> Result<ethkey::Secret, Error>;
 
     /// Signs a message with raw secret.
     fn sign_with_secret(
         &self,
-        secret: &OpaqueSecret,
+        secret: &ethkey::Secret,
         message: &Message,
     ) -> Result<Signature, Error> {
-        Ok(::ethkey::sign(&secret.0, message)?)
+        Ok(::ethkey::sign(secret, message)?)
     }
     /// Imports existing JSON wallet
     fn import_wallet(

@@ -34,8 +34,7 @@ use std::{
 
 use ethkey::{Address, Generator, Message, Password, Public, Random, Secret};
 use ethstore::{
-    accounts_dir::MemoryDirectory, random_string, EthMultiStore, EthStore, OpaqueSecret,
-    SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
+    accounts_dir::MemoryDirectory, EthStore, SecretStore, SecretVaultRef, StoreAccountRef,
 };
 use log::*;
 use parking_lot::RwLock;
@@ -44,8 +43,6 @@ pub use ethkey::Signature;
 pub use ethstore::{Derivation, Error, IndexDerivation, KeyFile};
 
 pub use self::{account_data::AccountMeta, error::SignError};
-
-type AccountToken = Password;
 
 /// Account management settings.
 #[derive(Debug, Default)]
@@ -60,25 +57,18 @@ pub struct AccountProviderSettings {
 /// Responsible for unlocking accounts.
 pub struct AccountProvider {
     /// For performance reasons some methods can re-use unlocked secrets.
-    unlocked_secrets: RwLock<HashMap<StoreAccountRef, OpaqueSecret>>,
+    unlocked_secrets: RwLock<HashMap<StoreAccountRef, Secret>>,
     /// Unlocked account data.
     unlocked: RwLock<HashMap<StoreAccountRef, AccountData>>,
     /// Address book.
     address_book: RwLock<AddressBook>,
     /// Accounts on disk
     sstore: Box<dyn SecretStore>,
-    /// Accounts unlocked with rolling tokens
-    transient_sstore: EthMultiStore,
     /// When unlocking account permanently we additionally keep a raw secret in memory
     /// to increase the performance of transaction signing.
     unlock_keep_secret: bool,
     /// Disallowed accounts.
     blacklisted_accounts: Vec<Address>,
-}
-
-fn transient_sstore() -> EthMultiStore {
-    EthMultiStore::open(Box::new(MemoryDirectory::default()))
-        .expect("MemoryDirectory load always succeeds; qed")
 }
 
 impl AccountProvider {
@@ -105,7 +95,6 @@ impl AccountProvider {
             unlocked: RwLock::new(HashMap::new()),
             address_book: RwLock::new(address_book),
             sstore: sstore,
-            transient_sstore: transient_sstore(),
             unlock_keep_secret: settings.unlock_keep_secret,
             blacklisted_accounts: settings.blacklisted_accounts,
         }
@@ -121,7 +110,6 @@ impl AccountProvider {
                 EthStore::open(Box::new(MemoryDirectory::default()))
                     .expect("MemoryDirectory load always succeeds; qed"),
             ),
-            transient_sstore: transient_sstore(),
             unlock_keep_secret: false,
             blacklisted_accounts: vec![],
         }
@@ -355,6 +343,13 @@ impl AccountProvider {
         Ok(())
     }
 
+    /// Get account secret.
+    pub fn get_secret(&self, address: Address, password: Password) -> Result<Secret, Error> {
+        let account = self.sstore.account_ref(&address)?;
+        let secret = self.sstore.raw_secret(&account, &password)?;
+        Ok(secret)
+    }
+
     fn password(&self, account: &StoreAccountRef) -> Result<Password, SignError> {
         let mut unlocked = self.unlocked.write();
         let data = unlocked.get(account).ok_or(SignError::NotUnlocked)?.clone();
@@ -459,74 +454,6 @@ impl AccountProvider {
         Ok(self
             .sstore
             .sign_derived(&account, &password, derivation, &message)?)
-    }
-
-    /// Signs given message with supplied token. Returns a token to use in next signing within this session.
-    pub fn sign_with_token(
-        &self,
-        address: Address,
-        token: AccountToken,
-        message: Message,
-    ) -> Result<(Signature, AccountToken), SignError> {
-        let account = self.sstore.account_ref(&address)?;
-        let is_std_password = self.sstore.test_password(&account, &token)?;
-
-        let new_token = Password::from(random_string(16));
-        let signature = if is_std_password {
-            // Insert to transient store
-            self.sstore.copy_account(
-                &self.transient_sstore,
-                SecretVaultRef::Root,
-                &account,
-                &token,
-                &new_token,
-            )?;
-            // sign
-            self.sstore.sign(&account, &token, &message)?
-        } else {
-            // check transient store
-            self.transient_sstore
-                .change_password(&account, &token, &new_token)?;
-            // and sign
-            self.transient_sstore.sign(&account, &new_token, &message)?
-        };
-
-        Ok((signature, new_token))
-    }
-
-    /// Decrypts a message with given token. Returns a token to use in next operation for this account.
-    pub fn decrypt_with_token(
-        &self,
-        address: Address,
-        token: AccountToken,
-        shared_mac: &[u8],
-        message: &[u8],
-    ) -> Result<(Vec<u8>, AccountToken), SignError> {
-        let account = self.sstore.account_ref(&address)?;
-        let is_std_password = self.sstore.test_password(&account, &token)?;
-
-        let new_token = Password::from(random_string(16));
-        let message = if is_std_password {
-            // Insert to transient store
-            self.sstore.copy_account(
-                &self.transient_sstore,
-                SecretVaultRef::Root,
-                &account,
-                &token,
-                &new_token,
-            )?;
-            // decrypt
-            self.sstore.decrypt(&account, &token, shared_mac, message)?
-        } else {
-            // check transient store
-            self.transient_sstore
-                .change_password(&account, &token, &new_token)?;
-            // and decrypt
-            self.transient_sstore
-                .decrypt(&account, &token, shared_mac, message)?
-        };
-
-        Ok((message, new_token))
     }
 
     /// Decrypts a message. If password is not provided the account must be unlocked.
@@ -782,30 +709,6 @@ mod tests {
             .unwrap()
             .unlock = Unlock::Timed(Instant::now());
         assert!(ap.sign(kp.address(), None, Default::default()).is_err());
-    }
-
-    #[test]
-    fn should_sign_and_return_token() {
-        // given
-        let kp = Random.generate().unwrap();
-        let ap = AccountProvider::transient_provider();
-        assert!(ap
-            .insert_account(kp.secret().clone(), &"test".into())
-            .is_ok());
-
-        // when
-        let (_signature, token) = ap
-            .sign_with_token(kp.address(), "test".into(), Default::default())
-            .unwrap();
-
-        // then
-        ap.sign_with_token(kp.address(), token.clone(), Default::default())
-            .expect("First usage of token should be correct.");
-        assert!(
-            ap.sign_with_token(kp.address(), token, Default::default())
-                .is_err(),
-            "Second usage of the same token should fail."
-        );
     }
 
     #[test]

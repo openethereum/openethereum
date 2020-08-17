@@ -25,7 +25,6 @@ mod block_number;
 mod bytes;
 mod call_request;
 mod confirmations;
-mod consensus_status;
 mod derivation;
 mod eip191;
 mod filter;
@@ -51,7 +50,7 @@ pub mod pubsub;
 pub use self::{
     account_info::{AccountInfo, EthAccount, ExtAccountInfo, RecoveredAccount, StorageProof},
     block::{Block, BlockTransactions, Header, Rich, RichBlock, RichHeader},
-    block_number::{block_number_to_id, BlockNumber, LightBlockNumber},
+    block_number::{block_number_to_id, BlockNumber},
     bytes::Bytes,
     call_request::CallRequest,
     confirmations::{
@@ -59,7 +58,6 @@ pub use self::{
         ConfirmationResponseWithToken, DecryptRequest, EIP191SignRequest, Either, EthSignRequest,
         TransactionModification,
     },
-    consensus_status::*,
     derivation::{Derive, DeriveHash, DeriveHierarchical},
     eip191::{EIP191Version, PresignedTransaction},
     filter::{Filter, FilterChanges},
@@ -74,7 +72,7 @@ pub use self::{
     secretstore::EncryptedDocumentKey,
     sync::{
         ChainStatus, EthProtocolInfo, PeerInfo, PeerNetworkInfo, PeerProtocolsInfo, Peers,
-        PipProtocolInfo, SyncInfo, SyncStatus, TransactionStats,
+        SyncInfo, SyncStatus, TransactionStats,
     },
     trace::{LocalizedTrace, TraceResults, TraceResultsWithTransactionHash},
     trace_filter::TraceFilter,

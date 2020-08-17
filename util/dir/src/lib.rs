@@ -39,15 +39,9 @@ pub use home::home_dir;
 /// Platform-specific chains path for standard client - Windows only
 #[cfg(target_os = "windows")]
 pub const CHAINS_PATH: &str = "$LOCAL/chains";
-/// Platform-specific chains path for light client - Windows only
-#[cfg(target_os = "windows")]
-pub const CHAINS_PATH_LIGHT: &str = "$LOCAL/chains_light";
 /// Platform-specific chains path for standard client
 #[cfg(not(target_os = "windows"))]
 pub const CHAINS_PATH: &str = "$BASE/chains";
-/// Platform-specific chains path for light client
-#[cfg(not(target_os = "windows"))]
-pub const CHAINS_PATH_LIGHT: &str = "$BASE/chains_light";
 
 /// Platform-specific cache path - Windows only
 #[cfg(target_os = "windows")]
@@ -274,16 +268,6 @@ pub fn default_local_path() -> String {
         .unwrap_or_else(|_| "$HOME/.parity".to_owned())
 }
 
-/// Default hypervisor path
-pub fn default_hypervisor_path() -> PathBuf {
-    let app_info = AppInfo {
-        name: PRODUCT_HYPERVISOR,
-        author: AUTHOR,
-    };
-    get_app_root(AppDataType::UserData, &app_info)
-        .unwrap_or_else(|_| "$HOME/.parity-hypervisor".into())
-}
-
 /// Get home directory.
 fn home() -> PathBuf {
     home_dir().expect("Failed to get home dir")
@@ -301,7 +285,6 @@ mod platform {
     use std::path::PathBuf;
     pub const AUTHOR: &str = "Parity";
     pub const PRODUCT: &str = "io.parity.ethereum";
-    pub const PRODUCT_HYPERVISOR: &str = "io.parity.ethereum-updates";
 
     pub fn parity_base() -> PathBuf {
         let mut home = super::home();
@@ -318,7 +301,6 @@ mod platform {
     use std::path::PathBuf;
     pub const AUTHOR: &str = "Parity";
     pub const PRODUCT: &str = "Ethereum";
-    pub const PRODUCT_HYPERVISOR: &str = "EthereumUpdates";
 
     pub fn parity_base() -> PathBuf {
         let mut home = super::home();
@@ -336,7 +318,6 @@ mod platform {
     use std::path::PathBuf;
     pub const AUTHOR: &str = "parity";
     pub const PRODUCT: &str = "io.parity.ethereum";
-    pub const PRODUCT_HYPERVISOR: &str = "io.parity.ethereum-updates";
 
     pub fn parity_base() -> PathBuf {
         let mut home = super::home();

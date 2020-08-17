@@ -130,7 +130,7 @@ pub use v1::{
     block_import::{is_major_importing, is_major_importing_or_waiting},
     dispatch,
     extractors::{RpcExtractor, WsDispatcher, WsExtractor, WsStats},
-    informant, signer, Metadata, NetworkSettings, Origin,
+    informant, Metadata, NetworkSettings, Origin,
 };
 
 use std::net::SocketAddr;

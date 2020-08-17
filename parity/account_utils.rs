@@ -172,8 +172,6 @@ mod accounts {
         engine_signer: Address,
         passwords: &[Password],
     ) -> Result<Option<::ethcore::miner::Author>, String> {
-        use ethcore::engines::EngineSigner;
-
         // Check if engine signer exists
         if !account_provider.has_account(engine_signer) {
             return Err(format!(
@@ -192,13 +190,12 @@ mod accounts {
 
         let mut author = None;
         for password in passwords {
-            let signer = parity_rpc::signer::EngineSigner::new(
-                account_provider.clone(),
-                engine_signer,
-                password.clone(),
-            );
-            if signer.sign(Default::default()).is_ok() {
-                author = Some(::ethcore::miner::Author::Sealer(Box::new(signer)));
+            if let Ok(secret) = account_provider.get_secret(engine_signer, password.clone()) {
+                if let Ok(keypair) = ethkey::KeyPair::from_secret(secret) {
+                    author = Some(ethcore::miner::Author::Sealer(
+                        ethcore::engines::signer::from_keypair(keypair),
+                    ));
+                }
             }
         }
         if author.is_none() {

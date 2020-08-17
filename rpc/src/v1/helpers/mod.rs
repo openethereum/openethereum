@@ -20,8 +20,6 @@ pub mod errors;
 pub mod block_import;
 pub mod deprecated;
 pub mod dispatch;
-#[cfg(any(test, feature = "accounts"))]
-pub mod engine_signer;
 pub mod fake_sign;
 pub mod nonce;
 #[cfg(any(test, feature = "accounts"))]

@@ -52,9 +52,3 @@ pub use self::{
     },
     types::Origin,
 };
-
-/// Signer utilities
-pub mod signer {
-    #[cfg(any(test, feature = "accounts"))]
-    pub use super::helpers::engine_signer::EngineSigner;
-}

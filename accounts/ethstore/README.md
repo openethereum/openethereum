@@ -43,7 +43,6 @@ Commands:
     change-pwd         Change password.
     list               List accounts.
     import             Import accounts from src.
-    import-wallet      Import presale wallet.
     find-wallet-pass   Tries to open a wallet with list of passwords given.
     remove             Remove account.
     sign               Sign message.
@@ -139,44 +138,6 @@ ethstore import
  0: e6a3d25a7cb7cd21cb720df5b5e8afd154af1bbb
  1: 6edddfc6349aff20bc6467ccf276c5b52487f7a8
 ```
-
---
-
-#### `import-wallet <path> <password> [--dir DIR] [--vault VAULT] [--vault-pwd VAULTPWD]`
-*Import account from presale wallet.*
-
-- `<path>` - presale wallet path
-- `<password>` - account password, file path
-- `[--dir DIR]` - secret store directory, It may be either parity, parity-test, geth, geth-test or a path. default: parity
-- `[--vault VAULT]` - vault to use in this operation
-- `[--vault-pwd VAULTPWD]` - vault password to use in this operation, file path
-
-```
-ethstore import-wallet ethwallet.json password.txt
-```
-
-```
-e6a3d25a7cb7cd21cb720df5b5e8afd154af1bbb
-```
-
-
---
-
-#### `find-wallet-pass <path> <password>`
-Try to open presale wallet given a list of passwords from a file.
-The list of passwords can be generated using e.g. [Phildo/brutedist](https://github.com/Phildo/brutedist).
-
-- `<path>` - presale wallet path
-- `<password>` - possible passwords, file path
-
-```
-ethstore find-wallet-pass ethwallet.json passwords.txt
-```
-
-```
-Found password: test
-```
-
 
 --
 

@@ -59,7 +59,6 @@ use helpers::{
 use network::IpFilter;
 use params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
 use parity_rpc::NetworkSettings;
-use presale::ImportWallet;
 use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
 use run::RunCmd;
 use secretstore::{
@@ -79,7 +78,6 @@ pub enum Cmd {
     Run(RunCmd),
     Version,
     Account(AccountCmd),
-    ImportPresaleWallet(ImportWallet),
     Blockchain(BlockchainCmd),
     Snapshot(SnapshotCommand),
     Hash(Option<String>),
@@ -202,19 +200,6 @@ impl Configuration {
                 unreachable!();
             };
             Cmd::Account(account_cmd)
-        } else if self.args.cmd_wallet {
-            let presale_cmd = ImportWallet {
-                iterations: keys_iterations,
-                path: dirs.keys,
-                spec: spec,
-                wallet_path: self.args.arg_wallet_import_path.clone().unwrap(),
-                password_file: self
-                    .accounts_config()?
-                    .password_files
-                    .first()
-                    .map(|x| x.to_owned()),
-            };
-            Cmd::ImportPresaleWallet(presale_cmd)
         } else if self.args.cmd_import {
             let import_cmd = ImportBlockchain {
                 spec: spec,
@@ -1173,7 +1158,6 @@ mod tests {
     use miner::pool::PrioritizationStrategy;
     use params::SpecType;
     use parity_rpc::NetworkSettings;
-    use presale::ImportWallet;
     use rpc::WsConfiguration;
     use rpc_apis::ApiSet;
     use run::RunCmd;
@@ -1246,29 +1230,6 @@ mod tests {
                 to: Directories::default().keys,
                 spec: SpecType::default(),
             }))
-        );
-    }
-
-    #[test]
-    fn test_command_wallet_import() {
-        let args = vec![
-            "parity",
-            "wallet",
-            "import",
-            "my_wallet.json",
-            "--password",
-            "pwd",
-        ];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::ImportPresaleWallet(ImportWallet {
-                iterations: *ITERATIONS,
-                path: Directories::default().keys,
-                wallet_path: "my_wallet.json".into(),
-                password_file: Some("pwd".into()),
-                spec: SpecType::default(),
-            })
         );
     }
 

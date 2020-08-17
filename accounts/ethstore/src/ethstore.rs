@@ -28,7 +28,6 @@ use ethkey::{
     self, Address, ExtendedKeyPair, KeyPair, Message, Password, Public, Secret, Signature,
 };
 use json::{self, OpaqueKeyFile, Uuid};
-use presale::PresaleWallet;
 use random::Random;
 use Derivation;
 use Error;
@@ -229,21 +228,6 @@ impl SecretStore for EthStore {
         password: &Password,
     ) -> Result<OpaqueSecret, Error> {
         Ok(OpaqueSecret(self.get(account)?.crypto.secret(password)?))
-    }
-
-    fn import_presale(
-        &self,
-        vault: SecretVaultRef,
-        json: &[u8],
-        password: &Password,
-    ) -> Result<StoreAccountRef, Error> {
-        let json_wallet = json::PresaleWallet::load(json)
-            .map_err(|_| Error::InvalidKeyFile("Invalid JSON format".to_owned()))?;
-        let wallet = PresaleWallet::from(json_wallet);
-        let keypair = wallet
-            .decrypt(password)
-            .map_err(|_| Error::InvalidPassword)?;
-        self.insert_account(vault, keypair.secret().clone(), password)
     }
 
     fn import_wallet(

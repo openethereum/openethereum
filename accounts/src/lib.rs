@@ -182,18 +182,6 @@ impl AccountProvider {
         })
     }
 
-    /// Import a new presale wallet.
-    pub fn import_presale(
-        &self,
-        presale_json: &[u8],
-        password: &Password,
-    ) -> Result<Address, Error> {
-        let account = self
-            .sstore
-            .import_presale(SecretVaultRef::Root, presale_json, password)?;
-        Ok(Address::from(account.address).into())
-    }
-
     /// Import a new wallet.
     pub fn import_wallet(
         &self,

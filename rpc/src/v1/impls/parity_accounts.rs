@@ -149,8 +149,7 @@ impl ParityAccounts for ParityAccountsClient {
     fn new_account_from_wallet(&self, json: String, pass: Password) -> Result<H160> {
         self.deprecation_notice("parity_newAccountFromWallet");
         self.accounts
-            .import_presale(json.as_bytes(), &pass)
-            .or_else(|_| self.accounts.import_wallet(json.as_bytes(), &pass, true))
+            .import_wallet(json.as_bytes(), &pass, true)
             .map(Into::into)
             .map_err(|e| errors::account("Could not create account.", e))
     }

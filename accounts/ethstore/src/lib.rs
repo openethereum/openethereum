@@ -56,7 +56,6 @@ mod json;
 mod error;
 mod ethstore;
 mod import;
-mod presale;
 mod random;
 mod secret_store;
 
@@ -67,7 +66,6 @@ pub use self::{
     import::{import_account, import_accounts},
     json::OpaqueKeyFile as KeyFile,
     parity_wordlist::random_phrase,
-    presale::PresaleWallet,
     random::random_string,
     secret_store::{
         Derivation, IndexDerivation, SecretStore, SecretVaultRef, SimpleSecretStore,

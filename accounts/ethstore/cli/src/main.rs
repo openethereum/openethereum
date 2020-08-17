@@ -28,17 +28,14 @@ extern crate env_logger;
 #[macro_use]
 extern crate serde_derive;
 
-use std::{collections::VecDeque, env, fmt, fs, io::Read, process};
+use std::{env, fmt, fs, io::Read, process};
 
 use docopt::Docopt;
 use ethstore::{
     accounts_dir::{KeyDirectory, RootDiskDirectory},
     ethkey::{Address, Password},
-    import_accounts, EthStore, PresaleWallet, SecretStore, SecretVaultRef, SimpleSecretStore,
-    StoreAccountRef,
+    import_accounts, EthStore, SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
 };
-
-mod crack;
 
 pub const USAGE: &'static str = r#"
 Parity Ethereum key management tool.
@@ -79,7 +76,6 @@ Commands:
     change-pwd         Change password.
     list               List accounts.
     import             Import accounts from src.
-    import-wallet      Import presale wallet.
     find-wallet-pass   Tries to open a wallet with list of passwords given.
     remove             Remove account.
     sign               Sign message.
@@ -97,8 +93,6 @@ struct Args {
     cmd_change_pwd: bool,
     cmd_list: bool,
     cmd_import: bool,
-    cmd_import_wallet: bool,
-    cmd_find_wallet_pass: bool,
     cmd_remove: bool,
     cmd_sign: bool,
     cmd_public: bool,
@@ -273,22 +267,6 @@ where
 
         let accounts = import_accounts(&*src, &*dst)?;
         Ok(format_accounts(&accounts))
-    } else if args.cmd_import_wallet {
-        let wallet = PresaleWallet::open(&args.arg_path)?;
-        let password = load_password(&args.arg_password)?;
-        let kp = wallet.decrypt(&password)?;
-        let vault_ref = open_args_vault(&store, &args)?;
-        let account_ref = store.insert_account(vault_ref, kp.secret().clone(), &password)?;
-        Ok(format!("0x{:x}", account_ref.address))
-    } else if args.cmd_find_wallet_pass {
-        let passwords = load_password(&args.arg_password)?;
-        let passwords = passwords
-            .as_str()
-            .lines()
-            .map(|line| str::to_owned(line).into())
-            .collect::<VecDeque<_>>();
-        crack::run(passwords, &args.arg_path)?;
-        Ok(format!("Password not found."))
     } else if args.cmd_remove {
         let address = args
             .arg_address

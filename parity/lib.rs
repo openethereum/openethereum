@@ -97,7 +97,6 @@ mod helpers;
 mod informant;
 mod modules;
 mod params;
-mod presale;
 mod rpc;
 mod rpc_apis;
 mod run;
@@ -191,9 +190,6 @@ fn execute(command: Execute, logger: Arc<RotatingLogger>) -> Result<ExecutionAct
         }
         Cmd::Account(account_cmd) => {
             account::execute(account_cmd).map(|s| ExecutionAction::Instant(Some(s)))
-        }
-        Cmd::ImportPresaleWallet(presale_cmd) => {
-            presale::execute(presale_cmd).map(|s| ExecutionAction::Instant(Some(s)))
         }
         Cmd::Blockchain(blockchain_cmd) => {
             blockchain::execute(blockchain_cmd).map(|_| ExecutionAction::Instant(None))

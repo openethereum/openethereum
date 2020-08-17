@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use api::PAR_PROTOCOL;
+use api::{ETH_PROTOCOL, PAR_PROTOCOL};
 use block_sync::{BlockDownloaderImportError as DownloaderImportError, DownloadAction};
 use bytes::Bytes;
 use enum_primitive::FromPrimitive;
@@ -43,7 +43,7 @@ use super::sync_packet::{
 
 use super::{
     BlockSet, ChainSync, ForkConfirmation, PacketDecodeError, PeerAsking, PeerInfo, SyncRequester,
-    SyncState, ETH_PROTOCOL_VERSION_62, ETH_PROTOCOL_VERSION_63, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES,
+    SyncState, ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES,
     PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_3,
 };
 
@@ -659,9 +659,22 @@ impl SyncHandler {
     ) -> Result<(), DownloaderImportError> {
         sync.handshaking_peers.remove(&peer_id);
         let protocol_version: u8 = r.val_at(0)?;
+        let eth_protocol_version = io.protocol_version(&ETH_PROTOCOL, peer_id);
         let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer_id);
         let warp_protocol = warp_protocol_version != 0;
         let private_tx_protocol = warp_protocol_version >= PAR_PROTOCOL_VERSION_3.0;
+
+        let forkid_validation_error = {
+            if eth_protocol_version >= ETH_PROTOCOL_VERSION_64.0 {
+                let fork_id = rlp04::Rlp::new(r.as_raw()).val_at(5)?;
+                sync.fork_filter
+                    .is_compatible(io.chain(), fork_id)
+                    .err()
+                    .map(|e| (fork_id, e))
+            } else {
+                None
+            }
+        };
         let peer = PeerInfo {
             protocol_version: protocol_version,
             network_id: r.val_at(1)?,
@@ -736,13 +749,18 @@ impl SyncHandler {
             return Err(DownloaderImportError::Invalid);
         }
 
+        if let Some((fork_id, reason)) = forkid_validation_error {
+            trace!(target: "sync", "Peer {} incompatible fork id (fork id: {:#x}/{}, error: {:?})", peer_id, fork_id.hash.0, fork_id.next, reason);
+            return Err(DownloaderImportError::Invalid);
+        }
+
         if false
             || (warp_protocol
                 && (peer.protocol_version < PAR_PROTOCOL_VERSION_1.0
                     || peer.protocol_version > PAR_PROTOCOL_VERSION_3.0))
             || (!warp_protocol
-                && (peer.protocol_version < ETH_PROTOCOL_VERSION_62.0
-                    || peer.protocol_version > ETH_PROTOCOL_VERSION_63.0))
+                && (peer.protocol_version < ETH_PROTOCOL_VERSION_63.0
+                    || peer.protocol_version > ETH_PROTOCOL_VERSION_64.0))
         {
             trace!(target: "sync", "Peer {} unsupported eth protocol ({})", peer_id, peer.protocol_version);
             return Err(DownloaderImportError::Invalid);

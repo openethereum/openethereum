@@ -21,7 +21,7 @@ use chain::{
         PacketInfo, SyncPacket,
         SyncPacket::{PrivateTransactionPacket, SignedPrivateTransactionPacket},
     },
-    ChainSync, SyncSupplier, ETH_PROTOCOL_VERSION_63, PAR_PROTOCOL_VERSION_3,
+    ChainSync, ForkFilterApi, SyncSupplier, ETH_PROTOCOL_VERSION_63, PAR_PROTOCOL_VERSION_3,
 };
 use ethcore::{
     client::{
@@ -33,6 +33,7 @@ use ethcore::{
     spec::Spec,
     test_helpers,
 };
+
 use ethereum_types::H256;
 use io::{IoChannel, IoContext, IoHandler};
 use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId, SessionInfo};
@@ -427,7 +428,12 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
             let chain = TestBlockChainClient::new();
             let ss = Arc::new(TestSnapshotService::new());
             let private_tx_handler = Arc::new(SimplePrivateTxHandler::default());
-            let sync = ChainSync::new(config.clone(), &chain, Some(private_tx_handler.clone()));
+            let sync = ChainSync::new(
+                config.clone(),
+                &chain,
+                ForkFilterApi::new_dummy(&chain),
+                Some(private_tx_handler.clone()),
+            );
             net.peers.push(Arc::new(EthPeer {
                 sync: RwLock::new(sync),
                 snapshot_service: ss,
@@ -478,7 +484,12 @@ impl TestNet<EthPeer<EthcoreClient>> {
 
         let private_tx_handler = Arc::new(SimplePrivateTxHandler::default());
         let ss = Arc::new(TestSnapshotService::new());
-        let sync = ChainSync::new(config, &*client, Some(private_tx_handler.clone()));
+        let sync = ChainSync::new(
+            config,
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
+            Some(private_tx_handler.clone()),
+        );
         let peer = Arc::new(EthPeer {
             sync: RwLock::new(sync),
             snapshot_service: ss,

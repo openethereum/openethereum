@@ -663,7 +663,9 @@ where
     .map_err(|e| format!("Client service error: {:?}", e))?;
 
     let connection_filter_address = spec.params().node_permission_contract;
+
     // drop the spec to free up genesis state.
+    let forks = spec.hard_forks.clone();
     drop(spec);
 
     // take handle to client
@@ -745,6 +747,7 @@ where
         sync_config,
         net_conf.clone().into(),
         client.clone(),
+        forks,
         snapshot_service.clone(),
         private_tx_sync,
         client.clone(),

@@ -22,7 +22,7 @@ use network::{
     NonReservedPeerMode, PeerId, ProtocolId,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     io,
     ops::RangeInclusive,
     sync::{atomic, mpsc, Arc},
@@ -30,8 +30,9 @@ use std::{
 };
 
 use chain::{
+    fork_filter::ForkFilterApi,
     sync_packet::SyncPacket::{PrivateTransactionPacket, SignedPrivateTransactionPacket},
-    ChainSyncApi, SyncStatus as EthSyncStatus, ETH_PROTOCOL_VERSION_62, ETH_PROTOCOL_VERSION_63,
+    ChainSyncApi, SyncStatus as EthSyncStatus, ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64,
     PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2, PAR_PROTOCOL_VERSION_3,
 };
 use ethcore::{
@@ -253,6 +254,8 @@ pub struct Params {
     pub config: SyncConfig,
     /// Blockchain client.
     pub chain: Arc<dyn BlockChainClient>,
+    /// Forks.
+    pub forks: BTreeSet<BlockNumber>,
     /// Snapshot service.
     pub snapshot_service: Arc<dyn SnapshotService>,
     /// Private tx service.
@@ -340,9 +343,12 @@ impl EthSync {
         };
 
         let (priority_tasks_tx, priority_tasks_rx) = mpsc::channel();
+        let fork_filter = ForkFilterApi::new(&*params.chain, params.forks);
+
         let sync = ChainSyncApi::new(
             params.config,
             &*params.chain,
+            fork_filter,
             params.private_tx_handler.as_ref().cloned(),
             priority_tasks_rx,
         );
@@ -588,7 +594,7 @@ impl ChainNotify for EthSync {
             .register_protocol(
                 self.eth_handler.clone(),
                 self.subprotocol_name,
-                &[ETH_PROTOCOL_VERSION_62, ETH_PROTOCOL_VERSION_63],
+                &[ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64],
             )
             .unwrap_or_else(|e| warn!("Error registering ethereum protocol: {:?}", e));
         // register the warp sync subprotocol

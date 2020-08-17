@@ -18,7 +18,9 @@ use std::sync::{mpsc, Arc};
 
 use ethcore::{client::BlockChainClient, snapshot::SnapshotService};
 use light::Provider;
+use std::collections::BTreeSet;
 use sync::{self, ConnectionFilter, NetworkConfiguration, Params, SyncConfig};
+use types::BlockNumber;
 
 pub use ethcore::client::ChainNotify;
 use ethcore_logger::Config as LogConfig;
@@ -35,6 +37,7 @@ pub fn sync(
     config: SyncConfig,
     network_config: NetworkConfiguration,
     chain: Arc<dyn BlockChainClient>,
+    forks: BTreeSet<BlockNumber>,
     snapshot_service: Arc<dyn SnapshotService>,
     private_tx_handler: Option<Arc<dyn PrivateTxHandler>>,
     provider: Arc<dyn Provider>,
@@ -45,6 +48,7 @@ pub fn sync(
         Params {
             config,
             chain,
+            forks,
             provider,
             snapshot_service,
             private_tx_handler,

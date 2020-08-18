@@ -29,9 +29,9 @@ use super::sync_packet::{
     PacketInfo, SyncPacket,
     SyncPacket::{
         BlockBodiesPacket, BlockHeadersPacket, ConsensusDataPacket, GetBlockBodiesPacket,
-        GetBlockHeadersPacket, GetNodeDataPacket, GetReceiptsPacket, GetSnapshotDataPacket,
-        GetSnapshotManifestPacket, ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket,
-        StatusPacket, TransactionsPacket,
+        GetBlockHeadersPacket, GetReceiptsPacket, GetSnapshotDataPacket, GetSnapshotManifestPacket,
+        ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
+        TransactionsPacket,
     },
 };
 
@@ -79,13 +79,6 @@ impl SyncSupplier {
                         format!("Error sending receipts: {:?}", e)
                     })
                 }
-
-                GetNodeDataPacket => {
-                    SyncSupplier::return_rlp(io, &rlp, peer, SyncSupplier::return_empty, |e| {
-                        format!("Error sending nodes: {:?}", e)
-                    })
-                }
-
                 GetSnapshotManifestPacket => SyncSupplier::return_rlp(
                     io,
                     &rlp,
@@ -250,11 +243,6 @@ impl SyncSupplier {
         rlp.append_raw(&data, added);
         trace!(target: "sync", "{} -> GetBlockBodies: returned {} entries", peer_id, added);
         Ok(Some((BlockBodiesPacket.id(), rlp)))
-    }
-
-    /// Respond to GetNodeData request
-    fn return_empty(_io: &dyn SyncIo, _r: &Rlp, _peer_id: PeerId) -> RlpResponseResult {
-        return Ok(None);
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {

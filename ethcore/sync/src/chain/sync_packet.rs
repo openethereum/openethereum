@@ -45,7 +45,7 @@ pub enum SyncPacket {
     BlockBodiesPacket = 0x06,
     NewBlockPacket = 0x07,
 
-    GetNodeDataPacket = 0x0d,
+    //GetNodeDataPacket = 0x0d,
     //NodeDataPacket = 0x0e,
     GetReceiptsPacket = 0x0f,
     ReceiptsPacket = 0x10,
@@ -82,7 +82,7 @@ impl PacketInfo for SyncPacket {
             | GetBlockBodiesPacket
             | BlockBodiesPacket
             | NewBlockPacket
-            | GetNodeDataPacket
+            //| GetNodeDataPacket
             //| NodeDataPacket
             | GetReceiptsPacket
             | ReceiptsPacket => ETH_PROTOCOL,

@@ -33,11 +33,9 @@ extern crate lazy_static;
 extern crate log;
 
 #[cfg(test)]
-extern crate rustc_hex;
-
-#[cfg(test)]
-#[macro_use]
 extern crate hex_literal;
+#[cfg(test)]
+extern crate rustc_hex;
 
 pub mod evm;
 pub mod interpreter;

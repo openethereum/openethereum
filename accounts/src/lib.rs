@@ -49,8 +49,6 @@ pub use self::{account_data::AccountMeta, error::SignError};
 pub struct AccountProviderSettings {
     /// Store raw account secret when unlocking the account permanently.
     pub unlock_keep_secret: bool,
-    /// Disallowed accounts.
-    pub blacklisted_accounts: Vec<Address>,
 }
 
 /// Account management.
@@ -67,36 +65,17 @@ pub struct AccountProvider {
     /// When unlocking account permanently we additionally keep a raw secret in memory
     /// to increase the performance of transaction signing.
     unlock_keep_secret: bool,
-    /// Disallowed accounts.
-    blacklisted_accounts: Vec<Address>,
 }
 
 impl AccountProvider {
     /// Creates new account provider.
     pub fn new(sstore: Box<dyn SecretStore>, settings: AccountProviderSettings) -> Self {
-        if let Ok(accounts) = sstore.accounts() {
-            for account in accounts
-                .into_iter()
-                .filter(|a| settings.blacklisted_accounts.contains(&a.address))
-            {
-                warn!("Local Account {} has a blacklisted (known to be weak) address and will be ignored",
-					account.address);
-            }
-        }
-
-        // Remove blacklisted accounts from address book.
-        let mut address_book = AddressBook::new(&sstore.local_path());
-        for addr in &settings.blacklisted_accounts {
-            address_book.remove(*addr);
-        }
-
         AccountProvider {
             unlocked_secrets: RwLock::new(HashMap::new()),
             unlocked: RwLock::new(HashMap::new()),
-            address_book: RwLock::new(address_book),
+            address_book: RwLock::new(AddressBook::new(&sstore.local_path())),
             sstore: sstore,
             unlock_keep_secret: settings.unlock_keep_secret,
-            blacklisted_accounts: settings.blacklisted_accounts,
         }
     }
 
@@ -111,7 +90,6 @@ impl AccountProvider {
                     .expect("MemoryDirectory load always succeeds; qed"),
             ),
             unlock_keep_secret: false,
-            blacklisted_accounts: vec![],
         }
     }
 
@@ -139,10 +117,6 @@ impl AccountProvider {
         let account = self
             .sstore
             .insert_account(SecretVaultRef::Root, secret, password)?;
-        if self.blacklisted_accounts.contains(&account.address) {
-            self.sstore.remove_account(&account, password)?;
-            return Err(Error::InvalidAccount.into());
-        }
         Ok(account.address)
     }
 
@@ -180,26 +154,18 @@ impl AccountProvider {
         let account = self
             .sstore
             .import_wallet(SecretVaultRef::Root, json, password, gen_id)?;
-        if self.blacklisted_accounts.contains(&account.address) {
-            self.sstore.remove_account(&account, password)?;
-            return Err(Error::InvalidAccount.into());
-        }
         Ok(Address::from(account.address).into())
     }
 
     /// Checks whether an account with a given address is present.
     pub fn has_account(&self, address: Address) -> bool {
-        self.sstore.account_ref(&address).is_ok() && !self.blacklisted_accounts.contains(&address)
+        self.sstore.account_ref(&address).is_ok()
     }
 
     /// Returns addresses of all accounts.
     pub fn accounts(&self) -> Result<Vec<Address>, Error> {
         let accounts = self.sstore.accounts()?;
-        Ok(accounts
-            .into_iter()
-            .map(|a| a.address)
-            .filter(|address| !self.blacklisted_accounts.contains(address))
-            .collect())
+        Ok(accounts.into_iter().map(|a| a.address).collect())
     }
 
     /// Returns the address of default account.
@@ -233,7 +199,6 @@ impl AccountProvider {
             .sstore
             .accounts()?
             .into_iter()
-            .filter(|a| !self.blacklisted_accounts.contains(&a.address))
             .map(|a| {
                 (
                     a.address.clone(),
@@ -548,7 +513,7 @@ impl AccountProvider {
 mod tests {
     use super::{AccountProvider, Unlock};
     use ethereum_types::H256;
-    use ethkey::{Address, Generator, Random};
+    use ethkey::{Generator, Random};
     use ethstore::{Derivation, StoreAccountRef};
     use std::time::{Duration, Instant};
 
@@ -709,24 +674,5 @@ mod tests {
             .unwrap()
             .unlock = Unlock::Timed(Instant::now());
         assert!(ap.sign(kp.address(), None, Default::default()).is_err());
-    }
-
-    #[test]
-    fn should_not_return_blacklisted_account() {
-        // given
-        let mut ap = AccountProvider::transient_provider();
-        let acc = ap.new_account(&"test".into()).unwrap();
-        ap.blacklisted_accounts = vec![acc];
-
-        // then
-        assert_eq!(
-            ap.accounts_info()
-                .unwrap()
-                .keys()
-                .cloned()
-                .collect::<Vec<Address>>(),
-            vec![]
-        );
-        assert_eq!(ap.accounts().unwrap(), vec![]);
     }
 }

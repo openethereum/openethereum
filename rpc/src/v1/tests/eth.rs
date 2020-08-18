@@ -386,10 +386,6 @@ fn eth_transaction_count() {
         Spec::load(&env::temp_dir(), TRANSACTION_COUNT_SPEC).expect("invalid chain spec"),
     );
     let address = tester.accounts.insert_account(secret, &"".into()).unwrap();
-    tester
-        .accounts
-        .unlock_account_permanently(address, "".into())
-        .unwrap();
 
     let req_before = r#"{
 		"jsonrpc": "2.0",

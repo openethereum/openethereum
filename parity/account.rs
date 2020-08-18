@@ -53,7 +53,7 @@ pub fn execute(_cmd: AccountCmd) -> Result<String, String> {
 #[cfg(feature = "accounts")]
 mod command {
     use super::*;
-    use accounts::{AccountProvider, AccountProviderSettings};
+    use accounts::AccountProvider;
     use ethstore::{accounts_dir::RootDiskDirectory, import_account, import_accounts, EthStore};
     use helpers::{password_from_file, password_prompt};
     use std::path::PathBuf;
@@ -92,7 +92,7 @@ mod command {
 
         let dir = Box::new(keys_dir(n.path, n.spec)?);
         let secret_store = Box::new(secret_store(dir, Some(n.iterations))?);
-        let acc_provider = AccountProvider::new(secret_store, AccountProviderSettings::default());
+        let acc_provider = AccountProvider::new(secret_store);
         let new_account = acc_provider
             .new_account(&password)
             .map_err(|e| format!("Could not create new account: {}", e))?;
@@ -102,7 +102,7 @@ mod command {
     fn list(list_cmd: ListAccounts) -> Result<String, String> {
         let dir = Box::new(keys_dir(list_cmd.path, list_cmd.spec)?);
         let secret_store = Box::new(secret_store(dir, None)?);
-        let acc_provider = AccountProvider::new(secret_store, AccountProviderSettings::default());
+        let acc_provider = AccountProvider::new(secret_store);
         let accounts = acc_provider.accounts().map_err(|e| format!("{}", e))?;
         let result = accounts
             .into_iter()

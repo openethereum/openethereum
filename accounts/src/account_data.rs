@@ -16,30 +16,11 @@
 
 //! Account Metadata
 
-use std::{collections::HashMap, time::Instant};
+use std::collections::HashMap;
 
-use ethkey::{Address, Password};
+use ethkey::Address;
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
-
-/// Type of unlock.
-#[derive(Clone, PartialEq)]
-pub enum Unlock {
-    /// If account is unlocked temporarily, it should be locked after first usage.
-    OneTime,
-    /// Account unlocked permanently can always sign message.
-    /// Use with caution.
-    Perm,
-    /// Account unlocked with a timeout
-    Timed(Instant),
-}
-
-/// Data associated with account.
-#[derive(Clone)]
-pub struct AccountData {
-    pub unlock: Unlock,
-    pub password: Password,
-}
 
 /// Collected account metadata
 #[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize)]

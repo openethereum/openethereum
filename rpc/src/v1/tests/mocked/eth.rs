@@ -1069,10 +1069,6 @@ fn rpc_eth_send_raw_transaction() {
         .accounts_provider
         .new_account(&"abcd".into())
         .unwrap();
-    tester
-        .accounts_provider
-        .unlock_account_permanently(address, "abcd".into())
-        .unwrap();
 
     let t = Transaction {
         nonce: U256::zero(),
@@ -1086,7 +1082,7 @@ fn rpc_eth_send_raw_transaction() {
     };
     let signature = tester
         .accounts_provider
-        .sign(address, None, t.hash(None))
+        .sign(address, "abcd".into(), t.hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 

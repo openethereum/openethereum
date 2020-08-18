@@ -70,7 +70,6 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use upgrade::upgrade_key_location;
 
     pub use accounts::AccountProvider;
 
@@ -83,61 +82,22 @@ mod accounts {
         dirs: &Directories,
         data_dir: &str,
         cfg: AccountsConfig,
-        passwords: &[Password],
     ) -> Result<AccountProvider, String> {
-        use accounts::AccountProviderSettings;
         use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 
         let path = dirs.keys_path(data_dir);
-        upgrade_key_location(&dirs.legacy_keys_path(cfg.testnet), &path);
         let dir = Box::new(
             RootDiskDirectory::create(&path)
                 .map_err(|e| format!("Could not open keys directory: {}", e))?,
         );
-        let account_settings = AccountProviderSettings {
-            unlock_keep_secret: cfg.enable_fast_unlock,
-        };
 
         let ethstore = EthStore::open_with_iterations(dir, cfg.iterations)
             .map_err(|e| format!("Could not open keys directory: {}", e))?;
-        if cfg.refresh_time > 0 {
-            ethstore.set_refresh_time(::std::time::Duration::from_secs(cfg.refresh_time));
-        }
-        let account_provider = AccountProvider::new(Box::new(ethstore), account_settings);
+        let account_provider = AccountProvider::new(Box::new(ethstore));
 
         // Add development account if running dev chain:
         if let SpecType::Dev = *spec {
             insert_dev_account(&account_provider);
-        }
-
-        for a in cfg.unlocked_accounts {
-            // Check if the account exists
-            if !account_provider.has_account(a) {
-                return Err(format!(
-                    "Account {} not found for the current chain. {}",
-                    a,
-                    build_create_account_hint(spec, &dirs.keys)
-                ));
-            }
-
-            // Check if any passwords have been read from the password file(s)
-            if passwords.is_empty() {
-                return Err(format!(
-                    "No password found to unlock account {}. {}",
-                    a, VERIFY_PASSWORD_HINT
-                ));
-            }
-
-            if !passwords.iter().any(|p| {
-                account_provider
-                    .unlock_account_permanently(a, (*p).clone())
-                    .is_ok()
-            }) {
-                return Err(format!(
-                    "No valid password to unlock account {}. {}",
-                    a, VERIFY_PASSWORD_HINT
-                ));
-            }
         }
 
         Ok(account_provider)

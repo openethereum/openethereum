@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use accounts::{AccountProvider, AccountProviderSettings};
+use accounts::AccountProvider;
 use ethereum_types::Address;
 use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 use tempdir::TempDir;
@@ -36,10 +36,7 @@ fn accounts_provider() -> Arc<AccountProvider> {
 fn accounts_provider_with_vaults_support(temp_path: &str) -> Arc<AccountProvider> {
     let root_keys_dir = RootDiskDirectory::create(temp_path).unwrap();
     let secret_store = EthStore::open(Box::new(root_keys_dir)).unwrap();
-    Arc::new(AccountProvider::new(
-        Box::new(secret_store),
-        AccountProviderSettings::default(),
-    ))
+    Arc::new(AccountProvider::new(Box::new(secret_store)))
 }
 
 fn setup_with_accounts_provider(accounts_provider: Arc<AccountProvider>) -> ParityAccountsTester {

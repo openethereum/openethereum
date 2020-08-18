@@ -197,7 +197,7 @@ fn rpc_secretstore_generate_document_key() {
         .accounts
         .decrypt(
             "00dfE63B22312ab4329aD0d28CaD8Af987A01932".parse().unwrap(),
-            Some("password".into()),
+            "password".into(),
             &DEFAULT_MAC,
             &generation_response.encrypted_key.0
         )

@@ -313,7 +313,7 @@ impl ParityAccounts for ParityAccountsClient {
         self.accounts
             .derive_account(
                 &addr,
-                Some(password),
+                password,
                 Derive::from(derivation)
                     .to_derivation()
                     .map_err(|c| errors::account("Could not parse derivation request: {:?}", c))?,
@@ -335,7 +335,7 @@ impl ParityAccounts for ParityAccountsClient {
         self.accounts
             .derive_account(
                 &addr,
-                Some(password),
+                password,
                 Derive::from(derivation)
                     .to_derivation()
                     .map_err(|c| errors::account("Could not parse derivation request: {:?}", c))?,

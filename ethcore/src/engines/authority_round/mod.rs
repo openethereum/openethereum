@@ -1967,16 +1967,12 @@ mod tests {
         // Two validators.
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 2, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr, "0".into(), header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&2usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_err());
         header.set_difficulty(calculate_score(0, 1, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr, "0".into(), header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
@@ -2000,9 +1996,7 @@ mod tests {
         // Two validators.
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 1, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr, "0".into(), header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
@@ -2025,9 +2019,7 @@ mod tests {
 
         let engine = Spec::new_test_round().engine;
 
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr, "0".into(), header.bare_hash()).unwrap();
         // Two validators.
         // Spec starts with step 2.
         header.set_seal(vec![encode(&5usize), encode(&(&*signature as &[u8]))]);
@@ -2495,9 +2487,7 @@ mod tests {
         header.set_gas_limit("222222".parse::<U256>().unwrap());
         header.set_author(addr1);
 
-        let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr1, "1".into(), header.bare_hash()).unwrap();
 
         // empty step with invalid step
         let empty_steps = vec![SealedEmptyStep {
@@ -2541,9 +2531,7 @@ mod tests {
 
         let empty_steps = vec![empty_step2, empty_step3];
         header.set_difficulty(calculate_score(0, 4, 2));
-        let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
-            .unwrap();
+        let signature = tap.sign(addr1, "1".into(), header.bare_hash()).unwrap();
         set_empty_steps_seal(&mut header, 4, &signature, &empty_steps);
 
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
@@ -2718,7 +2706,7 @@ mod tests {
         ];
         let step = 2;
         let signature = tap
-            .sign(accounts[0], Some("1".into()), header.bare_hash())
+            .sign(accounts[0], "1".into(), header.bare_hash())
             .unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));
@@ -2759,7 +2747,7 @@ mod tests {
 
         let step = 3;
         let signature = tap
-            .sign(accounts[1], Some("0".into()), header.bare_hash())
+            .sign(accounts[1], "0".into(), header.bare_hash())
             .unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));

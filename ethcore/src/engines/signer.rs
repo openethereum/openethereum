@@ -56,8 +56,7 @@ mod test_signer {
 
     impl EngineSigner for (Arc<AccountProvider>, Address, Password) {
         fn sign(&self, hash: H256) -> Result<Signature, ethkey::Error> {
-            match self.0.sign(self.1, Some(self.2.clone()), hash) {
-                Err(SignError::NotUnlocked) => unreachable!(),
+            match self.0.sign(self.1, self.2.clone(), hash) {
                 Err(SignError::NotFound) => Err(ethkey::Error::InvalidAddress),
                 Err(SignError::SStore(accounts::Error::EthKey(err))) => Err(err),
                 Err(SignError::SStore(accounts::Error::EthKeyCrypto(err))) => {

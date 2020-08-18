@@ -53,7 +53,7 @@ impl SecretStoreClient {
     /// Decrypt public key using account' private key
     fn decrypt_key(&self, address: H160, password: Password, key: Bytes) -> Result<Vec<u8>> {
         self.accounts
-            .decrypt(address.into(), Some(password), &DEFAULT_MAC, &key.0)
+            .decrypt(address.into(), password, &DEFAULT_MAC, &key.0)
             .map_err(|e| errors::account("Could not decrypt key.", e))
     }
 
@@ -116,7 +116,7 @@ impl SecretStore for SecretStoreClient {
 
     fn sign_raw_hash(&self, address: H160, password: Password, raw_hash: H256) -> Result<Bytes> {
         self.accounts
-            .sign(address.into(), Some(password), raw_hash.into())
+            .sign(address.into(), password, raw_hash.into())
             .map(|s| Bytes::new((*s).to_vec()))
             .map_err(|e| errors::account("Could not sign raw hash.", e))
     }

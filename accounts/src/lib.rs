@@ -22,20 +22,12 @@ mod account_data;
 mod error;
 mod stores;
 
-use self::{
-    account_data::{AccountData, Unlock},
-    stores::AddressBook,
-};
+use self::stores::AddressBook;
 
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::collections::HashMap;
 
 use ethkey::{Address, Generator, Message, Password, Public, Random, Secret};
-use ethstore::{
-    accounts_dir::MemoryDirectory, EthStore, SecretStore, SecretVaultRef, StoreAccountRef,
-};
+use ethstore::{accounts_dir::MemoryDirectory, EthStore, SecretStore, SecretVaultRef};
 use log::*;
 use parking_lot::RwLock;
 
@@ -44,52 +36,31 @@ pub use ethstore::{Derivation, Error, IndexDerivation, KeyFile};
 
 pub use self::{account_data::AccountMeta, error::SignError};
 
-/// Account management settings.
-#[derive(Debug, Default)]
-pub struct AccountProviderSettings {
-    /// Store raw account secret when unlocking the account permanently.
-    pub unlock_keep_secret: bool,
-}
-
 /// Account management.
-/// Responsible for unlocking accounts.
 pub struct AccountProvider {
-    /// For performance reasons some methods can re-use unlocked secrets.
-    unlocked_secrets: RwLock<HashMap<StoreAccountRef, Secret>>,
-    /// Unlocked account data.
-    unlocked: RwLock<HashMap<StoreAccountRef, AccountData>>,
     /// Address book.
     address_book: RwLock<AddressBook>,
     /// Accounts on disk
     sstore: Box<dyn SecretStore>,
-    /// When unlocking account permanently we additionally keep a raw secret in memory
-    /// to increase the performance of transaction signing.
-    unlock_keep_secret: bool,
 }
 
 impl AccountProvider {
     /// Creates new account provider.
-    pub fn new(sstore: Box<dyn SecretStore>, settings: AccountProviderSettings) -> Self {
+    pub fn new(sstore: Box<dyn SecretStore>) -> Self {
         AccountProvider {
-            unlocked_secrets: RwLock::new(HashMap::new()),
-            unlocked: RwLock::new(HashMap::new()),
             address_book: RwLock::new(AddressBook::new(&sstore.local_path())),
             sstore: sstore,
-            unlock_keep_secret: settings.unlock_keep_secret,
         }
     }
 
     /// Creates not disk backed provider.
     pub fn transient_provider() -> Self {
         AccountProvider {
-            unlocked_secrets: RwLock::new(HashMap::new()),
-            unlocked: RwLock::new(HashMap::new()),
             address_book: RwLock::new(AddressBook::transient()),
             sstore: Box::new(
                 EthStore::open(Box::new(MemoryDirectory::default()))
                     .expect("MemoryDirectory load always succeeds; qed"),
             ),
-            unlock_keep_secret: false,
         }
     }
 
@@ -112,7 +83,6 @@ impl AccountProvider {
     }
 
     /// Inserts new account into underlying store.
-    /// Does not unlock account!
     pub fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error> {
         let account = self
             .sstore
@@ -121,19 +91,15 @@ impl AccountProvider {
     }
 
     /// Generates new derived account based on the existing one
-    /// If password is not provided, account must be unlocked
     /// New account will be created with the same password (if save: true)
     pub fn derive_account(
         &self,
         address: &Address,
-        password: Option<Password>,
+        password: Password,
         derivation: Derivation,
         save: bool,
     ) -> Result<Address, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        let password = password
-            .map(Ok)
-            .unwrap_or_else(|| self.password(&account))?;
         Ok(if save {
             self.sstore
                 .insert_derived(SecretVaultRef::Root, &account, &password, derivation)?
@@ -270,44 +236,6 @@ impl AccountProvider {
             .export_account(&self.sstore.account_ref(address)?, &password)
     }
 
-    /// Helper method used for unlocking accounts.
-    fn unlock_account(
-        &self,
-        address: Address,
-        password: Password,
-        unlock: Unlock,
-    ) -> Result<(), Error> {
-        let account = self.sstore.account_ref(&address)?;
-
-        // check if account is already unlocked permanently, if it is, do nothing
-        let mut unlocked = self.unlocked.write();
-        if let Some(data) = unlocked.get(&account) {
-            if let Unlock::Perm = data.unlock {
-                return Ok(());
-            }
-        }
-
-        if self.unlock_keep_secret && unlock == Unlock::Perm {
-            // verify password and get the secret
-            let secret = self.sstore.raw_secret(&account, &password)?;
-            self.unlocked_secrets
-                .write()
-                .insert(account.clone(), secret);
-        } else {
-            // verify password by signing dump message
-            // result may be discarded
-            let _ = self.sstore.sign(&account, &password, &Default::default())?;
-        }
-
-        let data = AccountData {
-            unlock: unlock,
-            password: password,
-        };
-
-        unlocked.insert(account, data);
-        Ok(())
-    }
-
     /// Get account secret.
     pub fn get_secret(&self, address: Address, password: Password) -> Result<Secret, Error> {
         let account = self.sstore.account_ref(&address)?;
@@ -315,107 +243,26 @@ impl AccountProvider {
         Ok(secret)
     }
 
-    fn password(&self, account: &StoreAccountRef) -> Result<Password, SignError> {
-        let mut unlocked = self.unlocked.write();
-        let data = unlocked.get(account).ok_or(SignError::NotUnlocked)?.clone();
-        if let Unlock::OneTime = data.unlock {
-            unlocked
-                .remove(account)
-                .expect("data exists: so key must exist: qed");
-        }
-        if let Unlock::Timed(ref end) = data.unlock {
-            if Instant::now() > *end {
-                unlocked
-                    .remove(account)
-                    .expect("data exists: so key must exist: qed");
-                return Err(SignError::NotUnlocked);
-            }
-        }
-        Ok(data.password)
-    }
-
-    /// Unlocks account permanently.
-    pub fn unlock_account_permanently(
-        &self,
-        account: Address,
-        password: Password,
-    ) -> Result<(), Error> {
-        self.unlock_account(account, password, Unlock::Perm)
-    }
-
-    /// Unlocks account temporarily (for one signing).
-    pub fn unlock_account_temporarily(
-        &self,
-        account: Address,
-        password: Password,
-    ) -> Result<(), Error> {
-        self.unlock_account(account, password, Unlock::OneTime)
-    }
-
-    /// Unlocks account temporarily with a timeout.
-    pub fn unlock_account_timed(
-        &self,
-        account: Address,
-        password: Password,
-        duration: Duration,
-    ) -> Result<(), Error> {
-        self.unlock_account(account, password, Unlock::Timed(Instant::now() + duration))
-    }
-
-    /// Checks if given account is unlocked
-    pub fn is_unlocked(&self, address: &Address) -> bool {
-        let unlocked = self.unlocked.read();
-        let unlocked_secrets = self.unlocked_secrets.read();
-        self.sstore
-            .account_ref(address)
-            .map(|r| unlocked.get(&r).is_some() || unlocked_secrets.get(&r).is_some())
-            .unwrap_or(false)
-    }
-
-    /// Checks if given account is unlocked permanently
-    pub fn is_unlocked_permanently(&self, address: &Address) -> bool {
-        let unlocked = self.unlocked.read();
-        self.sstore
-            .account_ref(address)
-            .map(|r| {
-                unlocked
-                    .get(&r)
-                    .map_or(false, |account| account.unlock == Unlock::Perm)
-            })
-            .unwrap_or(false)
-    }
-
     /// Signs the message. If password is not provided the account must be unlocked.
     pub fn sign(
         &self,
         address: Address,
-        password: Option<Password>,
+        password: Password,
         message: Message,
     ) -> Result<Signature, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        match self.unlocked_secrets.read().get(&account) {
-            Some(secret) => Ok(self.sstore.sign_with_secret(&secret, &message)?),
-            None => {
-                let password = password
-                    .map(Ok)
-                    .unwrap_or_else(|| self.password(&account))?;
-                Ok(self.sstore.sign(&account, &password, &message)?)
-            }
-        }
+        Ok(self.sstore.sign(&account, &password, &message)?)
     }
 
     /// Signs message using the derived secret. If password is not provided the account must be unlocked.
     pub fn sign_derived(
         &self,
         address: &Address,
-        password: Option<Password>,
+        password: Password,
         derivation: Derivation,
         message: Message,
     ) -> Result<Signature, SignError> {
         let account = self.sstore.account_ref(address)?;
-        let password = password
-            .map(Ok)
-            .unwrap_or_else(|| self.password(&account))?;
         Ok(self
             .sstore
             .sign_derived(&account, &password, derivation, &message)?)
@@ -425,14 +272,11 @@ impl AccountProvider {
     pub fn decrypt(
         &self,
         address: Address,
-        password: Option<Password>,
+        password: Password,
         shared_mac: &[u8],
         message: &[u8],
     ) -> Result<Vec<u8>, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        let password = password
-            .map(Ok)
-            .unwrap_or_else(|| self.password(&account))?;
         Ok(self
             .sstore
             .decrypt(&account, &password, shared_mac, message)?)
@@ -442,13 +286,10 @@ impl AccountProvider {
     pub fn agree(
         &self,
         address: Address,
-        password: Option<Password>,
+        password: Password,
         other_public: &Public,
     ) -> Result<Secret, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        let password = password
-            .map(Ok)
-            .unwrap_or_else(|| self.password(&account))?;
         Ok(self.sstore.agree(&account, &password, other_public)?)
     }
 
@@ -511,28 +352,10 @@ impl AccountProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{AccountProvider, Unlock};
+    use super::AccountProvider;
     use ethereum_types::H256;
     use ethkey::{Generator, Random};
-    use ethstore::{Derivation, StoreAccountRef};
-    use std::time::{Duration, Instant};
-
-    #[test]
-    fn unlock_account_temp() {
-        let kp = Random.generate().unwrap();
-        let ap = AccountProvider::transient_provider();
-        assert!(ap
-            .insert_account(kp.secret().clone(), &"test".into())
-            .is_ok());
-        assert!(ap
-            .unlock_account_temporarily(kp.address(), "test1".into())
-            .is_err());
-        assert!(ap
-            .unlock_account_temporarily(kp.address(), "test".into())
-            .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_err());
-    }
+    use ethstore::Derivation;
 
     #[test]
     fn derived_account_nosave() {
@@ -541,24 +364,14 @@ mod tests {
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
             .is_ok());
-        assert!(ap
-            .unlock_account_permanently(kp.address(), "base".into())
-            .is_ok());
 
-        let derived_addr = ap
-            .derive_account(
-                &kp.address(),
-                None,
-                Derivation::SoftHash(H256::from(999)),
-                false,
-            )
-            .expect("Derivation should not fail");
-
-        assert!(
-            ap.unlock_account_permanently(derived_addr, "base".into())
-                .is_err(),
-            "There should be an error because account is not supposed to be saved"
-        );
+        ap.derive_account(
+            &kp.address(),
+            "base".into(),
+            Derivation::SoftHash(H256::from(999)),
+            false,
+        )
+        .expect("Derivation should not fail");
     }
 
     #[test]
@@ -568,30 +381,14 @@ mod tests {
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
             .is_ok());
-        assert!(ap
-            .unlock_account_permanently(kp.address(), "base".into())
-            .is_ok());
 
-        let derived_addr = ap
-            .derive_account(
-                &kp.address(),
-                None,
-                Derivation::SoftHash(H256::from(999)),
-                true,
-            )
-            .expect("Derivation should not fail");
-
-        assert!(
-            ap.unlock_account_permanently(derived_addr, "base_wrong".into())
-                .is_err(),
-            "There should be an error because password is invalid"
-        );
-
-        assert!(
-            ap.unlock_account_permanently(derived_addr, "base".into())
-                .is_ok(),
-            "Should be ok because account is saved and password is valid"
-        );
+        ap.derive_account(
+            &kp.address(),
+            "base".into(),
+            Derivation::SoftHash(H256::from(999)),
+            true,
+        )
+        .expect("Derivation should not fail");
     }
 
     #[test]
@@ -601,78 +398,29 @@ mod tests {
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
             .is_ok());
-        assert!(ap
-            .unlock_account_permanently(kp.address(), "base".into())
-            .is_ok());
 
         let derived_addr = ap
             .derive_account(
                 &kp.address(),
-                None,
+                "base".into(),
                 Derivation::SoftHash(H256::from(1999)),
                 true,
             )
             .expect("Derivation should not fail");
-        ap.unlock_account_permanently(derived_addr, "base".into())
-            .expect("Should be ok because account is saved and password is valid");
 
         let msg = Default::default();
         let signed_msg1 = ap
-            .sign(derived_addr, None, msg)
+            .sign(derived_addr, "base".into(), msg)
             .expect("Signing with existing unlocked account should not fail");
         let signed_msg2 = ap
             .sign_derived(
                 &kp.address(),
-                None,
+                "base".into(),
                 Derivation::SoftHash(H256::from(1999)),
                 msg,
             )
             .expect("Derived signing with existing unlocked account should not fail");
 
         assert_eq!(signed_msg1, signed_msg2, "Signed messages should match");
-    }
-
-    #[test]
-    fn unlock_account_perm() {
-        let kp = Random.generate().unwrap();
-        let ap = AccountProvider::transient_provider();
-        assert!(ap
-            .insert_account(kp.secret().clone(), &"test".into())
-            .is_ok());
-        assert!(ap
-            .unlock_account_permanently(kp.address(), "test1".into())
-            .is_err());
-        assert!(ap
-            .unlock_account_permanently(kp.address(), "test".into())
-            .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap
-            .unlock_account_temporarily(kp.address(), "test".into())
-            .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-    }
-
-    #[test]
-    fn unlock_account_timer() {
-        let kp = Random.generate().unwrap();
-        let ap = AccountProvider::transient_provider();
-        assert!(ap
-            .insert_account(kp.secret().clone(), &"test".into())
-            .is_ok());
-        assert!(ap
-            .unlock_account_timed(kp.address(), "test1".into(), Duration::from_secs(60))
-            .is_err());
-        assert!(ap
-            .unlock_account_timed(kp.address(), "test".into(), Duration::from_secs(60))
-            .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        ap.unlocked
-            .write()
-            .get_mut(&StoreAccountRef::root(kp.address()))
-            .unwrap()
-            .unlock = Unlock::Timed(Instant::now());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_err());
     }
 }

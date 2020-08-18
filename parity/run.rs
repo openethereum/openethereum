@@ -258,7 +258,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         &cmd.dirs,
         &spec.data_dir,
         cmd.acc_conf,
-        &passwords,
     )?);
 
     // spin up event loop

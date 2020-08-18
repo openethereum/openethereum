@@ -238,22 +238,14 @@ impl str::FromStr for ResealPolicy {
 #[derive(Debug, PartialEq)]
 pub struct AccountsConfig {
     pub iterations: NonZeroU32,
-    pub refresh_time: u64,
-    pub testnet: bool,
     pub password_files: Vec<String>,
-    pub unlocked_accounts: Vec<Address>,
-    pub enable_fast_unlock: bool,
 }
 
 impl Default for AccountsConfig {
     fn default() -> Self {
         AccountsConfig {
             iterations: NonZeroU32::new(10240).expect("10240 > 0; qed"),
-            refresh_time: 5,
-            testnet: false,
             password_files: Vec::new(),
-            unlocked_accounts: Vec::new(),
-            enable_fast_unlock: false,
         }
     }
 }

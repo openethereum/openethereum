@@ -486,16 +486,12 @@ impl Configuration {
             .ok_or_else(|| "--keys-iterations must be non-zero")?;
         let cfg = AccountsConfig {
             iterations: keys_iterations,
-            refresh_time: self.args.arg_accounts_refresh,
-            testnet: false,
             password_files: self
                 .args
                 .arg_password
                 .iter()
                 .map(|s| replace_home(&self.directories().base, s))
                 .collect(),
-            unlocked_accounts: to_addresses(&self.args.arg_unlock)?,
-            enable_fast_unlock: self.args.flag_fast_unlock,
         };
 
         Ok(cfg)

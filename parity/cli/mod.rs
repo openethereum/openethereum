@@ -249,21 +249,9 @@ usage! {
             "Add SHIFT to all port numbers Parity is listening on. Includes network port and all servers (HTTP JSON-RPC, WebSockets JSON-RPC, SecretStore).",
 
         ["Account Options"]
-            FLAG flag_fast_unlock: (bool) = false, or |c: &Config| c.account.as_ref()?.fast_unlock.clone(),
-            "--fast-unlock",
-            "Use drastically faster unlocking mode. This setting causes raw secrets to be stored unprotected in memory, so use with care.",
-
             ARG arg_keys_iterations: (u32) = 10240u32, or |c: &Config| c.account.as_ref()?.keys_iterations.clone(),
             "--keys-iterations=[NUM]",
             "Specify the number of iterations to use when deriving key from the password (bigger is more secure)",
-
-            ARG arg_accounts_refresh: (u64) = 5u64, or |c: &Config| c.account.as_ref()?.refresh_time.clone(),
-            "--accounts-refresh=[TIME]",
-            "Specify the cache time of accounts read from disk. If you manage thousands of accounts set this to 0 to disable refresh.",
-
-            ARG arg_unlock: (Option<String>) = None, or |c: &Config| c.account.as_ref()?.unlock.as_ref().map(|vec| vec.join(",")),
-            "--unlock=[ACCOUNTS]",
-            "Unlock ACCOUNTS for the duration of the execution. ACCOUNTS is a comma-delimited list of addresses.",
 
             ARG arg_password: (Vec<String>) = Vec::new(), or |c: &Config| c.account.as_ref()?.password.clone(),
             "--password=[FILE]...",
@@ -794,7 +782,6 @@ struct Account {
     password: Option<Vec<String>>,
     keys_iterations: Option<u32>,
     refresh_time: Option<u64>,
-    fast_unlock: Option<bool>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1199,11 +1186,8 @@ mod tests {
                 flag_unsafe_expose: false,
 
                 // -- Account Options
-                arg_unlock: Some("0xdeadbeefcafe0000000000000000000000000000".into()),
                 arg_password: vec!["~/.safe/password.file".into()],
                 arg_keys_iterations: 10240u32,
-                arg_accounts_refresh: 5u64,
-                flag_fast_unlock: false,
 
                 // -- Networking Options
                 flag_no_warp: false,
@@ -1403,7 +1387,6 @@ mod tests {
                     password: Some(vec!["passwdfile path".into()]),
                     keys_iterations: None,
                     refresh_time: None,
-                    fast_unlock: None,
                 }),
                 network: Some(Network {
                     warp: Some(false),

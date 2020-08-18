@@ -43,7 +43,6 @@ mod codes {
     pub const DATABASE_ERROR: i64 = -32017;
     pub const ACCOUNT_ERROR: i64 = -32023;
     pub const ENCRYPTION_ERROR: i64 = -32055;
-    pub const ENCODING_ERROR: i64 = -32058;
     pub const FETCH_ERROR: i64 = -32060;
     pub const NO_PEERS: i64 = -32066;
     pub const DEPRECATED: i64 = -32070;

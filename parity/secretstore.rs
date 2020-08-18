@@ -180,7 +180,7 @@ mod server {
                             .iter()
                             .find(|p| {
                                 deps.account_provider
-                                    .sign(account.clone(), Some((*p).clone()), Default::default())
+                                    .sign(account.clone(), (*p).clone(), Default::default())
                                     .is_ok()
                             })
                             .ok_or_else(|| {

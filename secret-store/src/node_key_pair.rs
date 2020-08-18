@@ -98,22 +98,14 @@ mod accounts {
 
         fn sign(&self, data: &H256) -> Result<Signature, EthKeyError> {
             self.account_provider
-                .sign(
-                    self.address.clone(),
-                    Some(self.password.clone()),
-                    data.clone(),
-                )
+                .sign(self.address.clone(), self.password.clone(), data.clone())
                 .map_err(|e| EthKeyError::Custom(format!("{}", e)))
         }
 
         fn compute_shared_key(&self, peer_public: &Public) -> Result<KeyPair, EthKeyError> {
             KeyPair::from_secret(
                 self.account_provider
-                    .agree(
-                        self.address.clone(),
-                        Some(self.password.clone()),
-                        peer_public,
-                    )
+                    .agree(self.address.clone(), self.password.clone(), peer_public)
                     .map_err(|e| EthKeyError::Custom(format!("{}", e)))?,
             )
         }

@@ -119,18 +119,6 @@ impl Directories {
         dir
     }
 
-    /// Legacy keys path
-    // TODO: remove in 1.7
-    pub fn legacy_keys_path(&self, testnet: bool) -> PathBuf {
-        let mut dir = Path::new(&self.base).to_path_buf();
-        if testnet {
-            dir.push("testnet_keys");
-        } else {
-            dir.push("keys");
-        }
-        dir
-    }
-
     /// Get the keys path
     pub fn keys_path(&self, data_dir: &str) -> PathBuf {
         let mut dir = PathBuf::from(&self.keys);

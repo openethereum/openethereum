@@ -918,9 +918,9 @@ where
     });
 
     // the watcher must be kept alive.
-    let watcher = match cmd.snapshot_conf.no_periodic {
-        true => None,
-        false => {
+    let watcher = match cmd.snapshot_conf.enable {
+        false => None,
+        true => {
             let sync = sync_provider.clone();
             let client = client.clone();
             let watcher = Arc::new(snapshot::Watcher::new(

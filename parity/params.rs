@@ -294,7 +294,6 @@ impl GasPricerConfig {
 #[derive(Debug, PartialEq)]
 pub struct MinerExtras {
     pub author: Address,
-    pub engine_signer: Address,
     pub extra_data: Vec<u8>,
     pub gas_range_target: (U256, U256),
     pub work_notify: Vec<String>,
@@ -305,7 +304,6 @@ impl Default for MinerExtras {
     fn default() -> Self {
         MinerExtras {
             author: Default::default(),
-            engine_signer: Default::default(),
             extra_data: version_data(),
             gas_range_target: (8_000_000.into(), 10_000_000.into()),
             work_notify: Default::default(),

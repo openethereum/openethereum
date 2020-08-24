@@ -621,10 +621,6 @@ usage! {
             "--author=[ADDRESS]",
             "Specify the block author (aka \"coinbase\") address for sending block rewards from sealed blocks. NOTE: MINING WILL NOT WORK WITHOUT THIS OPTION.", // Sealing/Mining Option
 
-            ARG arg_engine_signer: (Option<String>) = None, or |c: &Config| c.mining.as_ref()?.engine_signer.clone(),
-            "--engine-signer=[ADDRESS]",
-            "Specify the address which should be used to sign consensus messages and issue blocks. Relevant only to non-PoW chains.",
-
             ARG arg_tx_gas_limit: (Option<String>) = None, or |c: &Config| c.mining.as_ref()?.tx_gas_limit.clone(),
             "--tx-gas-limit=[GAS]",
             "Apply a limit of GAS as the maximum amount of gas a single transaction may have for it to be mined.",
@@ -1261,7 +1257,6 @@ mod tests {
 
                 // -- Sealing/Mining Options
                 arg_author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
-                arg_engine_signer: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
                 flag_force_sealing: true,
                 arg_reseal_on_txs: "all".into(),
                 arg_reseal_min_period: 4000u64,

@@ -381,7 +381,6 @@ impl Configuration {
             author: self.author()?,
             extra_data: self.extra_data()?,
             gas_range_target: (floor, ceil),
-            engine_signer: self.engine_signer()?,
             work_notify: self.work_notify(),
             local_accounts: HashSet::from_iter(
                 to_addresses(&self.args.arg_tx_queue_locals)?.into_iter(),
@@ -393,10 +392,6 @@ impl Configuration {
 
     fn author(&self) -> Result<Address, String> {
         to_address(self.args.arg_author.clone())
-    }
-
-    fn engine_signer(&self) -> Result<Address, String> {
-        to_address(self.args.arg_engine_signer.clone())
     }
 
     fn format(&self) -> Result<Option<DataFormat>, String> {

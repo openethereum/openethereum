@@ -53,6 +53,7 @@ use parity_runtime::Runtime;
 use parity_version::version;
 use rpc;
 use rpc_apis;
+use secrets::Secrets;
 use secretstore;
 use sync::{self, SyncConfig};
 use user_defaults::UserDefaults;
@@ -138,7 +139,11 @@ impl ::local_store::NodeInfo for FullNodeInfo {
 /// Executes the given run command.
 ///
 /// On error, returns what to print on stderr.
-pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient, String> {
+pub fn execute(
+    cmd: RunCmd,
+    secrets: Secrets,
+    logger: Arc<RotatingLogger>,
+) -> Result<RunningClient, String> {
     // load spec
     let spec = cmd.spec.spec(&cmd.dirs.cache)?;
 
@@ -291,17 +296,10 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         )));
     }
 
-    let engine_signer = cmd.miner_extras.engine_signer;
-    if engine_signer != Default::default() {
-        if let Some(author) = account_utils::miner_author(
-            &cmd.spec,
-            &cmd.dirs,
-            &account_provider,
-            engine_signer,
-            &passwords,
-        )? {
-            miner.set_author(author);
-        }
+    if let Some(keypair) = secrets.engine_signer {
+        miner.set_author(ethcore::miner::Author::Sealer(
+            ethcore::engines::signer::from_keypair(keypair),
+        ));
     }
 
     // create client config

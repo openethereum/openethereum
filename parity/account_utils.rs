@@ -73,9 +73,6 @@ mod accounts {
 
     pub use accounts::AccountProvider;
 
-    /// Pops along with error messages when a password is missing or invalid.
-    const VERIFY_PASSWORD_HINT: &str = "Make sure valid password is present in files passed using `--password` or in the configuration file.";
-
     /// Initialize account provider
     pub fn prepare_account_provider(
         spec: &SpecType,
@@ -114,49 +111,6 @@ mod accounts {
         LocalAccounts(account_provider)
     }
 
-    pub fn miner_author(
-        spec: &SpecType,
-        dirs: &Directories,
-        account_provider: &Arc<AccountProvider>,
-        engine_signer: Address,
-        passwords: &[Password],
-    ) -> Result<Option<::ethcore::miner::Author>, String> {
-        // Check if engine signer exists
-        if !account_provider.has_account(engine_signer) {
-            return Err(format!(
-                "Consensus signer account not found for the current chain. {}",
-                build_create_account_hint(spec, &dirs.keys)
-            ));
-        }
-
-        // Check if any passwords have been read from the password file(s)
-        if passwords.is_empty() {
-            return Err(format!(
-                "No password found for the consensus signer {}. {}",
-                engine_signer, VERIFY_PASSWORD_HINT
-            ));
-        }
-
-        let mut author = None;
-        for password in passwords {
-            if let Ok(secret) = account_provider.get_secret(engine_signer, password.clone()) {
-                if let Ok(keypair) = ethkey::KeyPair::from_secret(secret) {
-                    author = Some(ethcore::miner::Author::Sealer(
-                        ethcore::engines::signer::from_keypair(keypair),
-                    ));
-                }
-            }
-        }
-        if author.is_none() {
-            return Err(format!(
-                "No valid password for the consensus signer {}. {}",
-                engine_signer, VERIFY_PASSWORD_HINT
-            ));
-        }
-
-        Ok(author)
-    }
-
     pub fn accounts_list(
         account_provider: Arc<AccountProvider>,
     ) -> Arc<dyn Fn() -> Vec<Address> + Send + Sync> {
@@ -193,13 +147,8 @@ mod accounts {
             }
         }
     }
-
-    // Construct an error `String` with an adaptive hint on how to create an account.
-    fn build_create_account_hint(spec: &SpecType, keys: &str) -> String {
-        format!("You can create an account via RPC, UI or `parity account new --chain {} --keys-path {}`.", spec, keys)
-    }
 }
 
 pub use self::accounts::{
-    accounts_list, miner_author, miner_local_accounts, prepare_account_provider, AccountProvider,
+    accounts_list, miner_local_accounts, prepare_account_provider, AccountProvider,
 };

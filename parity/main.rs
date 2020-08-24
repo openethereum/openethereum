@@ -47,7 +47,7 @@ use ctrlc::CtrlC;
 use ethcore_logger::setup_log;
 use fdlimit::raise_fd_limit;
 use parity_daemonize::AsHandle;
-use parity_ethereum::{start, ExecutionAction};
+use parity_ethereum::{start, ExecutionAction, Secrets};
 use parking_lot::{Condvar, Mutex};
 
 #[derive(Debug)]
@@ -64,6 +64,10 @@ fn main() -> Result<(), i32> {
         let args = std::env::args().collect::<Vec<_>>();
         parity_ethereum::Configuration::parse_cli(&args).unwrap_or_else(|e| e.exit())
     };
+    let secrets = Secrets::from_env().unwrap_or_else(|e| {
+        println!("Invalid secrets: {}", e);
+        process::exit(2)
+    });
 
     let logger = setup_log(&conf.logger_config()).unwrap_or_else(|e| {
         eprintln!("{}", e);
@@ -106,7 +110,7 @@ fn main() -> Result<(), i32> {
     let exiting = Arc::new(AtomicBool::new(false));
 
     trace!(target: "mode", "Not hypervised: not setting exit handlers.");
-    let exec = start(conf, logger);
+    let exec = start(conf, secrets, logger);
 
     match exec {
         Ok(result) => match result {

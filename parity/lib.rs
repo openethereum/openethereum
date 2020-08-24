@@ -100,6 +100,7 @@ mod params;
 mod rpc;
 mod rpc_apis;
 mod run;
+mod secrets;
 mod secretstore;
 mod snapshot;
 mod upgrade;
@@ -108,13 +109,13 @@ mod user_defaults;
 use std::{fs::File, io::BufReader, sync::Arc};
 
 use cli::Args;
-use configuration::{Cmd, Execute};
+use configuration::Cmd;
 use hash::keccak_buffer;
 
 #[cfg(feature = "memory_profiling")]
 use std::alloc::System;
 
-pub use self::{configuration::Configuration, run::RunningClient};
+pub use self::{configuration::Configuration, run::RunningClient, secrets::Secrets};
 pub use ethcore_logger::{setup_log, Config as LoggerConfig, RotatingLogger};
 pub use parity_rpc::PubSubSession;
 
@@ -175,13 +176,25 @@ pub enum ExecutionAction {
     Running(RunningClient),
 }
 
-fn execute(command: Execute, logger: Arc<RotatingLogger>) -> Result<ExecutionAction, String> {
+/// Starts the parity client.
+///
+/// The first parameter is the command line arguments that you would pass when running the parity
+/// binary.
+///
+/// On error, returns what to print on stderr.
+// FIXME: totally independent logging capability, see https://github.com/paritytech/parity-ethereum/issues/10252
+pub fn start(
+    conf: Configuration,
+    secrets: Secrets,
+    logger: Arc<RotatingLogger>,
+) -> Result<ExecutionAction, String> {
+    let command = conf.into_command()?;
     #[cfg(feature = "deadlock_detection")]
     run_deadlock_detection_thread();
 
     match command.cmd {
         Cmd::Run(run_cmd) => {
-            let outcome = run::execute(run_cmd, logger)?;
+            let outcome = run::execute(run_cmd, secrets, logger)?;
             Ok(ExecutionAction::Running(outcome))
         }
         Cmd::Version => Ok(ExecutionAction::Instant(Some(Args::print_version()))),
@@ -198,15 +211,4 @@ fn execute(command: Execute, logger: Arc<RotatingLogger>) -> Result<ExecutionAct
             snapshot::execute(snapshot_cmd).map(|s| ExecutionAction::Instant(Some(s)))
         }
     }
-}
-
-/// Starts the parity client.
-///
-/// The first parameter is the command line arguments that you would pass when running the parity
-/// binary.
-///
-/// On error, returns what to print on stderr.
-// FIXME: totally independent logging capability, see https://github.com/paritytech/parity-ethereum/issues/10252
-pub fn start(conf: Configuration, logger: Arc<RotatingLogger>) -> Result<ExecutionAction, String> {
-    execute(conf.into_command()?, logger)
 }

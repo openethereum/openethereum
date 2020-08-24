@@ -102,7 +102,7 @@ pub enum ConnectionsAction {
 /// Trigger connections.
 pub struct TriggerConnections {
     /// This node key pair.
-    pub self_key_pair: Arc<dyn NodeKeyPair>,
+    pub self_key_pair: Arc<NodeKeyPair>,
 }
 
 impl SimpleConnectionTrigger {
@@ -118,7 +118,7 @@ impl SimpleConnectionTrigger {
     /// Create new simple connection trigger.
     pub fn new(
         key_server_set: Arc<dyn KeyServerSet>,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         admin_public: Option<Public>,
     ) -> Self {
         SimpleConnectionTrigger {
@@ -260,7 +260,7 @@ mod tests {
     use ethkey::{Generator, Random};
     use key_server_cluster::{
         cluster_connections_net::NetConnectionsContainer, KeyServerSetMigration,
-        KeyServerSetSnapshot, MapKeyServerSet, PlainNodeKeyPair,
+        KeyServerSetSnapshot, MapKeyServerSet, NodeKeyPair,
     };
     use std::{collections::BTreeSet, sync::Arc};
 
@@ -274,7 +274,7 @@ mod tests {
 
     fn create_connections() -> TriggerConnections {
         TriggerConnections {
-            self_key_pair: Arc::new(PlainNodeKeyPair::new(Random.generate().unwrap())),
+            self_key_pair: Arc::new(NodeKeyPair::new(Random.generate().unwrap())),
         }
     }
 
@@ -512,7 +512,7 @@ mod tests {
     #[test]
     fn simple_connections_trigger_only_maintains_connections() {
         let key_server_set = Arc::new(MapKeyServerSet::new(false, Default::default()));
-        let self_key_pair = Arc::new(PlainNodeKeyPair::new(Random.generate().unwrap()));
+        let self_key_pair = Arc::new(NodeKeyPair::new(Random.generate().unwrap()));
         let mut trigger = SimpleConnectionTrigger::new(key_server_set, self_key_pair, None);
         assert_eq!(trigger.on_maintain(), Some(Maintain::Connections));
     }

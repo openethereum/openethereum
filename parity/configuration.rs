@@ -63,7 +63,6 @@ use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
 use run::RunCmd;
 use secretstore::{
     Configuration as SecretStoreConfiguration, ContractAddress as SecretStoreContractAddress,
-    NodeSecretKey,
 };
 use snapshot::{self, SnapshotCommand};
 use types::data_format::DataFormat;
@@ -977,13 +976,10 @@ impl Configuration {
         self.interface(&self.args.arg_secretstore_http_interface)
     }
 
-    fn secretstore_self_secret(&self) -> Result<Option<NodeSecretKey>, String> {
+    fn secretstore_self_secret(&self) -> Result<Option<Secret>, String> {
         match self.args.arg_secretstore_secret {
-			Some(ref s) if s.len() == 64 => Ok(Some(NodeSecretKey::Plain(s.parse()
-				.map_err(|e| format!("Invalid secret store secret: {}. Error: {:?}", s, e))?))),
-			#[cfg(feature = "accounts")]
-			Some(ref s) if s.len() == 40 => Ok(Some(NodeSecretKey::KeyStore(s.parse()
-				.map_err(|e| format!("Invalid secret store secret address: {}. Error: {:?}", s, e))?))),
+			Some(ref s) if s.len() == 64 => Ok(Some(s.parse()
+				.map_err(|e| format!("Invalid secret store secret: {}. Error: {:?}", s, e))?)),
 			Some(_) => Err(format!("Invalid secret store secret. Must be either existing account address, or hex-encoded private key")),
 			None => Ok(None),
 		}

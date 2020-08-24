@@ -18,11 +18,12 @@ use ethereum_types::H256;
 use memzero::Memzero;
 use rustc_hex::ToHex;
 use secp256k1::{constants::SECRET_KEY_SIZE as SECP256K1_SECRET_KEY_SIZE, key};
+use serde::Deserialize;
 use std::{fmt, ops::Deref, str::FromStr};
 use Error;
 use SECP256K1;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
 pub struct Secret {
     inner: Memzero<H256>,
 }

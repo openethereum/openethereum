@@ -16,14 +16,11 @@
 
 //! SecretStore-specific rpc implementation.
 
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
 
-use accounts::AccountProvider;
 use crypto::DEFAULT_MAC;
-use ethereum_types::{H160, H256, H512};
-use ethkey::Secret;
-
-use ethkey::Password;
+use ethereum_types::{H256, H512};
+use ethkey::{KeyPair, Secret};
 use jsonrpc_core::Result;
 use v1::{
     helpers::{
@@ -38,28 +35,23 @@ use v1::{
 };
 
 /// Parity implementation.
-pub struct SecretStoreClient {
-    accounts: Arc<AccountProvider>,
-}
+pub struct SecretStoreClient;
 
 impl SecretStoreClient {
     /// Creates new SecretStoreClient
-    pub fn new(store: &Arc<AccountProvider>) -> Self {
-        SecretStoreClient {
-            accounts: store.clone(),
-        }
+    pub fn new() -> Self {
+        Self
     }
 
     /// Decrypt public key using account' private key
-    fn decrypt_key(&self, address: H160, password: Password, key: Bytes) -> Result<Vec<u8>> {
-        self.accounts
-            .decrypt(address.into(), password, &DEFAULT_MAC, &key.0)
+    fn decrypt_key(&self, secret: Secret, key: Bytes) -> Result<Vec<u8>> {
+        ethkey::crypto::ecies::decrypt(&secret, &DEFAULT_MAC, &key.0)
             .map_err(|e| errors::account("Could not decrypt key.", e))
     }
 
     /// Decrypt secret key using account' private key
-    fn decrypt_secret(&self, address: H160, password: Password, key: Bytes) -> Result<Secret> {
-        self.decrypt_key(address, password, key).and_then(|s| {
+    fn decrypt_secret(&self, secret: Secret, key: Bytes) -> Result<Secret> {
+        self.decrypt_key(secret, key).and_then(|s| {
             Secret::from_unsafe_slice(&s).map_err(|e| errors::account("invalid secret", e))
         })
     }
@@ -68,29 +60,27 @@ impl SecretStoreClient {
 impl SecretStore for SecretStoreClient {
     fn generate_document_key(
         &self,
-        address: H160,
-        password: Password,
+        secret: Secret,
         server_key_public: H512,
     ) -> Result<EncryptedDocumentKey> {
-        let account_public = self
-            .accounts
-            .account_public(address.into(), &password)
-            .map_err(|e| errors::account("Could not read account public.", e))?;
+        let account_public = KeyPair::from_secret(secret)
+            .map_err(|e| errors::account("Could not read account public.", e))?
+            .public()
+            .clone();
         generate_document_key(account_public, server_key_public.into())
     }
 
-    fn encrypt(&self, address: H160, password: Password, key: Bytes, data: Bytes) -> Result<Bytes> {
-        encrypt_document(self.decrypt_key(address, password, key)?, data.0).map(Into::into)
+    fn encrypt(&self, secret: Secret, key: Bytes, data: Bytes) -> Result<Bytes> {
+        encrypt_document(self.decrypt_key(secret, key)?, data.0).map(Into::into)
     }
 
-    fn decrypt(&self, address: H160, password: Password, key: Bytes, data: Bytes) -> Result<Bytes> {
-        decrypt_document(self.decrypt_key(address, password, key)?, data.0).map(Into::into)
+    fn decrypt(&self, secret: Secret, key: Bytes, data: Bytes) -> Result<Bytes> {
+        decrypt_document(self.decrypt_key(secret, key)?, data.0).map(Into::into)
     }
 
     fn shadow_decrypt(
         &self,
-        address: H160,
-        password: Password,
+        secret: Secret,
         decrypted_secret: H512,
         common_point: H512,
         decrypt_shadows: Vec<Bytes>,
@@ -98,7 +88,7 @@ impl SecretStore for SecretStoreClient {
     ) -> Result<Bytes> {
         let mut shadows = Vec::with_capacity(decrypt_shadows.len());
         for decrypt_shadow in decrypt_shadows {
-            shadows.push(self.decrypt_secret(address.clone(), password.clone(), decrypt_shadow)?);
+            shadows.push(self.decrypt_secret(secret.clone(), decrypt_shadow)?);
         }
 
         decrypt_document_with_shadow(
@@ -114,9 +104,8 @@ impl SecretStore for SecretStoreClient {
         Ok(ordered_servers_keccak(servers_set))
     }
 
-    fn sign_raw_hash(&self, address: H160, password: Password, raw_hash: H256) -> Result<Bytes> {
-        self.accounts
-            .sign(address.into(), password, raw_hash.into())
+    fn sign_raw_hash(&self, secret: Secret, raw_hash: H256) -> Result<Bytes> {
+        ethkey::sign(&secret, &raw_hash)
             .map(|s| Bytes::new((*s).to_vec()))
             .map_err(|e| errors::account("Could not sign raw hash.", e))
     }

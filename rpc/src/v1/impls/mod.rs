@@ -26,7 +26,6 @@ mod parity;
 mod parity_accounts;
 mod parity_set;
 mod pubsub;
-#[cfg(any(test, feature = "accounts"))]
 mod secretstore;
 mod traces;
 mod web3;
@@ -35,8 +34,6 @@ mod web3;
 pub use self::parity_accounts::ParityAccountsClient;
 #[cfg(any(test, feature = "accounts"))]
 pub use self::parity_set::accounts::ParitySetAccountsClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::secretstore::SecretStoreClient;
 pub use self::{
     debug::DebugClient,
     eth::{EthClient, EthClientOptions},
@@ -46,6 +43,7 @@ pub use self::{
     parity::ParityClient,
     parity_set::ParitySetClient,
     pubsub::PubSubClient,
+    secretstore::SecretStoreClient,
     traces::TracesClient,
     web3::Web3Client,
 };

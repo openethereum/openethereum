@@ -119,14 +119,14 @@ struct CachedContract {
     /// Previous confirm migration transaction.
     confirm_migration_tx: Option<PreviousMigrationTransaction>,
     /// This node key pair.
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
 }
 
 impl OnChainKeyServerSet {
     pub fn new(
         trusted_client: TrustedClient,
         contract_address_source: Option<ContractAddress>,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         auto_migrate_enabled: bool,
         key_servers: BTreeMap<Public, NodeAddress>,
     ) -> Result<Arc<Self>, Error> {
@@ -253,7 +253,7 @@ impl CachedContract {
     pub fn new(
         client: TrustedClient,
         contract_address_source: Option<ContractAddress>,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         auto_migrate_enabled: bool,
         key_servers: BTreeMap<Public, NodeAddress>,
     ) -> Result<Self, Error> {

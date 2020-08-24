@@ -1151,7 +1151,7 @@ pub mod tests {
         admin_sessions::ShareChangeSessionMeta,
         cluster::tests::MessageLoop as ClusterMessageLoop,
         servers_set_change_session::tests::{generate_key, AdminSessionAdapter, MessageLoop},
-        Error, KeyStorage, NodeId, NodeKeyPair,
+        Error, KeyStorage, NodeId,
     };
     use std::collections::BTreeSet;
 
@@ -1363,7 +1363,7 @@ pub mod tests {
             .hash;
 
         // now let's add back old node so that key becames 2-of-6
-        let add = vec![node_to_isolate_key_pair.key_pair().clone()];
+        let add = vec![(**node_to_isolate_key_pair).clone()];
         let mut ml = ml.and_then::<Adapter>(master.clone(), Some(add), None, None);
         ml.original_key_version = new_key_version;
         ml.ml

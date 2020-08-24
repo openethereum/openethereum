@@ -8,3 +8,6 @@ repository = "https://github.com/paritytech/parity-ethereum"
 documentation = "https://docs.rs/crate/memzero"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

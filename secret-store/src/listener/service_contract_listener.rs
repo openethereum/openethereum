@@ -27,7 +27,7 @@ use key_server_cluster::{
         FailedContinueAction, IsolatedSessionTransport as KeyVersionNegotiationTransport,
         SessionImpl as KeyVersionNegotiationSession,
     },
-    math, ClusterClient, ClusterSession, ClusterSessionsListener, NodeId,
+    math, ClusterClient, ClusterSession, ClusterSessionsListener, NodeId, NodeKeyPair,
 };
 use key_server_set::KeyServerSet;
 use key_storage::KeyStorage;
@@ -42,7 +42,6 @@ use std::{
     thread,
 };
 use Error;
-use NodeKeyPair;
 use ServerKeyId;
 
 /// Retry interval (in blocks). Every RETRY_INTERVAL_BLOCKS blocks each KeyServer reads pending requests from
@@ -71,7 +70,7 @@ pub struct ServiceContractListenerParams {
     /// Service contract.
     pub contract: Arc<dyn ServiceContract>,
     /// This node key pair.
-    pub self_key_pair: Arc<dyn NodeKeyPair>,
+    pub self_key_pair: Arc<NodeKeyPair>,
     /// Key servers set.
     pub key_server_set: Arc<dyn KeyServerSet>,
     /// ACL storage reference.
@@ -97,7 +96,7 @@ struct ServiceContractListenerData {
     /// Cluster client reference.
     pub cluster: Arc<dyn ClusterClient>,
     /// This node key pair.
-    pub self_key_pair: Arc<dyn NodeKeyPair>,
+    pub self_key_pair: Arc<NodeKeyPair>,
     /// Key servers set.
     pub key_server_set: Arc<dyn KeyServerSet>,
     /// Key storage reference.
@@ -857,7 +856,6 @@ mod tests {
     use listener::service_contract::{tests::DummyServiceContract, ServiceContract};
     use std::sync::{atomic::Ordering, Arc};
     use NodeKeyPair;
-    use PlainNodeKeyPair;
     use ServerKeyId;
 
     fn create_non_empty_key_storage(has_doc_key: bool) -> Arc<DummyKeyStorage> {
@@ -904,7 +902,7 @@ mod tests {
         let key_storage = key_storage.unwrap_or_else(|| Arc::new(DummyKeyStorage::default()));
         let acl_storage = acl_storage.unwrap_or_else(|| Arc::new(DummyAclStorage::default()));
         let servers_set = servers_set.unwrap_or_else(|| make_servers_set(false));
-        let self_key_pair = Arc::new(PlainNodeKeyPair::new(
+        let self_key_pair = Arc::new(NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000001"
                     .parse()
@@ -989,7 +987,7 @@ mod tests {
 		].into_iter().collect());
 
         // 1st server: process hashes [0x0; 0x555...555]
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000001"
                     .parse()
@@ -1039,7 +1037,7 @@ mod tests {
         );
 
         // 2nd server: process hashes from 0x555...556 to 0xaaa...aab
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000002"
                     .parse()
@@ -1099,7 +1097,7 @@ mod tests {
         );
 
         // 3rd server: process hashes from 0x800...000 to 0xbff...ff
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000003"
                     .parse()
@@ -1168,7 +1166,7 @@ mod tests {
 		].into_iter().collect());
 
         // 1st server: process hashes [0x0; 0x3ff...ff]
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000001"
                     .parse()
@@ -1218,7 +1216,7 @@ mod tests {
         );
 
         // 2nd server: process hashes from 0x400...000 to 0x7ff...ff
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000002"
                     .parse()
@@ -1278,7 +1276,7 @@ mod tests {
         );
 
         // 3rd server: process hashes from 0x800...000 to 0xbff...ff
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000004"
                     .parse()
@@ -1338,7 +1336,7 @@ mod tests {
         );
 
         // 4th server: process hashes from 0xc00...000 to 0xfff...ff
-        let key_pair = PlainNodeKeyPair::new(
+        let key_pair = NodeKeyPair::new(
             KeyPair::from_secret(
                 "0000000000000000000000000000000000000000000000000000000000000003"
                     .parse()

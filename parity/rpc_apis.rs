@@ -294,7 +294,7 @@ impl FullDependencies {
                 Api::Traces => handler.extend_with(TracesClient::new(&self.client).to_delegate()),
                 Api::SecretStore => {
                     #[cfg(feature = "accounts")]
-                    handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
+                    handler.extend_with(SecretStoreClient::new().to_delegate());
                 }
             }
         }

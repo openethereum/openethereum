@@ -23,16 +23,6 @@ use parity_runtime::Executor;
 use std::{collections::BTreeMap, sync::Arc};
 use sync::SyncProvider;
 
-/// This node secret key.
-#[derive(Debug, PartialEq, Clone)]
-pub enum NodeSecretKey {
-    /// Stored as plain text in configuration file.
-    Plain(Secret),
-    /// Stored as account in key store.
-    #[cfg(feature = "accounts")]
-    KeyStore(Address),
-}
-
 /// Secret store service contract address.
 #[derive(Debug, PartialEq, Clone)]
 pub enum ContractAddress {
@@ -64,7 +54,7 @@ pub struct Configuration {
     /// Document key shadow retrieval service contract address.
     pub service_contract_doc_sretr_address: Option<ContractAddress>,
     /// This node secret.
-    pub self_secret: Option<NodeSecretKey>,
+    pub self_secret: Option<Secret>,
     /// Other nodes IDs + addresses.
     pub nodes: BTreeMap<Public, (String, u16)>,
     /// Key Server Set contract address. If None, 'nodes' map is used.
@@ -118,7 +108,7 @@ mod server {
 
 #[cfg(feature = "secretstore")]
 mod server {
-    use super::{Configuration, ContractAddress, Dependencies, Executor, NodeSecretKey};
+    use super::{Configuration, ContractAddress, Dependencies, Executor};
     use ansi_term::Colour::{Red, White};
     use db;
     use ethcore_secretstore;
@@ -148,58 +138,12 @@ mod server {
             deps: Dependencies,
             executor: Executor,
         ) -> Result<Self, String> {
-            let self_secret: Arc<dyn ethcore_secretstore::NodeKeyPair> =
-                match conf.self_secret.take() {
-                    Some(NodeSecretKey::Plain(secret)) => {
-                        Arc::new(ethcore_secretstore::PlainNodeKeyPair::new(
-                            KeyPair::from_secret(secret)
-                                .map_err(|e| format!("invalid secret: {}", e))?,
-                        ))
-                    }
-                    #[cfg(feature = "accounts")]
-                    Some(NodeSecretKey::KeyStore(account)) => {
-                        // Check if account exists
-                        if !deps.account_provider.has_account(account.clone()) {
-                            return Err(format!(
-                                "Account {} passed as secret store node key is not found",
-                                account
-                            ));
-                        }
-
-                        // Check if any passwords have been read from the password file(s)
-                        if deps.accounts_passwords.is_empty() {
-                            return Err(format!(
-                                "No password found for the secret store node account {}",
-                                account
-                            ));
-                        }
-
-                        // Attempt to sign in the engine signer.
-                        let password = deps
-                            .accounts_passwords
-                            .iter()
-                            .find(|p| {
-                                deps.account_provider
-                                    .sign(account.clone(), (*p).clone(), Default::default())
-                                    .is_ok()
-                            })
-                            .ok_or_else(|| {
-                                format!(
-                                    "No valid password for the secret store node account {}",
-                                    account
-                                )
-                            })?;
-                        Arc::new(
-                            ethcore_secretstore::KeyStoreNodeKeyPair::new(
-                                deps.account_provider,
-                                account,
-                                password.clone(),
-                            )
-                            .map_err(|e| format!("{}", e))?,
-                        )
-                    }
-                    None => return Err("self secret is required when using secretstore".into()),
-                };
+            let self_secret = match conf.self_secret.take() {
+                Some(secret) => Arc::new(ethcore_secretstore::NodeKeyPair::new(
+                    KeyPair::from_secret(secret).map_err(|e| format!("invalid secret: {}", e))?,
+                )),
+                None => return Err("self secret is required when using secretstore".into()),
+            };
 
             info!(
                 "Starting SecretStore node: {}",

@@ -29,11 +29,11 @@ pub use super::{
         is_migration_required, KeyServerSet, KeyServerSetMigration, KeyServerSetSnapshot,
     },
     key_storage::{DocumentKeyShare, DocumentKeyShareVersion, KeyStorage},
+    node_key_pair::NodeKeyPair,
     serialization::{
         SerializableAddress, SerializableH256, SerializableMessageHash, SerializablePublic,
         SerializableRequester, SerializableSecret, SerializableSignature,
     },
-    traits::NodeKeyPair,
     types::{EncryptedDocumentKeyShadow, Error, NodeId, Requester},
 };
 
@@ -42,8 +42,6 @@ pub use super::acl_storage::DummyAclStorage;
 pub use super::key_server_set::tests::MapKeyServerSet;
 #[cfg(test)]
 pub use super::key_storage::tests::DummyKeyStorage;
-#[cfg(test)]
-pub use super::node_key_pair::PlainNodeKeyPair;
 
 pub type SessionId = ServerKeyId;
 

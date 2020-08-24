@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use serde::Deserialize;
 use std::{
     ops::{Deref, DerefMut},
     ptr,
 };
 
 /// Wrapper to zero out memory when dropped.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 pub struct Memzero<T: AsMut<[u8]>> {
     mem: T,
 }

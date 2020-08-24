@@ -675,7 +675,7 @@ impl ClusterSession for AdminSession {
 }
 
 pub fn create_cluster_view(
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     connections: Arc<dyn ConnectionProvider>,
     requires_all_connections: bool,
 ) -> Result<Arc<dyn Cluster>, Error> {
@@ -711,7 +711,7 @@ mod tests {
         cluster::{tests::DummyCluster, ClusterConfiguration},
         connection_trigger::SimpleServersSetChangeSessionCreatorConnector,
         generation_session::SessionImpl as GenerationSession,
-        DummyAclStorage, DummyKeyStorage, Error, MapKeyServerSet, PlainNodeKeyPair,
+        DummyAclStorage, DummyKeyStorage, Error, MapKeyServerSet, NodeKeyPair,
     };
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
@@ -721,7 +721,7 @@ mod tests {
     pub fn make_cluster_sessions() -> ClusterSessions {
         let key_pair = Random.generate().unwrap();
         let config = ClusterConfiguration {
-            self_key_pair: Arc::new(PlainNodeKeyPair::new(key_pair.clone())),
+            self_key_pair: Arc::new(NodeKeyPair::new(key_pair.clone())),
             key_server_set: Arc::new(MapKeyServerSet::new(
                 false,
                 vec![(

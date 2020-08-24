@@ -2251,6 +2251,9 @@ checksum = "71d96e3f3c0b6325d8ccd83c33b28acb183edcb6c67938ba104ec546854b0882"
 [[package]]
 name = "memzero"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "migration-rocksdb"

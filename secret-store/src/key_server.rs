@@ -25,14 +25,14 @@ use parity_runtime::Executor;
 use parking_lot::Mutex;
 use std::{collections::BTreeSet, sync::Arc};
 use traits::{
-    AdminSessionsServer, DocumentKeyServer, KeyServer, MessageSigner, NodeKeyPair,
-    ServerKeyGenerator,
+    AdminSessionsServer, DocumentKeyServer, KeyServer, MessageSigner, ServerKeyGenerator,
 };
 use types::{
     ClusterConfiguration, EncryptedDocumentKey, EncryptedDocumentKeyShadow,
     EncryptedMessageSignature, Error, MessageHash, NodeId, Public, RequestSignature, Requester,
     ServerKeyId,
 };
+use NodeKeyPair;
 
 /// Secret store key server implementation
 pub struct KeyServerImpl {
@@ -49,7 +49,7 @@ impl KeyServerImpl {
     pub fn new(
         config: &ClusterConfiguration,
         key_server_set: Arc<dyn KeyServerSet>,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         acl_storage: Arc<dyn AclStorage>,
         key_storage: Arc<dyn KeyStorage>,
         executor: Executor,
@@ -318,7 +318,7 @@ impl KeyServerCore {
     pub fn new(
         config: &ClusterConfiguration,
         key_server_set: Arc<dyn KeyServerSet>,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         acl_storage: Arc<dyn AclStorage>,
         key_storage: Arc<dyn KeyStorage>,
         executor: Executor,
@@ -355,10 +355,9 @@ pub mod tests {
     use crypto::DEFAULT_MAC;
     use ethereum_types::{H256, H520};
     use ethkey::{self, crypto, verify_public, Generator, Random, Secret};
-    use key_server_cluster::math;
+    use key_server_cluster::{math, NodeKeyPair};
     use key_server_set::tests::MapKeyServerSet;
     use key_storage::{tests::DummyKeyStorage, KeyStorage};
-    use node_key_pair::PlainNodeKeyPair;
     use parity_runtime::Runtime;
     use std::{
         collections::{BTreeMap, BTreeSet},
@@ -518,7 +517,7 @@ pub mod tests {
                 KeyServerImpl::new(
                     &cfg,
                     Arc::new(MapKeyServerSet::new(false, key_servers_set.clone())),
-                    Arc::new(PlainNodeKeyPair::new(key_pairs[i].clone())),
+                    Arc::new(NodeKeyPair::new(key_pairs[i].clone())),
                     Arc::new(DummyAclStorage::default()),
                     key_storages[i].clone(),
                     runtime.executor(),

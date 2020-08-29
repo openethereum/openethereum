@@ -65,7 +65,6 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use super::signer::EngineSigner;
 use block::ExecutedBlock;
 use client::{traits::ForceUpdateSealing, BlockId, EngineClient};
 use engines::{
@@ -74,7 +73,7 @@ use engines::{
 };
 use error::{BlockError, Error};
 use ethereum_types::{Address, H160, H256, H64, U256};
-use ethkey::Signature;
+use ethkey::{KeyPair, Signature};
 use hash::KECCAK_EMPTY_LIST_RLP;
 use itertools::Itertools;
 use lru_cache::LruCache;
@@ -165,7 +164,7 @@ pub struct Clique {
     client: RwLock<Option<Weak<dyn EngineClient>>>,
     block_state_by_hash: RwLock<LruCache<H256, CliqueBlockState>>,
     proposals: RwLock<HashMap<Address, VoteType>>,
-    signer: RwLock<Option<Box<dyn EngineSigner>>>,
+    signer: RwLock<Option<KeyPair>>,
 }
 
 #[cfg(test)]
@@ -177,7 +176,7 @@ pub struct Clique {
     pub client: RwLock<Option<Weak<dyn EngineClient>>>,
     pub block_state_by_hash: RwLock<LruCache<H256, CliqueBlockState>>,
     pub proposals: RwLock<HashMap<Address, VoteType>>,
-    pub signer: RwLock<Option<Box<dyn EngineSigner>>>,
+    pub signer: RwLock<Option<KeyPair>>,
 }
 
 impl Clique {
@@ -766,7 +765,7 @@ impl Engine<EthereumMachine> for Clique {
         }
     }
 
-    fn set_signer(&self, signer: Box<dyn EngineSigner>) {
+    fn set_signer(&self, signer: ethkey::KeyPair) {
         trace!(target: "engine", "set_signer: {}", signer.address());
         *self.signer.write() = Some(signer);
     }

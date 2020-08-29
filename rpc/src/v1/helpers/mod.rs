@@ -22,7 +22,6 @@ pub mod deprecated;
 pub mod dispatch;
 pub mod fake_sign;
 pub mod nonce;
-#[cfg(any(test, feature = "accounts"))]
 pub mod secretstore;
 
 mod network_settings;

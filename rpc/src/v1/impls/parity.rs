@@ -26,8 +26,7 @@ use ethcore::{
 };
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
-use ethkey::{crypto::ecies, Brain, Generator};
-use ethstore::random_phrase;
+use ethkey::crypto::ecies;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
@@ -188,17 +187,6 @@ where
                 .ok_or_else(errors::not_enough_data)
                 .map(Into::into),
         ))
-    }
-
-    fn generate_secret_phrase(&self) -> Result<String> {
-        Ok(random_phrase(12))
-    }
-
-    fn phrase_to_address(&self, phrase: String) -> Result<H160> {
-        Ok(Brain::new(phrase)
-            .generate()
-            .expect("Brain::generate always returns Ok; qed")
-            .address())
     }
 
     fn list_accounts(

@@ -65,7 +65,6 @@ extern crate ethcore_network as network;
 extern crate ethcore_sync as sync;
 extern crate ethereum_types;
 extern crate ethkey;
-extern crate ethstore;
 extern crate fetch;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;
@@ -74,15 +73,8 @@ extern crate parity_runtime;
 extern crate parity_version as version;
 extern crate rlp;
 extern crate stats;
-#[cfg(test)]
-extern crate tempdir;
-extern crate vm;
-
-#[cfg(any(test, feature = "ethcore-accounts"))]
-extern crate ethcore_accounts as accounts;
-
-#[cfg(any(test, feature = "ethcore-accounts"))]
 extern crate tiny_keccak;
+extern crate vm;
 
 #[macro_use]
 extern crate log;

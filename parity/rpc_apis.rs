@@ -16,7 +16,6 @@
 
 use std::{cmp::PartialEq, collections::HashSet, str::FromStr, sync::Arc};
 
-use account_utils::{self, AccountProvider};
 use ethcore::{client::Client, miner::Miner, snapshot::SnapshotService};
 use ethcore_logger::RotatingLogger;
 use fetch::Client as FetchClient;
@@ -45,8 +44,6 @@ pub enum Api {
     Traces,
     /// Parity PubSub - Generic Publish-Subscriber (Safety depends on other APIs exposed).
     ParityPubSub,
-    /// Parity Accounts extensions (UNSAFE: Passwords, Side Effects (new account))
-    ParityAccounts,
     /// Parity - Set methods (UNSAFE: Side Effects affecting node operation)
     ParitySet,
     /// SecretStore (UNSAFE: arbitrary hash signing)
@@ -67,7 +64,6 @@ impl FromStr for Api {
             "eth" => Ok(Eth),
             "net" => Ok(Net),
             "parity" => Ok(Parity),
-            "parity_accounts" => Ok(ParityAccounts),
             "parity_pubsub" => Ok(ParityPubSub),
             "parity_set" => Ok(ParitySet),
             "pubsub" => Ok(EthPubSub),
@@ -155,7 +151,6 @@ pub struct FullDependencies {
     pub snapshot: Arc<dyn SnapshotService>,
     pub sync: Arc<dyn SyncProvider>,
     pub net: Arc<dyn ManageNetwork>,
-    pub accounts: Arc<AccountProvider>,
     pub miner: Arc<Miner>,
     pub external_miner: Arc<ExternalMiner>,
     pub logger: Arc<RotatingLogger>,
@@ -182,8 +177,6 @@ impl FullDependencies {
     {
         use parity_rpc::v1::*;
 
-        let accounts = account_utils::accounts_list(self.accounts.clone());
-
         for api in apis {
             match *api {
                 Api::Debug => {
@@ -200,7 +193,6 @@ impl FullDependencies {
                         &self.client,
                         &self.snapshot,
                         &self.sync,
-                        &accounts,
                         &self.miner,
                         &self.external_miner,
                         EthClientOptions {
@@ -253,10 +245,6 @@ impl FullDependencies {
                         )
                         .to_delegate(),
                     );
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(ParityAccountsInfo::to_delegate(
-                        ParityAccountsClient::new(&self.accounts),
-                    ));
                 }
                 Api::ParityPubSub => {
                     if !for_generic_pubsub {
@@ -270,12 +258,6 @@ impl FullDependencies {
                         );
                     }
                 }
-                Api::ParityAccounts => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(ParityAccounts::to_delegate(ParityAccountsClient::new(
-                        &self.accounts,
-                    )));
-                }
                 Api::ParitySet => {
                     handler.extend_with(
                         ParitySetClient::new(
@@ -286,14 +268,10 @@ impl FullDependencies {
                         )
                         .to_delegate(),
                     );
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(
-                        ParitySetAccountsClient::new(&self.accounts, &self.miner).to_delegate(),
-                    );
                 }
                 Api::Traces => handler.extend_with(TracesClient::new(&self.client).to_delegate()),
                 Api::SecretStore => {
-                    #[cfg(feature = "accounts")]
+                    #[cfg(feature = "secret-store")]
                     handler.extend_with(SecretStoreClient::new().to_delegate());
                 }
             }
@@ -341,28 +319,20 @@ impl ApiSet {
             ApiSet::IpcContext => {
                 public_list.insert(Api::Traces);
                 public_list.insert(Api::ParityPubSub);
-                public_list.insert(Api::ParityAccounts);
                 public_list
             }
             ApiSet::All => {
                 public_list.insert(Api::Debug);
                 public_list.insert(Api::Traces);
                 public_list.insert(Api::ParityPubSub);
-                public_list.insert(Api::ParityAccounts);
                 public_list.insert(Api::ParitySet);
                 public_list.insert(Api::SecretStore);
                 public_list
             }
-            ApiSet::PubSub => [
-                Api::Eth,
-                Api::Parity,
-                Api::ParityAccounts,
-                Api::ParitySet,
-                Api::Traces,
-            ]
-            .iter()
-            .cloned()
-            .collect(),
+            ApiSet::PubSub => [Api::Eth, Api::Parity, Api::ParitySet, Api::Traces]
+                .iter()
+                .cloned()
+                .collect(),
         }
     }
 }
@@ -379,7 +349,6 @@ mod test {
         assert_eq!(Api::Eth, "eth".parse().unwrap());
         assert_eq!(Api::EthPubSub, "pubsub".parse().unwrap());
         assert_eq!(Api::Parity, "parity".parse().unwrap());
-        assert_eq!(Api::ParityAccounts, "parity_accounts".parse().unwrap());
         assert_eq!(Api::ParitySet, "parity_set".parse().unwrap());
         assert_eq!(Api::Traces, "traces".parse().unwrap());
         assert_eq!(Api::SecretStore, "secretstore".parse().unwrap());
@@ -427,8 +396,6 @@ mod test {
             Api::Parity,
             Api::ParityPubSub,
             Api::Traces,
-            // semi-safe
-            Api::ParityAccounts,
         ]
         .into_iter()
         .collect();
@@ -449,7 +416,6 @@ mod test {
                     Api::ParityPubSub,
                     Api::Traces,
                     Api::SecretStore,
-                    Api::ParityAccounts,
                     Api::ParitySet,
                     Api::Debug,
                 ]
@@ -473,7 +439,6 @@ mod test {
                     Api::ParityPubSub,
                     Api::Traces,
                     Api::SecretStore,
-                    Api::ParityAccounts,
                     Api::ParitySet,
                     Api::Debug,
                 ]

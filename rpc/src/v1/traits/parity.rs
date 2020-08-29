@@ -88,14 +88,6 @@ pub trait Parity {
     #[rpc(name = "parity_gasPriceHistogram")]
     fn gas_price_histogram(&self) -> BoxFuture<Histogram>;
 
-    /// Returns a cryptographically random phrase sufficient for securely seeding a secret key.
-    #[rpc(name = "parity_generateSecretPhrase")]
-    fn generate_secret_phrase(&self) -> Result<String>;
-
-    /// Returns whatever address would be derived from the given phrase if it were to seed a brainwallet.
-    #[rpc(name = "parity_phraseToAddress")]
-    fn phrase_to_address(&self, _: String) -> Result<H160>;
-
     /// Returns the value of the registrar for this network.
     #[rpc(name = "parity_registryAddress")]
     fn registry_address(&self) -> Result<Option<H160>>;

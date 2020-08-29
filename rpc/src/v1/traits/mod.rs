@@ -21,7 +21,6 @@ pub mod eth;
 pub mod eth_pubsub;
 pub mod net;
 pub mod parity;
-pub mod parity_accounts;
 pub mod parity_set;
 pub mod pubsub;
 pub mod secretstore;
@@ -34,8 +33,7 @@ pub use self::{
     eth_pubsub::EthPubSub,
     net::Net,
     parity::Parity,
-    parity_accounts::{ParityAccounts, ParityAccountsInfo},
-    parity_set::{ParitySet, ParitySetAccounts},
+    parity_set::ParitySet,
     pubsub::PubSub,
     secretstore::SecretStore,
     traces::Traces,

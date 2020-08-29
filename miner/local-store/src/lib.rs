@@ -237,7 +237,7 @@ impl<T: NodeInfo> Drop for LocalDataStore<T> {
 mod tests {
     use super::NodeInfo;
 
-    use ethkey::{Brain, Generator};
+    use ethkey::{Generator, Random};
     use std::sync::Arc;
     use types::transaction::{Condition, PendingTransaction, Transaction};
 
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn with_condition() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Random.generate().unwrap();
         let transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = Transaction::default();
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn skips_bad_transactions() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Random.generate().unwrap();
         let mut transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = Transaction::default();

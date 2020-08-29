@@ -108,10 +108,10 @@ extern crate wasm;
 extern crate blooms_db;
 #[cfg(any(test, feature = "env_logger"))]
 extern crate env_logger;
-#[cfg(test)]
-extern crate ethcore_accounts as accounts;
 #[cfg(feature = "stratum")]
 extern crate ethcore_stratum;
+#[cfg(test)]
+extern crate hex_literal;
 #[cfg(any(test, feature = "test-helpers"))]
 extern crate kvdb_memorydb;
 #[cfg(any(test, feature = "kvdb-rocksdb"))]

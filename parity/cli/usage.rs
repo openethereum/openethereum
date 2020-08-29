@@ -68,18 +68,6 @@ macro_rules! inner_option_type {
     };
 }
 
-macro_rules! inner_vec_type {
-    (Vec<$type:ty>) => {
-        $type
-    };
-}
-
-macro_rules! inner_option_vec_type {
-    (Option<Vec<String>>) => {
-        String
-    };
-}
-
 macro_rules! usage_with_ident {
     ($name:expr, $usage:expr, $help:expr) => {
         if $usage.contains("<") {

@@ -35,13 +35,11 @@ use std::{
     io::Read,
     iter::FromIterator,
     net::{SocketAddr, ToSocketAddrs},
-    num::NonZeroU32,
     path::PathBuf,
     time::Duration,
 };
 use sync::{self, validate_node_url, NetworkConfiguration};
 
-use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
 use blockchain::{
     BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain, KillBlockchain, ResetBlockchain,
 };
@@ -57,7 +55,7 @@ use helpers::{
     to_pending_set, to_price, to_queue_penalization, to_queue_strategy, to_u256,
 };
 use network::IpFilter;
-use params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
+use params::{GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
 use parity_rpc::NetworkSettings;
 use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
 use run::RunCmd;
@@ -76,7 +74,6 @@ pub const ETHERSCAN_ETH_PRICE_ENDPOINT: &str =
 pub enum Cmd {
     Run(RunCmd),
     Version,
-    Account(AccountCmd),
     Blockchain(BlockchainCmd),
     Snapshot(SnapshotCommand),
     Hash(Option<String>),
@@ -139,8 +136,6 @@ impl Configuration {
         let experimental_rpcs = self.args.flag_jsonrpc_experimental;
         let secretstore_conf = self.secretstore_config()?;
         let format = self.format()?;
-        let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
-            .ok_or_else(|| "--keys-iterations must be non-zero")?;
 
         let cmd = if self.args.flag_version {
             Cmd::Version
@@ -165,40 +160,6 @@ impl Configuration {
                 dirs: dirs,
                 pruning: pruning,
             }))
-        } else if self.args.cmd_account {
-            let account_cmd = if self.args.cmd_account_new {
-                let new_acc = NewAccount {
-                    iterations: keys_iterations,
-                    path: dirs.keys,
-                    spec: spec,
-                    password_file: self
-                        .accounts_config()?
-                        .password_files
-                        .first()
-                        .map(|x| x.to_owned()),
-                };
-                AccountCmd::New(new_acc)
-            } else if self.args.cmd_account_list {
-                let list_acc = ListAccounts {
-                    path: dirs.keys,
-                    spec: spec,
-                };
-                AccountCmd::List(list_acc)
-            } else if self.args.cmd_account_import {
-                let import_acc = ImportAccounts {
-                    from: self
-                        .args
-                        .arg_account_import_path
-                        .expect("CLI argument is required; qed")
-                        .clone(),
-                    to: dirs.keys,
-                    spec: spec,
-                };
-                AccountCmd::Import(import_acc)
-            } else {
-                unreachable!();
-            };
-            Cmd::Account(account_cmd)
         } else if self.args.cmd_import {
             let import_cmd = ImportBlockchain {
                 spec: spec,
@@ -337,7 +298,6 @@ impl Configuration {
                 ipc_conf: ipc_conf,
                 net_conf: net_conf,
                 network_id: network_id,
-                acc_conf: self.accounts_config()?,
                 gas_pricer_conf: self.gas_pricer_config()?,
                 miner_extras: self.miner_extras()?,
                 stratum: self.stratum_options()?,
@@ -473,22 +433,6 @@ impl Configuration {
             .arg_notify_work
             .as_ref()
             .map_or_else(Vec::new, |s| s.split(',').map(|s| s.to_owned()).collect())
-    }
-
-    fn accounts_config(&self) -> Result<AccountsConfig, String> {
-        let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
-            .ok_or_else(|| "--keys-iterations must be non-zero")?;
-        let cfg = AccountsConfig {
-            iterations: keys_iterations,
-            password_files: self
-                .args
-                .arg_password
-                .iter()
-                .map(|s| replace_home(&self.directories().base, s))
-                .collect(),
-        };
-
-        Ok(cfg)
     }
 
     fn stratum_options(&self) -> Result<Option<stratum::Options>, String> {
@@ -1136,14 +1080,10 @@ fn into_secretstore_service_contract_address(
 mod tests {
     use std::{fs::File, io::Write, str::FromStr};
 
-    use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
-    use blockchain::{BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain};
     use cli::Args;
-    use dir::Directories;
     use ethcore::{client::VMType, miner::MinerOptions};
     use helpers::default_network_config;
     use miner::pool::PrioritizationStrategy;
-    use params::SpecType;
     use parity_rpc::NetworkSettings;
     use rpc::WsConfiguration;
     use rpc_apis::ApiSet;
@@ -1158,13 +1098,6 @@ mod tests {
 
     use super::*;
 
-    lazy_static! {
-        static ref ITERATIONS: NonZeroU32 = NonZeroU32::new(10240).expect("10240 > 0; qed");
-    }
-
-    #[derive(Debug, PartialEq)]
-    struct TestPasswordReader(&'static str);
-
     fn parse(args: &[&str]) -> Configuration {
         Configuration {
             args: Args::parse_without_config(args).unwrap(),
@@ -1176,48 +1109,6 @@ mod tests {
         let args = vec!["parity", "--version"];
         let conf = parse(&args);
         assert_eq!(conf.into_command().unwrap().cmd, Cmd::Version);
-    }
-
-    #[test]
-    fn test_command_account_new() {
-        let args = vec!["parity", "account", "new"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::New(NewAccount {
-                iterations: *ITERATIONS,
-                path: Directories::default().keys,
-                password_file: None,
-                spec: SpecType::default(),
-            }))
-        );
-    }
-
-    #[test]
-    fn test_command_account_list() {
-        let args = vec!["parity", "account", "list"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::List(ListAccounts {
-                path: Directories::default().keys,
-                spec: SpecType::default(),
-            }))
-        );
-    }
-
-    #[test]
-    fn test_command_account_import() {
-        let args = vec!["parity", "account", "import", "my_dir", "another_dir"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::Import(ImportAccounts {
-                from: vec!["my_dir".into(), "another_dir".into()],
-                to: Directories::default().keys,
-                spec: SpecType::default(),
-            }))
-        );
     }
 
     #[test]
@@ -1372,7 +1263,6 @@ mod tests {
             network_id: None,
             warp_sync: true,
             warp_barrier: None,
-            acc_conf: Default::default(),
             gas_pricer_conf: Default::default(),
             miner_extras: Default::default(),
             mode: Default::default(),

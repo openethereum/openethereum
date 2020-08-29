@@ -31,13 +31,3 @@ impl LocalAccounts for HashSet<Address> {
         self.contains(address)
     }
 }
-
-impl<A, B> LocalAccounts for (A, B)
-where
-    A: LocalAccounts,
-    B: LocalAccounts,
-{
-    fn is_local(&self, address: &Address) -> bool {
-        self.0.is_local(address) || self.1.is_local(address)
-    }
-}

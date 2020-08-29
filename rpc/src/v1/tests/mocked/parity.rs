@@ -17,7 +17,7 @@
 use ethcore::client::{Executed, TestBlockChainClient, TransactionId};
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H256, U256};
-use ethstore::ethkey::{Generator, Random};
+use ethkey::{Generator, Random};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::sync::Arc;
 use sync::ManageNetwork;

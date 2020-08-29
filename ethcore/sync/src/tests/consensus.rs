@@ -17,7 +17,6 @@
 use super::helpers::*;
 use ethcore::{
     client::{ChainInfo, ClientIoMessage},
-    engines,
     miner::{self, MinerService},
     spec::Spec,
 };
@@ -56,14 +55,10 @@ fn authority_round() {
     // Push transaction to both clients. Only one of them gets lucky to produce a block.
     net.peer(0)
         .miner
-        .set_author(miner::Author::Sealer(engines::signer::from_keypair(
-            s0.clone(),
-        )));
+        .set_author(miner::Author::Sealer(s0.clone()));
     net.peer(1)
         .miner
-        .set_author(miner::Author::Sealer(engines::signer::from_keypair(
-            s1.clone(),
-        )));
+        .set_author(miner::Author::Sealer(s1.clone()));
     net.peer(0)
         .chain
         .engine()

@@ -24,7 +24,6 @@ mod block;
 mod block_number;
 mod bytes;
 mod call_request;
-mod derivation;
 mod filter;
 mod histogram;
 mod index;
@@ -50,7 +49,6 @@ pub use self::{
     block_number::{block_number_to_id, BlockNumber},
     bytes::Bytes,
     call_request::CallRequest,
-    derivation::{Derive, DeriveHash, DeriveHierarchical},
     filter::{Filter, FilterChanges},
     histogram::Histogram,
     index::Index,

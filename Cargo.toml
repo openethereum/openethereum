@@ -33,7 +33,6 @@ jsonrpc-core = "14.0.0"
 parity-bytes = "0.1"
 common-types = { path = "ethcore/types" }
 ethcore = { path = "ethcore", features = ["parity"] }
-ethcore-accounts = { path = "accounts", optional = true }
 ethcore-blockchain = { path = "ethcore/blockchain" }
 ethcore-call-contract = { path = "ethcore/call-contract"}
 ethcore-db = { path = "ethcore/db" }
@@ -45,7 +44,6 @@ ethcore-service = { path = "ethcore/service" }
 ethcore-sync = { path = "ethcore/sync" }
 ethereum-types = "0.4"
 ethkey = { path = "accounts/ethkey" }
-ethstore = { path = "accounts/ethstore" }
 fetch = { path = "util/fetch" }
 node-filter = { path = "ethcore/node-filter" }
 rlp = { version = "0.3.0", features = ["ethereum"] }
@@ -81,8 +79,6 @@ lazy_static = "1.2.0"
 winapi = { version = "0.3.4", features = ["winsock2", "winuser", "shellapi"] }
 
 [features]
-default = ["accounts"]
-accounts = ["ethcore-accounts", "parity-rpc/accounts"]
 miner-debug = ["ethcore/miner-debug"]
 json-tests = ["ethcore/json-tests"]
 ci-skip-tests = ["ethcore/ci-skip-tests"]
@@ -121,8 +117,6 @@ lto = true
 # in the dependency tree in any other way
 # (i.e. pretty much only standalone CLI tools)
 members = [
-	"accounts/ethkey/cli",
-	"accounts/ethstore/cli",
 	"chainspec",
 	"ethcore/wasm/run",
 	"evmbin",

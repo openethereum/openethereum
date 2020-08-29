@@ -22,16 +22,9 @@ use ethcore::{
     miner::{Penalization, PendingSet},
 };
 use ethereum_types::{clean_0x, Address, U256};
-use ethkey::Password;
 use journaldb::Algorithm;
 use miner::pool::PrioritizationStrategy;
-use std::{
-    collections::HashSet,
-    fs::File,
-    io,
-    io::{BufRead, BufReader, Write},
-    time::Duration,
-};
+use std::{collections::HashSet, time::Duration};
 use sync::{self, validate_node_url};
 use upgrade::{upgrade, upgrade_data_paths};
 
@@ -182,11 +175,6 @@ pub fn join_set(set: Option<&HashSet<String>>) -> Option<String> {
     }
 }
 
-/// Flush output buffer.
-pub fn flush_stdout() {
-    io::stdout().flush().expect("stdout is flushable; qed");
-}
-
 /// Formats and returns parity ipc path.
 pub fn parity_ipc_path(base: &str, path: &str, shift: u16) -> String {
     let mut path = path.to_owned();
@@ -319,67 +307,18 @@ pub fn execute_upgrades(
     migrate(&client_path, compaction_profile).map_err(|e| format!("{}", e))
 }
 
-/// Prompts user asking for password.
-pub fn password_prompt() -> Result<Password, String> {
-    use rpassword::read_password;
-    const STDIN_ERROR: &'static str = "Unable to ask for password on non-interactive terminal.";
-
-    println!("Please note that password is NOT RECOVERABLE.");
-    print!("Type password: ");
-    flush_stdout();
-
-    let password = read_password().map_err(|_| STDIN_ERROR.to_owned())?.into();
-
-    print!("Repeat password: ");
-    flush_stdout();
-
-    let password_repeat = read_password().map_err(|_| STDIN_ERROR.to_owned())?.into();
-
-    if password != password_repeat {
-        return Err("Passwords do not match!".into());
-    }
-
-    Ok(password)
-}
-
-/// Read a password from password file.
-pub fn password_from_file(path: String) -> Result<Password, String> {
-    let passwords = passwords_from_files(&[path])?;
-    // use only first password from the file
-    passwords
-        .get(0)
-        .map(Password::clone)
-        .ok_or_else(|| "Password file seems to be empty.".to_owned())
-}
-
-/// Reads passwords from files. Treats each line as a separate password.
-pub fn passwords_from_files(files: &[String]) -> Result<Vec<Password>, String> {
-    let passwords = files.iter().map(|filename| {
-		let file = File::open(filename).map_err(|_| format!("{} Unable to read password file. Ensure it exists and permissions are correct.", filename))?;
-		let reader = BufReader::new(&file);
-		let lines = reader.lines()
-			.filter_map(|l| l.ok())
-			.map(|pwd| pwd.trim().to_owned().into())
-			.collect::<Vec<Password>>();
-		Ok(lines)
-	}).collect::<Result<Vec<Vec<Password>>, String>>();
-    Ok(passwords?.into_iter().flat_map(|x| x).collect())
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        join_set, password_from_file, to_address, to_addresses, to_block_id, to_bootnodes,
-        to_duration, to_mode, to_pending_set, to_price, to_u256,
+        join_set, to_address, to_addresses, to_block_id, to_bootnodes, to_duration, to_mode,
+        to_pending_set, to_price, to_u256,
     };
     use ethcore::{
         client::{BlockId, Mode},
         miner::PendingSet,
     };
     use ethereum_types::U256;
-    use ethkey::Password;
-    use std::{collections::HashSet, fs::File, io::Write, time::Duration};
-    use tempdir::TempDir;
+    use std::{collections::HashSet, time::Duration};
 
     #[test]
     fn test_to_duration() {
@@ -515,40 +454,6 @@ mod tests {
                 "D9A111feda3f362f55Ef1744347CDC8Dd9964a41".parse().unwrap(),
                 "D9A111feda3f362f55Ef1744347CDC8Dd9964a42".parse().unwrap(),
             ]
-        );
-    }
-
-    #[test]
-    fn test_password() {
-        let tempdir = TempDir::new("").unwrap();
-        let path = tempdir.path().join("file");
-        let mut file = File::create(&path).unwrap();
-        file.write_all(b"a bc ").unwrap();
-        assert_eq!(
-            password_from_file(path.to_str().unwrap().into())
-                .unwrap()
-                .as_bytes(),
-            b"a bc"
-        );
-    }
-
-    #[test]
-    fn test_password_multiline() {
-        let tempdir = TempDir::new("").unwrap();
-        let path = tempdir.path().join("file");
-        let mut file = File::create(path.as_path()).unwrap();
-        file.write_all(
-            br#"    password with trailing whitespace
-those passwords should be
-ignored
-but the first password is trimmed
-
-"#,
-        )
-        .unwrap();
-        assert_eq!(
-            password_from_file(path.to_str().unwrap().into()).unwrap(),
-            Password::from("password with trailing whitespace")
         );
     }
 

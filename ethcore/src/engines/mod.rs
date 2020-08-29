@@ -24,7 +24,6 @@ mod null_engine;
 mod validator_set;
 
 pub mod block_reward;
-pub mod signer;
 
 pub use self::{
     authority_round::AuthorityRound,
@@ -32,7 +31,6 @@ pub use self::{
     clique::Clique,
     instant_seal::{InstantSeal, InstantSealParams},
     null_engine::NullEngine,
-    signer::EngineSigner,
 };
 
 // TODO [ToDr] Remove re-export (#10130)
@@ -449,7 +447,7 @@ pub trait Engine<M: Machine>: Sync + Send {
     }
 
     /// Register a component which signs consensus messages.
-    fn set_signer(&self, _signer: Box<dyn EngineSigner>) {}
+    fn set_signer(&self, _signer: ethkey::KeyPair) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, M::Error> {

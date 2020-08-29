@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{collections::HashSet, fmt, fs, num::NonZeroU32, str, time::Duration};
+use std::{collections::HashSet, fmt, fs, str, time::Duration};
 
 use ethcore::{
     client::Mode,
@@ -232,21 +232,6 @@ impl str::FromStr for ResealPolicy {
         };
 
         Ok(reseal)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct AccountsConfig {
-    pub iterations: NonZeroU32,
-    pub password_files: Vec<String>,
-}
-
-impl Default for AccountsConfig {
-    fn default() -> Self {
-        AccountsConfig {
-            iterations: NonZeroU32::new(10240).expect("10240 > 0; qed"),
-            password_files: Vec::new(),
-        }
     }
 }
 

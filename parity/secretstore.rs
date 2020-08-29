@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use account_utils::AccountProvider;
 use dir::{default_data_path, helpers::replace_home};
 use ethcore::{client::Client, miner::Miner};
 use ethereum_types::Address;
-use ethkey::{Password, Public, Secret};
+use ethkey::{Public, Secret};
 use parity_runtime::Executor;
 use std::{collections::BTreeMap, sync::Arc};
 use sync::SyncProvider;
@@ -74,17 +73,13 @@ pub struct Configuration {
 }
 
 /// Secret store dependencies
-pub struct Dependencies<'a> {
+pub struct Dependencies {
     /// Blockchain client.
     pub client: Arc<Client>,
     /// Sync provider.
     pub sync: Arc<dyn SyncProvider>,
     /// Miner service.
     pub miner: Arc<Miner>,
-    /// Account provider.
-    pub account_provider: Arc<AccountProvider>,
-    /// Passed accounts passwords.
-    pub accounts_passwords: &'a [Password],
 }
 
 #[cfg(not(feature = "secretstore"))]

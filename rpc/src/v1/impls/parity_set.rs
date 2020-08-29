@@ -23,7 +23,7 @@ use ethcore::{
     miner::{self, MinerService},
 };
 use ethereum_types::{H160, H256, U256};
-use ethkey;
+use ethkey::KeyPair;
 use fetch::{self, Fetch};
 use hash::keccak_buffer;
 use sync::ManageNetwork;
@@ -34,44 +34,6 @@ use v1::{
     traits::ParitySet,
     types::{Bytes, Transaction},
 };
-
-#[cfg(any(test, feature = "accounts"))]
-pub mod accounts {
-    use super::*;
-    use accounts::AccountProvider;
-    use v1::traits::ParitySetAccounts;
-
-    /// Parity-specific account-touching RPC interfaces.
-    pub struct ParitySetAccountsClient<M> {
-        miner: Arc<M>,
-        accounts: Arc<AccountProvider>,
-    }
-
-    impl<M> ParitySetAccountsClient<M> {
-        /// Creates new ParitySetAccountsClient
-        pub fn new(accounts: &Arc<AccountProvider>, miner: &Arc<M>) -> Self {
-            ParitySetAccountsClient {
-                accounts: accounts.clone(),
-                miner: miner.clone(),
-            }
-        }
-    }
-
-    impl<M: MinerService + 'static> ParitySetAccounts for ParitySetAccountsClient<M> {
-        fn set_engine_signer(&self, address: H160, password: String) -> Result<bool> {
-            let secret = self
-                .accounts
-                .get_secret(address, password.into())
-                .map_err(|e| errors::account("Failed to get secret", e))?;
-            let keypair = ethkey::KeyPair::from_secret(secret)
-                .map_err(|e| errors::account("Invalid secret", e))?;
-            self.miner.set_author(miner::Author::Sealer(
-                ethcore::engines::signer::from_keypair(keypair),
-            ));
-            Ok(true)
-        }
-    }
-}
 
 /// Parity-specific rpc interface for operations altering the settings.
 pub struct ParitySetClient<C, M, F = fetch::Client> {
@@ -144,11 +106,9 @@ where
     }
 
     fn set_engine_signer_secret(&self, secret: H256) -> Result<bool> {
-        let keypair = ethkey::KeyPair::from_secret(secret.into())
+        let keypair = KeyPair::from_secret(secret.into())
             .map_err(|e| errors::account("Invalid secret", e))?;
-        self.miner.set_author(miner::Author::Sealer(
-            ethcore::engines::signer::from_keypair(keypair),
-        ));
+        self.miner.set_author(miner::Author::Sealer(keypair));
         Ok(true)
     }
 

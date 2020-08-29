@@ -20,7 +20,6 @@ extern crate edit_distance;
 extern crate ethereum_types;
 extern crate memzero;
 extern crate parity_crypto;
-extern crate parity_wordlist;
 #[macro_use]
 extern crate quick_error;
 extern crate rand;
@@ -31,37 +30,22 @@ extern crate tiny_keccak;
 
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate serde_derive;
 
-mod brain;
-mod brain_prefix;
 mod error;
-mod extended;
 mod keccak;
 mod keypair;
-mod password;
-mod prefix;
+
 mod random;
 mod secret;
 mod signature;
 
-pub mod brain_recover;
 pub mod crypto;
 pub mod math;
 
 pub use self::{
-    brain::Brain,
-    brain_prefix::BrainPrefix,
     error::Error,
-    extended::{Derivation, DerivationError, ExtendedKeyPair, ExtendedPublic, ExtendedSecret},
     keypair::{public_to_address, KeyPair},
     math::public_is_valid,
-    parity_wordlist::Error as WordlistError,
-    password::Password,
-    prefix::Prefix,
     random::Random,
     secret::Secret,
     signature::{recover, sign, verify_address, verify_public, Signature},

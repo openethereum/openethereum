@@ -819,7 +819,6 @@ dependencies = [
  "ethabi-contract",
  "ethabi-derive",
  "ethash",
- "ethcore-accounts",
  "ethcore-blockchain",
  "ethcore-bloom-journal",
  "ethcore-builtin",
@@ -875,22 +874,6 @@ dependencies = [
  "using_queue",
  "vm",
  "wasm",
-]
-
-[[package]]
-name = "ethcore-accounts"
-version = "0.1.0"
-dependencies = [
- "common-types",
- "ethereum-types",
- "ethkey",
- "ethstore",
- "log",
- "parking_lot 0.7.1",
- "serde",
- "serde_derive",
- "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -1102,7 +1085,6 @@ dependencies = [
  "ethabi-contract",
  "ethabi-derive",
  "ethcore",
- "ethcore-accounts",
  "ethcore-call-contract",
  "ethcore-sync",
  "ethereum-types",
@@ -1179,7 +1161,6 @@ dependencies = [
  "ethcore-network-devp2p",
  "ethereum-types",
  "ethkey",
- "ethstore",
  "fastmap",
  "hash-db",
  "heapsize",
@@ -1244,71 +1225,12 @@ dependencies = [
  "log",
  "memzero",
  "parity-crypto 0.3.1",
- "parity-wordlist",
  "quick-error",
  "rand 0.4.6",
  "rustc-hex 1.0.0",
  "serde",
  "serde_derive",
  "tiny-keccak",
-]
-
-[[package]]
-name = "ethkey-cli"
-version = "0.1.0"
-dependencies = [
- "docopt",
- "env_logger",
- "ethkey",
- "panic_hook",
- "parity-wordlist",
- "rustc-hex 1.0.0",
- "serde",
- "serde_derive",
- "threadpool",
-]
-
-[[package]]
-name = "ethstore"
-version = "0.2.1"
-dependencies = [
- "dir",
- "ethereum-types",
- "ethkey",
- "itertools 0.5.10",
- "lazy_static",
- "libc",
- "log",
- "matches",
- "parity-crypto 0.3.1",
- "parity-wordlist",
- "parking_lot 0.7.1",
- "rand 0.4.6",
- "rustc-hex 1.0.0",
- "serde",
- "serde_derive",
- "serde_json",
- "smallvec",
- "tempdir",
- "time",
- "tiny-keccak",
-]
-
-[[package]]
-name = "ethstore-cli"
-version = "0.1.1"
-dependencies = [
- "dir",
- "docopt",
- "env_logger",
- "ethstore",
- "num_cpus",
- "panic_hook",
- "parking_lot 0.7.1",
- "rustc-hex 1.0.0",
- "serde",
- "serde_derive",
- "tempdir",
 ]
 
 [[package]]
@@ -2598,7 +2520,6 @@ dependencies = [
  "dir",
  "docopt",
  "ethcore",
- "ethcore-accounts",
  "ethcore-blockchain",
  "ethcore-call-contract",
  "ethcore-db",
@@ -2611,7 +2532,6 @@ dependencies = [
  "ethcore-sync",
  "ethereum-types",
  "ethkey",
- "ethstore",
  "fake-fetch",
  "fdlimit",
  "fetch",
@@ -2711,7 +2631,6 @@ dependencies = [
  "common-types",
  "ethash",
  "ethcore",
- "ethcore-accounts",
  "ethcore-io",
  "ethcore-logger",
  "ethcore-miner",
@@ -2720,7 +2639,6 @@ dependencies = [
  "ethereum-types",
  "ethjson",
  "ethkey",
- "ethstore",
  "fake-fetch",
  "fetch",
  "futures",
@@ -2747,7 +2665,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "stats",
- "tempdir",
  "tiny-keccak",
  "tokio-timer 0.1.2",
  "transaction-pool",
@@ -2820,16 +2737,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "511379a8194230c2395d2f5fa627a5a7e108a9f976656ce723ae68fca4097bfc"
 dependencies = [
  "byteorder",
-]
-
-[[package]]
-name = "parity-wordlist"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "573d08f0d3bc8a6ffcdac1de2725b5daeed8db26345a9c12d91648e2d6457f3e"
-dependencies = [
- "lazy_static",
- "rand 0.6.5",
 ]
 
 [[package]]
@@ -4029,15 +3936,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "threadpool"
-version = "1.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2f0c90a5f3459330ac8bc0d2f879c693bb7a2f59689c1083fc4ef83834da865"
-dependencies = [
- "num_cpus",
 ]
 
 [[package]]

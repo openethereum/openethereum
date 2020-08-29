@@ -52,7 +52,7 @@ use v1::{
     helpers::{
         self,
         block_import::is_major_importing,
-        deprecated::{self, DeprecationNotice},
+        deprecated::DeprecationNotice,
         dispatch::{default_gas_price, FullDispatcher},
         errors, fake_sign, limit_logs,
     },
@@ -114,7 +114,6 @@ where
     client: Arc<C>,
     snapshot: Arc<SN>,
     sync: Arc<S>,
-    accounts: Arc<dyn Fn() -> Vec<Address> + Send + Sync>,
     miner: Arc<M>,
     external_miner: Arc<EM>,
     seed_compute: Mutex<SeedHashCompute>,
@@ -172,7 +171,6 @@ where
         client: &Arc<C>,
         snapshot: &Arc<SN>,
         sync: &Arc<S>,
-        accounts: &Arc<dyn Fn() -> Vec<Address> + Send + Sync>,
         miner: &Arc<M>,
         em: &Arc<EM>,
         options: EthClientOptions,
@@ -182,7 +180,6 @@ where
             snapshot: snapshot.clone(),
             sync: sync.clone(),
             miner: miner.clone(),
-            accounts: accounts.clone(),
             external_miner: em.clone(),
             seed_compute: Mutex::new(SeedHashCompute::default()),
             options,
@@ -620,10 +617,7 @@ where
     fn author(&self) -> Result<H160> {
         let miner = self.miner.authoring_params().author;
         if miner == 0.into() {
-            (self.accounts)()
-                .first()
-                .cloned()
-                .ok_or_else(|| errors::account("No accounts were found", ""))
+            Err(errors::account("No accounts were found", ""))
         } else {
             Ok(miner)
         }
@@ -647,14 +641,6 @@ where
             &*self.miner,
             self.options.gas_price_percentile,
         )))
-    }
-
-    fn accounts(&self) -> Result<Vec<H160>> {
-        self.deprecation_notice
-            .print("eth_accounts", deprecated::msgs::ACCOUNTS);
-
-        let accounts = (self.accounts)();
-        Ok(accounts)
     }
 
     fn block_number(&self) -> Result<U256> {

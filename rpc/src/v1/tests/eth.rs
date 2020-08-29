@@ -17,7 +17,6 @@
 //! rpc integration tests.
 use std::{env, sync::Arc};
 
-use accounts::AccountProvider;
 use ethcore::{
     client::{BlockChainClient, ChainInfo, Client, ClientConfig, ImportBlock},
     ethereum,
@@ -28,6 +27,7 @@ use ethcore::{
 };
 use ethereum_types::{Address, H256, U256};
 use ethjson::{blockchain::BlockChain, spec::ForkSpec};
+use ethkey::{public_to_address, KeyPair, Secret};
 use io::IoChannel;
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
@@ -40,10 +40,6 @@ use v1::{
     tests::helpers::{Config, TestSnapshotService, TestSyncProvider},
     traits::Eth,
 };
-
-fn account_provider() -> Arc<AccountProvider> {
-    Arc::new(AccountProvider::transient_provider())
-}
 
 fn sync_provider() -> Arc<TestSyncProvider> {
     Arc::new(TestSyncProvider::new(Config {
@@ -75,7 +71,6 @@ struct EthTester {
     _miner: Arc<Miner>,
     _runtime: Runtime,
     _snapshot: Arc<TestSnapshotService>,
-    accounts: Arc<AccountProvider>,
     client: Arc<Client>,
     handler: IoHandler<Metadata>,
 }
@@ -112,9 +107,6 @@ impl EthTester {
 
     fn from_spec_conf(spec: Spec, config: ClientConfig) -> Self {
         let runtime = Runtime::with_thread_count(1);
-        let account_provider = account_provider();
-        let ap = account_provider.clone();
-        let accounts = Arc::new(move || ap.accounts().unwrap_or_default()) as _;
         let miner_service = miner_service(&spec);
         let snapshot_service = snapshot_service();
 
@@ -133,7 +125,6 @@ impl EthTester {
             &client,
             &snapshot_service,
             &sync_provider,
-            &accounts,
             &miner_service,
             &external_miner,
             EthClientOptions {
@@ -151,7 +142,6 @@ impl EthTester {
             _miner: miner_service,
             _runtime: runtime,
             _snapshot: snapshot_service,
-            accounts: account_provider,
             client: client,
             handler: handler,
         }
@@ -380,12 +370,12 @@ const POSITIVE_NONCE_SPEC: &'static [u8] = br#"{
 #[test]
 fn eth_transaction_count() {
     let secret = "8a283037bb19c4fed7b1c569e40c7dcff366165eb869110a1b11532963eb9cb2"
-        .parse()
+        .parse::<Secret>()
         .unwrap();
     let tester = EthTester::from_spec(
         Spec::load(&env::temp_dir(), TRANSACTION_COUNT_SPEC).expect("invalid chain spec"),
     );
-    let address = tester.accounts.insert_account(secret, &"".into()).unwrap();
+    let address = public_to_address(KeyPair::from_secret(secret).unwrap().public());
 
     let req_before = r#"{
 		"jsonrpc": "2.0",

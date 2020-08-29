@@ -56,7 +56,7 @@ use client::{
     BlockChain, BlockId, BlockProducer, ChainInfo, ClientIoMessage, Nonce, SealedBlockImporter,
     TransactionId, TransactionInfo,
 };
-use engines::{EngineSigner, EthEngine, Seal};
+use engines::{EthEngine, Seal};
 use error::{Error, ErrorKind};
 use executed::ExecutionError;
 use executive::contract_address;
@@ -206,7 +206,7 @@ pub enum Author {
     /// Sealing block is external and we only need a reward beneficiary (i.e. PoW)
     External(Address),
     /// Sealing is done internally, we need a way to create signatures to seal block (i.e. PoA)
-    Sealer(Box<dyn EngineSigner>),
+    Sealer(ethkey::KeyPair),
 }
 
 impl Author {
@@ -1492,9 +1492,7 @@ mod tests {
     use std::iter::FromIterator;
 
     use super::*;
-    use accounts::AccountProvider;
     use ethkey::{Generator, Random};
-    use hash::keccak;
     use rustc_hex::FromHex;
     use types::BlockNumber;
 
@@ -1902,18 +1900,17 @@ mod tests {
     }
 
     #[test]
-    fn should_not_fail_setting_engine_signer_without_account_provider() {
+    fn should_not_fail_setting_engine_signer_without_keypair() {
         let spec = Spec::new_test_round;
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let addr = tap.insert_account(keccak("1").into(), &"".into()).unwrap();
+        let signer = Random.generate().unwrap();
         let client = generate_dummy_client_with_spec(spec);
-        let engine_signer = Box::new((tap.clone(), addr, "".into()));
+        let engine_signer = signer.clone();
         let msg = Default::default();
         assert!(client.engine().sign(msg).is_err());
 
         // should set engine signer and miner author
         client.miner().set_author(Author::Sealer(engine_signer));
-        assert_eq!(client.miner().authoring_params().author, addr);
+        assert_eq!(client.miner().authoring_params().author, signer.address());
         assert!(client.engine().sign(msg).is_ok());
     }
 

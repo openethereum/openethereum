@@ -52,7 +52,6 @@ extern crate ethcore_service;
 extern crate ethcore_sync as sync;
 extern crate ethereum_types;
 extern crate ethkey;
-extern crate ethstore;
 extern crate fetch;
 extern crate journaldb;
 extern crate keccak_hash as hash;
@@ -69,9 +68,6 @@ extern crate registrar;
 #[macro_use]
 extern crate log as rlog;
 
-#[cfg(feature = "ethcore-accounts")]
-extern crate ethcore_accounts as accounts;
-
 #[cfg(feature = "secretstore")]
 extern crate ethcore_secretstore;
 
@@ -83,11 +79,8 @@ extern crate pretty_assertions;
 extern crate tempdir;
 
 #[cfg(test)]
-#[macro_use]
 extern crate lazy_static;
 
-mod account;
-mod account_utils;
 mod blockchain;
 mod cache;
 mod cli;
@@ -200,9 +193,6 @@ pub fn start(
         Cmd::Version => Ok(ExecutionAction::Instant(Some(Args::print_version()))),
         Cmd::Hash(maybe_file) => {
             print_hash_of(maybe_file).map(|s| ExecutionAction::Instant(Some(s)))
-        }
-        Cmd::Account(account_cmd) => {
-            account::execute(account_cmd).map(|s| ExecutionAction::Instant(Some(s)))
         }
         Cmd::Blockchain(blockchain_cmd) => {
             blockchain::execute(blockchain_cmd).map(|_| ExecutionAction::Instant(None))

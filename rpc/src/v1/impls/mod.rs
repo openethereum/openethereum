@@ -22,18 +22,12 @@ mod eth_filter;
 mod eth_pubsub;
 mod net;
 mod parity;
-#[cfg(any(test, feature = "accounts"))]
-mod parity_accounts;
 mod parity_set;
 mod pubsub;
 mod secretstore;
 mod traces;
 mod web3;
 
-#[cfg(any(test, feature = "accounts"))]
-pub use self::parity_accounts::ParityAccountsClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::parity_set::accounts::ParitySetAccountsClient;
 pub use self::{
     debug::DebugClient,
     eth::{EthClient, EthClientOptions},

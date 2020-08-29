@@ -16,11 +16,11 @@
 
 //! PoA block chunker and rebuilder tests.
 
+use hex_literal::hex;
 use std::{cell::RefCell, str::FromStr, sync::Arc};
 
-use accounts::AccountProvider;
 use client::{BlockChainClient, ChainInfo, Client};
-use ethkey::Secret;
+use ethkey::KeyPair;
 use snapshot::tests::helpers as snapshot_helpers;
 use spec::Spec;
 use tempdir::TempDir;
@@ -32,13 +32,12 @@ use test_helpers;
 
 use_contract!(test_validator_set, "res/contracts/test_validator_set.json");
 
-const PASS: &'static str = "";
 const TRANSITION_BLOCK_1: usize = 2; // block at which the contract becomes activated.
 const TRANSITION_BLOCK_2: usize = 10; // block at which the second contract activates.
 
 macro_rules! secret {
     ($e: expr) => {
-        Secret::from($crate::hash::keccak($e).0)
+        KeyPair::from_secret_slice(&$crate::hash::keccak($e)).unwrap()
     };
 }
 
@@ -47,9 +46,7 @@ lazy_static! {
     static ref CONTRACT_ADDR_1: Address = Address::from_str("0000000000000000000000000000000000000005").unwrap();
     static ref CONTRACT_ADDR_2: Address = Address::from_str("0000000000000000000000000000000000000006").unwrap();
     // secret: `keccak(1)`, and initial validator.
-    static ref RICH_ADDR: Address = Address::from_str("7d577a597b2742b498cb5cf0c26cdcd726d39e6e").unwrap();
-    // rich address' secret.
-    static ref RICH_SECRET: Secret = secret!("1");
+    static ref RICH_SECRET: KeyPair = KeyPair::from_secret_slice(&hex!("c89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6")).unwrap();
 }
 
 /// Contract code used here: https://gist.github.com/anonymous/2a43783647e0f0dfcc359bd6fd81d6d9
@@ -63,39 +60,20 @@ fn spec_fixed_to_contract() -> Spec {
     Spec::load(&tempdir.path(), &data[..]).unwrap()
 }
 
-// creates an account provider, filling it with accounts from all the given
-// secrets and password `PASS`.
-// returns addresses corresponding to secrets.
-fn make_accounts(secrets: &[Secret]) -> (Arc<AccountProvider>, Vec<Address>) {
-    let provider = AccountProvider::transient_provider();
-
-    let addrs = secrets
-        .iter()
-        .cloned()
-        .map(|s| provider.insert_account(s, &PASS.into()).unwrap())
-        .collect();
-
-    (Arc::new(provider), addrs)
-}
-
 // validator transition. block number and new validators. must be after `TRANSITION_BLOCK`.
 // all addresses in the set must be in the account provider.
 enum Transition {
     // manual transition via transaction
-    Manual(usize, Vec<Address>),
+    Manual(usize, Vec<KeyPair>),
     // implicit transition via multi-set
-    Implicit(usize, Vec<Address>),
+    Implicit(usize, Vec<KeyPair>),
 }
 
 // create a chain with the given transitions and some blocks beyond that transition.
-fn make_chain(
-    accounts: Arc<AccountProvider>,
-    blocks_beyond: usize,
-    transitions: Vec<Transition>,
-) -> Arc<Client> {
+fn make_chain(blocks_beyond: usize, transitions: Vec<Transition>) -> Arc<Client> {
     let client = generate_dummy_client_with_spec(spec_fixed_to_contract);
 
-    let mut cur_signers = vec![*RICH_ADDR];
+    let mut cur_signers = vec![RICH_SECRET.clone()];
     {
         let engine = client.engine();
         engine.register_client(Arc::downgrade(&client) as _);
@@ -103,15 +81,16 @@ fn make_chain(
 
     {
         // push a block with given number, signed by one of the signers, with given transactions.
-        let push_block = |signers: &[Address], n, txs: Vec<SignedTransaction>| {
+        let push_block = |signers: &[ethkey::KeyPair], n, txs: Vec<SignedTransaction>| {
             use miner::{self, MinerService};
 
             let idx = n as usize % signers.len();
             trace!(target: "snapshot", "Pushing block #{}, {} txs, author={}",
 				n, txs.len(), signers[idx]);
 
-            let signer = Box::new((accounts.clone(), signers[idx], PASS.into()));
-            client.miner().set_author(miner::Author::Sealer(signer));
+            client
+                .miner()
+                .set_author(miner::Author::Sealer(signers[idx].clone()));
             client
                 .miner()
                 .import_external_transactions(&*client, txs.into_iter().map(Into::into).collect());
@@ -136,7 +115,7 @@ fn make_chain(
                 value: 1.into(),
                 data: Vec::new(),
             }
-            .sign(&*RICH_SECRET, client.signing_chain_id());
+            .sign(RICH_SECRET.secret(), client.signing_chain_id());
 
             *nonce = *nonce + 1;
             vec![transaction]
@@ -168,8 +147,9 @@ fn make_chain(
                     false => &CONTRACT_ADDR_1 as &Address,
                 };
 
-                let data =
-                    test_validator_set::functions::set_validators::encode_input(new_set.clone());
+                let data = test_validator_set::functions::set_validators::encode_input(
+                    new_set.iter().map(KeyPair::address).collect::<Vec<_>>(),
+                );
                 let mut nonce = nonce.borrow_mut();
                 let transaction = Transaction {
                     nonce: *nonce,
@@ -179,7 +159,7 @@ fn make_chain(
                     value: 0.into(),
                     data,
                 }
-                .sign(&*RICH_SECRET, client.signing_chain_id());
+                .sign(RICH_SECRET.secret(), client.signing_chain_id());
 
                 *nonce = *nonce + 1;
                 vec![transaction]
@@ -216,7 +196,7 @@ fn make_chain(
 
 #[test]
 fn fixed_to_contract_only() {
-    let (provider, addrs) = make_accounts(&[
+    let signers = vec![
         RICH_SECRET.clone(),
         secret!("foo"),
         secret!("bar"),
@@ -225,16 +205,29 @@ fn fixed_to_contract_only() {
         secret!("crypto"),
         secret!("wizard"),
         secret!("dog42"),
-    ]);
-
-    assert!(provider.has_account(*RICH_ADDR));
+    ];
 
     let client = make_chain(
-        provider,
         3,
         vec![
-            Transition::Manual(3, vec![addrs[2], addrs[3], addrs[5], addrs[7]]),
-            Transition::Manual(6, vec![addrs[0], addrs[1], addrs[4], addrs[6]]),
+            Transition::Manual(
+                3,
+                vec![
+                    signers[2].clone(),
+                    signers[3].clone(),
+                    signers[5].clone(),
+                    signers[7].clone(),
+                ],
+            ),
+            Transition::Manual(
+                6,
+                vec![
+                    signers[0].clone(),
+                    signers[1].clone(),
+                    signers[4].clone(),
+                    signers[6].clone(),
+                ],
+            ),
         ],
     );
 
@@ -255,7 +248,7 @@ fn fixed_to_contract_only() {
 
 #[test]
 fn fixed_to_contract_to_contract() {
-    let (provider, addrs) = make_accounts(&[
+    let signers = vec![
         RICH_SECRET.clone(),
         secret!("foo"),
         secret!("bar"),
@@ -264,18 +257,39 @@ fn fixed_to_contract_to_contract() {
         secret!("crypto"),
         secret!("wizard"),
         secret!("dog42"),
-    ]);
-
-    assert!(provider.has_account(*RICH_ADDR));
+    ];
 
     let client = make_chain(
-        provider,
         3,
         vec![
-            Transition::Manual(3, vec![addrs[2], addrs[3], addrs[5], addrs[7]]),
-            Transition::Manual(6, vec![addrs[0], addrs[1], addrs[4], addrs[6]]),
-            Transition::Implicit(10, vec![addrs[0]]),
-            Transition::Manual(13, vec![addrs[2], addrs[4], addrs[6], addrs[7]]),
+            Transition::Manual(
+                3,
+                vec![
+                    signers[2].clone(),
+                    signers[3].clone(),
+                    signers[5].clone(),
+                    signers[7].clone(),
+                ],
+            ),
+            Transition::Manual(
+                6,
+                vec![
+                    signers[0].clone(),
+                    signers[1].clone(),
+                    signers[4].clone(),
+                    signers[6].clone(),
+                ],
+            ),
+            Transition::Implicit(10, vec![signers[0].clone()]),
+            Transition::Manual(
+                13,
+                vec![
+                    signers[2].clone(),
+                    signers[4].clone(),
+                    signers[6].clone(),
+                    signers[7].clone(),
+                ],
+            ),
         ],
     );
 

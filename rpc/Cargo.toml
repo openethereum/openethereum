@@ -32,7 +32,6 @@ jsonrpc-pubsub = "14.0.3"
 common-types = { path = "../ethcore/types" }
 ethash = { path = "../ethash" }
 ethcore = { path = "../ethcore" }
-ethcore-accounts = { path = "../accounts", optional = true }
 ethcore-logger = { path = "../parity/logger" }
 ethcore-miner = { path = "../miner" }
 ethcore-network = { path = "../util/network" }
@@ -43,7 +42,6 @@ parity-crypto = "0.3.0"
 
 ethjson = { path = "../json" }
 ethkey = { path = "../accounts/ethkey" }
-ethstore = { path = "../accounts/ethstore" }
 fetch = { path = "../util/fetch" }
 keccak-hash = "0.1.2"
 parity-runtime = { path = "../util/runtime" }
@@ -54,14 +52,9 @@ vm = { path = "../ethcore/vm" }
 
 [dev-dependencies]
 ethcore = { path = "../ethcore", features = ["test-helpers"] }
-ethcore-accounts = { path = "../accounts" }
 ethcore-io = { path = "../util/io" }
 ethcore-network = { path = "../util/network" }
 fake-fetch = { path = "../util/fake-fetch" }
 macros = { path = "../util/macros" }
 pretty_assertions = "0.1"
-tempdir = "0.3"
 transaction-pool = "2.0.1"
-
-[features]
-accounts = ["ethcore-accounts"]

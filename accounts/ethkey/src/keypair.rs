@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Address, Error, Public, Secret, SECP256K1};
+use super::{Address, Error, Public, Secret, Signature, SECP256K1};
+use ethereum_types::H256;
 use keccak::Keccak256;
 use rustc_hex::ToHex;
 use secp256k1::key;
@@ -88,6 +89,10 @@ impl KeyPair {
 
     pub fn address(&self) -> Address {
         public_to_address(&self.public)
+    }
+
+    pub fn sign(&self, message: H256) -> Result<Signature, Error> {
+        super::sign(self.secret(), &message)
     }
 }
 

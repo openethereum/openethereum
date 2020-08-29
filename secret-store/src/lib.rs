@@ -57,9 +57,6 @@ extern crate env_logger;
 #[cfg(test)]
 extern crate kvdb_rocksdb;
 
-#[cfg(feature = "accounts")]
-extern crate ethcore_accounts as accounts;
-
 mod helpers;
 mod key_server_cluster;
 mod types;

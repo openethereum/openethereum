@@ -60,10 +60,6 @@ pub trait Eth {
     #[rpc(name = "eth_gasPrice")]
     fn gas_price(&self) -> BoxFuture<U256>;
 
-    /// Returns accounts list.
-    #[rpc(name = "eth_accounts")]
-    fn accounts(&self) -> Result<Vec<H160>>;
-
     /// Returns highest block number.
     #[rpc(name = "eth_blockNumber")]
     fn block_number(&self) -> Result<U256>;

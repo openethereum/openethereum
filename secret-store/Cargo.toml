@@ -12,7 +12,6 @@ ethabi = "6.0"
 ethabi-contract = "6.0"
 ethabi-derive = "6.0"
 ethcore = { path = "../ethcore" }
-ethcore-accounts = { path = "../accounts", optional = true}
 ethcore-call-contract = { path = "../ethcore/call-contract" }
 ethcore-sync = { path = "../ethcore/sync" }
 ethereum-types = "0.4"

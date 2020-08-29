@@ -25,13 +25,10 @@ use bytes::Bytes;
 use ethcore::{client::BlockChainClient, miner::MinerService};
 use ethereum_types::{Address, H256, U256};
 use hash::keccak;
-use types::transaction::{PendingTransaction, SignedTransaction};
+use types::transaction::PendingTransaction;
 
 use jsonrpc_core::{BoxFuture, Result};
-use v1::{
-    helpers::{FilledTransactionRequest, TransactionRequest},
-    types::RichRawTransaction as RpcRichRawTransaction,
-};
+use v1::helpers::{FilledTransactionRequest, TransactionRequest};
 
 /// Has the capability to dispatch, sign, and decrypt.
 ///
@@ -48,9 +45,6 @@ pub trait Dispatcher: Send + Sync + Clone {
         default_sender: Address,
         force_nonce: bool,
     ) -> BoxFuture<FilledTransactionRequest>;
-
-    /// Converts a `SignedTransaction` into `RichRawTransaction`
-    fn enrich(&self, signed_transaction: SignedTransaction) -> RpcRichRawTransaction;
 
     /// "Dispatch" a local transaction.
     fn dispatch_transaction(&self, signed_transaction: PendingTransaction) -> Result<H256>;

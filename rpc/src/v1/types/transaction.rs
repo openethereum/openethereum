@@ -150,27 +150,6 @@ impl Serialize for LocalTransactionStatus {
     }
 }
 
-/// Geth-compatible output for eth_signTransaction method
-#[derive(Debug, Default, Clone, PartialEq, Serialize)]
-pub struct RichRawTransaction {
-    /// Raw transaction RLP
-    pub raw: Bytes,
-    /// Transaction details
-    #[serde(rename = "tx")]
-    pub transaction: Transaction,
-}
-
-impl RichRawTransaction {
-    /// Creates new `RichRawTransaction` from `SignedTransaction`.
-    pub fn from_signed(tx: SignedTransaction) -> Self {
-        let tx = Transaction::from_signed(tx);
-        RichRawTransaction {
-            raw: tx.raw.clone(),
-            transaction: tx,
-        }
-    }
-}
-
 impl Transaction {
     /// Convert `LocalizedTransaction` into RPC Transaction.
     pub fn from_localized(mut t: LocalizedTransaction) -> Transaction {

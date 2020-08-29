@@ -22,13 +22,10 @@ use ethcore::{
 };
 use ethereum_types::{Address, H256, U256};
 use parking_lot::Mutex;
-use types::transaction::{PendingTransaction, SignedTransaction};
+use types::transaction::PendingTransaction;
 
 use jsonrpc_core::{futures::future, BoxFuture, Result};
-use v1::{
-    helpers::{errors, nonce, FilledTransactionRequest, TransactionRequest},
-    types::RichRawTransaction as RpcRichRawTransaction,
-};
+use v1::helpers::{errors, nonce, FilledTransactionRequest, TransactionRequest};
 
 use super::{default_gas_price, Dispatcher};
 
@@ -128,10 +125,6 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             data: request.data.unwrap_or_else(Vec::new),
             condition: request.condition,
         }))
-    }
-
-    fn enrich(&self, signed_transaction: SignedTransaction) -> RpcRichRawTransaction {
-        RpcRichRawTransaction::from_signed(signed_transaction)
     }
 
     fn dispatch_transaction(&self, signed_transaction: PendingTransaction) -> Result<H256> {

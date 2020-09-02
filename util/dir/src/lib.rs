@@ -65,8 +65,6 @@ pub struct Directories {
     pub cache: String,
     /// Dir to store keys
     pub keys: String,
-    /// Signer dir
-    pub signer: String,
     /// Secrets dir
     pub secretstore: String,
 }
@@ -80,7 +78,6 @@ impl Default for Directories {
             db: replace_home_and_local(&data_dir, &local_dir, CHAINS_PATH),
             cache: replace_home_and_local(&data_dir, &local_dir, CACHE_PATH),
             keys: replace_home(&data_dir, "$BASE/keys"),
-            signer: replace_home(&data_dir, "$BASE/signer"),
             secretstore: replace_home(&data_dir, "$BASE/secretstore"),
         }
     }
@@ -88,18 +85,11 @@ impl Default for Directories {
 
 impl Directories {
     /// Create local directories
-    pub fn create_dirs(
-        &self,
-        signer_enabled: bool,
-        secretstore_enabled: bool,
-    ) -> Result<(), String> {
+    pub fn create_dirs(&self, secretstore_enabled: bool) -> Result<(), String> {
         fs::create_dir_all(&self.base).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.db).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.cache).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.keys).map_err(|e| e.to_string())?;
-        if signer_enabled {
-            fs::create_dir_all(&self.signer).map_err(|e| e.to_string())?;
-        }
         if secretstore_enabled {
             fs::create_dir_all(&self.secretstore).map_err(|e| e.to_string())?;
         }
@@ -126,18 +116,6 @@ impl Directories {
     pub fn ipc_path(&self) -> PathBuf {
         let mut dir = Path::new(&self.base).to_path_buf();
         dir.push("ipc");
-        dir
-    }
-
-    /// Legacy keys path
-    // TODO: remove in 1.7
-    pub fn legacy_keys_path(&self, testnet: bool) -> PathBuf {
-        let mut dir = Path::new(&self.base).to_path_buf();
-        if testnet {
-            dir.push("testnet_keys");
-        } else {
-            dir.push("keys");
-        }
         dir
     }
 
@@ -359,7 +337,6 @@ mod tests {
                 },
             ),
             keys: replace_home(&data_dir, "$BASE/keys"),
-            signer: replace_home(&data_dir, "$BASE/signer"),
             secretstore: replace_home(&data_dir, "$BASE/secretstore"),
         };
         assert_eq!(expected, Directories::default());

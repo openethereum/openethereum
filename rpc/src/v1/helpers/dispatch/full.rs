@@ -22,21 +22,12 @@ use ethcore::{
 };
 use ethereum_types::{Address, H256, U256};
 use parking_lot::Mutex;
-use types::transaction::{PendingTransaction, SignedTransaction};
+use types::transaction::PendingTransaction;
 
-use jsonrpc_core::{
-    futures::{future, Future, IntoFuture},
-    BoxFuture, Result,
-};
-use v1::{
-    helpers::{errors, nonce, FilledTransactionRequest, TransactionRequest},
-    types::RichRawTransaction as RpcRichRawTransaction,
-};
+use jsonrpc_core::{futures::future, BoxFuture, Result};
+use v1::helpers::{errors, nonce, FilledTransactionRequest, TransactionRequest};
 
-use super::{
-    default_gas_price, prospective_signer::ProspectiveSigner, Accounts, Dispatcher, PostSign,
-    SignWith,
-};
+use super::{default_gas_price, Dispatcher};
 
 /// A dispatcher which uses references to a client and miner in order to sign
 /// requests locally.
@@ -134,44 +125,6 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             data: request.data.unwrap_or_else(Vec::new),
             condition: request.condition,
         }))
-    }
-
-    fn sign<P>(
-        &self,
-        filled: FilledTransactionRequest,
-        signer: &Arc<dyn Accounts>,
-        password: SignWith,
-        post_sign: P,
-    ) -> BoxFuture<P::Item>
-    where
-        P: PostSign + 'static,
-        <P::Out as IntoFuture>::Future: Send,
-    {
-        let chain_id = self.client.signing_chain_id();
-
-        if let Some(nonce) = filled.nonce {
-            let future = signer
-                .sign_transaction(filled, chain_id, nonce, password)
-                .into_future()
-                .and_then(move |signed| post_sign.execute(signed));
-            Box::new(future)
-        } else {
-            let state = self.state_nonce(&filled.from);
-            let reserved = self.nonces.lock().reserve(filled.from, state);
-
-            Box::new(ProspectiveSigner::new(
-                signer.clone(),
-                filled,
-                chain_id,
-                reserved,
-                password,
-                post_sign,
-            ))
-        }
-    }
-
-    fn enrich(&self, signed_transaction: SignedTransaction) -> RpcRichRawTransaction {
-        RpcRichRawTransaction::from_signed(signed_transaction)
     }
 
     fn dispatch_transaction(&self, signed_transaction: PendingTransaction) -> Result<H256> {

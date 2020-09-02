@@ -1363,7 +1363,7 @@ pub mod tests {
         cluster_sessions::ClusterSession,
         generation_session::tests::MessageLoop as GenerationMessageLoop,
         jobs::servers_set_change_access_job::ordered_nodes_hash, math, message::Message, Error,
-        KeyStorage, NodeId, NodeKeyPair, PlainNodeKeyPair, SessionId,
+        KeyStorage, NodeId, NodeKeyPair, SessionId,
     };
     use std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -1516,7 +1516,7 @@ pub mod tests {
 
             // include new nodes in the cluster
             for node_key_pair in &add {
-                ml.include(Arc::new(PlainNodeKeyPair::new(node_key_pair.clone())));
+                ml.include(Arc::new(NodeKeyPair::new(node_key_pair.clone())));
             }
             // isolate nodes from the cluster
             for isolated_node_id in &isolated_nodes_ids {

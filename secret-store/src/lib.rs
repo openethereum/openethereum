@@ -57,9 +57,6 @@ extern crate env_logger;
 #[cfg(test)]
 extern crate kvdb_rocksdb;
 
-#[cfg(feature = "accounts")]
-extern crate ethcore_accounts as accounts;
-
 mod helpers;
 mod key_server_cluster;
 mod types;
@@ -80,10 +77,8 @@ use parity_runtime::Executor;
 use std::sync::Arc;
 use sync::SyncProvider;
 
-#[cfg(feature = "accounts")]
-pub use self::node_key_pair::KeyStoreNodeKeyPair;
-pub use self::node_key_pair::PlainNodeKeyPair;
-pub use traits::{KeyServer, NodeKeyPair};
+pub use node_key_pair::NodeKeyPair;
+pub use traits::KeyServer;
 pub use types::{
     ClusterConfiguration, ContractAddress, EncryptedDocumentKey, Error, NodeAddress, Public,
     RequestSignature, ServerKeyId, ServiceConfiguration,
@@ -94,7 +89,7 @@ pub fn start(
     client: Arc<Client>,
     sync: Arc<dyn SyncProvider>,
     miner: Arc<Miner>,
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     mut config: ServiceConfiguration,
     db: Arc<dyn KeyValueDB>,
     executor: Executor,

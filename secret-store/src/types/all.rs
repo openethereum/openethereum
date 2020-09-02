@@ -80,7 +80,7 @@ pub struct ClusterConfiguration {
     /// This node address.
     pub listener_address: NodeAddress,
     /// All cluster nodes addresses.
-    pub nodes: BTreeMap<ethkey::Public, NodeAddress>,
+    pub nodes: BTreeMap<Public, NodeAddress>,
     /// Key Server Set contract address. If None, servers from 'nodes' map are used.
     pub key_server_set_contract_address: Option<ContractAddress>,
     /// Allow outbound connections to 'higher' nodes.
@@ -99,7 +99,7 @@ pub struct EncryptedDocumentKeyShadow {
     /// Decrypted secret point. It is partially decrypted if shadow decryption was requested.
     pub decrypted_secret: ethkey::Public,
     /// Shared common point.
-    pub common_point: Option<ethkey::Public>,
+    pub common_point: Option<Public>,
     /// If shadow decryption was requested: shadow decryption coefficients, encrypted with requestor public.
     pub decrypt_shadows: Option<Vec<Vec<u8>>>,
 }

@@ -88,7 +88,7 @@ struct NetConnectionsData {
     /// Reference to tokio task executor.
     executor: Executor,
     /// Key pair of this node.
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     /// Network messages processor.
     message_processor: Arc<dyn MessageProcessor>,
     /// Connections trigger.

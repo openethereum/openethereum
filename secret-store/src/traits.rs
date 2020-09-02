@@ -14,25 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{Address, H256};
-use ethkey::{Error as EthKeyError, KeyPair, Signature};
 use std::collections::BTreeSet;
 use types::{
     EncryptedDocumentKey, EncryptedDocumentKeyShadow, EncryptedMessageSignature, Error,
     MessageHash, NodeId, Public, RequestSignature, Requester, ServerKeyId,
 };
-
-/// Node key pair.
-pub trait NodeKeyPair: Send + Sync {
-    /// Public portion of key.
-    fn public(&self) -> &Public;
-    /// Address of key owner.
-    fn address(&self) -> Address;
-    /// Sign data with node key.
-    fn sign(&self, data: &H256) -> Result<Signature, EthKeyError>;
-    /// Compute shared key to encrypt channel between two nodes.
-    fn compute_shared_key(&self, peer_public: &Public) -> Result<KeyPair, EthKeyError>;
-}
 
 /// Server key (SK) generator.
 pub trait ServerKeyGenerator {

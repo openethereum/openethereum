@@ -21,7 +21,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use account_utils;
 use ansi_term::Colour;
 use cache::CacheConfig;
 use db;
@@ -34,7 +33,7 @@ use ethcore::{
 };
 use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
-use helpers::{execute_upgrades, passwords_from_files, to_client_config};
+use helpers::{execute_upgrades, to_client_config};
 use informant::{FullNodeInformantData, Informant};
 use journaldb::Algorithm;
 use jsonrpc_core;
@@ -42,8 +41,8 @@ use miner::{external::ExternalMiner, work_notify::WorkPoster};
 use modules;
 use node_filter::NodeFilter;
 use params::{
-    fatdb_switch_to_bool, mode_switch_to_bool, tracing_switch_to_bool, AccountsConfig,
-    GasPricerConfig, MinerExtras, Pruning, SpecType, Switch,
+    fatdb_switch_to_bool, mode_switch_to_bool, tracing_switch_to_bool, GasPricerConfig,
+    MinerExtras, Pruning, SpecType, Switch,
 };
 use parity_rpc::{
     informant, is_major_importing, FutureOutput, FutureResponse, FutureResult, Metadata,
@@ -53,8 +52,8 @@ use parity_runtime::Runtime;
 use parity_version::version;
 use rpc;
 use rpc_apis;
+use secrets::Secrets;
 use secretstore;
-use signer;
 use sync::{self, SyncConfig};
 use user_defaults::UserDefaults;
 
@@ -88,7 +87,6 @@ pub struct RunCmd {
     pub network_id: Option<u64>,
     pub warp_sync: bool,
     pub warp_barrier: Option<u64>,
-    pub acc_conf: AccountsConfig,
     pub gas_pricer_conf: GasPricerConfig,
     pub miner_extras: MinerExtras,
     pub mode: Option<Mode>,
@@ -139,7 +137,11 @@ impl ::local_store::NodeInfo for FullNodeInfo {
 /// Executes the given run command.
 ///
 /// On error, returns what to print on stderr.
-pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient, String> {
+pub fn execute(
+    cmd: RunCmd,
+    secrets: Secrets,
+    logger: Arc<RotatingLogger>,
+) -> Result<RunningClient, String> {
     // load spec
     let spec = cmd.spec.spec(&cmd.dirs.cache)?;
 
@@ -184,10 +186,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     execute_upgrades(&cmd.dirs.base, &db_dirs, algorithm, &cmd.compaction)?;
 
     // create dirs used by parity
-    cmd.dirs.create_dirs(
-        cmd.acc_conf.unlocked_accounts.len() == 0,
-        cmd.secretstore_conf.enabled,
-    )?;
+    cmd.dirs.create_dirs(cmd.secretstore_conf.enabled)?;
 
     //print out running parity environment
     print_running_environment(&spec.data_dir, &cmd.dirs, &db_dirs);
@@ -254,17 +253,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     };
     sync_config.download_old_blocks = cmd.download_old_blocks;
 
-    let passwords = passwords_from_files(&cmd.acc_conf.password_files)?;
-
-    // prepare account provider
-    let account_provider = Arc::new(account_utils::prepare_account_provider(
-        &cmd.spec,
-        &cmd.dirs,
-        &spec.data_dir,
-        cmd.acc_conf,
-        &passwords,
-    )?);
-
     // spin up event loop
     let runtime = Runtime::with_default_thread_count();
 
@@ -279,10 +267,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         cmd.gas_pricer_conf
             .to_gas_pricer(fetch.clone(), runtime.executor()),
         &spec,
-        (
-            cmd.miner_extras.local_accounts,
-            account_utils::miner_local_accounts(account_provider.clone()),
-        ),
+        cmd.miner_extras.local_accounts,
     ));
     miner.set_author(miner::Author::External(cmd.miner_extras.author));
     miner.set_gas_range_target(cmd.miner_extras.gas_range_target);
@@ -296,17 +281,8 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         )));
     }
 
-    let engine_signer = cmd.miner_extras.engine_signer;
-    if engine_signer != Default::default() {
-        if let Some(author) = account_utils::miner_author(
-            &cmd.spec,
-            &cmd.dirs,
-            &account_provider,
-            engine_signer,
-            &passwords,
-        )? {
-            miner.set_author(author);
-        }
+    if let Some(keypair) = secrets.engine_signer {
+        miner.set_author(ethcore::miner::Author::Sealer(keypair));
     }
 
     // create client config
@@ -461,16 +437,12 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     // set up dependencies for rpc servers
     let rpc_stats = Arc::new(informant::RpcStats::default());
-    let secret_store = account_provider.clone();
-    let signer_service = Arc::new(signer::new_service(&cmd.ws_conf, &cmd.logger_config));
 
     let deps_for_rpc_apis = Arc::new(rpc_apis::FullDependencies {
-        signer_service: signer_service,
         snapshot: snapshot_service.clone(),
         client: client.clone(),
         sync: sync_provider.clone(),
         net: manage_network.clone(),
-        accounts: secret_store,
         miner: miner.clone(),
         external_miner: external_miner.clone(),
         logger: logger.clone(),
@@ -508,8 +480,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         client: client.clone(),
         sync: sync_provider.clone(),
         miner: miner.clone(),
-        account_provider,
-        accounts_passwords: &passwords,
     };
     let secretstore_key_server = secretstore::start(
         cmd.secretstore_conf.clone(),

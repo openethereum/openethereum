@@ -14,15 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::H256;
+use ethereum_types::{clean_0x, H256};
 use memzero::Memzero;
 use rustc_hex::ToHex;
 use secp256k1::{constants::SECRET_KEY_SIZE as SECP256K1_SECRET_KEY_SIZE, key};
-use std::{fmt, ops::Deref, str::FromStr};
+use serde::Deserialize;
+use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
 use Error;
 use SECP256K1;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
+#[serde(try_from = "String")]
 pub struct Secret {
     inner: Memzero<H256>,
 }
@@ -214,9 +216,17 @@ impl Secret {
 impl FromStr for Secret {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(H256::from_str(s)
+        Ok(H256::from_str(clean_0x(s))
             .map_err(|e| Error::Custom(format!("{:?}", e)))?
             .into())
+    }
+}
+
+impl TryFrom<String> for Secret {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
 

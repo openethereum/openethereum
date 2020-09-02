@@ -52,7 +52,7 @@ use tokio_io::{AsyncRead, AsyncWrite};
 /// Start handshake procedure with another node from the cluster.
 pub fn handshake<A>(
     a: A,
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     trusted_nodes: BTreeSet<NodeId>,
 ) -> Handshake<A>
 where
@@ -70,7 +70,7 @@ where
 pub fn handshake_with_init_data<A>(
     a: A,
     init_data: Result<(H256, KeyPair), Error>,
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     trusted_nodes: BTreeSet<NodeId>,
 ) -> Handshake<A>
 where
@@ -118,7 +118,7 @@ where
 }
 
 /// Wait for handshake procedure to be started by another node from the cluster.
-pub fn accept_handshake<A>(a: A, self_key_pair: Arc<dyn NodeKeyPair>) -> Handshake<A>
+pub fn accept_handshake<A>(a: A, self_key_pair: Arc<NodeKeyPair>) -> Handshake<A>
 where
     A: AsyncWrite + AsyncRead,
 {
@@ -173,7 +173,7 @@ pub struct Handshake<A> {
     is_active: bool,
     error: Option<(A, Result<HandshakeResult, Error>)>,
     state: HandshakeState<A>,
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     self_session_key_pair: Option<KeyPair>,
     self_confirmation_plain: H256,
     trusted_nodes: Option<BTreeSet<NodeId>>,
@@ -221,7 +221,7 @@ where
     }
 
     fn make_private_key_signature_message(
-        self_key_pair: &dyn NodeKeyPair,
+        self_key_pair: &NodeKeyPair,
         confirmation_plain: &H256,
     ) -> Result<Message, Error> {
         Ok(Message::Cluster(ClusterMessage::NodePrivateKeySignature(
@@ -449,7 +449,7 @@ mod tests {
     use key_server_cluster::{
         io::message::tests::TestIo,
         message::{ClusterMessage, Message, NodePrivateKeySignature, NodePublicKey},
-        PlainNodeKeyPair,
+        NodeKeyPair,
     };
     use std::{collections::BTreeSet, sync::Arc};
 
@@ -491,7 +491,7 @@ mod tests {
             .into_iter()
             .collect();
         let self_session_key_pair = io.self_session_key_pair().clone();
-        let self_key_pair = Arc::new(PlainNodeKeyPair::new(io.self_key_pair().clone()));
+        let self_key_pair = Arc::new(NodeKeyPair::new(io.self_key_pair().clone()));
         let shared_key = io.shared_key_pair().clone();
 
         let handshake = handshake_with_init_data(
@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn passive_handshake_works() {
         let (self_confirmation_plain, io) = prepare_test_io();
-        let self_key_pair = Arc::new(PlainNodeKeyPair::new(io.self_key_pair().clone()));
+        let self_key_pair = Arc::new(NodeKeyPair::new(io.self_key_pair().clone()));
         let self_session_key_pair = io.self_session_key_pair().clone();
         let shared_key = io.shared_key_pair().clone();
 

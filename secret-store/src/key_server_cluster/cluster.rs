@@ -168,7 +168,7 @@ pub trait Cluster: Send + Sync {
 #[derive(Clone)]
 pub struct ClusterConfiguration {
     /// KeyPair this node holds.
-    pub self_key_pair: Arc<dyn NodeKeyPair>,
+    pub self_key_pair: Arc<NodeKeyPair>,
     /// Cluster nodes set.
     pub key_server_set: Arc<dyn KeyServerSet>,
     /// Reference to key storage
@@ -198,7 +198,7 @@ pub struct ClusterView {
     configured_nodes_count: usize,
     connected_nodes: BTreeSet<NodeId>,
     connections: Arc<dyn ConnectionProvider>,
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
 }
 
 /// Cross-thread shareable cluster data.
@@ -206,7 +206,7 @@ pub struct ClusterData<C: ConnectionManager> {
     /// Cluster configuration.
     pub config: ClusterConfiguration,
     /// KeyPair this node holds.
-    pub self_key_pair: Arc<dyn NodeKeyPair>,
+    pub self_key_pair: Arc<NodeKeyPair>,
     /// Connections data.
     pub connections: C,
     /// Active sessions data.
@@ -364,7 +364,7 @@ impl<C: ConnectionManager> ClusterCore<C> {
 
 impl ClusterView {
     pub fn new(
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         connections: Arc<dyn ConnectionProvider>,
         nodes: BTreeSet<NodeId>,
         configured_nodes_count: usize,
@@ -780,7 +780,7 @@ pub struct ServersSetChangeParams {
 }
 
 pub fn new_servers_set_change_session(
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     sessions: &ClusterSessions,
     connections: Arc<dyn ConnectionProvider>,
     servers_set_change_creator_connector: Arc<dyn ServersSetChangeSessionCreatorConnector>,
@@ -868,8 +868,8 @@ pub mod tests {
         message::Message,
         signing_session_ecdsa::SessionImpl as EcdsaSigningSession,
         signing_session_schnorr::SessionImpl as SchnorrSigningSession,
-        DummyAclStorage, DummyKeyStorage, Error, MapKeyServerSet, NodeId, NodeKeyPair,
-        PlainNodeKeyPair, Requester, SessionId,
+        DummyAclStorage, DummyKeyStorage, Error, MapKeyServerSet, NodeId, NodeKeyPair, Requester,
+        SessionId,
     };
     use parking_lot::{Mutex, RwLock};
     use std::{
@@ -1070,7 +1070,7 @@ pub mod tests {
     pub struct MessageLoop {
         messages: MessagesQueue,
         preserve_sessions: bool,
-        key_pairs_map: BTreeMap<NodeId, Arc<PlainNodeKeyPair>>,
+        key_pairs_map: BTreeMap<NodeId, Arc<NodeKeyPair>>,
         acl_storages_map: BTreeMap<NodeId, Arc<DummyAclStorage>>,
         key_storages_map: BTreeMap<NodeId, Arc<DummyKeyStorage>>,
         clusters_map: BTreeMap<NodeId, Arc<ClusterCore<Arc<TestConnections>>>>,
@@ -1094,7 +1094,7 @@ pub mod tests {
         }
 
         /// Returns key pair of the node by its idx.
-        pub fn node_key_pair(&self, idx: usize) -> &Arc<PlainNodeKeyPair> {
+        pub fn node_key_pair(&self, idx: usize) -> &Arc<NodeKeyPair> {
             self.key_pairs_map.values().nth(idx).unwrap()
         }
 
@@ -1160,7 +1160,7 @@ pub mod tests {
         }
 
         /// Include new node to the cluster.
-        pub fn include(&mut self, node_key_pair: Arc<PlainNodeKeyPair>) -> usize {
+        pub fn include(&mut self, node_key_pair: Arc<NodeKeyPair>) -> usize {
             let key_storage = Arc::new(DummyKeyStorage::default());
             let acl_storage = Arc::new(DummyAclStorage::default());
             let cluster_params = ClusterConfiguration {
@@ -1258,7 +1258,7 @@ pub mod tests {
         let ports_begin = 0;
         let messages = Arc::new(Mutex::new(VecDeque::new()));
         let key_pairs: Vec<_> = (0..num_nodes)
-            .map(|_| Arc::new(PlainNodeKeyPair::new(Random.generate().unwrap())))
+            .map(|_| Arc::new(NodeKeyPair::new(Random.generate().unwrap())))
             .collect();
         let key_storages: Vec<_> = (0..num_nodes)
             .map(|_| Arc::new(DummyKeyStorage::default()))

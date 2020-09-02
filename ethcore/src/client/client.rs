@@ -3275,7 +3275,7 @@ mod tests {
         };
 
         // given
-        let key = KeyPair::from_secret_slice(&keccak("test")).unwrap();
+        let key = KeyPair::from_secret(keccak("test").into()).unwrap();
         let secret = key.secret();
         let machine = ::ethereum::new_frontier_test_machine();
 

@@ -18,107 +18,40 @@ use ethereum_types::{Address, H256};
 use ethkey::{
     crypto::ecdh::agree, public_to_address, sign, Error as EthKeyError, KeyPair, Public, Signature,
 };
-use traits::NodeKeyPair;
+use std::ops::Deref;
 
-pub struct PlainNodeKeyPair {
+pub struct NodeKeyPair {
     key_pair: KeyPair,
 }
 
-impl PlainNodeKeyPair {
-    pub fn new(key_pair: KeyPair) -> Self {
-        PlainNodeKeyPair { key_pair: key_pair }
-    }
+impl Deref for NodeKeyPair {
+    type Target = KeyPair;
 
-    #[cfg(test)]
-    pub fn key_pair(&self) -> &KeyPair {
+    fn deref(&self) -> &Self::Target {
         &self.key_pair
     }
 }
 
-impl NodeKeyPair for PlainNodeKeyPair {
-    fn public(&self) -> &Public {
+impl NodeKeyPair {
+    pub fn new(key_pair: KeyPair) -> Self {
+        NodeKeyPair { key_pair: key_pair }
+    }
+
+    pub fn public(&self) -> &Public {
         self.key_pair.public()
     }
 
-    fn address(&self) -> Address {
+    pub fn address(&self) -> Address {
         public_to_address(self.key_pair.public())
     }
 
-    fn sign(&self, data: &H256) -> Result<Signature, EthKeyError> {
+    pub fn sign(&self, data: &H256) -> Result<Signature, EthKeyError> {
         sign(self.key_pair.secret(), data)
     }
 
-    fn compute_shared_key(&self, peer_public: &Public) -> Result<KeyPair, EthKeyError> {
+    pub fn compute_shared_key(&self, peer_public: &Public) -> Result<KeyPair, EthKeyError> {
         agree(self.key_pair.secret(), peer_public)
             .map_err(|e| EthKeyError::Custom(e.to_string()))
             .and_then(KeyPair::from_secret)
     }
 }
-
-#[cfg(feature = "accounts")]
-mod accounts {
-    use super::*;
-    use accounts::AccountProvider;
-    use ethkey::Password;
-    use std::sync::Arc;
-
-    pub struct KeyStoreNodeKeyPair {
-        account_provider: Arc<AccountProvider>,
-        address: Address,
-        public: Public,
-        password: Password,
-    }
-
-    impl KeyStoreNodeKeyPair {
-        pub fn new(
-            account_provider: Arc<AccountProvider>,
-            address: Address,
-            password: Password,
-        ) -> Result<Self, EthKeyError> {
-            let public = account_provider
-                .account_public(address.clone(), &password)
-                .map_err(|e| EthKeyError::Custom(format!("{}", e)))?;
-            Ok(KeyStoreNodeKeyPair {
-                account_provider: account_provider,
-                address: address,
-                public: public,
-                password: password,
-            })
-        }
-    }
-
-    impl NodeKeyPair for KeyStoreNodeKeyPair {
-        fn public(&self) -> &Public {
-            &self.public
-        }
-
-        fn address(&self) -> Address {
-            public_to_address(&self.public)
-        }
-
-        fn sign(&self, data: &H256) -> Result<Signature, EthKeyError> {
-            self.account_provider
-                .sign(
-                    self.address.clone(),
-                    Some(self.password.clone()),
-                    data.clone(),
-                )
-                .map_err(|e| EthKeyError::Custom(format!("{}", e)))
-        }
-
-        fn compute_shared_key(&self, peer_public: &Public) -> Result<KeyPair, EthKeyError> {
-            KeyPair::from_secret(
-                self.account_provider
-                    .agree(
-                        self.address.clone(),
-                        Some(self.password.clone()),
-                        peer_public,
-                    )
-                    .map_err(|e| EthKeyError::Custom(format!("{}", e)))?,
-            )
-        }
-    }
-}
-
-#[cfg(feature = "accounts")]
-pub use self::accounts::KeyStoreNodeKeyPair;

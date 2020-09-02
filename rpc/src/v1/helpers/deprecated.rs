@@ -25,12 +25,6 @@ use std::{
 
 use parking_lot::RwLock;
 
-/// Deprecation messages
-pub mod msgs {
-    pub const ACCOUNTS: Option<&str> =
-        Some("Account management is being phased out see #9997 for alternatives.");
-}
-
 type MethodName = &'static str;
 
 const PRINT_INTERVAL: Duration = Duration::from_secs(60);

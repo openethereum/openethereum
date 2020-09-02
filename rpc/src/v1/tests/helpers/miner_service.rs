@@ -28,11 +28,12 @@ use ethcore::{
         test_client::TestState, traits::ForceUpdateSealing, EngineInfo, Nonce, PrepareOpenBlock,
         StateClient,
     },
-    engines::{signer::EngineSigner, EthEngine},
+    engines::EthEngine,
     error::Error,
     miner::{self, AuthoringParams, MinerService},
 };
 use ethereum_types::{Address, H256, U256};
+use ethkey::KeyPair;
 use miner::pool::{
     local_transactions::Status as LocalTransactionStatus, verifier, QueueStatus,
     VerifiedTransaction,
@@ -63,7 +64,7 @@ pub struct TestMinerService {
     /// Minimum gas price
     pub min_gas_price: RwLock<Option<U256>>,
     /// Signer (if any)
-    pub signer: RwLock<Option<Box<dyn EngineSigner>>>,
+    pub signer: RwLock<Option<KeyPair>>,
 
     authoring_params: RwLock<AuthoringParams>,
 }

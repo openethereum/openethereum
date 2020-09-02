@@ -30,10 +30,7 @@ use std::{
 };
 
 use self::finality::RollingFinality;
-use super::{
-    signer::EngineSigner,
-    validator_set::{new_validator_set, SimpleList, ValidatorSet},
-};
+use super::validator_set::{new_validator_set, SimpleList, ValidatorSet};
 use block::*;
 use client::{traits::ForceUpdateSealing, EngineClient};
 use engines::{
@@ -44,7 +41,7 @@ use engines::{
 use error::{BlockError, Error, ErrorKind};
 use ethereum_types::{Address, H256, H520, U128, U256};
 use ethjson;
-use ethkey::{self, Signature};
+use ethkey::{self, KeyPair, Signature};
 use hash::keccak;
 use io::{IoContext, IoHandler, IoService, TimerToken};
 use itertools::{self, Itertools};
@@ -450,7 +447,7 @@ pub struct AuthorityRound {
     transition_service: IoService<()>,
     step: Arc<PermissionedStep>,
     client: Arc<RwLock<Option<Weak<dyn EngineClient>>>>,
-    signer: RwLock<Option<Box<dyn EngineSigner>>>,
+    signer: RwLock<Option<KeyPair>>,
     validators: Box<dyn ValidatorSet>,
     validate_score_transition: u64,
     validate_step_transition: u64,
@@ -1691,8 +1688,8 @@ impl Engine<EthereumMachine> for AuthorityRound {
         self.validators.register_client(client);
     }
 
-    fn set_signer(&self, signer: Box<dyn EngineSigner>) {
-        *self.signer.write() = Some(signer);
+    fn set_signer(&self, signer: Option<ethkey::KeyPair>) {
+        *self.signer.write() = signer;
     }
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
@@ -1742,15 +1739,14 @@ mod tests {
     use super::{
         calculate_score, AuthorityRound, AuthorityRoundParams, EmptyStep, SealedEmptyStep,
     };
-    use accounts::AccountProvider;
     use block::*;
     use engines::{
         validator_set::{SimpleList, TestSet},
         Engine, EngineError, EthEngine, Seal,
     };
     use error::{Error, ErrorKind};
-    use ethereum_types::{Address, H256, H520, U256};
-    use ethkey::Signature;
+    use ethereum_types::{H256, H520, U256};
+    use ethkey::{Generator, KeyPair, Random, Signature};
     use hash::keccak;
     use rlp::encode;
     use spec::Spec;
@@ -1824,9 +1820,8 @@ mod tests {
 
     #[test]
     fn generates_seal_and_does_not_double_propose() {
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
-        let addr2 = tap.insert_account(keccak("2").into(), &"2".into()).unwrap();
+        let signer1 = KeyPair::from_secret(keccak("1").into()).unwrap();
+        let signer2 = KeyPair::from_secret(keccak("2").into()).unwrap();
 
         let spec = Spec::new_test_round();
         let engine = &*spec.engine;
@@ -1845,7 +1840,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -1860,7 +1855,7 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes,
-            addr2,
+            signer2.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -1869,14 +1864,14 @@ mod tests {
         .unwrap();
         let b2 = b2.close_and_lock().unwrap();
 
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1));
         if let Seal::Regular(seal) = engine.generate_seal(&b1, &genesis_header) {
             assert!(b1.clone().try_seal(engine, seal).is_ok());
             // Second proposal is forbidden.
             assert!(engine.generate_seal(&b1, &genesis_header) == Seal::None);
         }
 
-        engine.set_signer(Box::new((tap, addr2, "2".into())));
+        engine.set_signer(Some(signer2));
         if let Seal::Regular(seal) = engine.generate_seal(&b2, &genesis_header) {
             assert!(b2.clone().try_seal(engine, seal).is_ok());
             // Second proposal is forbidden.
@@ -1886,9 +1881,8 @@ mod tests {
 
     #[test]
     fn checks_difficulty_in_generate_seal() {
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
-        let addr2 = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let signer1 = KeyPair::from_secret(keccak("1").into()).unwrap();
+        let signer2 = KeyPair::from_secret(keccak("0").into()).unwrap();
 
         let spec = Spec::new_test_round();
         let engine = &*spec.engine;
@@ -1909,7 +1903,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -1924,7 +1918,7 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes,
-            addr2,
+            signer2.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -1933,13 +1927,13 @@ mod tests {
         .unwrap();
         let b2 = b2.close_and_lock().unwrap();
 
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1));
         match engine.generate_seal(&b1, &genesis_header) {
             Seal::None | Seal::Proposal(_) => panic!("wrong seal"),
             Seal::Regular(_) => {
                 engine.step();
 
-                engine.set_signer(Box::new((tap.clone(), addr2, "0".into())));
+                engine.set_signer(Some(signer2));
                 match engine.generate_seal(&b2, &genesis_header) {
                     Seal::Regular(_) | Seal::Proposal(_) => {
                         panic!("sealed despite wrong difficulty")
@@ -1952,31 +1946,26 @@ mod tests {
 
     #[test]
     fn proposer_switching() {
-        let tap = AccountProvider::transient_provider();
-        let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let signer = KeyPair::from_secret(keccak("0").into()).unwrap();
         let mut parent_header: Header = Header::default();
         parent_header.set_seal(vec![encode(&0usize)]);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
         let mut header: Header = Header::default();
         header.set_number(1);
         header.set_gas_limit("222222".parse::<U256>().unwrap());
-        header.set_author(addr);
+        header.set_author(signer.address());
 
         let engine = Spec::new_test_round().engine;
 
         // Two validators.
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 2, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer.sign(header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&2usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_err());
         header.set_difficulty(calculate_score(0, 1, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer.sign(header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
@@ -1984,8 +1973,7 @@ mod tests {
 
     #[test]
     fn rejects_future_block() {
-        let tap = AccountProvider::transient_provider();
-        let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let signer = KeyPair::from_secret(keccak("0").into()).unwrap();
 
         let mut parent_header: Header = Header::default();
         parent_header.set_seal(vec![encode(&0usize)]);
@@ -1993,16 +1981,14 @@ mod tests {
         let mut header: Header = Header::default();
         header.set_number(1);
         header.set_gas_limit("222222".parse::<U256>().unwrap());
-        header.set_author(addr);
+        header.set_author(signer.address());
 
         let engine = Spec::new_test_round().engine;
 
         // Two validators.
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 1, 0));
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer.sign(header.bare_hash()).unwrap();
         header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
@@ -2012,8 +1998,7 @@ mod tests {
 
     #[test]
     fn rejects_step_backwards() {
-        let tap = AccountProvider::transient_provider();
-        let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let signer = KeyPair::from_secret(keccak("0").into()).unwrap();
 
         let mut parent_header: Header = Header::default();
         parent_header.set_seal(vec![encode(&4usize)]);
@@ -2021,13 +2006,11 @@ mod tests {
         let mut header: Header = Header::default();
         header.set_number(1);
         header.set_gas_limit("222222".parse::<U256>().unwrap());
-        header.set_author(addr);
+        header.set_author(signer.address());
 
         let engine = Spec::new_test_round().engine;
 
-        let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer.sign(header.bare_hash()).unwrap();
         // Two validators.
         // Spec starts with step 2.
         header.set_seal(vec![encode(&5usize), encode(&(&*signature as &[u8]))]);
@@ -2057,11 +2040,7 @@ mod tests {
         assert!(aura.verify_block_family(&header, &parent_header).is_ok());
         assert_eq!(last_benign.load(AtomicOrdering::SeqCst), 0);
 
-        aura.set_signer(Box::new((
-            Arc::new(AccountProvider::transient_provider()),
-            Default::default(),
-            "".into(),
-        )));
+        aura.set_signer(Some(Random.generate().unwrap()));
 
         // Do not report on steps skipped between genesis and first block.
         header.set_number(1);
@@ -2117,16 +2096,14 @@ mod tests {
         });
     }
 
-    fn setup_empty_steps() -> (Spec, Arc<AccountProvider>, Vec<Address>) {
+    fn setup_empty_steps() -> (Spec, Vec<KeyPair>) {
         let spec = Spec::new_test_round_empty_steps();
-        let tap = Arc::new(AccountProvider::transient_provider());
+        let accounts = [keccak("1"), keccak("0")]
+            .iter()
+            .map(|&slice| KeyPair::from_secret(slice.into()).unwrap())
+            .collect();
 
-        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
-        let addr2 = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
-
-        let accounts = vec![addr1, addr2];
-
-        (spec, tap, accounts)
+        (spec, accounts)
     }
 
     fn empty_step(engine: &dyn EthEngine, step: u64, parent_hash: &H256) -> EmptyStep {
@@ -2175,9 +2152,9 @@ mod tests {
 
     #[test]
     fn broadcast_empty_step_message() {
-        let (spec, tap, accounts) = setup_empty_steps();
+        let (spec, signers) = setup_empty_steps();
 
-        let addr1 = accounts[0];
+        let signer1 = signers[0].clone();
 
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
@@ -2192,7 +2169,7 @@ mod tests {
         client.add_notify(notify.clone());
         engine.register_client(Arc::downgrade(&client) as _);
 
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
 
         let b1 = OpenBlock::new(
             engine,
@@ -2201,7 +2178,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2227,10 +2204,10 @@ mod tests {
 
     #[test]
     fn seal_with_empty_steps() {
-        let (spec, tap, accounts) = setup_empty_steps();
+        let (spec, signers) = setup_empty_steps();
 
-        let addr1 = accounts[0];
-        let addr2 = accounts[1];
+        let signer1 = signers[0].clone();
+        let signer2 = signers[1].clone();
 
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
@@ -2256,7 +2233,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2266,7 +2243,7 @@ mod tests {
         let b1 = b1.close_and_lock().unwrap();
 
         // since the block is empty it isn't sealed and we generate empty steps
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         assert_eq!(engine.generate_seal(&b1, &genesis_header), Seal::None);
         engine.step();
 
@@ -2278,7 +2255,7 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes.clone(),
-            addr2,
+            signer2.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2294,16 +2271,16 @@ mod tests {
                 value: U256::from(1),
                 data: vec![],
             }
-            .fake_sign(addr2),
+            .fake_sign(signer2.address()),
             None,
         )
         .unwrap();
         let b2 = b2.close_and_lock().unwrap();
 
         // we will now seal a block with 1tx and include the accumulated empty step message
-        engine.set_signer(Box::new((tap.clone(), addr2, "0".into())));
+        engine.set_signer(Some(signer2));
         if let Seal::Regular(seal) = engine.generate_seal(&b2, &genesis_header) {
-            engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+            engine.set_signer(Some(signer1));
             let empty_step2 = sealed_empty_step(engine, 2, &genesis_header.hash());
             let empty_steps = ::rlp::encode_list(&vec![empty_step2]);
 
@@ -2314,10 +2291,10 @@ mod tests {
 
     #[test]
     fn seal_empty_block_with_empty_steps() {
-        let (spec, tap, accounts) = setup_empty_steps();
+        let (spec, signers) = setup_empty_steps();
 
-        let addr1 = accounts[0];
-        let addr2 = accounts[1];
+        let signer1 = signers[0].clone();
+        let signer2 = signers[1].clone();
 
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
@@ -2346,7 +2323,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2356,7 +2333,7 @@ mod tests {
         let b1 = b1.close_and_lock().unwrap();
 
         // since the block is empty it isn't sealed and we generate empty steps
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         assert_eq!(engine.generate_seal(&b1, &genesis_header), Seal::None);
         engine.step();
 
@@ -2368,7 +2345,7 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes.clone(),
-            addr2,
+            signer2.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2376,7 +2353,7 @@ mod tests {
         )
         .unwrap();
         let b2 = b2.close_and_lock().unwrap();
-        engine.set_signer(Box::new((tap.clone(), addr2, "0".into())));
+        engine.set_signer(Some(signer2.clone()));
         assert_eq!(engine.generate_seal(&b2, &genesis_header), Seal::None);
         engine.step();
 
@@ -2389,7 +2366,7 @@ mod tests {
             db3,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2398,10 +2375,10 @@ mod tests {
         .unwrap();
         let b3 = b3.close_and_lock().unwrap();
 
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1));
         if let Seal::Regular(seal) = engine.generate_seal(&b3, &genesis_header) {
             let empty_step2 = sealed_empty_step(engine, 2, &genesis_header.hash());
-            engine.set_signer(Box::new((tap.clone(), addr2, "0".into())));
+            engine.set_signer(Some(signer2));
             let empty_step3 = sealed_empty_step(engine, 3, &genesis_header.hash());
 
             let empty_steps = ::rlp::encode_list(&vec![empty_step2, empty_step3]);
@@ -2413,9 +2390,9 @@ mod tests {
 
     #[test]
     fn reward_empty_steps() {
-        let (spec, tap, accounts) = setup_empty_steps();
+        let (spec, signers) = setup_empty_steps();
 
-        let addr1 = accounts[0];
+        let signer1 = signers[0].clone();
 
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
@@ -2439,7 +2416,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2449,7 +2426,7 @@ mod tests {
         let b1 = b1.close_and_lock().unwrap();
 
         // since the block is empty it isn't sealed and we generate empty steps
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         assert_eq!(engine.generate_seal(&b1, &genesis_header), Seal::None);
         engine.step();
 
@@ -2462,27 +2439,30 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
             None,
         )
         .unwrap();
-        let addr1_balance = b2.state.balance(&addr1).unwrap();
+        let addr1_balance = b2.state.balance(&signer1.address()).unwrap();
 
         // after closing the block `addr1` should be reward twice, one for the included empty step message and another for block creation
         let b2 = b2.close_and_lock().unwrap();
 
         // the spec sets the block reward to 10
-        assert_eq!(b2.state.balance(&addr1).unwrap(), addr1_balance + (10 * 2))
+        assert_eq!(
+            b2.state.balance(&signer1.address()).unwrap(),
+            addr1_balance + (10 * 2)
+        )
     }
 
     #[test]
     fn verify_seal_empty_steps() {
-        let (spec, tap, accounts) = setup_empty_steps();
-        let addr1 = accounts[0];
-        let addr2 = accounts[1];
+        let (spec, signers) = setup_empty_steps();
+        let signer1 = signers[0].clone();
+        let signer2 = signers[1].clone();
         let engine = &*spec.engine;
 
         let mut parent_header: Header = Header::default();
@@ -2493,11 +2473,9 @@ mod tests {
         header.set_parent_hash(parent_header.hash());
         header.set_number(1);
         header.set_gas_limit("222222".parse::<U256>().unwrap());
-        header.set_author(addr1);
+        header.set_author(signer1.address());
 
-        let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer1.sign(header.bare_hash()).unwrap();
 
         // empty step with invalid step
         let empty_steps = vec![SealedEmptyStep {
@@ -2524,7 +2502,7 @@ mod tests {
         );
 
         // empty step with valid signature from incorrect proposer for step
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         let empty_steps = vec![sealed_empty_step(engine, 1, &parent_header.hash())];
         set_empty_steps_seal(&mut header, 2, &signature, &empty_steps);
 
@@ -2534,16 +2512,14 @@ mod tests {
         );
 
         // valid empty steps
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         let empty_step2 = sealed_empty_step(engine, 2, &parent_header.hash());
-        engine.set_signer(Box::new((tap.clone(), addr2, "0".into())));
+        engine.set_signer(Some(signer2));
         let empty_step3 = sealed_empty_step(engine, 3, &parent_header.hash());
 
         let empty_steps = vec![empty_step2, empty_step3];
         header.set_difficulty(calculate_score(0, 4, 2));
-        let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
-            .unwrap();
+        let signature = signer1.sign(header.bare_hash()).unwrap();
         set_empty_steps_seal(&mut header, 4, &signature, &empty_steps);
 
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
@@ -2552,9 +2528,8 @@ mod tests {
     #[test]
     fn block_reward_contract() {
         let spec = Spec::new_test_round_block_reward_contract();
-        let tap = Arc::new(AccountProvider::transient_provider());
 
-        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
+        let signer1 = KeyPair::from_secret(keccak("1").into()).unwrap();
 
         let engine = &*spec.engine;
         let genesis_header = spec.genesis_header();
@@ -2578,7 +2553,7 @@ mod tests {
             db1,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
@@ -2588,7 +2563,7 @@ mod tests {
         let b1 = b1.close_and_lock().unwrap();
 
         // since the block is empty it isn't sealed and we generate empty steps
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        engine.set_signer(Some(signer1.clone()));
         assert_eq!(engine.generate_seal(&b1, &genesis_header), Seal::None);
         engine.step();
 
@@ -2601,33 +2576,33 @@ mod tests {
             db2,
             &genesis_header,
             last_hashes.clone(),
-            addr1,
+            signer1.address(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,
             None,
         )
         .unwrap();
-        let addr1_balance = b2.state.balance(&addr1).unwrap();
+        let signer1_balance = b2.state.balance(&signer1.address()).unwrap();
 
-        // after closing the block `addr1` should be reward twice, one for the included empty step
+        // after closing the block `signer1` should be rewarded twice, one for the included empty step
         // message and another for block creation
         let b2 = b2.close_and_lock().unwrap();
 
         // the contract rewards (1000 + kind) for each benefactor/reward kind
         assert_eq!(
-            b2.state.balance(&addr1).unwrap(),
-            addr1_balance + (1000 + 0) + (1000 + 2),
+            b2.state.balance(&signer1.address()).unwrap(),
+            signer1_balance + (1000 + 0) + (1000 + 2),
         )
     }
 
     #[test]
     fn extra_info_from_seal() {
-        let (spec, tap, accounts) = setup_empty_steps();
+        let (spec, signers) = setup_empty_steps();
         let engine = &*spec.engine;
 
-        let addr1 = accounts[0];
-        engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
+        let signer1 = signers[0].clone();
+        engine.set_signer(Some(signer1));
 
         let mut header: Header = Header::default();
         let empty_step = empty_step(engine, 1, &header.parent_hash());
@@ -2694,9 +2669,11 @@ mod tests {
     #[test]
     fn should_reject_duplicate_empty_steps() {
         // given
-        let (_spec, tap, accounts) = setup_empty_steps();
+        let (_spec, signers) = setup_empty_steps();
         let engine = aura(|p| {
-            p.validators = Box::new(SimpleList::new(accounts.clone()));
+            p.validators = Box::new(SimpleList::new(
+                signers.iter().map(KeyPair::address).collect(),
+            ));
             p.step_duration = 4;
             p.empty_steps_transition = 0;
             p.maximum_empty_steps = 0;
@@ -2708,18 +2685,16 @@ mod tests {
         let mut header = Header::default();
         header.set_number(parent.number() + 1);
         header.set_parent_hash(parent.hash());
-        header.set_author(accounts[0]);
+        header.set_author(signers[0].address());
 
         // when
-        engine.set_signer(Box::new((tap.clone(), accounts[1], "0".into())));
+        engine.set_signer(Some(signers[1].clone()));
         let empty_steps = vec![
             sealed_empty_step(&*engine, 1, &parent.hash()),
             sealed_empty_step(&*engine, 1, &parent.hash()),
         ];
         let step = 2;
-        let signature = tap
-            .sign(accounts[0], Some("1".into()), header.bare_hash())
-            .unwrap();
+        let signature = signers[0].sign(header.bare_hash()).unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));
 
@@ -2733,9 +2708,11 @@ mod tests {
     #[test]
     fn should_reject_empty_steps_out_of_order() {
         // given
-        let (_spec, tap, accounts) = setup_empty_steps();
+        let (_spec, signers) = setup_empty_steps();
         let engine = aura(|p| {
-            p.validators = Box::new(SimpleList::new(accounts.clone()));
+            p.validators = Box::new(SimpleList::new(
+                signers.iter().map(KeyPair::address).collect(),
+            ));
             p.step_duration = 4;
             p.empty_steps_transition = 0;
             p.maximum_empty_steps = 0;
@@ -2747,20 +2724,18 @@ mod tests {
         let mut header = Header::default();
         header.set_number(parent.number() + 1);
         header.set_parent_hash(parent.hash());
-        header.set_author(accounts[0]);
+        header.set_author(signers[0].address());
 
         // when
-        engine.set_signer(Box::new((tap.clone(), accounts[1], "0".into())));
+        engine.set_signer(Some(signers[1].clone()));
         let es1 = sealed_empty_step(&*engine, 1, &parent.hash());
-        engine.set_signer(Box::new((tap.clone(), accounts[0], "1".into())));
+        engine.set_signer(Some(signers[0].clone()));
         let es2 = sealed_empty_step(&*engine, 2, &parent.hash());
 
         let mut empty_steps = vec![es2, es1];
 
         let step = 3;
-        let signature = tap
-            .sign(accounts[1], Some("0".into()), header.bare_hash())
-            .unwrap();
+        let signature = signers[1].sign(header.bare_hash()).unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));
 

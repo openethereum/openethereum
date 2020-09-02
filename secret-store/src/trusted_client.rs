@@ -23,17 +23,17 @@ use ethcore::{
 };
 use ethereum_types::Address;
 use helpers::{get_confirmed_block_hash, REQUEST_CONFIRMATIONS_REQUIRED};
+use key_server_cluster::NodeKeyPair;
 use std::sync::{Arc, Weak};
 use sync::SyncProvider;
 use ContractAddress;
 use Error;
-use NodeKeyPair;
 
 #[derive(Clone)]
 /// 'Trusted' client weak reference.
 pub struct TrustedClient {
     /// This key server node key pair.
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     /// Blockchain client.
     client: Weak<Client>,
     /// Sync provider.
@@ -45,7 +45,7 @@ pub struct TrustedClient {
 impl TrustedClient {
     /// Create new trusted client.
     pub fn new(
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         client: Arc<Client>,
         sync: Arc<dyn SyncProvider>,
         miner: Arc<Miner>,

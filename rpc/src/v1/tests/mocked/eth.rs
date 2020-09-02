@@ -21,12 +21,12 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use accounts::AccountProvider;
 use ethcore::{
     client::{BlockChainClient, EachBlockWith, Executed, TestBlockChainClient},
     miner::{self, MinerService},
 };
 use ethereum_types::{Address, Bloom, H160, H256, U256};
+use ethkey::{Generator, KeyPair, Random};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
@@ -52,10 +52,6 @@ fn blockchain_client() -> Arc<TestBlockChainClient> {
     Arc::new(client)
 }
 
-fn accounts_provider() -> Arc<AccountProvider> {
-    Arc::new(AccountProvider::transient_provider())
-}
-
 fn sync_provider() -> Arc<TestSyncProvider> {
     Arc::new(TestSyncProvider::new(Config {
         network_id: 3,
@@ -75,7 +71,6 @@ struct EthTester {
     pub runtime: Runtime,
     pub client: Arc<TestBlockChainClient>,
     pub sync: Arc<TestSyncProvider>,
-    pub accounts_provider: Arc<AccountProvider>,
     pub miner: Arc<TestMinerService>,
     pub snapshot: Arc<TestSnapshotService>,
     hashrates: Arc<Mutex<HashMap<H256, (Instant, U256)>>>,
@@ -93,23 +88,12 @@ impl EthTester {
         let runtime = Runtime::with_thread_count(1);
         let client = blockchain_client();
         let sync = sync_provider();
-        let ap = accounts_provider();
-        let ap2 = ap.clone();
-        let opt_ap = Arc::new(move || ap2.accounts().unwrap_or_default()) as _;
         let miner = miner_service();
         let snapshot = snapshot_service();
         let hashrates = Arc::new(Mutex::new(HashMap::new()));
         let external_miner = Arc::new(ExternalMiner::new(hashrates.clone()));
-        let eth = EthClient::new(
-            &client,
-            &snapshot,
-            &sync,
-            &opt_ap,
-            &miner,
-            &external_miner,
-            options,
-        )
-        .to_delegate();
+        let eth = EthClient::new(&client, &snapshot, &sync, &miner, &external_miner, options)
+            .to_delegate();
         let filter = EthFilterClient::new(client.clone(), miner.clone(), 60).to_delegate();
 
         let mut io: IoHandler<Metadata> = IoHandler::default();
@@ -120,7 +104,6 @@ impl EthTester {
             runtime,
             client,
             sync,
-            accounts_provider: ap,
             miner,
             snapshot,
             io,
@@ -469,9 +452,6 @@ fn rpc_eth_submit_hashrate() {
 
 #[test]
 fn rpc_eth_author() {
-    let make_res = |addr| {
-        r#"{"jsonrpc":"2.0","result":""#.to_owned() + &format!("0x{:x}", addr) + r#"","id":1}"#
-    };
     let tester = EthTester::default();
 
     let request = r#"{
@@ -483,25 +463,11 @@ fn rpc_eth_author() {
 
     let response = r#"{"jsonrpc":"2.0","error":{"code":-32023,"message":"No accounts were found","data":"\"\""},"id":1}"#;
 
-    // No accounts - returns an error indicating that no accounts were found
+    // No author set - returns an error
     assert_eq!(
         tester.io.handle_request_sync(request),
         Some(response.to_string())
     );
-
-    // Account set - return first account
-    let addr = tester.accounts_provider.new_account(&"123".into()).unwrap();
-    assert_eq!(tester.io.handle_request_sync(request), Some(make_res(addr)));
-
-    for i in 0..20 {
-        let addr = tester
-            .accounts_provider
-            .new_account(&format!("{}", i).into())
-            .unwrap();
-        tester.miner.set_author(miner::Author::External(addr));
-
-        assert_eq!(tester.io.handle_request_sync(request), Some(make_res(addr)));
-    }
 }
 
 #[test]
@@ -526,28 +492,6 @@ fn rpc_eth_gas_price() {
 
     assert_eq!(
         EthTester::default().io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-#[test]
-fn rpc_eth_accounts() {
-    let tester = EthTester::default();
-    let address = tester.accounts_provider.new_account(&"".into()).unwrap();
-    tester
-        .accounts_provider
-        .set_address_name(1.into(), "1".into());
-    tester
-        .accounts_provider
-        .set_address_name(10.into(), "10".into());
-
-    // with current policy it should return the account
-    let request = r#"{"jsonrpc": "2.0", "method": "eth_accounts", "params": [], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","result":[""#.to_owned()
-        + &format!("0x{:x}", address)
-        + r#""],"id":1}"#;
-    assert_eq!(
-        tester.io.handle_request_sync(request),
         Some(response.to_owned())
     );
 }
@@ -1065,14 +1009,7 @@ fn rpc_eth_send_raw_transaction_error() {
 #[test]
 fn rpc_eth_send_raw_transaction() {
     let tester = EthTester::default();
-    let address = tester
-        .accounts_provider
-        .new_account(&"abcd".into())
-        .unwrap();
-    tester
-        .accounts_provider
-        .unlock_account_permanently(address, "abcd".into())
-        .unwrap();
+    let keypair: KeyPair = Random.generate().unwrap();
 
     let t = Transaction {
         nonce: U256::zero(),
@@ -1084,11 +1021,7 @@ fn rpc_eth_send_raw_transaction() {
         value: U256::from(0x9184e72au64),
         data: vec![],
     };
-    let signature = tester
-        .accounts_provider
-        .sign(address, None, t.hash(None))
-        .unwrap();
-    let t = t.with_signature(signature, None);
+    let t = t.sign(keypair.secret(), None);
 
     let rlp = rlp::encode(&t).to_hex();
 

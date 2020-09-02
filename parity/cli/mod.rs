@@ -38,42 +38,6 @@ usage! {
             "Path to the pid file",
         }
 
-        CMD cmd_account
-        {
-            "Manage accounts",
-
-            CMD cmd_account_new {
-                "Create a new account (and its associated key) for the given --chain (default: mainnet)",
-            }
-
-            CMD cmd_account_list {
-                "List existing accounts of the given --chain (default: mainnet)",
-            }
-
-            CMD cmd_account_import
-            {
-                "Import accounts from JSON UTC keystore files to the specified --chain (default mainnet)",
-
-                ARG arg_account_import_path : (Option<Vec<String>>) = None,
-                "<PATH>...",
-                "Path to the accounts",
-            }
-        }
-
-        CMD cmd_wallet
-        {
-            "Manage wallet",
-
-            CMD cmd_wallet_import
-            {
-                "Import wallet into the given --chain (default: mainnet)",
-
-                ARG arg_wallet_import_path: (Option<String>) = None,
-                "<PATH>",
-                "Path to the wallet",
-            }
-        }
-
         CMD cmd_import
         {
             "Import blockchain data from a file to the given --chain database (default: mainnet)",
@@ -143,37 +107,6 @@ usage! {
                 ARG arg_export_state_file: (Option<String>) = None,
                 "[FILE]",
                 "Path to the exported file",
-            }
-        }
-
-        CMD cmd_signer
-        {
-            "Manage signer",
-
-            CMD cmd_signer_new_token {
-                "Generate a new signer-authentication token for the given --chain (default: mainnet)",
-            }
-
-            CMD cmd_signer_list {
-                "List the signer-authentication tokens from given --chain (default: mainnet)",
-            }
-
-            CMD cmd_signer_sign
-            {
-                "Sign",
-
-                ARG arg_signer_sign_id: (Option<usize>) = None,
-                "[ID]",
-                "ID",
-            }
-
-            CMD cmd_signer_reject
-            {
-                "Reject",
-
-                ARG arg_signer_reject_id: (Option<usize>) = None,
-                "<ID>",
-                "ID",
             }
         }
 
@@ -278,32 +211,6 @@ usage! {
             ARG arg_ports_shift: (u16) = 0u16, or |c: &Config| c.misc.as_ref()?.ports_shift,
             "--ports-shift=[SHIFT]",
             "Add SHIFT to all port numbers Parity is listening on. Includes network port and all servers (HTTP JSON-RPC, WebSockets JSON-RPC, SecretStore).",
-
-        ["Account Options"]
-            FLAG flag_fast_unlock: (bool) = false, or |c: &Config| c.account.as_ref()?.fast_unlock.clone(),
-            "--fast-unlock",
-            "Use drastically faster unlocking mode. This setting causes raw secrets to be stored unprotected in memory, so use with care.",
-
-            ARG arg_keys_iterations: (u32) = 10240u32, or |c: &Config| c.account.as_ref()?.keys_iterations.clone(),
-            "--keys-iterations=[NUM]",
-            "Specify the number of iterations to use when deriving key from the password (bigger is more secure)",
-
-            ARG arg_accounts_refresh: (u64) = 5u64, or |c: &Config| c.account.as_ref()?.refresh_time.clone(),
-            "--accounts-refresh=[TIME]",
-            "Specify the cache time of accounts read from disk. If you manage thousands of accounts set this to 0 to disable refresh.",
-
-            ARG arg_unlock: (Option<String>) = None, or |c: &Config| c.account.as_ref()?.unlock.as_ref().map(|vec| vec.join(",")),
-            "--unlock=[ACCOUNTS]",
-            "Unlock ACCOUNTS for the duration of the execution. ACCOUNTS is a comma-delimited list of addresses.",
-
-            ARG arg_password: (Vec<String>) = Vec::new(), or |c: &Config| c.account.as_ref()?.password.clone(),
-            "--password=[FILE]...",
-            "Provide a file containing a password for unlocking an account. Leading and trailing whitespace is trimmed.",
-
-        ["UI Options"]
-            ARG arg_ui_path: (String) = "$BASE/signer", or |c: &Config| c.ui.as_ref()?.path.clone(),
-            "--ui-path=[PATH]",
-            "Specify directory where Trusted UIs tokens should be stored.",
 
         ["Networking Options"]
             FLAG flag_no_warp: (bool) = false, or |c: &Config| c.network.as_ref()?.warp.clone().map(|w| !w),
@@ -411,7 +318,7 @@ usage! {
 
             ARG arg_jsonrpc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-apis=[APIS]",
-            "Specify the APIs available through the HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
+            "Specify the APIs available through the HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, parity, parity_pubsub, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-parity_set. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
             ARG arg_jsonrpc_hosts: (String) = "none", or |c: &Config| c.rpc.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-hosts=[HOSTS]",
@@ -452,7 +359,7 @@ usage! {
 
             ARG arg_ws_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.websockets.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ws-apis=[APIS]",
-            "Specify the JSON-RPC APIs available through the WebSockets interface using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
+            "Specify the JSON-RPC APIs available through the WebSockets interface using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, parity, parity_pubsub, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-parity_set. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
             ARG arg_ws_origins: (String) = "parity://*,chrome-extension://*,moz-extension://*", or |c: &Config| c.websockets.as_ref()?.origins.as_ref().map(|vec| vec.join(",")),
             "--ws-origins=[URL]",
@@ -475,9 +382,9 @@ usage! {
             "--ipc-path=[PATH]",
             "Specify custom path for JSON-RPC over IPC service.",
 
-            ARG arg_ipc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,parity_accounts,traces", or |c: &Config| c.ipc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            ARG arg_ipc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.ipc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ipc-apis=[APIS]",
-            "Specify custom API set available via JSON-RPC over IPC using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
+            "Specify custom API set available via JSON-RPC over IPC using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, parity, parity_pubsub, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-parity_set. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
         ["Secret Store Options"]
             FLAG flag_no_secretstore: (bool) = false, or |c: &Config| c.secretstore.as_ref()?.disable.clone(),
@@ -669,10 +576,6 @@ usage! {
             "--author=[ADDRESS]",
             "Specify the block author (aka \"coinbase\") address for sending block rewards from sealed blocks. NOTE: MINING WILL NOT WORK WITHOUT THIS OPTION.", // Sealing/Mining Option
 
-            ARG arg_engine_signer: (Option<String>) = None, or |c: &Config| c.mining.as_ref()?.engine_signer.clone(),
-            "--engine-signer=[ADDRESS]",
-            "Specify the address which should be used to sign consensus messages and issue blocks. Relevant only to non-PoW chains.",
-
             ARG arg_tx_gas_limit: (Option<String>) = None, or |c: &Config| c.mining.as_ref()?.tx_gas_limit.clone(),
             "--tx-gas-limit=[GAS]",
             "Apply a limit of GAS as the maximum amount of gas a single transaction may have for it to be mined.",
@@ -797,7 +700,6 @@ usage! {
 struct Config {
     parity: Option<Operating>,
     account: Option<Account>,
-    ui: Option<Ui>,
     network: Option<Network>,
     rpc: Option<Rpc>,
     websockets: Option<Ws>,
@@ -831,13 +733,6 @@ struct Account {
     password: Option<Vec<String>>,
     keys_iterations: Option<u32>,
     refresh_time: Option<u64>,
-    fast_unlock: Option<bool>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Ui {
-    path: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1015,16 +910,16 @@ mod tests {
 
     #[test]
     fn should_accept_any_argument_order() {
-        let args = Args::parse(&["parity", "--no-warp", "account", "list"]).unwrap();
+        let args = Args::parse(&["parity", "--no-warp", "db", "kill"]).unwrap();
         assert_eq!(args.flag_no_warp, true);
 
-        let args = Args::parse(&["parity", "account", "list", "--no-warp"]).unwrap();
+        let args = Args::parse(&["parity", "db", "kill", "--no-warp"]).unwrap();
         assert_eq!(args.flag_no_warp, true);
 
-        let args = Args::parse(&["parity", "--chain=dev", "account", "list"]).unwrap();
+        let args = Args::parse(&["parity", "--chain=dev", "db", "kill"]).unwrap();
         assert_eq!(args.arg_chain, "dev");
 
-        let args = Args::parse(&["parity", "account", "list", "--chain=dev"]).unwrap();
+        let args = Args::parse(&["parity", "db", "kill", "--chain=dev"]).unwrap();
         assert_eq!(args.arg_chain, "dev");
     }
 
@@ -1084,18 +979,6 @@ mod tests {
 
     #[test]
     fn should_parse_multiple_values() {
-        let args = Args::parse(&["parity", "account", "import", "~/1", "~/2"]).unwrap();
-        assert_eq!(
-            args.arg_account_import_path,
-            Some(vec!["~/1".to_owned(), "~/2".to_owned()])
-        );
-
-        let args = Args::parse(&["parity", "account", "import", "~/1,ext"]).unwrap();
-        assert_eq!(
-            args.arg_account_import_path,
-            Some(vec!["~/1,ext".to_owned()])
-        );
-
         let args = Args::parse(&[
             "parity",
             "--secretstore-nodes",
@@ -1106,30 +989,11 @@ mod tests {
             args.arg_secretstore_nodes,
             "abc@127.0.0.1:3333,cde@10.10.10.10:4444"
         );
-
-        let args = Args::parse(&[
-            "parity",
-            "--password",
-            "~/.safe/1",
-            "--password",
-            "~/.safe/2",
-        ])
-        .unwrap();
-        assert_eq!(
-            args.arg_password,
-            vec!["~/.safe/1".to_owned(), "~/.safe/2".to_owned()]
-        );
-
-        let args = Args::parse(&["parity", "--password", "~/.safe/1,~/.safe/2"]).unwrap();
-        assert_eq!(
-            args.arg_password,
-            vec!["~/.safe/1".to_owned(), "~/.safe/2".to_owned()]
-        );
     }
 
     #[test]
     fn should_parse_global_args_with_subcommand() {
-        let args = Args::parse(&["parity", "--chain", "dev", "account", "list"]).unwrap();
+        let args = Args::parse(&["parity", "--chain", "dev", "db", "kill"]).unwrap();
         assert_eq!(args.arg_chain, "dev".to_owned());
     }
 
@@ -1191,21 +1055,10 @@ mod tests {
             Args {
                 // Commands
                 cmd_daemon: false,
-                cmd_account: false,
-                cmd_account_new: false,
-                cmd_account_list: false,
-                cmd_account_import: false,
-                cmd_wallet: false,
-                cmd_wallet_import: false,
                 cmd_import: false,
                 cmd_export: false,
                 cmd_export_blocks: false,
                 cmd_export_state: false,
-                cmd_signer: false,
-                cmd_signer_list: false,
-                cmd_signer_sign: false,
-                cmd_signer_reject: false,
-                cmd_signer_new_token: false,
                 cmd_snapshot: false,
                 cmd_restore: false,
                 cmd_tools: false,
@@ -1226,10 +1079,6 @@ mod tests {
                 arg_restore_file: None,
                 arg_tools_hash_file: None,
 
-                arg_signer_sign_id: None,
-                arg_signer_reject_id: None,
-                arg_account_import_path: None,
-                arg_wallet_import_path: None,
                 arg_db_reset_num: 10,
 
                 // -- Operating Options
@@ -1247,15 +1096,6 @@ mod tests {
                 arg_config: "$BASE/config.toml".into(),
                 arg_ports_shift: 0,
                 flag_unsafe_expose: false,
-
-                // -- Account Options
-                arg_unlock: Some("0xdeadbeefcafe0000000000000000000000000000".into()),
-                arg_password: vec!["~/.safe/password.file".into()],
-                arg_keys_iterations: 10240u32,
-                arg_accounts_refresh: 5u64,
-                flag_fast_unlock: false,
-
-                arg_ui_path: "$HOME/.parity/signer".into(),
 
                 // -- Networking Options
                 flag_no_warp: false,
@@ -1304,8 +1144,7 @@ mod tests {
                 // IPC
                 flag_no_ipc: false,
                 arg_ipc_path: "$HOME/.parity/jsonrpc.ipc".into(),
-                arg_ipc_apis: "web3,eth,net,parity,parity_accounts,personal,traces,secretstore"
-                    .into(),
+                arg_ipc_apis: "web3,eth,net,parity,traces,secretstore".into(),
 
                 // SECRETSTORE
                 flag_no_secretstore: false,
@@ -1329,7 +1168,6 @@ mod tests {
 
                 // -- Sealing/Mining Options
                 arg_author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
-                arg_engine_signer: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
                 flag_force_sealing: true,
                 arg_reseal_on_txs: "all".into(),
                 arg_reseal_min_period: 4000u64,
@@ -1455,9 +1293,7 @@ mod tests {
                     password: Some(vec!["passwdfile path".into()]),
                     keys_iterations: None,
                     refresh_time: None,
-                    fast_unlock: None,
                 }),
-                ui: None,
                 network: Some(Network {
                     warp: Some(false),
                     warp_barrier: None,

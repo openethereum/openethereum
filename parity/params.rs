@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{collections::HashSet, fmt, fs, num::NonZeroU32, str, time::Duration};
+use std::{collections::HashSet, fmt, fs, str, time::Duration};
 
 use ethcore::{
     client::Mode,
@@ -236,29 +236,6 @@ impl str::FromStr for ResealPolicy {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AccountsConfig {
-    pub iterations: NonZeroU32,
-    pub refresh_time: u64,
-    pub testnet: bool,
-    pub password_files: Vec<String>,
-    pub unlocked_accounts: Vec<Address>,
-    pub enable_fast_unlock: bool,
-}
-
-impl Default for AccountsConfig {
-    fn default() -> Self {
-        AccountsConfig {
-            iterations: NonZeroU32::new(10240).expect("10240 > 0; qed"),
-            refresh_time: 5,
-            testnet: false,
-            password_files: Vec::new(),
-            unlocked_accounts: Vec::new(),
-            enable_fast_unlock: false,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
 pub enum GasPricerConfig {
     Fixed(U256),
     Calibrated {
@@ -302,7 +279,6 @@ impl GasPricerConfig {
 #[derive(Debug, PartialEq)]
 pub struct MinerExtras {
     pub author: Address,
-    pub engine_signer: Address,
     pub extra_data: Vec<u8>,
     pub gas_range_target: (U256, U256),
     pub work_notify: Vec<String>,
@@ -313,7 +289,6 @@ impl Default for MinerExtras {
     fn default() -> Self {
         MinerExtras {
             author: Default::default(),
-            engine_signer: Default::default(),
             extra_data: version_data(),
             gas_range_target: (8_000_000.into(), 10_000_000.into()),
             work_notify: Default::default(),

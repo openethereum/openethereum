@@ -23,7 +23,7 @@ use ethcore::{
     miner::{self, MinerService},
 };
 use ethereum_types::{H160, H256, U256};
-use ethkey;
+use ethkey::{KeyPair, Secret};
 use fetch::{self, Fetch};
 use hash::keccak_buffer;
 use sync::ManageNetwork;
@@ -34,51 +34,6 @@ use v1::{
     traits::ParitySet,
     types::{Bytes, Transaction},
 };
-
-#[cfg(any(test, feature = "accounts"))]
-pub mod accounts {
-    use super::*;
-    use accounts::AccountProvider;
-    use v1::{
-        helpers::{deprecated::DeprecationNotice, engine_signer::EngineSigner},
-        traits::ParitySetAccounts,
-    };
-
-    /// Parity-specific account-touching RPC interfaces.
-    pub struct ParitySetAccountsClient<M> {
-        miner: Arc<M>,
-        accounts: Arc<AccountProvider>,
-        deprecation_notice: DeprecationNotice,
-    }
-
-    impl<M> ParitySetAccountsClient<M> {
-        /// Creates new ParitySetAccountsClient
-        pub fn new(accounts: &Arc<AccountProvider>, miner: &Arc<M>) -> Self {
-            ParitySetAccountsClient {
-                accounts: accounts.clone(),
-                miner: miner.clone(),
-                deprecation_notice: Default::default(),
-            }
-        }
-    }
-
-    impl<M: MinerService + 'static> ParitySetAccounts for ParitySetAccountsClient<M> {
-        fn set_engine_signer(&self, address: H160, password: String) -> Result<bool> {
-            self.deprecation_notice.print(
-                "parity_setEngineSigner",
-                "use `parity_setEngineSignerSecret` instead. See #9997 for context.",
-            );
-
-            let signer = Box::new(EngineSigner::new(
-                self.accounts.clone(),
-                address.clone().into(),
-                password.into(),
-            ));
-            self.miner.set_author(miner::Author::Sealer(signer));
-            Ok(true)
-        }
-    }
-}
 
 /// Parity-specific rpc interface for operations altering the settings.
 pub struct ParitySetClient<C, M, F = fetch::Client> {
@@ -150,12 +105,10 @@ where
         Ok(true)
     }
 
-    fn set_engine_signer_secret(&self, secret: H256) -> Result<bool> {
-        let keypair = ethkey::KeyPair::from_secret(secret.into())
+    fn set_engine_signer_secret(&self, secret: Secret) -> Result<bool> {
+        let keypair = KeyPair::from_secret(secret.into())
             .map_err(|e| errors::account("Invalid secret", e))?;
-        self.miner.set_author(miner::Author::Sealer(
-            ethcore::engines::signer::from_keypair(keypair),
-        ));
+        self.miner.set_author(miner::Author::Sealer(keypair));
         Ok(true)
     }
 

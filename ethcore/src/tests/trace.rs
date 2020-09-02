@@ -73,7 +73,7 @@ fn can_trace_block_and_uncle_reward() {
     let mut last_header = genesis_header.clone();
     last_hashes.push(last_header.hash());
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret(keccak("").into()).unwrap();
     let author = kp.address();
 
     // Add root block first

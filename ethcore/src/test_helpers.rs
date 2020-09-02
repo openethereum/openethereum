@@ -169,7 +169,7 @@ where
     let mut last_hashes = vec![];
     let mut last_header = genesis_header.clone();
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret(keccak("").into()).unwrap();
     let author = kp.address();
 
     let mut n = 0;

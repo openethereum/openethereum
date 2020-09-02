@@ -35,13 +35,11 @@ use std::{
     io::Read,
     iter::FromIterator,
     net::{SocketAddr, ToSocketAddrs},
-    num::NonZeroU32,
     path::PathBuf,
     time::Duration,
 };
 use sync::{self, validate_node_url, NetworkConfiguration};
 
-use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
 use blockchain::{
     BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain, KillBlockchain, ResetBlockchain,
 };
@@ -57,14 +55,12 @@ use helpers::{
     to_pending_set, to_price, to_queue_penalization, to_queue_strategy, to_u256,
 };
 use network::IpFilter;
-use params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
+use params::{GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
 use parity_rpc::NetworkSettings;
-use presale::ImportWallet;
 use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
 use run::RunCmd;
 use secretstore::{
     Configuration as SecretStoreConfiguration, ContractAddress as SecretStoreContractAddress,
-    NodeSecretKey,
 };
 use snapshot::{self, SnapshotCommand};
 use types::data_format::DataFormat;
@@ -78,25 +74,7 @@ pub const ETHERSCAN_ETH_PRICE_ENDPOINT: &str =
 pub enum Cmd {
     Run(RunCmd),
     Version,
-    Account(AccountCmd),
-    ImportPresaleWallet(ImportWallet),
     Blockchain(BlockchainCmd),
-    SignerToken(WsConfiguration, LogConfig),
-    SignerSign {
-        id: Option<usize>,
-        pwfile: Option<PathBuf>,
-        port: u16,
-        authfile: PathBuf,
-    },
-    SignerList {
-        port: u16,
-        authfile: PathBuf,
-    },
-    SignerReject {
-        id: Option<usize>,
-        port: u16,
-        authfile: PathBuf,
-    },
     Snapshot(SnapshotCommand),
     Hash(Option<String>),
 }
@@ -158,42 +136,9 @@ impl Configuration {
         let experimental_rpcs = self.args.flag_jsonrpc_experimental;
         let secretstore_conf = self.secretstore_config()?;
         let format = self.format()?;
-        let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
-            .ok_or_else(|| "--keys-iterations must be non-zero")?;
 
         let cmd = if self.args.flag_version {
             Cmd::Version
-        } else if self.args.cmd_signer {
-            let authfile = ::signer::codes_path(&ws_conf.signer_path);
-
-            if self.args.cmd_signer_new_token {
-                Cmd::SignerToken(ws_conf, logger_config.clone())
-            } else if self.args.cmd_signer_sign {
-                let pwfile = self
-                    .accounts_config()?
-                    .password_files
-                    .first()
-                    .map(|pwfile| PathBuf::from(pwfile));
-                Cmd::SignerSign {
-                    id: self.args.arg_signer_sign_id,
-                    pwfile: pwfile,
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else if self.args.cmd_signer_reject {
-                Cmd::SignerReject {
-                    id: self.args.arg_signer_reject_id,
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else if self.args.cmd_signer_list {
-                Cmd::SignerList {
-                    port: ws_conf.port,
-                    authfile: authfile,
-                }
-            } else {
-                unreachable!();
-            }
         } else if self.args.cmd_tools && self.args.cmd_tools_hash {
             Cmd::Hash(self.args.arg_tools_hash_file)
         } else if self.args.cmd_db && self.args.cmd_db_reset {
@@ -215,53 +160,6 @@ impl Configuration {
                 dirs: dirs,
                 pruning: pruning,
             }))
-        } else if self.args.cmd_account {
-            let account_cmd = if self.args.cmd_account_new {
-                let new_acc = NewAccount {
-                    iterations: keys_iterations,
-                    path: dirs.keys,
-                    spec: spec,
-                    password_file: self
-                        .accounts_config()?
-                        .password_files
-                        .first()
-                        .map(|x| x.to_owned()),
-                };
-                AccountCmd::New(new_acc)
-            } else if self.args.cmd_account_list {
-                let list_acc = ListAccounts {
-                    path: dirs.keys,
-                    spec: spec,
-                };
-                AccountCmd::List(list_acc)
-            } else if self.args.cmd_account_import {
-                let import_acc = ImportAccounts {
-                    from: self
-                        .args
-                        .arg_account_import_path
-                        .expect("CLI argument is required; qed")
-                        .clone(),
-                    to: dirs.keys,
-                    spec: spec,
-                };
-                AccountCmd::Import(import_acc)
-            } else {
-                unreachable!();
-            };
-            Cmd::Account(account_cmd)
-        } else if self.args.cmd_wallet {
-            let presale_cmd = ImportWallet {
-                iterations: keys_iterations,
-                path: dirs.keys,
-                spec: spec,
-                wallet_path: self.args.arg_wallet_import_path.clone().unwrap(),
-                password_file: self
-                    .accounts_config()?
-                    .password_files
-                    .first()
-                    .map(|x| x.to_owned()),
-            };
-            Cmd::ImportPresaleWallet(presale_cmd)
         } else if self.args.cmd_import {
             let import_cmd = ImportBlockchain {
                 spec: spec,
@@ -400,7 +298,6 @@ impl Configuration {
                 ipc_conf: ipc_conf,
                 net_conf: net_conf,
                 network_id: network_id,
-                acc_conf: self.accounts_config()?,
                 gas_pricer_conf: self.gas_pricer_config()?,
                 miner_extras: self.miner_extras()?,
                 stratum: self.stratum_options()?,
@@ -443,7 +340,6 @@ impl Configuration {
             author: self.author()?,
             extra_data: self.extra_data()?,
             gas_range_target: (floor, ceil),
-            engine_signer: self.engine_signer()?,
             work_notify: self.work_notify(),
             local_accounts: HashSet::from_iter(
                 to_addresses(&self.args.arg_tx_queue_locals)?.into_iter(),
@@ -455,10 +351,6 @@ impl Configuration {
 
     fn author(&self) -> Result<Address, String> {
         to_address(self.args.arg_author.clone())
-    }
-
-    fn engine_signer(&self) -> Result<Address, String> {
-        to_address(self.args.arg_engine_signer.clone())
     }
 
     fn format(&self) -> Result<Option<DataFormat>, String> {
@@ -541,26 +433,6 @@ impl Configuration {
             .arg_notify_work
             .as_ref()
             .map_or_else(Vec::new, |s| s.split(',').map(|s| s.to_owned()).collect())
-    }
-
-    fn accounts_config(&self) -> Result<AccountsConfig, String> {
-        let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
-            .ok_or_else(|| "--keys-iterations must be non-zero")?;
-        let cfg = AccountsConfig {
-            iterations: keys_iterations,
-            refresh_time: self.args.arg_accounts_refresh,
-            testnet: false,
-            password_files: self
-                .args
-                .arg_password
-                .iter()
-                .map(|s| replace_home(&self.directories().base, s))
-                .collect(),
-            unlocked_accounts: to_addresses(&self.args.arg_unlock)?,
-            enable_fast_unlock: self.args.flag_fast_unlock,
-        };
-
-        Ok(cfg)
     }
 
     fn stratum_options(&self) -> Result<Option<stratum::Options>, String> {
@@ -934,10 +806,6 @@ impl Configuration {
     }
 
     fn ws_config(&self) -> Result<WsConfiguration, String> {
-        let support_token_api =
-			// enabled when not unlocking
-			self.args.arg_unlock.is_none();
-
         let conf = WsConfiguration {
             enabled: self.ws_enabled(),
             interface: self.ws_interface(),
@@ -945,8 +813,6 @@ impl Configuration {
             apis: self.args.arg_ws_apis.parse()?,
             hosts: self.ws_hosts(),
             origins: self.ws_origins(),
-            signer_path: self.directories().signer.into(),
-            support_token_api,
             max_connections: self.args.arg_ws_max_connections,
         };
 
@@ -1007,14 +873,12 @@ impl Configuration {
         let cache_path = replace_home_and_local(&data_path, &local_path, cache_path);
         let keys_path = replace_home(&data_path, &self.args.arg_keys_path);
         let secretstore_path = replace_home(&data_path, &self.args.arg_secretstore_path);
-        let ui_path = replace_home(&data_path, &self.args.arg_ui_path);
 
         Directories {
             keys: keys_path,
             base: data_path,
             cache: cache_path,
             db: db_path,
-            signer: ui_path,
             secretstore: secretstore_path,
         }
     }
@@ -1056,13 +920,10 @@ impl Configuration {
         self.interface(&self.args.arg_secretstore_http_interface)
     }
 
-    fn secretstore_self_secret(&self) -> Result<Option<NodeSecretKey>, String> {
+    fn secretstore_self_secret(&self) -> Result<Option<Secret>, String> {
         match self.args.arg_secretstore_secret {
-			Some(ref s) if s.len() == 64 => Ok(Some(NodeSecretKey::Plain(s.parse()
-				.map_err(|e| format!("Invalid secret store secret: {}. Error: {:?}", s, e))?))),
-			#[cfg(feature = "accounts")]
-			Some(ref s) if s.len() == 40 => Ok(Some(NodeSecretKey::KeyStore(s.parse()
-				.map_err(|e| format!("Invalid secret store secret address: {}. Error: {:?}", s, e))?))),
+			Some(ref s) if s.len() == 64 => Ok(Some(s.parse()
+				.map_err(|e| format!("Invalid secret store secret: {}. Error: {:?}", s, e))?)),
 			Some(_) => Err(format!("Invalid secret store secret. Must be either existing account address, or hex-encoded private key")),
 			None => Ok(None),
 		}
@@ -1219,16 +1080,11 @@ fn into_secretstore_service_contract_address(
 mod tests {
     use std::{fs::File, io::Write, str::FromStr};
 
-    use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
-    use blockchain::{BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain};
     use cli::Args;
-    use dir::Directories;
     use ethcore::{client::VMType, miner::MinerOptions};
     use helpers::default_network_config;
     use miner::pool::PrioritizationStrategy;
-    use params::SpecType;
     use parity_rpc::NetworkSettings;
-    use presale::ImportWallet;
     use rpc::WsConfiguration;
     use rpc_apis::ApiSet;
     use run::RunCmd;
@@ -1242,13 +1098,6 @@ mod tests {
 
     use super::*;
 
-    lazy_static! {
-        static ref ITERATIONS: NonZeroU32 = NonZeroU32::new(10240).expect("10240 > 0; qed");
-    }
-
-    #[derive(Debug, PartialEq)]
-    struct TestPasswordReader(&'static str);
-
     fn parse(args: &[&str]) -> Configuration {
         Configuration {
             args: Args::parse_without_config(args).unwrap(),
@@ -1260,71 +1109,6 @@ mod tests {
         let args = vec!["parity", "--version"];
         let conf = parse(&args);
         assert_eq!(conf.into_command().unwrap().cmd, Cmd::Version);
-    }
-
-    #[test]
-    fn test_command_account_new() {
-        let args = vec!["parity", "account", "new"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::New(NewAccount {
-                iterations: *ITERATIONS,
-                path: Directories::default().keys,
-                password_file: None,
-                spec: SpecType::default(),
-            }))
-        );
-    }
-
-    #[test]
-    fn test_command_account_list() {
-        let args = vec!["parity", "account", "list"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::List(ListAccounts {
-                path: Directories::default().keys,
-                spec: SpecType::default(),
-            }))
-        );
-    }
-
-    #[test]
-    fn test_command_account_import() {
-        let args = vec!["parity", "account", "import", "my_dir", "another_dir"];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::Account(AccountCmd::Import(ImportAccounts {
-                from: vec!["my_dir".into(), "another_dir".into()],
-                to: Directories::default().keys,
-                spec: SpecType::default(),
-            }))
-        );
-    }
-
-    #[test]
-    fn test_command_wallet_import() {
-        let args = vec![
-            "parity",
-            "wallet",
-            "import",
-            "my_wallet.json",
-            "--password",
-            "pwd",
-        ];
-        let conf = parse(&args);
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::ImportPresaleWallet(ImportWallet {
-                iterations: *ITERATIONS,
-                path: Directories::default().keys,
-                wallet_path: "my_wallet.json".into(),
-                password_file: Some("pwd".into()),
-                spec: SpecType::default(),
-            })
-        );
     }
 
     #[test]
@@ -1442,38 +1226,6 @@ mod tests {
     }
 
     #[test]
-    fn test_command_signer_new_token() {
-        let args = vec!["parity", "signer", "new-token"];
-        let conf = parse(&args);
-        let expected = Directories::default().signer;
-        assert_eq!(
-            conf.into_command().unwrap().cmd,
-            Cmd::SignerToken(
-                WsConfiguration {
-                    enabled: true,
-                    interface: "127.0.0.1".into(),
-                    port: 8546,
-                    apis: ApiSet::UnsafeContext,
-                    origins: Some(vec![
-                        "parity://*".into(),
-                        "chrome-extension://*".into(),
-                        "moz-extension://*".into()
-                    ]),
-                    hosts: Some(vec![]),
-                    signer_path: expected.into(),
-                    support_token_api: true,
-                    max_connections: 100,
-                },
-                LogConfig {
-                    color: !cfg!(windows),
-                    mode: None,
-                    file: None,
-                }
-            )
-        );
-    }
-
-    #[test]
     fn test_ws_max_connections() {
         let args = vec!["parity", "--ws-max-connections", "1"];
         let conf = parse(&args);
@@ -1511,7 +1263,6 @@ mod tests {
             network_id: None,
             warp_sync: true,
             warp_barrier: None,
-            acc_conf: Default::default(),
             gas_pricer_conf: Default::default(),
             miner_extras: Default::default(),
             mode: Default::default(),
@@ -1609,17 +1360,6 @@ mod tests {
     }
 
     #[test]
-    fn should_parse_ui_configuration() {
-        // given
-
-        // when
-        let conf0 = parse(&["parity", "--ui-path=signer"]);
-
-        // then
-        assert_eq!(conf0.directories().signer, "signer".to_owned());
-    }
-
-    #[test]
     fn should_not_bail_on_empty_line_in_reserved_peers() {
         let tempdir = TempDir::new("").unwrap();
         let filename = tempdir.path().join("peers");
@@ -1706,7 +1446,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,parity,parity_set,traces");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),
@@ -1727,7 +1467,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,parity,parity_set,traces");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),

@@ -152,11 +152,11 @@ impl ValidatorSet for ValidatorContract {
 #[cfg(test)]
 mod tests {
     use super::{super::ValidatorSet, ValidatorContract};
-    use accounts::AccountProvider;
     use bytes::ToPretty;
     use call_contract::CallContract;
     use client::{BlockChainClient, BlockInfo, ChainInfo};
     use ethereum_types::{Address, H520};
+    use ethkey::KeyPair;
     use hash::keccak;
     use miner::{self, MinerService};
     use rlp::encode;
@@ -192,8 +192,7 @@ mod tests {
 
     #[test]
     fn reports_validators() {
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let v1 = tap.insert_account(keccak("1").into(), &"".into()).unwrap();
+        let v1 = KeyPair::from_secret(keccak("1").into()).unwrap();
         let client = generate_dummy_client_with_spec(Spec::new_validator_contract);
         client
             .engine()
@@ -206,14 +205,14 @@ mod tests {
         client
             .miner()
             .set_gas_range_target((1_000_000.into(), 1_000_000.into()));
-        let signer = Box::new((tap.clone(), v1, "".into()));
+        let signer = v1.clone();
         client.miner().set_author(miner::Author::Sealer(signer));
 
         // Check a block that is a bit in future, reject it but don't report the validator.
         let mut header = Header::default();
         let seal = vec![encode(&4u8), encode(&(&H520::default() as &[u8]))];
         header.set_seal(seal);
-        header.set_author(v1);
+        header.set_author(v1.address());
         header.set_number(2);
         header.set_parent_hash(client.chain_info().best_block_hash);
         assert!(client.engine().verify_block_external(&header).is_err());
@@ -224,7 +223,7 @@ mod tests {
         let mut header = Header::default();
         let seal = vec![encode(&8u8), encode(&(&H520::default() as &[u8]))];
         header.set_seal(seal);
-        header.set_author(v1);
+        header.set_author(v1.address());
         header.set_number(2);
         header.set_parent_hash(client.chain_info().best_block_hash);
         // `reportBenign` when the designated proposer releases block from the future (bad clock).

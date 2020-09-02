@@ -18,8 +18,8 @@
 
 use std::collections::BTreeSet;
 
-use ethereum_types::{H160, H256, H512};
-use ethkey::Password;
+use ethereum_types::{H256, H512};
+use ethkey::Secret;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use v1::types::{Bytes, EncryptedDocumentKey};
@@ -30,30 +30,23 @@ pub trait SecretStore {
     /// Generate document key to store in secret store.
     /// Arguments: `account`, `password`, `server_key_public`.
     #[rpc(name = "secretstore_generateDocumentKey")]
-    fn generate_document_key(&self, _: H160, _: Password, _: H512) -> Result<EncryptedDocumentKey>;
+    fn generate_document_key(&self, _: Secret, _: H512) -> Result<EncryptedDocumentKey>;
 
     /// Encrypt data with key, received from secret store.
     /// Arguments: `account`, `password`, `key`, `data`.
     #[rpc(name = "secretstore_encrypt")]
-    fn encrypt(&self, _: H160, _: Password, _: Bytes, _: Bytes) -> Result<Bytes>;
+    fn encrypt(&self, _: Secret, _: Bytes, _: Bytes) -> Result<Bytes>;
 
     /// Decrypt data with key, received from secret store.
     /// Arguments: `account`, `password`, `key`, `data`.
     #[rpc(name = "secretstore_decrypt")]
-    fn decrypt(&self, _: H160, _: Password, _: Bytes, _: Bytes) -> Result<Bytes>;
+    fn decrypt(&self, _: Secret, _: Bytes, _: Bytes) -> Result<Bytes>;
 
     /// Decrypt data with shadow key, received from secret store.
     /// Arguments: `account`, `password`, `decrypted_secret`, `common_point`, `decrypt_shadows`, `data`.
     #[rpc(name = "secretstore_shadowDecrypt")]
-    fn shadow_decrypt(
-        &self,
-        _: H160,
-        _: Password,
-        _: H512,
-        _: H512,
-        _: Vec<Bytes>,
-        _: Bytes,
-    ) -> Result<Bytes>;
+    fn shadow_decrypt(&self, _: Secret, _: H512, _: H512, _: Vec<Bytes>, _: Bytes)
+        -> Result<Bytes>;
 
     /// Calculates the hash (keccak256) of servers set for using in ServersSetChange session.
     /// Returned hash must be signed later by using `secretstore_signRawHash` method.
@@ -65,5 +58,5 @@ pub trait SecretStore {
     /// Passed hash is treated as an input to the `sign` function (no prefixes added, no hash function is applied).
     /// Arguments: `account`, `password`, `raw_hash`.
     #[rpc(name = "secretstore_signRawHash")]
-    fn sign_raw_hash(&self, _: H160, _: Password, _: H256) -> Result<Bytes>;
+    fn sign_raw_hash(&self, _: Secret, _: H256) -> Result<Bytes>;
 }

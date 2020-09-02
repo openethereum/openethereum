@@ -23,12 +23,12 @@ use ethereum_types::{Address, H256, U256};
 use ethkey::{public_to_address, Public};
 use hash::keccak;
 use helpers::{get_confirmed_block_hash, REQUEST_CONFIRMATIONS_REQUIRED};
+use key_server_cluster::NodeKeyPair;
 use listener::{service_contract_listener::ServiceTask, ApiMask};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use trusted_client::TrustedClient;
 use ContractAddress;
-use NodeKeyPair;
 use ServerKeyId;
 
 use_contract!(service, "res/service.json");
@@ -158,7 +158,7 @@ pub struct OnChainServiceContract {
     /// Blockchain client.
     client: TrustedClient,
     /// This node key pair.
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     /// Contract registry name (if any).
     name: String,
     /// Contract address source.
@@ -201,7 +201,7 @@ impl OnChainServiceContract {
         client: TrustedClient,
         name: String,
         address_source: ContractAddress,
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
     ) -> Self {
         let contract = OnChainServiceContract {
             mask: mask,
@@ -265,7 +265,7 @@ impl OnChainServiceContract {
         C: 'static + Fn(&Client, &Address, &BlockId) -> Result<U256, String>,
         R: 'static
             + Fn(
-                &dyn NodeKeyPair,
+                &NodeKeyPair,
                 &Client,
                 &Address,
                 &BlockId,
@@ -787,7 +787,7 @@ impl ServerKeyGenerationService {
 
     /// Read pending request.
     fn read_pending_request(
-        self_key_pair: &dyn NodeKeyPair,
+        self_key_pair: &NodeKeyPair,
         client: &Client,
         contract_address: &Address,
         block: &BlockId,
@@ -881,7 +881,7 @@ impl ServerKeyRetrievalService {
 
     /// Read pending request.
     fn read_pending_request(
-        self_key_pair: &dyn NodeKeyPair,
+        self_key_pair: &NodeKeyPair,
         client: &Client,
         contract_address: &Address,
         block: &BlockId,
@@ -966,7 +966,7 @@ impl DocumentKeyStoreService {
 
     /// Read pending request.
     fn read_pending_request(
-        self_key_pair: &dyn NodeKeyPair,
+        self_key_pair: &NodeKeyPair,
         client: &Client,
         contract_address: &Address,
         block: &BlockId,
@@ -1118,7 +1118,7 @@ impl DocumentKeyShadowRetrievalService {
 
     /// Read pending request.
     fn read_pending_request(
-        self_key_pair: &dyn NodeKeyPair,
+        self_key_pair: &NodeKeyPair,
         client: &Client,
         contract_address: &Address,
         block: &BlockId,

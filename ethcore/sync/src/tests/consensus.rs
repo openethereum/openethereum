@@ -17,7 +17,6 @@
 use super::helpers::*;
 use ethcore::{
     client::{ChainInfo, ClientIoMessage},
-    engines,
     miner::{self, MinerService},
     spec::Spec,
 };
@@ -44,8 +43,8 @@ fn new_tx(secret: &Secret, nonce: U256, chain_id: u64) -> PendingTransaction {
 
 #[test]
 fn authority_round() {
-    let s0 = KeyPair::from_secret_slice(&keccak("1")).unwrap();
-    let s1 = KeyPair::from_secret_slice(&keccak("0")).unwrap();
+    let s0 = KeyPair::from_secret(keccak("1").into()).unwrap();
+    let s1 = KeyPair::from_secret(keccak("0").into()).unwrap();
 
     let chain_id = Spec::new_test_round().chain_id();
     let mut net = TestNet::with_spec(2, SyncConfig::default(), Spec::new_test_round);
@@ -56,14 +55,10 @@ fn authority_round() {
     // Push transaction to both clients. Only one of them gets lucky to produce a block.
     net.peer(0)
         .miner
-        .set_author(miner::Author::Sealer(engines::signer::from_keypair(
-            s0.clone(),
-        )));
+        .set_author(miner::Author::Sealer(s0.clone()));
     net.peer(1)
         .miner
-        .set_author(miner::Author::Sealer(engines::signer::from_keypair(
-            s1.clone(),
-        )));
+        .set_author(miner::Author::Sealer(s1.clone()));
     net.peer(0)
         .chain
         .engine()

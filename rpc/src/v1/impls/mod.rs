@@ -22,28 +22,12 @@ mod eth_filter;
 mod eth_pubsub;
 mod net;
 mod parity;
-#[cfg(any(test, feature = "accounts"))]
-mod parity_accounts;
 mod parity_set;
-#[cfg(any(test, feature = "accounts"))]
-mod personal;
 mod pubsub;
-#[cfg(any(test, feature = "accounts"))]
 mod secretstore;
-mod signer;
-mod signing;
-mod signing_unsafe;
 mod traces;
 mod web3;
 
-#[cfg(any(test, feature = "accounts"))]
-pub use self::parity_accounts::ParityAccountsClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::parity_set::accounts::ParitySetAccountsClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::personal::PersonalClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::secretstore::SecretStoreClient;
 pub use self::{
     debug::DebugClient,
     eth::{EthClient, EthClientOptions},
@@ -53,9 +37,7 @@ pub use self::{
     parity::ParityClient,
     parity_set::ParitySetClient,
     pubsub::PubSubClient,
-    signer::SignerClient,
-    signing::SigningQueueClient,
-    signing_unsafe::SigningUnsafeClient,
+    secretstore::SecretStoreClient,
     traces::TracesClient,
     web3::Web3Client,
 };

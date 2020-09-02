@@ -21,17 +21,13 @@ use std::sync::Arc;
 use jsonrpc_core::MetaIoHandler;
 use ws;
 
-use tests::{
-    helpers::{GuardedAuthCodes, Server},
-    http_client,
-};
+use tests::{helpers::Server, http_client};
 use v1::{extractors, informant};
 
 /// Setup a mock signer for tests
-pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
+pub fn serve() -> (Server<ws::Server>, usize) {
     let address = "127.0.0.1:0".parse().unwrap();
     let io = MetaIoHandler::default();
-    let authcodes = GuardedAuthCodes::default();
     let stats = Arc::new(informant::RpcStats::default());
 
     let res = Server::new(|_| {
@@ -41,15 +37,15 @@ pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
             ws::DomainsValidation::Disabled,
             ws::DomainsValidation::Disabled,
             5,
-            extractors::WsExtractor::new(Some(&authcodes.path)),
-            extractors::WsExtractor::new(Some(&authcodes.path)),
+            extractors::WsExtractor::new(),
+            extractors::WsExtractor::new(),
             extractors::WsStats::new(stats),
         )
         .unwrap()
     });
     let port = res.addr().port() as usize;
 
-    (res, port, authcodes)
+    (res, port)
 }
 
 /// Test a single request to running server
@@ -59,14 +55,11 @@ pub fn request(server: Server<ws::Server>, request: &str) -> http_client::Respon
 
 #[cfg(test)]
 mod testing {
-    use super::{http_client, request, serve};
-    use hash::keccak;
-    use std::time;
-
+    use super::{request, serve};
     #[test]
     fn should_not_redirect_to_parity_host() {
         // given
-        let (server, port, _) = serve();
+        let (server, port) = serve();
 
         // when
         let response = request(
@@ -85,102 +78,5 @@ mod testing {
 
         // then
         assert_eq!(response.status, "HTTP/1.1 200 OK".to_owned());
-    }
-
-    #[test]
-    fn should_block_if_authorization_is_incorrect() {
-        // given
-        let (server, port, _) = serve();
-
-        // when
-        let response = request(
-            server,
-            &format!(
-                "\
-				GET / HTTP/1.1\r\n\
-				Host: 127.0.0.1:{}\r\n\
-				Connection: Upgrade\r\n\
-				Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n\
-				Sec-WebSocket-Protocol: wrong\r\n\
-				Sec-WebSocket-Version: 13\r\n\
-				\r\n\
-				{{}}
-			",
-                port
-            ),
-        );
-
-        // then
-        assert_eq!(response.status, "HTTP/1.1 403 Forbidden".to_owned());
-        http_client::assert_security_headers_present(&response.headers, None);
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    #[test]
-    fn should_allow_if_authorization_is_correct() {
-        // given
-        let (server, port, mut authcodes) = serve();
-        let code = authcodes.generate_new().unwrap().replace("-", "");
-        authcodes.to_file(&authcodes.path).unwrap();
-        let timestamp = time::UNIX_EPOCH.elapsed().unwrap().as_secs();
-
-        // when
-        let response = request(
-            server,
-            &format!(
-                "\
-				GET / HTTP/1.1\r\n\
-				Host: 127.0.0.1:{}\r\n\
-				Connection: Close\r\n\
-				Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n\
-				Sec-WebSocket-Protocol: {:x}_{}\r\n\
-				Sec-WebSocket-Version: 13\r\n\
-				\r\n\
-				{{}}
-			",
-                port,
-                keccak(format!("{}:{}", code, timestamp)),
-                timestamp,
-            ),
-        );
-
-        // then
-        assert_eq!(
-            response.status,
-            "HTTP/1.1 101 Switching Protocols".to_owned()
-        );
-    }
-
-    #[test]
-    fn should_not_allow_initial_connection_even_once() {
-        // given
-        let (server, port, authcodes) = serve();
-        let code = "initial";
-        let timestamp = time::UNIX_EPOCH.elapsed().unwrap().as_secs();
-        assert!(authcodes.is_empty());
-
-        // when
-        let response1 = http_client::request(
-            server.addr(),
-            &format!(
-                "\
-				GET / HTTP/1.1\r\n\
-				Host: 127.0.0.1:{}\r\n\
-				Connection: Close\r\n\
-				Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n\
-				Sec-WebSocket-Protocol:{:x}_{}\r\n\
-				Sec-WebSocket-Version: 13\r\n\
-				\r\n\
-				{{}}
-			",
-                port,
-                keccak(format!("{}:{}", code, timestamp)),
-                timestamp,
-            ),
-        );
-
-        // then
-        assert_eq!(response1.status, "HTTP/1.1 403 Forbidden".to_owned());
-        http_client::assert_security_headers_present(&response1.headers, None);
     }
 }

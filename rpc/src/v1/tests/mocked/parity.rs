@@ -17,7 +17,7 @@
 use ethcore::client::{Executed, TestBlockChainClient, TransactionId};
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H256, U256};
-use ethstore::ethkey::{Generator, Random};
+use ethkey::{Generator, Random};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::sync::Arc;
 use sync::ManageNetwork;
@@ -26,7 +26,7 @@ use types::receipt::{LocalizedReceipt, TransactionOutcome};
 use super::manage_network::TestManageNetwork;
 use jsonrpc_core::IoHandler;
 use v1::{
-    helpers::{external_signer::SignerService, NetworkSettings},
+    helpers::NetworkSettings,
     metadata::Metadata,
     tests::helpers::{Config, TestMinerService, TestSyncProvider},
     Parity, ParityClient,
@@ -69,7 +69,7 @@ impl Dependencies {
         }
     }
 
-    pub fn client(&self, signer: Option<Arc<SignerService>>) -> TestParityClient {
+    pub fn client(&self) -> TestParityClient {
         ParityClient::new(
             self.client.clone(),
             self.miner.clone(),
@@ -77,7 +77,6 @@ impl Dependencies {
             self.network.clone(),
             self.logger.clone(),
             self.settings.clone(),
-            signer,
             self.ws_address.clone(),
             None,
         )
@@ -85,13 +84,7 @@ impl Dependencies {
 
     fn default_client(&self) -> IoHandler<Metadata> {
         let mut io = IoHandler::default();
-        io.extend_with(self.client(None).to_delegate());
-        io
-    }
-
-    fn with_signer(&self, signer: SignerService) -> IoHandler<Metadata> {
-        let mut io = IoHandler::default();
-        io.extend_with(self.client(Some(Arc::new(signer))).to_delegate());
+        io.extend_with(self.client().to_delegate());
         io
     }
 }
@@ -247,30 +240,6 @@ fn rpc_parity_node_name() {
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_nodeName", "params":[], "id": 1}"#;
     let response = r#"{"jsonrpc":"2.0","result":"mynode","id":1}"#;
-
-    assert_eq!(io.handle_request_sync(request), Some(response.to_owned()));
-}
-
-#[test]
-fn rpc_parity_unsigned_transactions_count() {
-    let deps = Dependencies::new();
-    let io = deps.with_signer(SignerService::new_test(true));
-
-    let request =
-        r#"{"jsonrpc": "2.0", "method": "parity_unsignedTransactionsCount", "params":[], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","result":0,"id":1}"#;
-
-    assert_eq!(io.handle_request_sync(request), Some(response.to_owned()));
-}
-
-#[test]
-fn rpc_parity_unsigned_transactions_count_when_signer_disabled() {
-    let deps = Dependencies::new();
-    let io = deps.default_client();
-
-    let request =
-        r#"{"jsonrpc": "2.0", "method": "parity_unsignedTransactionsCount", "params":[], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"Trusted Signer is disabled. This API is not available."},"id":1}"#;
 
     assert_eq!(io.handle_request_sync(request), Some(response.to_owned()));
 }

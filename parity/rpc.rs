@@ -16,7 +16,6 @@
 
 use std::{collections::HashSet, io, path::PathBuf, sync::Arc};
 
-use dir::{default_data_path, helpers::replace_home};
 use helpers::parity_ipc_path;
 use jsonrpc_core::MetaIoHandler;
 use parity_rpc::{
@@ -95,13 +94,10 @@ pub struct WsConfiguration {
     pub max_connections: usize,
     pub origins: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
-    pub signer_path: PathBuf,
-    pub support_token_api: bool,
 }
 
 impl Default for WsConfiguration {
     fn default() -> Self {
-        let data_dir = default_data_path();
         WsConfiguration {
             enabled: true,
             interface: "127.0.0.1".into(),
@@ -114,8 +110,6 @@ impl Default for WsConfiguration {
                 "moz-extension://*".into(),
             ]),
             hosts: Some(Vec::new()),
-            signer_path: replace_home(&data_dir, "$BASE/signer").into(),
-            support_token_api: true,
         }
     }
 }
@@ -177,32 +171,17 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
     let allowed_origins = into_domains(with_domain(conf.origins, domain, &None));
     let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
 
-    let signer_path;
-    let path = match conf.support_token_api {
-        true => {
-            signer_path = ::signer::codes_path(&conf.signer_path);
-            Some(signer_path.as_path())
-        }
-        false => None,
-    };
     let start_result = rpc::start_ws(
         &addr,
         handler,
         allowed_origins,
         allowed_hosts,
         conf.max_connections,
-        rpc::WsExtractor::new(path.clone()),
-        rpc::WsExtractor::new(path.clone()),
+        rpc::WsExtractor::new(),
+        rpc::WsExtractor::new(),
         rpc::WsStats::new(deps.stats.clone()),
     );
 
-    //	match start_result {
-    //		Ok(server) => Ok(Some(server)),
-    //		Err(rpc::ws::Error::Io(rpc::ws::ErrorKind::Io(ref err), _)) if err.kind() == io::ErrorKind::AddrInUse => Err(
-    //			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
-    //		),
-    //		Err(e) => Err(format!("WebSockets error: {:?}", e)),
-    //	}
     match start_result {
 		Ok(server) => Ok(Some(server)),
 		Err(rpc::ws::Error::WsError(ws::Error {

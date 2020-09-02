@@ -23,18 +23,9 @@ mod eth_pubsub;
 mod manage_network;
 mod net;
 mod parity;
-#[cfg(any(test, feature = "accounts"))]
-mod parity_accounts;
 mod parity_set;
-#[cfg(any(test, feature = "accounts"))]
-mod personal;
 mod pubsub;
-#[cfg(any(test, feature = "accounts"))]
+#[cfg(test)]
 mod secretstore;
-mod signer;
-#[cfg(any(test, feature = "accounts"))]
-mod signing;
-#[cfg(any(test, feature = "accounts"))]
-mod signing_unsafe;
 mod traces;
 mod web3;

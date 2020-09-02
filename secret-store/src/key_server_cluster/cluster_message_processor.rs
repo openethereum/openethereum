@@ -57,7 +57,7 @@ pub trait MessageProcessor: Send + Sync {
 
 /// Bridge between ConnectionManager and ClusterSessions.
 pub struct SessionsMessageProcessor {
-    self_key_pair: Arc<dyn NodeKeyPair>,
+    self_key_pair: Arc<NodeKeyPair>,
     servers_set_change_creator_connector: Arc<dyn ServersSetChangeSessionCreatorConnector>,
     sessions: Arc<ClusterSessions>,
     connections: Arc<dyn ConnectionProvider>,
@@ -66,7 +66,7 @@ pub struct SessionsMessageProcessor {
 impl SessionsMessageProcessor {
     /// Create new instance of SessionsMessageProcessor.
     pub fn new(
-        self_key_pair: Arc<dyn NodeKeyPair>,
+        self_key_pair: Arc<NodeKeyPair>,
         servers_set_change_creator_connector: Arc<dyn ServersSetChangeSessionCreatorConnector>,
         sessions: Arc<ClusterSessions>,
         connections: Arc<dyn ConnectionProvider>,

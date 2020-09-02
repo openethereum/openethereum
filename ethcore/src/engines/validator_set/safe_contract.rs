@@ -476,13 +476,12 @@ impl ValidatorSet for ValidatorSafeContract {
 #[cfg(test)]
 mod tests {
     use super::{super::ValidatorSet, ValidatorSafeContract, EVENT_NAME_HASH};
-    use accounts::AccountProvider;
     use client::{
         traits::{EngineClient, ForceUpdateSealing},
         BlockInfo, ChainInfo, ImportBlock,
     };
     use ethereum_types::Address;
-    use ethkey::Secret;
+    use ethkey::KeyPair;
     use hash::keccak;
     use miner::{self, MinerService};
     use rustc_hex::FromHex;
@@ -521,10 +520,8 @@ mod tests {
 
     #[test]
     fn knows_validators() {
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let s0: Secret = keccak("1").into();
-        let v0 = tap.insert_account(s0.clone(), &"".into()).unwrap();
-        let v1 = tap.insert_account(keccak("0").into(), &"".into()).unwrap();
+        let s0 = KeyPair::from_secret(keccak("1").into()).unwrap();
+        let s1 = KeyPair::from_secret(keccak("0").into()).unwrap();
         let chain_id = Spec::new_validator_safe_contract().chain_id();
         let client = generate_dummy_client_with_spec(Spec::new_validator_safe_contract);
         client
@@ -533,9 +530,8 @@ mod tests {
         let validator_contract = "0000000000000000000000000000000000000005"
             .parse::<Address>()
             .unwrap();
-        let signer = Box::new((tap.clone(), v1, "".into()));
 
-        client.miner().set_author(miner::Author::Sealer(signer));
+        client.miner().set_author(miner::Author::Sealer(s1.clone()));
         // Remove "1" validator.
         let tx = Transaction {
             nonce: 0.into(),
@@ -547,7 +543,7 @@ mod tests {
                 .from_hex()
                 .unwrap(),
         }
-        .sign(&s0, Some(chain_id));
+        .sign(s0.secret(), Some(chain_id));
         client
             .miner()
             .import_own_transaction(client.as_ref(), tx.into())
@@ -565,7 +561,7 @@ mod tests {
                 .from_hex()
                 .unwrap(),
         }
-        .sign(&s0, Some(chain_id));
+        .sign(s0.secret(), Some(chain_id));
         client
             .miner()
             .import_own_transaction(client.as_ref(), tx.into())
@@ -575,13 +571,11 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 1);
 
         // Switch to the validator that is still there.
-        let signer = Box::new((tap.clone(), v0, "".into()));
-        client.miner().set_author(miner::Author::Sealer(signer));
+        client.miner().set_author(miner::Author::Sealer(s0.clone()));
         EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 2);
-        // Switch back to the added validator, since the state is updated.
-        let signer = Box::new((tap.clone(), v1, "".into()));
-        client.miner().set_author(miner::Author::Sealer(signer));
+        // Switch back to the added validator, since the sta
+        client.miner().set_author(miner::Author::Sealer(s1.clone()));
         let tx = Transaction {
             nonce: 2.into(),
             gas_price: 0.into(),
@@ -590,7 +584,7 @@ mod tests {
             value: 0.into(),
             data: Vec::new(),
         }
-        .sign(&s0, Some(chain_id));
+        .sign(s0.secret(), Some(chain_id));
         client
             .miner()
             .import_own_transaction(client.as_ref(), tx.into())

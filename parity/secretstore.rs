@@ -14,24 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use account_utils::AccountProvider;
 use dir::{default_data_path, helpers::replace_home};
 use ethcore::{client::Client, miner::Miner};
 use ethereum_types::Address;
-use ethkey::{Password, Public, Secret};
+use ethkey::{Public, Secret};
 use parity_runtime::Executor;
 use std::{collections::BTreeMap, sync::Arc};
 use sync::SyncProvider;
-
-/// This node secret key.
-#[derive(Debug, PartialEq, Clone)]
-pub enum NodeSecretKey {
-    /// Stored as plain text in configuration file.
-    Plain(Secret),
-    /// Stored as account in key store.
-    #[cfg(feature = "accounts")]
-    KeyStore(Address),
-}
 
 /// Secret store service contract address.
 #[derive(Debug, PartialEq, Clone)]
@@ -64,7 +53,7 @@ pub struct Configuration {
     /// Document key shadow retrieval service contract address.
     pub service_contract_doc_sretr_address: Option<ContractAddress>,
     /// This node secret.
-    pub self_secret: Option<NodeSecretKey>,
+    pub self_secret: Option<Secret>,
     /// Other nodes IDs + addresses.
     pub nodes: BTreeMap<Public, (String, u16)>,
     /// Key Server Set contract address. If None, 'nodes' map is used.
@@ -84,17 +73,13 @@ pub struct Configuration {
 }
 
 /// Secret store dependencies
-pub struct Dependencies<'a> {
+pub struct Dependencies {
     /// Blockchain client.
     pub client: Arc<Client>,
     /// Sync provider.
     pub sync: Arc<dyn SyncProvider>,
     /// Miner service.
     pub miner: Arc<Miner>,
-    /// Account provider.
-    pub account_provider: Arc<AccountProvider>,
-    /// Passed accounts passwords.
-    pub accounts_passwords: &'a [Password],
 }
 
 #[cfg(not(feature = "secretstore"))]
@@ -118,7 +103,7 @@ mod server {
 
 #[cfg(feature = "secretstore")]
 mod server {
-    use super::{Configuration, ContractAddress, Dependencies, Executor, NodeSecretKey};
+    use super::{Configuration, ContractAddress, Dependencies, Executor};
     use ansi_term::Colour::{Red, White};
     use db;
     use ethcore_secretstore;
@@ -148,58 +133,12 @@ mod server {
             deps: Dependencies,
             executor: Executor,
         ) -> Result<Self, String> {
-            let self_secret: Arc<dyn ethcore_secretstore::NodeKeyPair> =
-                match conf.self_secret.take() {
-                    Some(NodeSecretKey::Plain(secret)) => {
-                        Arc::new(ethcore_secretstore::PlainNodeKeyPair::new(
-                            KeyPair::from_secret(secret)
-                                .map_err(|e| format!("invalid secret: {}", e))?,
-                        ))
-                    }
-                    #[cfg(feature = "accounts")]
-                    Some(NodeSecretKey::KeyStore(account)) => {
-                        // Check if account exists
-                        if !deps.account_provider.has_account(account.clone()) {
-                            return Err(format!(
-                                "Account {} passed as secret store node key is not found",
-                                account
-                            ));
-                        }
-
-                        // Check if any passwords have been read from the password file(s)
-                        if deps.accounts_passwords.is_empty() {
-                            return Err(format!(
-                                "No password found for the secret store node account {}",
-                                account
-                            ));
-                        }
-
-                        // Attempt to sign in the engine signer.
-                        let password = deps
-                            .accounts_passwords
-                            .iter()
-                            .find(|p| {
-                                deps.account_provider
-                                    .sign(account.clone(), Some((*p).clone()), Default::default())
-                                    .is_ok()
-                            })
-                            .ok_or_else(|| {
-                                format!(
-                                    "No valid password for the secret store node account {}",
-                                    account
-                                )
-                            })?;
-                        Arc::new(
-                            ethcore_secretstore::KeyStoreNodeKeyPair::new(
-                                deps.account_provider,
-                                account,
-                                password.clone(),
-                            )
-                            .map_err(|e| format!("{}", e))?,
-                        )
-                    }
-                    None => return Err("self secret is required when using secretstore".into()),
-                };
+            let self_secret = match conf.self_secret.take() {
+                Some(secret) => Arc::new(ethcore_secretstore::NodeKeyPair::new(
+                    KeyPair::from_secret(secret).map_err(|e| format!("invalid secret: {}", e))?,
+                )),
+                None => return Err("self secret is required when using secretstore".into()),
+            };
 
             info!(
                 "Starting SecretStore node: {}",

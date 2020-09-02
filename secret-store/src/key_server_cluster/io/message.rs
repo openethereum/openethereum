@@ -488,7 +488,7 @@ pub fn fix_shared_key(shared_secret: &Secret) -> Result<KeyPair, Error> {
     let shared_secret: H256 = (**shared_secret).into();
     let shared_secret: U256 = shared_secret.into();
     let shared_secret: H256 = (shared_secret % curve_order()).into();
-    let shared_key_pair = KeyPair::from_secret_slice(&*shared_secret)?;
+    let shared_key_pair = KeyPair::from_secret(shared_secret.into())?;
     Ok(shared_key_pair)
 }
 

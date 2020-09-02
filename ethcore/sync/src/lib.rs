@@ -29,7 +29,6 @@ extern crate ethcore_network as network;
 extern crate ethcore_network_devp2p as devp2p;
 extern crate ethereum_types;
 extern crate ethkey;
-extern crate ethstore;
 extern crate fastmap;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;

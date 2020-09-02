@@ -26,8 +26,7 @@ use ethcore::{
 };
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
-use ethkey::{crypto::ecies, Brain, Generator};
-use ethstore::random_phrase;
+use ethkey::crypto::ecies;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
@@ -35,11 +34,8 @@ use version::version_data;
 
 use v1::{
     helpers::{
-        self,
-        block_import::is_major_importing,
-        errors,
-        external_signer::{SignerService, SigningQueue},
-        fake_sign, verify_signature, NetworkSettings,
+        self, block_import::is_major_importing, errors, fake_sign, verify_signature,
+        NetworkSettings,
     },
     metadata::Metadata,
     traits::Parity,
@@ -59,7 +55,6 @@ pub struct ParityClient<C, M> {
     net: Arc<dyn ManageNetwork>,
     logger: Arc<RotatingLogger>,
     settings: Arc<NetworkSettings>,
-    signer: Option<Arc<SignerService>>,
     ws_address: Option<Host>,
     snapshot: Option<Arc<dyn SnapshotService>>,
 }
@@ -76,7 +71,6 @@ where
         net: Arc<dyn ManageNetwork>,
         logger: Arc<RotatingLogger>,
         settings: Arc<NetworkSettings>,
-        signer: Option<Arc<SignerService>>,
         ws_address: Option<Host>,
         snapshot: Option<Arc<dyn SnapshotService>>,
     ) -> Self {
@@ -87,7 +81,6 @@ where
             net,
             logger,
             settings,
-            signer,
             ws_address,
             snapshot,
         }
@@ -194,24 +187,6 @@ where
                 .ok_or_else(errors::not_enough_data)
                 .map(Into::into),
         ))
-    }
-
-    fn unsigned_transactions_count(&self) -> Result<usize> {
-        match self.signer {
-            None => Err(errors::signer_disabled()),
-            Some(ref signer) => Ok(signer.len()),
-        }
-    }
-
-    fn generate_secret_phrase(&self) -> Result<String> {
-        Ok(random_phrase(12))
-    }
-
-    fn phrase_to_address(&self, phrase: String) -> Result<H160> {
-        Ok(Brain::new(phrase)
-            .generate()
-            .expect("Brain::generate always returns Ok; qed")
-            .address())
     }
 
     fn list_accounts(

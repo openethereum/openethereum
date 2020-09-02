@@ -17,18 +17,11 @@
 //! Parity-specific rpc interface for operations altering the settings.
 
 use ethereum_types::{H160, H256, U256};
+use ethkey::Secret;
 use jsonrpc_core::{BoxFuture, Result};
 use jsonrpc_derive::rpc;
 
 use v1::types::{Bytes, Transaction};
-
-/// Parity-specific rpc interface for operations altering the account-related settings.
-#[rpc(server)]
-pub trait ParitySetAccounts {
-    /// Sets account for signing consensus messages.
-    #[rpc(name = "parity_setEngineSigner")]
-    fn set_engine_signer(&self, _: H160, _: String) -> Result<bool>;
-}
 
 /// Parity-specific rpc interface for operations altering the settings.
 #[rpc(server)]
@@ -55,7 +48,7 @@ pub trait ParitySet {
 
     /// Sets the secret of engine signer account.
     #[rpc(name = "parity_setEngineSignerSecret")]
-    fn set_engine_signer_secret(&self, _: H256) -> Result<bool>;
+    fn set_engine_signer_secret(&self, _: Secret) -> Result<bool>;
 
     /// Sets the limits for transaction queue.
     #[rpc(name = "parity_setTransactionsLimit")]

@@ -17,7 +17,6 @@
 //! rpc integration tests.
 use std::{env, sync::Arc};
 
-use accounts::AccountProvider;
 use ethcore::{
     client::{BlockChainClient, ChainInfo, Client, ClientConfig, ImportBlock},
     ethereum,
@@ -28,27 +27,19 @@ use ethcore::{
 };
 use ethereum_types::{Address, H256, U256};
 use ethjson::{blockchain::BlockChain, spec::ForkSpec};
+use ethkey::{public_to_address, KeyPair, Secret};
 use io::IoChannel;
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
-use parking_lot::Mutex;
 use types::ids::BlockId;
 
 use jsonrpc_core::IoHandler;
 use v1::{
-    helpers::{
-        dispatch::{self, FullDispatcher},
-        nonce,
-    },
-    impls::{EthClient, EthClientOptions, SigningUnsafeClient},
+    impls::{EthClient, EthClientOptions},
     metadata::Metadata,
     tests::helpers::{Config, TestSnapshotService, TestSyncProvider},
-    traits::{Eth, EthSigning},
+    traits::Eth,
 };
-
-fn account_provider() -> Arc<AccountProvider> {
-    Arc::new(AccountProvider::transient_provider())
-}
 
 fn sync_provider() -> Arc<TestSyncProvider> {
     Arc::new(TestSyncProvider::new(Config {
@@ -80,7 +71,6 @@ struct EthTester {
     _miner: Arc<Miner>,
     _runtime: Runtime,
     _snapshot: Arc<TestSnapshotService>,
-    accounts: Arc<AccountProvider>,
     client: Arc<Client>,
     handler: IoHandler<Metadata>,
 }
@@ -117,9 +107,6 @@ impl EthTester {
 
     fn from_spec_conf(spec: Spec, config: ClientConfig) -> Self {
         let runtime = Runtime::with_thread_count(1);
-        let account_provider = account_provider();
-        let ap = account_provider.clone();
-        let accounts = Arc::new(move || ap.accounts().unwrap_or_default()) as _;
         let miner_service = miner_service(&spec);
         let snapshot_service = snapshot_service();
 
@@ -138,7 +125,6 @@ impl EthTester {
             &client,
             &snapshot_service,
             &sync_provider,
-            &accounts,
             &miner_service,
             &external_miner,
             EthClientOptions {
@@ -149,22 +135,13 @@ impl EthTester {
             },
         );
 
-        let reservations = Arc::new(Mutex::new(nonce::Reservations::new(runtime.executor())));
-
-        let dispatcher =
-            FullDispatcher::new(client.clone(), miner_service.clone(), reservations, 50);
-        let signer = Arc::new(dispatch::Signer::new(account_provider.clone())) as _;
-        let eth_sign = SigningUnsafeClient::new(&signer, dispatcher);
-
         let mut handler = IoHandler::default();
         handler.extend_with(eth_client.to_delegate());
-        handler.extend_with(eth_sign.to_delegate());
 
         EthTester {
             _miner: miner_service,
             _runtime: runtime,
             _snapshot: snapshot_service,
-            accounts: account_provider,
             client: client,
             handler: handler,
         }
@@ -393,16 +370,12 @@ const POSITIVE_NONCE_SPEC: &'static [u8] = br#"{
 #[test]
 fn eth_transaction_count() {
     let secret = "8a283037bb19c4fed7b1c569e40c7dcff366165eb869110a1b11532963eb9cb2"
-        .parse()
+        .parse::<Secret>()
         .unwrap();
     let tester = EthTester::from_spec(
         Spec::load(&env::temp_dir(), TRANSACTION_COUNT_SPEC).expect("invalid chain spec"),
     );
-    let address = tester.accounts.insert_account(secret, &"".into()).unwrap();
-    tester
-        .accounts
-        .unlock_account_permanently(address, "".into())
-        .unwrap();
+    let address = public_to_address(KeyPair::from_secret(secret).unwrap().public());
 
     let req_before = r#"{
 		"jsonrpc": "2.0",
@@ -423,17 +396,10 @@ fn eth_transaction_count() {
 
     let req_send_trans = r#"{
 		"jsonrpc": "2.0",
-		"method": "eth_sendTransaction",
-		"params": [{
-			"from": ""#
-        .to_owned()
-        + format!("0x{:x}", address).as_ref()
-        + r#"",
-			"to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
-			"gas": "0x30000",
-			"gasPrice": "0x1",
-			"value": "0x9184e72a"
-		}],
+		"method": "eth_sendRawTransaction",
+		"params": [
+            "0xf86480018303000094d46e8dd67c5d32be8058bb8eb970870f07244567849184e72a8026a0b89495e95fff7b64cd2a26b43f770c4fb54756c333e72963169f3d0d77d4eef4a05fd06bcbfc5cd22b9c8f25ca71807b42dae9f972564b13f2d1a12b726f48c38a"
+        ],
 		"id": 16
 	}"#;
 

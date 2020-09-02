@@ -47,19 +47,7 @@ pub use self::{
     impls::*,
     metadata::Metadata,
     traits::{
-        Debug, Eth, EthFilter, EthPubSub, EthSigning, Net, Parity, ParityAccounts,
-        ParityAccountsInfo, ParitySet, ParitySetAccounts, ParitySigning, Personal, PubSub,
-        SecretStore, Signer, Traces, Web3,
+        Debug, Eth, EthFilter, EthPubSub, Net, Parity, ParitySet, PubSub, SecretStore, Traces, Web3,
     },
     types::Origin,
 };
-
-/// Signer utilities
-pub mod signer {
-    #[cfg(any(test, feature = "accounts"))]
-    pub use super::helpers::engine_signer::EngineSigner;
-    pub use super::{
-        helpers::external_signer::{ConfirmationsQueue, SignerService},
-        types::{ConfirmationRequest, TransactionCondition, TransactionModification},
-    };
-}

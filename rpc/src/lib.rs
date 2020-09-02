@@ -41,7 +41,6 @@
 extern crate futures;
 
 extern crate ansi_term;
-extern crate itertools;
 extern crate order_stat;
 extern crate parking_lot;
 extern crate rand;
@@ -58,7 +57,6 @@ extern crate jsonrpc_ipc_server as ipc;
 extern crate jsonrpc_pubsub;
 
 extern crate common_types as types;
-extern crate eip_712;
 extern crate ethash;
 extern crate ethcore;
 extern crate ethcore_logger;
@@ -67,7 +65,6 @@ extern crate ethcore_network as network;
 extern crate ethcore_sync as sync;
 extern crate ethereum_types;
 extern crate ethkey;
-extern crate ethstore;
 extern crate fetch;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;
@@ -76,14 +73,8 @@ extern crate parity_runtime;
 extern crate parity_version as version;
 extern crate rlp;
 extern crate stats;
-extern crate tempdir;
-extern crate vm;
-
-#[cfg(any(test, feature = "ethcore-accounts"))]
-extern crate ethcore_accounts as accounts;
-
-#[cfg(any(test, feature = "ethcore-accounts"))]
 extern crate tiny_keccak;
+extern crate vm;
 
 #[macro_use]
 extern crate log;
@@ -111,7 +102,6 @@ extern crate ethcore_io as io;
 
 pub extern crate jsonrpc_ws_server as ws;
 
-mod authcodes;
 mod http_common;
 pub mod v1;
 
@@ -127,13 +117,12 @@ pub use ipc::{
 pub use jsonrpc_core::{FutureOutput, FutureResponse, FutureResult, FutureRpcResult};
 pub use jsonrpc_pubsub::Session as PubSubSession;
 
-pub use authcodes::{AuthCodes, TimeProvider};
 pub use http_common::HttpMetaExtractor;
 pub use v1::{
     block_import::{is_major_importing, is_major_importing_or_waiting},
     dispatch,
     extractors::{RpcExtractor, WsDispatcher, WsExtractor, WsStats},
-    informant, signer, Metadata, NetworkSettings, Origin,
+    informant, Metadata, NetworkSettings, Origin,
 };
 
 use std::net::SocketAddr;

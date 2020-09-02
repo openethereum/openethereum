@@ -1,5 +1,4 @@
 [parity]
-no_consensus = true
 chain = "dev"
 
 [mining]
@@ -9,8 +8,4 @@ min_gas_price = 0
 [rpc]
 interface = "all"
 apis = ["all"]
-hosts = ["all"]
-
-[ipfs]
-enable = false # this is the default
 hosts = ["all"]

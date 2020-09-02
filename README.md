@@ -276,10 +276,6 @@ Caching, Importing Blocks, and Block Information
     ```bash
     evmbin
     ```
-  * Parity Ethereum IPFS-compatible API
-    ```bash
-    parity-ipfs-api
-    ```
   * Parity Ethereum JSON Deserialization
     ```bash
     ethjson
@@ -295,10 +291,6 @@ Caching, Importing Blocks, and Block Information
 * Parity Ethereum (EthCore) Logger Implementation
   ```bash
   ethcore-logger
-  ```
-* C bindings library for the Parity Ethereum client
-  ```bash
-  parity-clib
   ```
 * Parity Ethereum JSON-RPC Servers
   ```bash
@@ -319,10 +311,6 @@ Caching, Importing Blocks, and Block Information
   migration-rocksdb ethcore-network ethcore-network-devp2p panic_hook
   patricia-trie-ethereum registrar rlp_compress rlp_derive parity-runtime stats
   time-utils triehash-ethereum unexpected parity-version
-  ```
-* Parity Whisper Protocol Implementation
-  ```bash
-  parity-whisper whisper-cli
   ```
 
 </p></details>
@@ -360,7 +348,6 @@ In addition to the Parity Ethereum client, there are additional tools in this re
 - [evmbin](./evmbin) - Parity Ethereum EVM Implementation.
 - [ethstore](./accounts/ethstore) - Parity Ethereum Key Management.
 - [ethkey](./accounts/ethkey) - Parity Ethereum Keys Generator.
-- [whisper](./whisper) - Parity Ethereum Whisper-v2 PoC Implementation.
 
 The following tool is available in a separate repository:
 - [ethabi](https://github.com/paritytech/ethabi) - Parity Ethereum Encoding of Function Calls. [Docs here](https://crates.io/crates/ethabi)

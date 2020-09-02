@@ -22,9 +22,8 @@ use ethereum_types::{H160, H256, H512, H64, U256, U64};
 use jsonrpc_core::{BoxFuture, Result};
 use jsonrpc_derive::rpc;
 use v1::types::{
-    BlockNumber, Bytes, CallRequest, ChainStatus, ConsensusCapability, Filter, Histogram,
-    LocalTransactionStatus, Log, OperationsInfo, Peers, Receipt, RecoveredAccount, RichHeader,
-    RpcSettings, Transaction, TransactionStats, VersionInfo,
+    BlockNumber, Bytes, CallRequest, ChainStatus, Histogram, LocalTransactionStatus, Peers,
+    Receipt, RecoveredAccount, RichHeader, RpcSettings, Transaction, TransactionStats,
 };
 
 /// Parity-specific rpc interface.
@@ -177,18 +176,6 @@ pub trait Parity {
     #[rpc(name = "parity_enode")]
     fn enode(&self) -> Result<String>;
 
-    /// Returns information on current consensus capability.
-    #[rpc(name = "parity_consensusCapability")]
-    fn consensus_capability(&self) -> Result<ConsensusCapability>;
-
-    /// Get our version information in a nice object.
-    #[rpc(name = "parity_versionInfo")]
-    fn version_info(&self) -> Result<VersionInfo>;
-
-    /// Get information concerning the latest releases if available.
-    #[rpc(name = "parity_releasesInfo")]
-    fn releases_info(&self) -> Result<Option<OperationsInfo>>;
-
     /// Get the current chain status.
     #[rpc(name = "parity_chainStatus")]
     fn chain_status(&self) -> Result<ChainStatus>;
@@ -207,10 +194,6 @@ pub trait Parity {
     /// If no parameter is provided defaults to `latest`.
     #[rpc(name = "parity_getBlockReceipts")]
     fn block_receipts(&self, _: Option<BlockNumber>) -> BoxFuture<Vec<Receipt>>;
-
-    /// Get IPFS CIDv0 given protobuf encoded bytes.
-    #[rpc(name = "parity_cidV0")]
-    fn ipfs_cid(&self, _: Bytes) -> Result<String>;
 
     /// Call contract, returning the output data.
     #[rpc(name = "parity_call")]
@@ -242,9 +225,4 @@ pub trait Parity {
         _: H256,
         _: U64,
     ) -> Result<RecoveredAccount>;
-
-    /// Returns logs matching given filter object.
-    /// Is allowed to skip filling transaction hash for faster query.
-    #[rpc(name = "parity_getLogsNoTransactionHash")]
-    fn logs_no_tx_hash(&self, _: Filter) -> BoxFuture<Vec<Log>>;
 }

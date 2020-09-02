@@ -94,7 +94,7 @@ mod supplier;
 pub mod sync_packet;
 
 use super::{SyncConfig, WarpSync};
-use api::{EthProtocolInfo as PeerInfoDigest, PriorityTask, WARP_SYNC_PROTOCOL_ID};
+use api::{EthProtocolInfo as PeerInfoDigest, PriorityTask, PAR_PROTOCOL};
 use block_sync::{BlockDownloader, DownloadAction};
 use bytes::Bytes;
 use ethcore::{
@@ -149,7 +149,6 @@ pub const PAR_PROTOCOL_VERSION_3: (u8, u8) = (3, 0x18);
 
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
-pub const MAX_NODE_DATA_TO_SEND: usize = 1024;
 pub const MAX_RECEIPTS_HEADERS_TO_SEND: usize = 256;
 const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
@@ -1206,7 +1205,7 @@ impl ChainSync {
 
     /// Send Status message
     fn send_status(&mut self, io: &mut dyn SyncIo, peer: PeerId) -> Result<(), network::Error> {
-        let warp_protocol_version = io.protocol_version(&WARP_SYNC_PROTOCOL_ID, peer);
+        let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer);
         let warp_protocol = warp_protocol_version != 0;
         let private_tx_protocol = warp_protocol_version >= PAR_PROTOCOL_VERSION_3.0;
         let protocol = if warp_protocol {

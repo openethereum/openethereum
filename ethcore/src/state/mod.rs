@@ -948,9 +948,7 @@ impl<B: Backend> State<B> {
         let params = machine.params();
 
         let eip658 = env_info.number >= params.eip658_transition;
-        let no_intermediate_commits = eip658
-            || (env_info.number >= params.eip98_transition
-                && env_info.number >= params.validate_receipts_transition);
+        let no_intermediate_commits = eip658;
 
         let outcome = if no_intermediate_commits {
             if eip658 {

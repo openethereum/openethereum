@@ -51,17 +51,15 @@ use super::{client::NonceClient, VerifiedTransaction};
 pub struct State<C> {
     nonces: HashMap<Address, U256>,
     state: C,
-    max_nonce: Option<U256>,
     stale_id: Option<usize>,
 }
 
 impl<C> State<C> {
     /// Create new State checker, given client interface.
-    pub fn new(state: C, stale_id: Option<usize>, max_nonce: Option<U256>) -> Self {
+    pub fn new(state: C, stale_id: Option<usize>) -> Self {
         State {
             nonces: Default::default(),
             state,
-            max_nonce,
             stale_id,
         }
     }
@@ -69,14 +67,6 @@ impl<C> State<C> {
 
 impl<C: NonceClient> txpool::Ready<VerifiedTransaction> for State<C> {
     fn is_ready(&mut self, tx: &VerifiedTransaction) -> txpool::Readiness {
-        // Check max nonce
-        match self.max_nonce {
-            Some(nonce) if tx.transaction.nonce > nonce => {
-                return txpool::Readiness::Future;
-            }
-            _ => {}
-        }
-
         let sender = tx.sender();
         let state = &self.state;
         let state_nonce = || state.account_nonce(sender);
@@ -179,15 +169,15 @@ mod tests {
 
         // when
         assert_eq!(
-            State::new(TestClient::new(), None, None).is_ready(&tx3),
+            State::new(TestClient::new(), None).is_ready(&tx3),
             txpool::Readiness::Future
         );
         assert_eq!(
-            State::new(TestClient::new(), None, None).is_ready(&tx2),
+            State::new(TestClient::new(), None).is_ready(&tx2),
             txpool::Readiness::Future
         );
 
-        let mut ready = State::new(TestClient::new(), None, None);
+        let mut ready = State::new(TestClient::new(), None);
 
         // then
         assert_eq!(ready.is_ready(&tx1), txpool::Readiness::Ready);
@@ -196,26 +186,12 @@ mod tests {
     }
 
     #[test]
-    fn should_return_future_if_nonce_cap_reached() {
-        // given
-        let tx = Tx::default().signed().verified();
-
-        // when
-        let res1 = State::new(TestClient::new(), None, Some(10.into())).is_ready(&tx);
-        let res2 = State::new(TestClient::new(), None, Some(124.into())).is_ready(&tx);
-
-        // then
-        assert_eq!(res1, txpool::Readiness::Future);
-        assert_eq!(res2, txpool::Readiness::Ready);
-    }
-
-    #[test]
     fn should_return_stale_if_nonce_does_not_match() {
         // given
         let tx = Tx::default().signed().verified();
 
         // when
-        let res = State::new(TestClient::new().with_nonce(125), None, None).is_ready(&tx);
+        let res = State::new(TestClient::new().with_nonce(125), None).is_ready(&tx);
 
         // then
         assert_eq!(res, txpool::Readiness::Stale);
@@ -227,7 +203,7 @@ mod tests {
         let (_, tx) = Tx::default().signed_pair().verified();
 
         // when
-        let res = State::new(TestClient::new(), Some(1), None).is_ready(&tx);
+        let res = State::new(TestClient::new(), Some(1)).is_ready(&tx);
 
         // then
         assert_eq!(res, txpool::Readiness::Stale);

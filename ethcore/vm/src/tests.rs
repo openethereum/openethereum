@@ -122,12 +122,6 @@ impl FakeExt {
         ext
     }
 
-    /// Alter fake externalities to allow wasm
-    pub fn with_wasm(mut self) -> Self {
-        self.schedule.wasm = Some(Default::default());
-        self
-    }
-
     /// Set chain ID
     pub fn with_chain_id(mut self, chain_id: u64) -> Self {
         self.chain_id = chain_id;

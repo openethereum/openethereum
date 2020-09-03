@@ -17,7 +17,7 @@
 //! Execution environment substate.
 use super::CleanupMode;
 use ethereum_types::Address;
-use evm::{CleanDustMode, Schedule};
+use evm::Schedule;
 use std::collections::HashSet;
 use types::log_entry::LogEntry;
 
@@ -58,14 +58,10 @@ impl Substate {
 
     /// Get the cleanup mode object from this.
     pub fn to_cleanup_mode(&mut self, schedule: &Schedule) -> CleanupMode {
-        match (
-            schedule.kill_dust != CleanDustMode::Off,
-            schedule.no_empty,
-            schedule.kill_empty,
-        ) {
-            (false, false, _) => CleanupMode::ForceCreate,
-            (false, true, false) => CleanupMode::NoEmpty,
-            (false, true, true) | (true, _, _) => CleanupMode::TrackTouched(&mut self.touched),
+        match (schedule.no_empty, schedule.kill_empty) {
+            (false, _) => CleanupMode::ForceCreate,
+            (true, false) => CleanupMode::NoEmpty,
+            (true, true) => CleanupMode::TrackTouched(&mut self.touched),
         }
     }
 }

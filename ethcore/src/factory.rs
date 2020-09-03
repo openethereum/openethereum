@@ -20,9 +20,6 @@ use evm::{Factory as EvmFactory, VMType};
 use keccak_hasher::KeccakHasher;
 use trie::TrieFactory;
 use vm::{ActionParams, Exec, Schedule};
-use wasm::WasmInterpreter;
-
-const WASM_MAGIC_NUMBER: &'static [u8; 4] = b"\0asm";
 
 /// Virtual machine factory
 #[derive(Default, Clone)]
@@ -32,15 +29,7 @@ pub struct VmFactory {
 
 impl VmFactory {
     pub fn create(&self, params: ActionParams, schedule: &Schedule, depth: usize) -> Box<dyn Exec> {
-        if schedule.wasm.is_some()
-            && params.code.as_ref().map_or(false, |code| {
-                code.len() > 4 && &code[0..4] == WASM_MAGIC_NUMBER
-            })
-        {
-            Box::new(WasmInterpreter::new(params))
-        } else {
-            self.evm.create(params, schedule, depth)
-        }
+        self.evm.create(params, schedule, depth)
     }
 
     pub fn new(evm: VMType, cache_size: usize) -> Self {

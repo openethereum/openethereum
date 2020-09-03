@@ -31,7 +31,6 @@ use vm::{ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
 use builtin::Builtin;
 use engines::{
     AuthorityRound, BasicAuthority, Clique, EthEngine, InstantSeal, InstantSealParams, NullEngine,
-    DEFAULT_BLOCKHASH_CONTRACT,
 };
 use error::Error;
 use executive::Executive;
@@ -43,8 +42,6 @@ use state::{backend::Basic as BasicBackend, Backend, State, Substate};
 use trace::{NoopTracer, NoopVMTracer};
 
 pub use ethash::OptimizeFor;
-
-const MAX_TRANSACTION_SIZE: usize = 300 * 1024;
 
 // helper for formatting errors.
 fn fmt_err<F: ::std::fmt::Display>(f: F) -> String {
@@ -69,6 +66,7 @@ pub struct CommonParams {
     /// Chain id.
     pub chain_id: u64,
     /// Main subprotocol name.
+    #[deprecated = "always eth"]
     pub subprotocol_name: String,
     /// Minimum gas limit.
     pub min_gas_limit: U256,
@@ -82,26 +80,12 @@ pub struct CommonParams {
     pub eip161abc_transition: BlockNumber,
     /// Number of first block where EIP-161.d begins.
     pub eip161d_transition: BlockNumber,
-    /// Number of first block where EIP-98 rules begin.
-    pub eip98_transition: BlockNumber,
     /// Number of first block where EIP-658 rules begin.
     pub eip658_transition: BlockNumber,
     /// Number of first block where EIP-155 rules begin.
     pub eip155_transition: BlockNumber,
-    /// Validate block receipts root.
-    pub validate_receipts_transition: BlockNumber,
-    /// Validate transaction chain id.
-    pub validate_chain_id_transition: BlockNumber,
     /// Number of first block where EIP-140 rules begin.
     pub eip140_transition: BlockNumber,
-    /// Number of first block where EIP-210 rules begin.
-    pub eip210_transition: BlockNumber,
-    /// EIP-210 Blockhash contract address.
-    pub eip210_contract_address: Address,
-    /// EIP-210 Blockhash contract code.
-    pub eip210_contract_code: Bytes,
-    /// Gas allocated for EIP-210 blockhash update.
-    pub eip210_contract_gas: U256,
     /// Number of first block where EIP-211 rules begin.
     pub eip211_transition: BlockNumber,
     /// Number of first block where EIP-214 rules begin.
@@ -126,18 +110,6 @@ pub struct CommonParams {
     pub eip1884_transition: BlockNumber,
     /// Number of first block where EIP-2028 rules begin.
     pub eip2028_transition: BlockNumber,
-    /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
-    pub dust_protection_transition: BlockNumber,
-    /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
-    pub nonce_cap_increment: u64,
-    /// Enable dust cleanup for contracts.
-    pub remove_dust_contracts: bool,
-    /// Wasm activation blocknumber, if any disabled initially.
-    pub wasm_activation_transition: BlockNumber,
-    /// Number of first block where KIP-4 rules begin. Only has effect if Wasm is activated.
-    pub kip4_transition: BlockNumber,
-    /// Number of first block where KIP-6 rules begin. Only has effect if Wasm is activated.
-    pub kip6_transition: BlockNumber,
     /// Gas limit bound divisor (how much gas limit can change per block)
     pub gas_limit_bound_divisor: U256,
     /// Registrar contract address.
@@ -152,8 +124,6 @@ pub struct CommonParams {
     pub transaction_permission_contract: Option<Address>,
     /// Block at which the transaction permission contract should start being used.
     pub transaction_permission_contract_transition: BlockNumber,
-    /// Maximum size of transaction's RLP payload
-    pub max_transaction_size: usize,
 }
 
 impl CommonParams {
@@ -207,39 +177,12 @@ impl CommonParams {
         if block_number >= self.eip2028_transition {
             schedule.tx_data_non_zero_gas = 16;
         }
-        if block_number >= self.eip210_transition {
-            schedule.blockhash_gas = 800;
-        }
-        if block_number >= self.dust_protection_transition {
-            schedule.kill_dust = match self.remove_dust_contracts {
-                true => ::vm::CleanDustMode::WithCodeAndStorage,
-                false => ::vm::CleanDustMode::BasicOnly,
-            };
-        }
-        if block_number >= self.wasm_activation_transition {
-            let mut wasm = ::vm::WasmCosts::default();
-            if block_number >= self.kip4_transition {
-                wasm.have_create2 = true;
-            }
-            if block_number >= self.kip6_transition {
-                wasm.have_gasleft = true;
-            }
-            schedule.wasm = Some(wasm);
-        }
     }
 
     /// Return Some if the current parameters contain a bugfix hard fork not on block 0.
     pub fn nonzero_bugfix_hard_fork(&self) -> Option<&str> {
         if self.eip155_transition != 0 {
             return Some("eip155Transition");
-        }
-
-        if self.validate_receipts_transition != 0 {
-            return Some("validateReceiptsTransition");
-        }
-
-        if self.validate_chain_id_transition != 0 {
-            return Some("validateChainIdTransition");
         }
 
         None
@@ -257,7 +200,7 @@ impl From<ethjson::spec::Params> for CommonParams {
             } else {
                 p.network_id.into()
             },
-            subprotocol_name: p.subprotocol_name.unwrap_or_else(|| "eth".to_owned()),
+            subprotocol_name: "eth".into(),
             min_gas_limit: p.min_gas_limit.into(),
             fork_block: if let (Some(n), Some(h)) = (p.fork_block, p.fork_hash) {
                 Some((n.into(), h.into()))
@@ -268,28 +211,10 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip160_transition: p.eip160_transition.map_or(0, Into::into),
             eip161abc_transition: p.eip161abc_transition.map_or(0, Into::into),
             eip161d_transition: p.eip161d_transition.map_or(0, Into::into),
-            eip98_transition: p
-                .eip98_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
             eip155_transition: p.eip155_transition.map_or(0, Into::into),
-            validate_receipts_transition: p.validate_receipts_transition.map_or(0, Into::into),
-            validate_chain_id_transition: p.validate_chain_id_transition.map_or(0, Into::into),
             eip140_transition: p
                 .eip140_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            eip210_transition: p
-                .eip210_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
-            eip210_contract_address: p.eip210_contract_address.map_or(0xf0.into(), Into::into),
-            eip210_contract_code: p.eip210_contract_code.map_or_else(
-                || {
-                    DEFAULT_BLOCKHASH_CONTRACT
-                        .from_hex()
-                        .expect("Default BLOCKHASH contract is valid")
-                },
-                Into::into,
-            ),
-            eip210_contract_gas: p.eip210_contract_gas.map_or(1000000.into(), Into::into),
             eip211_transition: p
                 .eip211_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
@@ -329,32 +254,15 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip2028_transition: p
                 .eip2028_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            dust_protection_transition: p
-                .dust_protection_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
-            nonce_cap_increment: p.nonce_cap_increment.map_or(64, Into::into),
-            remove_dust_contracts: p.remove_dust_contracts.unwrap_or(false),
             gas_limit_bound_divisor: p.gas_limit_bound_divisor.into(),
             registrar: p.registrar.map_or_else(Address::new, Into::into),
             node_permission_contract: p.node_permission_contract.map(Into::into),
             max_code_size: p.max_code_size.map_or(u64::max_value(), Into::into),
-            max_transaction_size: p
-                .max_transaction_size
-                .map_or(MAX_TRANSACTION_SIZE, Into::into),
             max_code_size_transition: p.max_code_size_transition.map_or(0, Into::into),
             transaction_permission_contract: p.transaction_permission_contract.map(Into::into),
             transaction_permission_contract_transition: p
                 .transaction_permission_contract_transition
                 .map_or(0, Into::into),
-            wasm_activation_transition: p
-                .wasm_activation_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
-            kip4_transition: p
-                .kip4_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
-            kip6_transition: p
-                .kip6_transition
-                .map_or_else(BlockNumber::max_value, Into::into),
         }
     }
 }

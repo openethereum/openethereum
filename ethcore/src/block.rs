@@ -51,7 +51,7 @@ use hash::keccak;
 use rlp::{encode_list, Encodable, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
-    receipt::{Receipt, TransactionOutcome},
+    receipt::Receipt,
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
@@ -433,21 +433,6 @@ impl ClosedBlock {
 }
 
 impl LockedBlock {
-    /// Removes outcomes from receipts and updates the receipt root.
-    ///
-    /// This is done after the block is enacted for historical reasons.
-    /// We allow inconsistency in receipts for some chains if `validate_receipts_transition`
-    /// is set to non-zero value, so the check only happens if we detect
-    /// unmatching root first and then fall back to striped receipts.
-    pub fn strip_receipts_outcomes(&mut self) {
-        for receipt in &mut self.block.receipts {
-            receipt.outcome = TransactionOutcome::Unknown;
-        }
-        self.block.header.set_receipts_root(ordered_trie_root(
-            self.block.receipts.iter().map(|r| r.rlp_bytes()),
-        ));
-    }
-
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     ///
     /// NOTE: This does not check the validity of `seal` with the engine.

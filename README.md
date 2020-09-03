@@ -260,14 +260,6 @@ Caching, Importing Blocks, and Block Information
     ```bash
     vm
     ```
-  * Parity Ethereum WASM Interpreter
-    ```bash
-    wasm
-    ```
-  * Parity Ethereum WASM Test Runner
-    ```bash
-    pwasm-run-test
-    ```
   * Parity EVM Implementation
     ```bash
     evmbin

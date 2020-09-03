@@ -31,7 +31,6 @@ pub struct TestClient {
     gas_required: U256,
     is_service_transaction: bool,
     local_address: Address,
-    max_transaction_size: usize,
 }
 
 impl Default for TestClient {
@@ -46,7 +45,6 @@ impl Default for TestClient {
             gas_required: 21_000.into(),
             is_service_transaction: false,
             local_address: Default::default(),
-            max_transaction_size: MAX_TRANSACTION_SIZE,
         }
     }
 }
@@ -147,7 +145,7 @@ impl pool::client::Client for TestClient {
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
         let rlp = Rlp::new(&transaction);
-        if rlp.as_raw().len() > self.max_transaction_size {
+        if rlp.as_raw().len() > MAX_TRANSACTION_SIZE {
             return Err(transaction::Error::TooBig);
         }
         rlp.as_val()

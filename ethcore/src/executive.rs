@@ -31,8 +31,8 @@ use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction};
 use vm::{
-    self, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo, ResumeCall,
-    ResumeCreate, ReturnData, Schedule, TrapError,
+    self, ActionParams, ActionValue, CreateContractAddress, EnvInfo, ResumeCall, ResumeCreate,
+    ReturnData, Schedule, TrapError,
 };
 
 #[cfg(debug_assertions)]
@@ -74,13 +74,6 @@ pub fn contract_address(
             &mut buffer[1..(1 + 20)].copy_from_slice(&sender[..]);
             &mut buffer[(1 + 20)..(1 + 20 + 32)].copy_from_slice(&salt[..]);
             &mut buffer[(1 + 20 + 32)..].copy_from_slice(&code_hash[..]);
-            (From::from(keccak(&buffer[..])), Some(code_hash))
-        }
-        CreateContractAddress::FromSenderAndCodeHash => {
-            let code_hash = keccak(code);
-            let mut buffer = [0u8; 20 + 32];
-            &mut buffer[..20].copy_from_slice(&sender[..]);
-            &mut buffer[20..].copy_from_slice(&code_hash[..]);
             (From::from(keccak(&buffer[..])), Some(code_hash))
         }
     }
@@ -430,7 +423,6 @@ impl<'a> CallCreateExecutive<'a> {
             | Err(vm::Error::BadInstruction { .. })
             | Err(vm::Error::StackUnderflow { .. })
             | Err(vm::Error::BuiltIn { .. })
-            | Err(vm::Error::Wasm { .. })
             | Err(vm::Error::OutOfStack { .. })
             | Err(vm::Error::MutableCallInStaticContext)
             | Err(vm::Error::OutOfBounds)
@@ -1123,14 +1115,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
-        if !t.is_unsigned()
-            && check_nonce
-            && schedule.kill_dust != CleanDustMode::Off
-            && !self.state.exists(&sender)?
-        {
-            return Err(ExecutionError::SenderMustExist);
-        }
-
         let init_gas = t.gas - base_gas_required;
 
         // validate transaction nonce
@@ -1544,18 +1528,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             self.state.kill_account(address);
         }
 
-        // perform garbage-collection
-        let min_balance = if schedule.kill_dust != CleanDustMode::Off {
-            Some(U256::from(schedule.tx_gas).overflowing_mul(t.gas_price).0)
-        } else {
-            None
-        };
-        self.state.kill_garbage(
-            &substate.touched,
-            schedule.kill_empty,
-            &min_balance,
-            schedule.kill_dust == CleanDustMode::WithCodeAndStorage,
-        )?;
+        self.state
+            .kill_garbage(&substate.touched, schedule.kill_empty, &None, false)?;
 
         match result {
             Err(vm::Error::Internal(msg)) => Err(ExecutionError::Internal(msg)),

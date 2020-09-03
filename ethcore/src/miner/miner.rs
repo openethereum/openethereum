@@ -471,19 +471,12 @@ impl Miner {
         let mut skipped_transactions = 0usize;
 
         let client = self.pool_client(chain);
-        let engine_params = self.engine.params();
         let min_tx_gas: U256 = self
             .engine
             .schedule(chain_info.best_block_number)
             .tx_gas
             .into();
-        let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
-            >= engine_params.dust_protection_transition
-        {
-            Some((engine_params.nonce_cap_increment * (chain_info.best_block_number + 1)).into())
-        } else {
-            None
-        };
+
         // we will never need more transactions than limit divided by min gas
         let max_transactions = if min_tx_gas.is_zero() {
             usize::max_value()
@@ -502,7 +495,6 @@ impl Miner {
             pool::PendingSettings {
                 block_number: chain_info.best_block_number,
                 current_timestamp: chain_info.best_block_timestamp,
-                nonce_cap,
                 max_len: max_transactions,
                 ordering: miner::PendingOrdering::Priority,
             },
@@ -1111,17 +1103,11 @@ impl miner::MinerService for Miner {
         let chain_info = chain.chain_info();
 
         let from_queue = || {
-            // We propagate transactions over the nonce cap.
-            // The mechanism is only to limit number of transactions in pending block
-            // those transactions are valid and will just be ready to be included in next block.
-            let nonce_cap = None;
-
             self.transaction_queue.pending(
                 CachedNonceClient::new(chain, &self.nonce_cache),
                 pool::PendingSettings {
                     block_number: chain_info.best_block_number,
                     current_timestamp: chain_info.best_block_timestamp,
-                    nonce_cap,
                     max_len,
                     ordering,
                 },

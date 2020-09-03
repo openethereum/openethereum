@@ -55,6 +55,6 @@ pub use self::{
     vmtype::VMType,
 };
 pub use vm::{
-    ActionParams, CallType, CleanDustMode, ContractCreateResult, CreateContractAddress, EnvInfo,
-    Ext, GasLeft, MessageCallResult, ReturnData, Schedule,
+    ActionParams, CallType, ContractCreateResult, CreateContractAddress, EnvInfo, Ext, GasLeft,
+    MessageCallResult, ReturnData, Schedule,
 };

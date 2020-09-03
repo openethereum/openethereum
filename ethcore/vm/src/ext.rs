@@ -59,8 +59,6 @@ pub enum CreateContractAddress {
     FromSenderAndNonce,
     /// Address is calculated from sender, salt and code hash. pWASM `create2` scheme and EIP-1014 CREATE2 scheme.
     FromSenderSaltAndCodeHash(H256),
-    /// Address is calculated from code hash and sender. Used by pwasm create ext.
-    FromSenderAndCodeHash,
 }
 
 /// Externalities interface for EVMs

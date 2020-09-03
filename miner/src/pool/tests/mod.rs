@@ -878,33 +878,6 @@ fn should_not_accept_external_service_transaction_if_sender_not_certified() {
 }
 
 #[test]
-fn should_not_return_transactions_over_nonce_cap() {
-    // given
-    let txq = new_queue();
-    let (tx1, tx2, tx3) = Tx::default().signed_triple();
-    let res = txq.import(TestClient::new(), vec![tx1, tx2, tx3].local());
-    assert_eq!(res, vec![Ok(()), Ok(()), Ok(())]);
-
-    // when
-    let all = txq.pending(TestClient::new(), PendingSettings::all_prioritized(0, 0));
-    // This should invalidate the cache!
-    let limited = txq.pending(
-        TestClient::new(),
-        PendingSettings {
-            block_number: 0,
-            current_timestamp: 0,
-            nonce_cap: Some(123.into()),
-            max_len: usize::max_value(),
-            ordering: PendingOrdering::Priority,
-        },
-    );
-
-    // then
-    assert_eq!(all.len(), 3);
-    assert_eq!(limited.len(), 1);
-}
-
-#[test]
 fn should_return_cached_pending_even_if_unordered_is_requested() {
     // given
     let txq = new_queue();
@@ -927,7 +900,6 @@ fn should_return_cached_pending_even_if_unordered_is_requested() {
         PendingSettings {
             block_number: 0,
             current_timestamp: 0,
-            nonce_cap: None,
             max_len: 3,
             ordering: PendingOrdering::Unordered,
         },
@@ -955,7 +927,6 @@ fn should_return_unordered_and_not_populate_the_cache() {
         PendingSettings {
             block_number: 0,
             current_timestamp: 0,
-            nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Unordered,
         },

@@ -125,7 +125,6 @@ members = [
 	"accounts/ethkey/cli",
 	"accounts/ethstore/cli",
 	"chainspec",
-	"ethcore/wasm/run",
 	"evmbin",
 	"util/triehash-ethereum",
 	"util/keccak-hasher",

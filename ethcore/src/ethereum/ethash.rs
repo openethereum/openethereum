@@ -93,18 +93,10 @@ pub struct EthashParams {
     pub bomb_defuse_transition: u64,
     /// Number of first block where EIP-100 rules begin.
     pub eip100b_transition: u64,
-    /// Number of first block where ECIP-1010 begins.
-    pub ecip1010_pause_transition: u64,
-    /// Number of first block where ECIP-1010 ends.
-    pub ecip1010_continue_transition: u64,
     /// Total block number for one ECIP-1017 era.
     pub ecip1017_era_rounds: u64,
     /// Block reward in base units.
     pub block_reward: BTreeMap<BlockNumber, U256>,
-    /// EXPIP-2 block height
-    pub expip2_transition: u64,
-    /// EXPIP-2 duration limit
-    pub expip2_duration_limit: u64,
     /// Block reward contract transition block.
     pub block_reward_contract_transition: u64,
     /// Block reward contract.
@@ -136,12 +128,6 @@ impl From<ethjson::spec::EthashParams> for EthashParams {
                 .bomb_defuse_transition
                 .map_or(u64::max_value(), Into::into),
             eip100b_transition: p.eip100b_transition.map_or(u64::max_value(), Into::into),
-            ecip1010_pause_transition: p
-                .ecip1010_pause_transition
-                .map_or(u64::max_value(), Into::into),
-            ecip1010_continue_transition: p
-                .ecip1010_continue_transition
-                .map_or(u64::max_value(), Into::into),
             ecip1017_era_rounds: p.ecip1017_era_rounds.map_or(u64::max_value(), Into::into),
             block_reward: p.block_reward.map_or_else(
                 || {
@@ -161,8 +147,6 @@ impl From<ethjson::spec::EthashParams> for EthashParams {
                         .collect(),
                 },
             ),
-            expip2_transition: p.expip2_transition.map_or(u64::max_value(), Into::into),
-            expip2_duration_limit: p.expip2_duration_limit.map_or(30, Into::into),
             progpow_transition: p.progpow_transition.map_or(u64::max_value(), Into::into),
             block_reward_contract_transition: p
                 .block_reward_contract_transition
@@ -475,17 +459,8 @@ impl Ethash {
             self.ethash_params.difficulty_bound_divisor
         };
 
-        let expip2_hardfork = header.number() >= self.ethash_params.expip2_transition;
-        let duration_limit = if expip2_hardfork {
-            self.ethash_params.expip2_duration_limit
-        } else {
-            self.ethash_params.duration_limit
-        };
-
-        let frontier_limit = self.ethash_params.homestead_transition;
-
-        let mut target = if header.number() < frontier_limit {
-            if header.timestamp() >= parent.timestamp() + duration_limit {
+        let mut target = if header.number() < self.ethash_params.homestead_transition {
+            if header.timestamp() >= parent.timestamp() + self.ethash_params.duration_limit {
                 *parent.difficulty() - (*parent.difficulty() / difficulty_bound_divisor)
             } else {
                 *parent.difficulty() + (*parent.difficulty() / difficulty_bound_divisor)
@@ -522,31 +497,16 @@ impl Ethash {
         };
         target = cmp::max(min_difficulty, target);
         if header.number() < self.ethash_params.bomb_defuse_transition {
-            if header.number() < self.ethash_params.ecip1010_pause_transition {
-                let mut number = header.number();
-                let original_number = number;
-                for (block, delay) in &self.ethash_params.difficulty_bomb_delays {
-                    if original_number >= *block {
-                        number = number.saturating_sub(*delay);
-                    }
+            let mut number = header.number();
+            let original_number = number;
+            for (block, delay) in &self.ethash_params.difficulty_bomb_delays {
+                if original_number >= *block {
+                    number = number.saturating_sub(*delay);
                 }
-                let period = (number / EXP_DIFF_PERIOD) as usize;
-                if period > 1 {
-                    target = cmp::max(min_difficulty, target + (U256::from(1) << (period - 2)));
-                }
-            } else if header.number() < self.ethash_params.ecip1010_continue_transition {
-                let fixed_difficulty =
-                    ((self.ethash_params.ecip1010_pause_transition / EXP_DIFF_PERIOD) - 2) as usize;
-                target = cmp::max(min_difficulty, target + (U256::from(1) << fixed_difficulty));
-            } else {
-                let period = ((parent.number() + 1) / EXP_DIFF_PERIOD) as usize;
-                let delay = ((self.ethash_params.ecip1010_continue_transition
-                    - self.ethash_params.ecip1010_pause_transition)
-                    / EXP_DIFF_PERIOD) as usize;
-                target = cmp::max(
-                    min_difficulty,
-                    target + (U256::from(1) << (period - delay - 2)),
-                );
+            }
+            let period = (number / EXP_DIFF_PERIOD) as usize;
+            if period > 1 {
+                target = cmp::max(min_difficulty, target + (U256::from(1) << (period - 2)));
             }
         }
         target
@@ -571,7 +531,7 @@ fn ecip1017_eras_block_reward(era_rounds: u64, mut reward: U256, block_number: u
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{new_homestead_test_machine, new_mcip3_test, new_ropsten},
+        super::{new_homestead_test_machine, new_ropsten},
         ecip1017_eras_block_reward, Ethash, EthashParams,
     };
     use block::*;
@@ -607,11 +567,7 @@ mod tests {
             difficulty_hardfork_bound_divisor: U256::from(0),
             bomb_defuse_transition: u64::max_value(),
             eip100b_transition: u64::max_value(),
-            ecip1010_pause_transition: u64::max_value(),
-            ecip1010_continue_transition: u64::max_value(),
             ecip1017_era_rounds: u64::max_value(),
-            expip2_transition: u64::max_value(),
-            expip2_duration_limit: 30,
             block_reward_contract: None,
             block_reward_contract_transition: 0,
             difficulty_bomb_delays: BTreeMap::new(),
@@ -722,47 +678,6 @@ mod tests {
         assert_eq!(
             b.state.balance(&uncle_author).unwrap(),
             "3cb71f51fc558000".into()
-        );
-    }
-
-    #[test]
-    fn has_valid_mcip3_era_block_rewards() {
-        let spec = new_mcip3_test();
-        let engine = &*spec.engine;
-        let genesis_header = spec.genesis_header();
-        let db = spec
-            .ensure_db_good(get_temp_state_db(), &Default::default())
-            .unwrap();
-        let last_hashes = Arc::new(vec![genesis_header.hash()]);
-        let b = OpenBlock::new(
-            engine,
-            Default::default(),
-            false,
-            db,
-            &genesis_header,
-            last_hashes,
-            Address::zero(),
-            (3141562.into(), 31415620.into()),
-            vec![],
-            false,
-            None,
-        )
-        .unwrap();
-        let b = b.close().unwrap();
-
-        let ubi_contract: Address = "00efdd5883ec628983e9063c7d969fe268bbf310".into();
-        let dev_contract: Address = "00756cf8159095948496617f5fb17ed95059f536".into();
-        assert_eq!(
-            b.state.balance(&Address::zero()).unwrap(),
-            U256::from_str("d8d726b7177a80000").unwrap()
-        );
-        assert_eq!(
-            b.state.balance(&ubi_contract).unwrap(),
-            U256::from_str("2b5e3af16b1880000").unwrap()
-        );
-        assert_eq!(
-            b.state.balance(&dev_contract).unwrap(),
-            U256::from_str("c249fdd327780000").unwrap()
         );
     }
 
@@ -1014,91 +929,6 @@ mod tests {
 
         let difficulty = ethash.calculate_difficulty(&header, &parent_header);
         assert_eq!(U256::from_str("1fc50f118efe").unwrap(), difficulty);
-    }
-
-    #[test]
-    fn difficulty_classic_bomb_delay() {
-        let machine = new_homestead_test_machine();
-        let ethparams = EthashParams {
-            ecip1010_pause_transition: 3000000,
-            ..get_default_ethash_params()
-        };
-        let tempdir = TempDir::new("").unwrap();
-        let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
-
-        let mut parent_header = Header::default();
-        parent_header.set_number(3500000);
-        parent_header.set_difficulty(U256::from_str("6F62EAF8D3C").unwrap());
-        parent_header.set_timestamp(1452838500);
-        let mut header = Header::default();
-        header.set_number(parent_header.number() + 1);
-
-        header.set_timestamp(parent_header.timestamp() + 20);
-        assert_eq!(
-            U256::from_str("6F55FE9B74B").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-        header.set_timestamp(parent_header.timestamp() + 5);
-        assert_eq!(
-            U256::from_str("6F71D75632D").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-        header.set_timestamp(parent_header.timestamp() + 80);
-        assert_eq!(
-            U256::from_str("6F02746B3A5").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-    }
-
-    #[test]
-    fn test_difficulty_bomb_continue() {
-        let machine = new_homestead_test_machine();
-        let ethparams = EthashParams {
-            ecip1010_pause_transition: 3000000,
-            ecip1010_continue_transition: 5000000,
-            ..get_default_ethash_params()
-        };
-        let tempdir = TempDir::new("").unwrap();
-        let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
-
-        let mut parent_header = Header::default();
-        parent_header.set_number(5000102);
-        parent_header.set_difficulty(U256::from_str("14944397EE8B").unwrap());
-        parent_header.set_timestamp(1513175023);
-        let mut header = Header::default();
-        header.set_number(parent_header.number() + 1);
-        header.set_timestamp(parent_header.timestamp() + 6);
-        assert_eq!(
-            U256::from_str("1496E6206188").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-        parent_header.set_number(5100123);
-        parent_header.set_difficulty(U256::from_str("14D24B39C7CF").unwrap());
-        parent_header.set_timestamp(1514609324);
-        header.set_number(parent_header.number() + 1);
-        header.set_timestamp(parent_header.timestamp() + 41);
-        assert_eq!(
-            U256::from_str("14CA9C5D9227").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-        parent_header.set_number(6150001);
-        parent_header.set_difficulty(U256::from_str("305367B57227").unwrap());
-        parent_header.set_timestamp(1529664575);
-        header.set_number(parent_header.number() + 1);
-        header.set_timestamp(parent_header.timestamp() + 105);
-        assert_eq!(
-            U256::from_str("309D09E0C609").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
-        parent_header.set_number(8000000);
-        parent_header.set_difficulty(U256::from_str("1180B36D4CE5B6A").unwrap());
-        parent_header.set_timestamp(1535431724);
-        header.set_number(parent_header.number() + 1);
-        header.set_timestamp(parent_header.timestamp() + 420);
-        assert_eq!(
-            U256::from_str("5126FFD5BCBB9E7").unwrap(),
-            ethash.calculate_difficulty(&header, &parent_header)
-        );
     }
 
     #[test]

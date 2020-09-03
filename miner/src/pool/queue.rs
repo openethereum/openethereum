@@ -89,7 +89,6 @@ impl fmt::Display for Status {
 struct CachedPending {
     block_number: u64,
     current_timestamp: u64,
-    nonce_cap: Option<U256>,
     has_local_pending: bool,
     pending: Option<Vec<Arc<pool::VerifiedTransaction>>>,
     max_len: usize,
@@ -103,7 +102,6 @@ impl CachedPending {
             current_timestamp: 0,
             has_local_pending: false,
             pending: None,
-            nonce_cap: None,
             max_len: 0,
         }
     }
@@ -118,7 +116,6 @@ impl CachedPending {
         &self,
         block_number: u64,
         current_timestamp: u64,
-        nonce_cap: Option<&U256>,
         max_len: usize,
     ) -> Option<Vec<Arc<pool::VerifiedTransaction>>> {
         // First check if we have anything in cache.
@@ -132,15 +129,6 @@ impl CachedPending {
         // there is no need to invalidate the cache because of timestamp.
         // Timestamp only affects local `PendingTransactions` with `Condition::Timestamp`.
         if self.has_local_pending && current_timestamp > self.current_timestamp + TIMESTAMP_CACHE {
-            return None;
-        }
-
-        // It's fine to return limited set even if `nonce_cap` is `None`.
-        // The worst thing that may happen is that some transactions won't get propagated in current round,
-        // but they are not really valid in current block anyway. We will propagate them in the next round.
-        // Also there is no way to have both `Some` with different numbers since it depends on the block number
-        // and a constant parameter in schedule (`nonce_cap_increment`)
-        if self.nonce_cap.is_none() && nonce_cap.is_some() {
             return None;
         }
 
@@ -375,31 +363,27 @@ impl TransactionQueue {
         let PendingSettings {
             block_number,
             current_timestamp,
-            nonce_cap,
             max_len,
             ordering,
         } = settings;
-        if let Some(pending) = self.cached_pending.read().pending(
-            block_number,
-            current_timestamp,
-            nonce_cap.as_ref(),
-            max_len,
-        ) {
+        if let Some(pending) =
+            self.cached_pending
+                .read()
+                .pending(block_number, current_timestamp, max_len)
+        {
             return pending;
         }
 
         // Double check after acquiring write lock
         let mut cached_pending = self.cached_pending.write();
-        if let Some(pending) =
-            cached_pending.pending(block_number, current_timestamp, nonce_cap.as_ref(), max_len)
-        {
+        if let Some(pending) = cached_pending.pending(block_number, current_timestamp, max_len) {
             return pending;
         }
 
         // In case we don't have a cached set, but we don't care about order
         // just return the unordered set.
         if let PendingOrdering::Unordered = ordering {
-            let ready = Self::ready(client, block_number, current_timestamp, nonce_cap);
+            let ready = Self::ready(client, block_number, current_timestamp);
             return self
                 .pool
                 .read()
@@ -408,15 +392,13 @@ impl TransactionQueue {
                 .collect();
         }
 
-        let pending: Vec<_> =
-            self.collect_pending(client, block_number, current_timestamp, nonce_cap, |i| {
-                i.take(max_len).collect()
-            });
+        let pending: Vec<_> = self.collect_pending(client, block_number, current_timestamp, |i| {
+            i.take(max_len).collect()
+        });
 
         *cached_pending = CachedPending {
             block_number,
             current_timestamp,
-            nonce_cap,
             has_local_pending: self.has_local_pending_transactions(),
             pending: Some(pending.clone()),
             max_len,
@@ -434,7 +416,6 @@ impl TransactionQueue {
         client: C,
         block_number: u64,
         current_timestamp: u64,
-        nonce_cap: Option<U256>,
         collect: F,
     ) -> T
     where
@@ -450,7 +431,7 @@ impl TransactionQueue {
     {
         debug!(target: "txqueue", "Re-computing pending set for block: {}", block_number);
         trace_time!("pool::collect_pending");
-        let ready = Self::ready(client, block_number, current_timestamp, nonce_cap);
+        let ready = Self::ready(client, block_number, current_timestamp);
         collect(self.pool.read().pending(ready))
     }
 
@@ -458,7 +439,6 @@ impl TransactionQueue {
         client: C,
         block_number: u64,
         current_timestamp: u64,
-        nonce_cap: Option<U256>,
     ) -> (ready::Condition, ready::State<C>)
     where
         C: client::NonceClient,
@@ -466,7 +446,7 @@ impl TransactionQueue {
         let pending_readiness = ready::Condition::new(block_number, current_timestamp);
         // don't mark any transactions as stale at this point.
         let stale_id = None;
-        let state_readiness = ready::State::new(client, stale_id, nonce_cap);
+        let state_readiness = ready::State::new(client, stale_id);
 
         (pending_readiness, state_readiness)
     }
@@ -474,8 +454,6 @@ impl TransactionQueue {
     /// Culls all stalled transactions from the pool.
     pub fn cull<C: client::NonceClient + Clone>(&self, client: C) {
         trace_time!("pool::cull");
-        // We don't care about future transactions, so nonce_cap is not important.
-        let nonce_cap = None;
         // We want to clear stale transactions from the queue as well.
         // (Transactions that are occuping the queue for a long time without being included)
         let stale_id = {
@@ -498,7 +476,7 @@ impl TransactionQueue {
         };
         for chunk in senders.chunks(CULL_SENDERS_CHUNK) {
             trace_time!("pool::cull::chunk");
-            let state_readiness = ready::State::new(client.clone(), stale_id, nonce_cap);
+            let state_readiness = ready::State::new(client.clone(), stale_id);
             removed += self.pool.write().cull(Some(chunk), state_readiness);
         }
         debug!(target: "txqueue", "Removed {} stalled transactions. {}", removed, self.status());
@@ -507,12 +485,10 @@ impl TransactionQueue {
     /// Returns next valid nonce for given sender
     /// or `None` if there are no pending transactions from that sender.
     pub fn next_nonce<C: client::NonceClient>(&self, client: C, address: &Address) -> Option<U256> {
-        // Do not take nonce_cap into account when determining next nonce.
-        let nonce_cap = None;
         // Also we ignore stale transactions in the queue.
         let stale_id = None;
 
-        let state_readiness = ready::State::new(client, stale_id, nonce_cap);
+        let state_readiness = ready::State::new(client, stale_id);
 
         self.pool
             .read()

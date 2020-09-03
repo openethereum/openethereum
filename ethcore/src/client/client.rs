@@ -77,8 +77,9 @@ use error::{
     BlockError, CallError, Error as EthcoreError, ErrorKind as EthcoreErrorKind, EthcoreResult,
     ExecutionError, ImportErrorKind,
 };
+use evm::Factory as VmFactory;
 use executive::{contract_address, Executed, Executive, TransactOptions};
-use factory::{Factories, VmFactory};
+use factory::Factories;
 use io::IoChannel;
 use miner::{Miner, MinerService};
 use snapshot::{self, io as snapshot_io, SnapshotClient};
@@ -464,22 +465,13 @@ impl Importer {
             &mut chain.ancestry_with_metadata_iter(*header.parent_hash()),
         );
 
-        let mut locked_block = match enact_result {
+        let locked_block = match enact_result {
             Ok(b) => b,
             Err(e) => {
                 warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
                 bail!(e);
             }
         };
-
-        // Strip receipts for blocks before validate_receipts_transition,
-        // if the expected receipts root header does not match.
-        // (i.e. allow inconsistency in receipts outcome before the transition block)
-        if header.number() < engine.params().validate_receipts_transition
-            && header.receipts_root() != locked_block.header.receipts_root()
-        {
-            locked_block.strip_receipts_outcomes();
-        }
 
         // Final Verification
         if let Err(e) = self
@@ -729,7 +721,6 @@ impl Importer {
                             let mut state = State::from_existing(
                                 backend,
                                 header.state_root().clone(),
-                                self.engine.account_start_nonce(header.number()),
                                 client.factories.clone(),
                             )
                             .expect("state known to be available for just-imported block; qed");
@@ -1173,7 +1164,6 @@ impl Client {
         let state = State::from_existing(
             self.state_db.read().boxed_clone_canon(&header.hash()),
             *header.state_root(),
-            self.engine.account_start_nonce(header.number()),
             self.factories.clone(),
         )
         .expect("State root of best block header always valid.");
@@ -1206,13 +1196,7 @@ impl Client {
             }
 
             let root = header.state_root();
-            State::from_existing(
-                db,
-                root,
-                self.engine.account_start_nonce(block_number),
-                self.factories.clone(),
-            )
-            .ok()
+            State::from_existing(db, root, self.factories.clone()).ok()
         })
     }
 
@@ -1409,9 +1393,7 @@ impl Client {
     ) -> SignedTransaction {
         let from = Address::default();
         transaction::Transaction {
-            nonce: self
-                .nonce(&from, block_id)
-                .unwrap_or_else(|| self.engine.account_start_nonce(0)),
+            nonce: self.nonce(&from, block_id).unwrap_or_else(U256::zero),
             action: Action::Call(address),
             gas: U256::from(50_000_000),
             gas_price: U256::default(),

@@ -51,7 +51,7 @@ use hash::keccak;
 use rlp::{encode_list, Encodable, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
-    receipt::{Receipt, TransactionOutcome},
+    receipt::Receipt,
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
@@ -176,12 +176,7 @@ impl<'x> OpenBlock<'x> {
         ancestry: I,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
-        let state = State::from_existing(
-            db,
-            parent.state_root().clone(),
-            engine.account_start_nonce(number),
-            factories,
-        )?;
+        let state = State::from_existing(db, parent.state_root().clone(), factories)?;
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state, last_hashes, tracing),
             engine: engine,
@@ -433,21 +428,6 @@ impl ClosedBlock {
 }
 
 impl LockedBlock {
-    /// Removes outcomes from receipts and updates the receipt root.
-    ///
-    /// This is done after the block is enacted for historical reasons.
-    /// We allow inconsistency in receipts for some chains if `validate_receipts_transition`
-    /// is set to non-zero value, so the check only happens if we detect
-    /// unmatching root first and then fall back to striped receipts.
-    pub fn strip_receipts_outcomes(&mut self) {
-        for receipt in &mut self.block.receipts {
-            receipt.outcome = TransactionOutcome::Unknown;
-        }
-        self.block.header.set_receipts_root(ordered_trie_root(
-            self.block.receipts.iter().map(|r| r.rlp_bytes()),
-        ));
-    }
-
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     ///
     /// NOTE: This does not check the validity of `seal` with the engine.
@@ -525,7 +505,6 @@ pub(crate) fn enact(
         Some(State::from_existing(
             db.boxed_clone(),
             parent.state_root().clone(),
-            engine.account_start_nonce(parent.number() + 1),
             factories.clone(),
         )?)
     } else {
@@ -632,7 +611,6 @@ mod tests {
                 let s = State::from_existing(
                     db.boxed_clone(),
                     parent.state_root().clone(),
-                    engine.account_start_nonce(parent.number() + 1),
                     factories.clone(),
                 )?;
                 trace!(target: "enact", "num={}, root={}, author={}, author_balance={}\n",

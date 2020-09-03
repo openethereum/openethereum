@@ -112,12 +112,11 @@ fn check_first_proof(
     };
 
     // check state proof using given machine.
-    let number = old_header.number();
     let (data, decoder) = validator_set::functions::get_validators::call();
 
     let from = Address::default();
     let tx = Transaction {
-        nonce: machine.account_start_nonce(number),
+        nonce: 0.into(),
         action: Action::Call(contract_address),
         gas: PROVIDED_GAS.into(),
         gas_price: U256::default(),

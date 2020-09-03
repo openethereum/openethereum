@@ -102,7 +102,6 @@ extern crate triehash_ethereum as triehash;
 extern crate unexpected;
 extern crate using_queue;
 extern crate vm;
-extern crate wasm;
 
 #[cfg(any(test, feature = "blooms-db"))]
 extern crate blooms_db;

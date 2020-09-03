@@ -20,9 +20,9 @@ use client;
 use db;
 use ethereum_types::{H160, H256, U256};
 use ethtrie;
-use evm::{FinalizationResult, VMType};
+use evm::{Factory as VmFactory, FinalizationResult, VMType};
 use executive;
-use factory::{self, Factories};
+use factory::Factories;
 use journaldb;
 use kvdb::{self, KeyValueDB};
 use kvdb_memorydb;
@@ -152,7 +152,7 @@ impl<'a> EvmTestClient<'a> {
         trie_spec: trie::TrieSpec,
     ) -> Result<Self, EvmTestError> {
         let factories = Self::factories(trie_spec);
-        let state = Self::state_from_pod(spec, &factories, pod_state)?;
+        let state = Self::state_from_pod(&factories, pod_state)?;
 
         Ok(EvmTestClient {
             state,
@@ -171,7 +171,7 @@ impl<'a> EvmTestClient<'a> {
 
     fn factories(trie_spec: trie::TrieSpec) -> Factories {
         Factories {
-            vm: factory::VmFactory::new(VMType::Interpreter, 5 * 1024),
+            vm: VmFactory::new(VMType::Interpreter, 5 * 1024),
             trie: trie::TrieFactory::new(trie_spec),
             accountdb: Default::default(),
         }
@@ -197,17 +197,11 @@ impl<'a> EvmTestClient<'a> {
             db.write(batch)?;
         }
 
-        state::State::from_existing(
-            state_db,
-            *genesis.state_root(),
-            spec.engine.account_start_nonce(0),
-            factories.clone(),
-        )
-        .map_err(EvmTestError::Trie)
+        state::State::from_existing(state_db, *genesis.state_root(), factories.clone())
+            .map_err(EvmTestError::Trie)
     }
 
     fn state_from_pod(
-        spec: &'a spec::Spec,
         factories: &Factories,
         pod_state: pod_state::PodState,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
@@ -217,11 +211,7 @@ impl<'a> EvmTestClient<'a> {
         let journal_db =
             journaldb::new(db.clone(), journaldb::Algorithm::EarlyMerge, db::COL_STATE);
         let state_db = state_db::StateDB::new(journal_db, 5 * 1024 * 1024);
-        let mut state = state::State::new(
-            state_db,
-            spec.engine.account_start_nonce(0),
-            factories.clone(),
-        );
+        let mut state = state::State::new(state_db, factories.clone());
         state.populate_from(pod_state);
         state.commit()?;
         Ok(state)

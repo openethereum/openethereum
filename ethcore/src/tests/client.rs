@@ -466,7 +466,7 @@ fn transaction_proof() {
     let machine = test_spec.engine.machine();
     let env_info = client.latest_env_info();
     let schedule = machine.schedule(env_info.number);
-    let mut state = State::from_existing(backend, root, 0.into(), factories.clone()).unwrap();
+    let mut state = State::from_existing(backend, root, factories.clone()).unwrap();
     Executive::new(&mut state, &env_info, &machine, &schedule)
         .transact(
             &transaction,

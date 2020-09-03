@@ -226,13 +226,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         Some(id) => id,
         None => spec.network_id(),
     };
-    if spec.subprotocol_name().len() != 3 {
-        warn!("Your chain specification's subprotocol length is not 3. Ignoring.");
-    } else {
-        sync_config
-            .subprotocol_name
-            .clone_from_slice(spec.subprotocol_name().as_bytes());
-    }
 
     sync_config.fork_block = spec.fork_block();
     let mut warp_sync = spec.engine.supports_warp() && cmd.warp_sync;

@@ -481,7 +481,7 @@ impl Nonce for TestBlockChainClient {
                     .read()
                     .get(address)
                     .cloned()
-                    .unwrap_or(self.spec.params().account_start_nonce),
+                    .unwrap_or_else(U256::zero),
             ),
             _ => None,
         }

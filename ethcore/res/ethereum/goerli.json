@@ -10,7 +10,6 @@
 		}
 	},
 	"params": {
-		"accountStartNonce": "0x0",
 		"chainID": "0x5",
 		"eip140Transition": "0x0",
 		"eip145Transition": "0x0",

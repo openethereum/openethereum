@@ -95,7 +95,6 @@ mod tests {
 			}
 		},
 		"params": {
-			"accountStartNonce": "0x0100000",
 			"maximumExtraDataSize": "0x20",
 			"minGasLimit": "0x1388",
 			"networkID" : "0x2",
@@ -152,7 +151,6 @@ mod tests {
 			}
 		},
 		"params": {
-			"accountStartNonce": "0x0100000",
 			"maximumExtraDataSize": "0x20",
 			"minGasLimit": "0x1388",
 			"networkID" : "0x2",

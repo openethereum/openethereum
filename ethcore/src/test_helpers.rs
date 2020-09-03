@@ -510,7 +510,7 @@ pub fn generate_dummy_empty_blockchain() -> BlockChain {
 /// Returns temp state
 pub fn get_temp_state() -> State<::state_db::StateDB> {
     let journal_db = get_temp_state_db();
-    State::new(journal_db, U256::from(0), Default::default())
+    State::new(journal_db, Default::default())
 }
 
 /// Returns temp state using coresponding factory
@@ -518,7 +518,7 @@ pub fn get_temp_state_with_factory(factory: EvmFactory) -> State<::state_db::Sta
     let journal_db = get_temp_state_db();
     let mut factories = Factories::default();
     factories.vm = factory.into();
-    State::new(journal_db, U256::from(0), factories)
+    State::new(journal_db, factories)
 }
 
 /// Returns temp state db

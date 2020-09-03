@@ -122,7 +122,7 @@ fn make_chain(
         };
 
         // execution callback for native contract: push transaction to be sealed.
-        let nonce = RefCell::new(client.engine().account_start_nonce(0));
+        let nonce = RefCell::new(0.into());
 
         // create useless transactions vector so we don't have to dig in
         // and force sealing.

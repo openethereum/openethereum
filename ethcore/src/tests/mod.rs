@@ -16,5 +16,4 @@
 
 mod blockchain;
 mod client;
-mod evm;
 mod trace;

@@ -73,7 +73,6 @@ unexpected = { path = "../util/unexpected" }
 using_queue = { path = "../miner/using-queue" }
 vm = { path = "vm" }
 walkdir = "2.3"
-wasm = { path = "wasm" }
 
 [dev-dependencies]
 blooms-db = { path = "../util/blooms-db" }

@@ -57,14 +57,14 @@ pub struct Receipt {
 impl Receipt {
     fn outcome_to_state_root(outcome: TransactionOutcome) -> Option<H256> {
         match outcome {
-            TransactionOutcome::Unknown | TransactionOutcome::StatusCode(_) => None,
+            TransactionOutcome::StatusCode(_) => None,
             TransactionOutcome::StateRoot(root) => Some(root),
         }
     }
 
     fn outcome_to_status_code(outcome: &TransactionOutcome) -> Option<U64> {
         match *outcome {
-            TransactionOutcome::Unknown | TransactionOutcome::StateRoot(_) => None,
+            TransactionOutcome::StateRoot(_) => None,
             TransactionOutcome::StatusCode(ref code) => Some((*code as u64).into()),
         }
     }

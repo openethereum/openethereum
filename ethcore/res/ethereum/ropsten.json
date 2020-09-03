@@ -25,7 +25,6 @@
 	"params": {
 		"gasLimitBoundDivisor": "0x400",
 		"registrar": "0x81a4b044831c4f12ba601adb9274516939e9b8a2",
-		"accountStartNonce": "0x0",
 		"maximumExtraDataSize": "0x20",
 		"minGasLimit": "0x1388",
 		"networkID": "0x3",

@@ -26,9 +26,7 @@ use BlockNumber;
 /// Transaction outcome store in the receipt.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransactionOutcome {
-    /// Status and state root are unknown under EIP-98 rules.
-    Unknown,
-    /// State root is known. Pre EIP-98 and EIP-658 rules.
+    /// State root is known. Pre EIP-658 rules.
     StateRoot(H256),
     /// Status code is known. EIP-658 rules.
     StatusCode(u8),
@@ -65,9 +63,6 @@ impl Receipt {
 impl Encodable for Receipt {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self.outcome {
-            TransactionOutcome::Unknown => {
-                s.begin_list(3);
-            }
             TransactionOutcome::StateRoot(ref root) => {
                 s.begin_list(4);
                 s.append(root);
@@ -85,28 +80,19 @@ impl Encodable for Receipt {
 
 impl Decodable for Receipt {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? == 3 {
-            Ok(Receipt {
-                outcome: TransactionOutcome::Unknown,
-                gas_used: rlp.val_at(0)?,
-                log_bloom: rlp.val_at(1)?,
-                logs: rlp.list_at(2)?,
-            })
-        } else {
-            Ok(Receipt {
-                gas_used: rlp.val_at(1)?,
-                log_bloom: rlp.val_at(2)?,
-                logs: rlp.list_at(3)?,
-                outcome: {
-                    let first = rlp.at(0)?;
-                    if first.is_data() && first.data()?.len() <= 1 {
-                        TransactionOutcome::StatusCode(first.as_val()?)
-                    } else {
-                        TransactionOutcome::StateRoot(first.as_val()?)
-                    }
-                },
-            })
-        }
+        Ok(Receipt {
+            gas_used: rlp.val_at(1)?,
+            log_bloom: rlp.val_at(2)?,
+            logs: rlp.list_at(3)?,
+            outcome: {
+                let first = rlp.at(0)?;
+                if first.is_data() && first.data()?.len() <= 1 {
+                    TransactionOutcome::StatusCode(first.as_val()?)
+                } else {
+                    TransactionOutcome::StateRoot(first.as_val()?)
+                }
+            },
+        })
     }
 }
 
@@ -178,21 +164,6 @@ pub struct LocalizedReceipt {
 mod tests {
     use super::{Receipt, TransactionOutcome};
     use log_entry::LogEntry;
-
-    #[test]
-    fn test_no_state_root() {
-        let expected = ::rustc_hex::FromHex::from_hex("f9014183040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = Receipt::new(
-            TransactionOutcome::Unknown,
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        );
-        assert_eq!(&::rlp::encode(&r)[..], &expected[..]);
-    }
 
     #[test]
     fn test_basic() {

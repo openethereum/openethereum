@@ -26,7 +26,7 @@ use ethcore::{
     client::{BlockChainClient, EachBlockWith, Executed, TestBlockChainClient},
     miner::{self, MinerService},
 };
-use ethereum_types::{Address, Bloom, H160, H256, U256};
+use ethereum_types::{Address, H160, H256, U256};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
@@ -36,7 +36,7 @@ use sync::SyncState;
 use types::{
     ids::{BlockId, TransactionId},
     log_entry::{LocalizedLogEntry, LogEntry},
-    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome},
+    receipt::{LocalizedReceipt, TransactionOutcome},
     transaction::{Action, Transaction},
 };
 
@@ -1190,92 +1190,6 @@ fn rpc_eth_transaction_receipt_null() {
 
     assert_eq!(
         tester.io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-#[test]
-fn rpc_eth_pending_receipt() {
-    let pending = RichReceipt {
-        from: H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap(),
-        to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
-        transaction_hash: H256::from_str(
-            "b903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238",
-        )
-        .unwrap(),
-        transaction_index: 0,
-        cumulative_gas_used: U256::from(0x20),
-        gas_used: U256::from(0x10),
-        contract_address: None,
-        logs: Vec::new(),
-        log_bloom: Bloom::zero(),
-        outcome: TransactionOutcome::Unknown,
-    };
-    let tester = EthTester::default();
-
-    tester.miner.pending_receipts.lock().push(pending);
-
-    let request = r#"{
-		"jsonrpc": "2.0",
-		"method": "eth_getTransactionReceipt",
-		"params": ["0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"],
-		"id": 1
-	}"#;
-    let response = r#"{"jsonrpc":"2.0","result":{"blockHash":null,"blockNumber":null,"contractAddress":null,"cumulativeGasUsed":"0x20","from":"0xb60e8dd61c5d32be8058bb8eb970870f07233155","gasUsed":"0x10","logs":[],"logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionHash":"0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238","transactionIndex":"0x0"},"id":1}"#;
-    assert_eq!(
-        tester.io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-// These tests are incorrect: their output is undefined as long as eth_getCompilers is [].
-// Will ignore for now, but should probably be replaced by more substantial tests which check
-// the output of eth_getCompilers to determine whether to test. CI systems can then be preinstalled
-// with solc/serpent/lllc and they'll be proper again.
-#[ignore]
-#[test]
-fn rpc_eth_compilers() {
-    let request = r#"{"jsonrpc": "2.0", "method": "eth_getCompilers", "params": [], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32070,"message":"Method deprecated","data":"Compilation functionality is deprecated."},"id":1}"#;
-
-    assert_eq!(
-        EthTester::default().io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-#[ignore]
-#[test]
-fn rpc_eth_compile_lll() {
-    let request = r#"{"jsonrpc": "2.0", "method": "eth_compileLLL", "params": [], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32070,"message":"Method deprecated","data":"Compilation of LLL via RPC is deprecated"},"id":1}"#;
-
-    assert_eq!(
-        EthTester::default().io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-#[ignore]
-#[test]
-fn rpc_eth_compile_solidity() {
-    let request = r#"{"jsonrpc": "2.0", "method": "eth_compileSolidity", "params": [], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32070,"message":"Method deprecated","data":"Compilation of Solidity via RPC is deprecated"},"id":1}"#;
-
-    assert_eq!(
-        EthTester::default().io.handle_request_sync(request),
-        Some(response.to_owned())
-    );
-}
-
-#[ignore]
-#[test]
-fn rpc_eth_compile_serpent() {
-    let request = r#"{"jsonrpc": "2.0", "method": "eth_compileSerpent", "params": [], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32070,"message":"Method deprecated","data":"Compilation of Serpent via RPC is deprecated"},"id":1}"#;
-
-    assert_eq!(
-        EthTester::default().io.handle_request_sync(request),
         Some(response.to_owned())
     );
 }

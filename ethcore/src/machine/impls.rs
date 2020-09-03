@@ -49,6 +49,8 @@ use tx_filter::TransactionFilter;
 /// Parity tries to round block.gas_limit to multiple of this constant
 pub const PARITY_GAS_LIMIT_DETERMINANT: U256 = U256([37, 0, 0, 0]);
 
+const MAX_TRANSACTION_SIZE: usize = 300 * 1024;
+
 /// Ethash-specific extensions.
 #[derive(Debug, Clone)]
 pub struct EthashExtensions {
@@ -214,33 +216,9 @@ impl EthereumMachine {
         Ok(output)
     }
 
-    /// Push last known block hash to the state.
-    fn push_last_hash(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        let params = self.params();
-        if block.header.number() == params.eip210_transition {
-            let state = block.state_mut();
-            state.init_code(
-                &params.eip210_contract_address,
-                params.eip210_contract_code.clone(),
-            )?;
-        }
-        if block.header.number() >= params.eip210_transition {
-            let parent_hash = *block.header.parent_hash();
-            let _ = self.execute_as_system(
-                block,
-                params.eip210_contract_address,
-                params.eip210_contract_gas,
-                Some(parent_hash.to_vec()),
-            )?;
-        }
-        Ok(())
-    }
-
     /// Logic to perform on a new block: updating last hashes and the DAO
     /// fork, for ethash.
     pub fn on_new_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        self.push_last_hash(block)?;
-
         if let Some(ref ethash_params) = self.ethash_extensions {
             if block.header.number() == ethash_params.dao_hardfork_transition {
                 let state = block.state_mut();
@@ -367,17 +345,6 @@ impl EthereumMachine {
         self.params().maximum_extra_data_size
     }
 
-    /// The nonce with which accounts begin at given block.
-    pub fn account_start_nonce(&self, block: u64) -> U256 {
-        let params = self.params();
-
-        if block >= params.dust_protection_transition {
-            U256::from(params.nonce_cap_increment) * U256::from(block)
-        } else {
-            params.account_start_nonce
-        }
-    }
-
     /// The network ID that transactions should be signed with.
     pub fn signing_chain_id(&self, env_info: &EnvInfo) -> Option<u64> {
         let params = self.params();
@@ -414,9 +381,7 @@ impl EthereumMachine {
             None => true,
         };
 
-        let chain_id = if header.number() < self.params().validate_chain_id_transition {
-            t.chain_id()
-        } else if header.number() >= self.params().eip155_transition {
+        let chain_id = if header.number() >= self.params().eip155_transition {
             Some(self.params().chain_id)
         } else {
             None
@@ -455,7 +420,7 @@ impl EthereumMachine {
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
         let rlp = Rlp::new(&transaction);
-        if rlp.as_raw().len() > self.params().max_transaction_size {
+        if rlp.as_raw().len() > MAX_TRANSACTION_SIZE {
             debug!(
                 "Rejected oversized transaction of {} bytes",
                 rlp.as_raw().len()

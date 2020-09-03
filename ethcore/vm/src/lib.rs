@@ -39,7 +39,7 @@ pub use env_info::{EnvInfo, LastHashes};
 pub use error::{Error, ExecTrapError, ExecTrapResult, Result, TrapError, TrapKind, TrapResult};
 pub use ext::{ContractCreateResult, CreateContractAddress, Ext, MessageCallResult};
 pub use return_data::{GasLeft, ReturnData};
-pub use schedule::{CleanDustMode, Schedule, WasmCosts};
+pub use schedule::Schedule;
 
 /// Virtual Machine interface
 pub trait Exec: Send {

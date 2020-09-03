@@ -28,9 +28,10 @@ use std::{
 };
 
 use error::Error;
+use evm::Factory as VmFactory;
 use executed::{Executed, ExecutionError};
 use executive::{Executive, TransactOptions};
-use factory::{Factories, VmFactory};
+use factory::Factories;
 use machine::EthereumMachine as Machine;
 use pod_account::*;
 use pod_state::{self, PodState};
@@ -204,12 +205,7 @@ pub fn check_proof(
     let mut factories = Factories::default();
     factories.accountdb = ::account_db::Factory::Plain;
 
-    let res = State::from_existing(
-        backend,
-        root,
-        machine.account_start_nonce(env_info.number),
-        factories,
-    );
+    let res = State::from_existing(backend, root, factories);
 
     let mut state = match res {
         Ok(state) => state,
@@ -238,12 +234,7 @@ pub fn prove_transaction_virtual<H: AsHashDB<KeccakHasher, DBValue> + Send + Syn
     use self::backend::Proving;
 
     let backend = Proving::new(db);
-    let res = State::from_existing(
-        backend,
-        root,
-        machine.account_start_nonce(env_info.number),
-        factories,
-    );
+    let res = State::from_existing(backend, root, factories);
 
     let mut state = match res {
         Ok(state) => state,
@@ -314,7 +305,6 @@ pub struct State<B> {
     cache: RefCell<HashMap<Address, AccountEntry>>,
     // The original account is preserved in
     checkpoints: RefCell<Vec<HashMap<Address, Option<AccountEntry>>>>,
-    account_start_nonce: U256,
     factories: Factories,
 }
 
@@ -372,7 +362,7 @@ const SEC_TRIE_DB_UNWRAP_STR: &'static str = "A state can only be created with v
 impl<B: Backend> State<B> {
     /// Creates new state with empty state root
     /// Used for tests.
-    pub fn new(mut db: B, account_start_nonce: U256, factories: Factories) -> State<B> {
+    pub fn new(mut db: B, factories: Factories) -> State<B> {
         let mut root = H256::new();
         {
             // init trie and reset root to null
@@ -384,18 +374,12 @@ impl<B: Backend> State<B> {
             root: root,
             cache: RefCell::new(HashMap::new()),
             checkpoints: RefCell::new(Vec::new()),
-            account_start_nonce: account_start_nonce,
             factories: factories,
         }
     }
 
     /// Creates new state with existing state root
-    pub fn from_existing(
-        db: B,
-        root: H256,
-        account_start_nonce: U256,
-        factories: Factories,
-    ) -> TrieResult<State<B>> {
+    pub fn from_existing(db: B, root: H256, factories: Factories) -> TrieResult<State<B>> {
         if !db.as_hash_db().contains(&root) {
             return Err(Box::new(TrieError::InvalidStateRoot(root)));
         }
@@ -405,7 +389,6 @@ impl<B: Backend> State<B> {
             root: root,
             cache: RefCell::new(HashMap::new()),
             checkpoints: RefCell::new(Vec::new()),
-            account_start_nonce: account_start_nonce,
             factories: factories,
         };
 
@@ -524,16 +507,9 @@ impl<B: Backend> State<B> {
         &mut self,
         contract: &Address,
         balance: U256,
-        nonce_offset: U256,
+        nonce: U256,
     ) -> TrieResult<()> {
         let original_storage_root = self.original_storage_root(contract)?;
-        let (nonce, overflow) = self.account_start_nonce.overflowing_add(nonce_offset);
-        if overflow {
-            return Err(Box::new(TrieError::DecoderError(
-                H256::from(contract),
-                rlp::DecoderError::Custom("Nonce overflow".into()),
-            )));
-        }
         self.insert_cache(
             contract,
             AccountEntry::new_dirty(Some(Account::new_contract(
@@ -568,7 +544,7 @@ impl<B: Backend> State<B> {
     pub fn exists_and_has_code_or_nonce(&self, a: &Address) -> TrieResult<bool> {
         self.ensure_cached(a, RequireCache::CodeSize, false, |a| {
             a.map_or(false, |a| {
-                a.code_hash() != KECCAK_EMPTY || *a.nonce() != self.account_start_nonce
+                a.code_hash() != KECCAK_EMPTY || !a.nonce().is_zero()
             })
         })
     }
@@ -585,7 +561,7 @@ impl<B: Backend> State<B> {
     pub fn nonce(&self, a: &Address) -> TrieResult<U256> {
         self.ensure_cached(a, RequireCache::None, true, |a| {
             a.as_ref()
-                .map_or(self.account_start_nonce, |account| *account.nonce())
+                .map_or_else(U256::zero, |account| *account.nonce())
         })
     }
 
@@ -892,7 +868,7 @@ impl<B: Backend> State<B> {
         self.require_or_from(
             a,
             true,
-            || Account::new_contract(0.into(), self.account_start_nonce, KECCAK_NULL_RLP),
+            || Account::new_contract(0.into(), U256::zero(), KECCAK_NULL_RLP),
             |_| {},
         )?
         .init_code(code);
@@ -904,7 +880,7 @@ impl<B: Backend> State<B> {
         self.require_or_from(
             a,
             true,
-            || Account::new_contract(0.into(), self.account_start_nonce, KECCAK_NULL_RLP),
+            || Account::new_contract(0.into(), U256::zero(), KECCAK_NULL_RLP),
             |_| {},
         )?
         .reset_code(code);
@@ -947,17 +923,8 @@ impl<B: Backend> State<B> {
         let e = self.execute(env_info, machine, t, options, false)?;
         let params = machine.params();
 
-        let eip658 = env_info.number >= params.eip658_transition;
-        let no_intermediate_commits = eip658
-            || (env_info.number >= params.eip98_transition
-                && env_info.number >= params.validate_receipts_transition);
-
-        let outcome = if no_intermediate_commits {
-            if eip658 {
-                TransactionOutcome::StatusCode(if e.exception.is_some() { 0 } else { 1 })
-            } else {
-                TransactionOutcome::Unknown
-            }
+        let outcome = if env_info.number >= params.eip658_transition {
+            TransactionOutcome::StatusCode(if e.exception.is_some() { 0 } else { 1 })
         } else {
             self.commit()?;
             TransactionOutcome::StateRoot(self.root().clone())
@@ -1401,7 +1368,7 @@ impl<B: Backend> State<B> {
         self.require_or_from(
             a,
             require_code,
-            || Account::new_basic(0u8.into(), self.account_start_nonce),
+            || Account::new_basic(0u8.into(), U256::zero()),
             |_| {},
         )
     }
@@ -1516,7 +1483,7 @@ impl<B: Backend> State<B> {
         };
         let account = maybe_account.unwrap_or_else(|| BasicAccount {
             balance: 0.into(),
-            nonce: self.account_start_nonce,
+            nonce: U256::zero(),
             code_hash: KECCAK_EMPTY,
             storage_root: KECCAK_NULL_RLP,
         });
@@ -1587,7 +1554,6 @@ impl Clone for State<StateDB> {
             root: self.root.clone(),
             cache: RefCell::new(cache),
             checkpoints: RefCell::new(Vec::new()),
-            account_start_nonce: self.account_start_nonce.clone(),
             factories: self.factories.clone(),
         }
     }
@@ -2614,7 +2580,7 @@ mod tests {
             state.drop()
         };
 
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(state.code(&a).unwrap(), Some(Arc::new(vec![1u8, 2, 3])));
     }
 
@@ -2634,7 +2600,7 @@ mod tests {
             state.drop()
         };
 
-        let s = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let s = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(
             s.storage_at(&a, &H256::from(&U256::from(1u64))).unwrap(),
             H256::from(&U256::from(69u64))
@@ -2655,7 +2621,7 @@ mod tests {
             state.drop()
         };
 
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(state.balance(&a).unwrap(), U256::from(69u64));
         assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
     }
@@ -2681,14 +2647,14 @@ mod tests {
         let a = Address::zero();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state
                 .add_balance(&a, &U256::default(), CleanupMode::NoEmpty)
                 .unwrap(); // create an empty account
             state.commit().unwrap();
             state.drop()
         };
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert!(!state.exists(&a).unwrap());
         assert!(!state.exists_and_not_null(&a).unwrap());
     }
@@ -2698,14 +2664,14 @@ mod tests {
         let a = Address::zero();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state
                 .add_balance(&a, &U256::default(), CleanupMode::ForceCreate)
                 .unwrap(); // create an empty account
             state.commit().unwrap();
             state.drop()
         };
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert!(state.exists(&a).unwrap());
         assert!(!state.exists_and_not_null(&a).unwrap());
     }
@@ -2723,8 +2689,7 @@ mod tests {
         };
 
         let (root, db) = {
-            let mut state =
-                State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+            let mut state = State::from_existing(db, root, Default::default()).unwrap();
             assert_eq!(state.exists(&a).unwrap(), true);
             assert_eq!(state.nonce(&a).unwrap(), U256::from(1u64));
             state.kill_account(&a);
@@ -2734,7 +2699,7 @@ mod tests {
             state.drop()
         };
 
-        let state = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let state = State::from_existing(db, root, Default::default()).unwrap();
         assert_eq!(state.exists(&a).unwrap(), false);
         assert_eq!(state.nonce(&a).unwrap(), U256::from(0u64));
     }
@@ -3253,7 +3218,7 @@ mod tests {
         let x = 0.into();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state
                 .add_balance(&a, &U256::default(), CleanupMode::ForceCreate)
                 .unwrap(); // create an empty account
@@ -3272,8 +3237,7 @@ mod tests {
             state.drop()
         };
 
-        let mut state =
-            State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let mut state = State::from_existing(db, root, Default::default()).unwrap();
         let mut touched = HashSet::new();
         state
             .add_balance(
@@ -3316,7 +3280,7 @@ mod tests {
         let a = 10.into();
         let db = get_temp_state_db();
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state
                 .add_balance(&a, &100.into(), CleanupMode::ForceCreate)
                 .unwrap();
@@ -3324,8 +3288,7 @@ mod tests {
             state.drop()
         };
 
-        let mut state =
-            State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let mut state = State::from_existing(db, root, Default::default()).unwrap();
         let original = state.clone();
         state.kill_account(&a);
 
@@ -3356,7 +3319,7 @@ mod tests {
         let db = get_temp_state_db();
 
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), Default::default());
+            let mut state = State::new(db, Default::default());
             state
                 .set_storage(
                     &a,
@@ -3368,8 +3331,7 @@ mod tests {
             state.drop()
         };
 
-        let mut state =
-            State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
+        let mut state = State::from_existing(db, root, Default::default()).unwrap();
         let original = state.clone();
         state
             .set_storage(
@@ -3441,7 +3403,7 @@ mod tests {
         let storage_address = H256::from(&U256::from(1u64));
 
         let (root, db) = {
-            let mut state = State::new(db, U256::from(0), factories.clone());
+            let mut state = State::new(db, factories.clone());
             state
                 .set_storage(&a, storage_address.clone(), H256::from(&U256::from(20u64)))
                 .unwrap();
@@ -3459,7 +3421,7 @@ mod tests {
             state.drop()
         };
 
-        let mut state = State::from_existing(db, root, U256::from(0u8), factories).unwrap();
+        let mut state = State::from_existing(db, root, factories).unwrap();
         let dump = state.to_pod_full().unwrap();
         assert_eq!(
             get_pod_state_val(&dump, &a, storage_address.clone()),

@@ -103,8 +103,6 @@ pub struct SyncConfig {
     pub download_old_blocks: bool,
     /// Network ID
     pub network_id: u64,
-    /// Main "eth" subprotocol name.
-    pub subprotocol_name: [u8; 3],
     /// Fork block to check
     pub fork_block: Option<(BlockNumber, H256)>,
     /// Enable snapshot sync
@@ -117,7 +115,6 @@ impl Default for SyncConfig {
             max_download_ahead_blocks: 20000,
             download_old_blocks: true,
             network_id: 1,
-            subprotocol_name: ETH_PROTOCOL,
             fork_block: None,
             warp_sync: WarpSync::Disabled,
         }
@@ -227,8 +224,6 @@ pub struct EthSync {
     network: NetworkService,
     /// Main (eth/par) protocol handler
     eth_handler: Arc<SyncProtocolHandler>,
-    /// The main subprotocol name
-    subprotocol_name: [u8; 3],
     /// Priority tasks notification channel
     priority_tasks: Mutex<mpsc::Sender<PriorityTask>>,
 }
@@ -254,7 +249,6 @@ impl EthSync {
                 snapshot_service: params.snapshot_service,
                 overlay: RwLock::new(HashMap::new()),
             }),
-            subprotocol_name: params.config.subprotocol_name,
             priority_tasks: Mutex::new(priority_tasks_tx),
         });
 
@@ -276,7 +270,7 @@ impl SyncProvider for EthSync {
     /// Get sync peers
     fn peers(&self) -> Vec<PeerInfo> {
         self.network
-            .with_context_eval(self.subprotocol_name, |ctx| {
+            .with_context_eval(ETH_PROTOCOL, |ctx| {
                 let peer_ids = self.network.connected_peers();
 
                 let peer_info = self.eth_handler.sync.peer_info(&peer_ids);
@@ -523,7 +517,7 @@ impl ChainNotify for EthSync {
         if new_blocks.has_more_blocks_to_import {
             return;
         }
-        self.network.with_context(self.subprotocol_name, |context| {
+        self.network.with_context(ETH_PROTOCOL, |context| {
             let mut sync_io = NetSyncIo::new(
                 context,
                 &*self.eth_handler.chain,
@@ -558,7 +552,7 @@ impl ChainNotify for EthSync {
         self.network
             .register_protocol(
                 self.eth_handler.clone(),
-                self.subprotocol_name,
+                ETH_PROTOCOL,
                 &[ETH_PROTOCOL_VERSION_62, ETH_PROTOCOL_VERSION_63],
             )
             .unwrap_or_else(|e| warn!("Error registering ethereum protocol: {:?}", e));
@@ -649,7 +643,7 @@ impl ManageNetwork for EthSync {
     }
 
     fn stop_network(&self) {
-        self.network.with_context(self.subprotocol_name, |context| {
+        self.network.with_context(ETH_PROTOCOL, |context| {
             let mut sync_io = NetSyncIo::new(
                 context,
                 &*self.eth_handler.chain,

@@ -1,9 +1,9 @@
 {
 	"name": "TestValidatorContract",
 	"engine": {
-		"basicAuthority": {
+		"authorityRound": {
 			"params": {
-				"durationLimit": "0x0d",
+				"stepDuration": "0x0d",
 				"validators": {
 					"safeContract": "0x0000000000000000000000000000000000000005"
 				}

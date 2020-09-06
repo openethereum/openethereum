@@ -48,7 +48,6 @@ use ethereum_types::H256;
 use journaldb::Algorithm;
 use kvdb::DBTransaction;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
-use snappy;
 
 /// Helper for removing directories in case of error.
 struct Guard(bool, PathBuf);
@@ -143,12 +142,16 @@ impl Restoration {
     // feeds a state chunk, aborts early if `flag` becomes false.
     fn feed_state(&mut self, hash: H256, chunk: &[u8], flag: &AtomicBool) -> Result<(), Error> {
         if self.state_chunks_left.contains(&hash) {
-            let expected_len = snappy::decompressed_len(chunk)?;
+            let expected_len = snap::raw::decompress_len(chunk)?;
             if expected_len > MAX_CHUNK_SIZE {
                 trace!(target: "snapshot", "Discarding large chunk: {} vs {}", expected_len, MAX_CHUNK_SIZE);
                 return Err(::snapshot::Error::ChunkTooLarge.into());
             }
-            let len = snappy::decompress_into(chunk, &mut self.snappy_buffer)?;
+            if self.snappy_buffer.len() < expected_len {
+                self.snappy_buffer
+                    .resize_with(expected_len, Default::default);
+            }
+            let len = snap::raw::Decoder::new().decompress(chunk, &mut self.snappy_buffer)?;
 
             self.state.feed(&self.snappy_buffer[..len], flag)?;
 
@@ -171,12 +174,16 @@ impl Restoration {
         flag: &AtomicBool,
     ) -> Result<(), Error> {
         if self.block_chunks_left.contains(&hash) {
-            let expected_len = snappy::decompressed_len(chunk)?;
+            let expected_len = snap::raw::decompress_len(chunk)?;
             if expected_len > MAX_CHUNK_SIZE {
                 trace!(target: "snapshot", "Discarding large chunk: {} vs {}", expected_len, MAX_CHUNK_SIZE);
                 return Err(::snapshot::Error::ChunkTooLarge.into());
             }
-            let len = snappy::decompress_into(chunk, &mut self.snappy_buffer)?;
+            if self.snappy_buffer.len() < expected_len {
+                self.snappy_buffer
+                    .resize_with(expected_len, Default::default);
+            }
+            let len = snap::raw::Decoder::new().decompress(chunk, &mut self.snappy_buffer)?;
 
             self.secondary
                 .feed(&self.snappy_buffer[..len], engine, flag)?;

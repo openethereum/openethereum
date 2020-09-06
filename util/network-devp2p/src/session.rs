@@ -38,7 +38,6 @@ use network::{
 };
 use node_table::NodeId;
 use rlp::{Rlp, RlpStream, EMPTY_LIST_RLP};
-use snappy;
 
 // Timeout must be less than (interval - 1).
 const PING_TIMEOUT: Duration = Duration::from_secs(60);
@@ -343,15 +342,17 @@ impl Session {
         };
         let mut rlp = RlpStream::new();
         rlp.append(&(u32::from(pid)));
-        let mut compressed = Vec::new();
+        let compressed;
         let mut payload = data; // create a reference with local lifetime
         if self.compression {
             if payload.len() > MAX_PAYLOAD_SIZE {
                 bail!(ErrorKind::OversizedPacket);
             }
-            let len = snappy::compress_into(&payload, &mut compressed);
-            trace!(target: "network", "compressed {} to {}", payload.len(), len);
-            payload = &compressed[0..len];
+            compressed = snap::raw::Encoder::new()
+                .compress_vec(&payload)
+                .expect("size always correct; qed");
+            trace!(target: "network", "compressed {} to {}", payload.len(), compressed.len());
+            payload = &compressed;
         }
         rlp.append_raw(payload, 1);
         self.send(io, &rlp.drain())
@@ -420,10 +421,10 @@ impl Session {
         }
         let data = if self.compression {
             let compressed = &packet.data[1..];
-            if snappy::decompressed_len(&compressed)? > MAX_PAYLOAD_SIZE {
+            if snap::raw::decompress_len(&compressed)? > MAX_PAYLOAD_SIZE {
                 bail!(ErrorKind::OversizedPacket);
             }
-            snappy::decompress(&compressed)?
+            snap::raw::Decoder::new().decompress_vec(&compressed)?
         } else {
             packet.data[1..].to_owned()
         };

@@ -32,7 +32,6 @@ use snapshot::{
 
 use kvdb::DBTransaction;
 use parking_lot::Mutex;
-use snappy;
 use test_helpers;
 
 const SNAPSHOT_MODE: ::snapshot::PowSnapshot = ::snapshot::PowSnapshot {
@@ -105,7 +104,9 @@ fn chunk_and_restore(amount: u64) {
     let flag = AtomicBool::new(true);
     for chunk_hash in &reader.manifest().block_hashes {
         let compressed = reader.chunk(*chunk_hash).unwrap();
-        let chunk = snappy::decompress(&compressed).unwrap();
+        let chunk = snap::raw::Decoder::new()
+            .decompress_vec(&compressed)
+            .unwrap();
         rebuilder.feed(&chunk, engine.as_ref(), &flag).unwrap();
     }
 

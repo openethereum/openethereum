@@ -23,7 +23,6 @@ use ethkey;
 use io::IoError;
 use libc::{EMFILE, ENFILE};
 use rlp;
-use snappy;
 use std::{fmt, io, net};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -90,7 +89,7 @@ impl fmt::Display for DisconnectReason {
 error_chain! {
     foreign_links {
         SocketIo(IoError) #[doc = "Socket IO error."];
-        Decompression(snappy::InvalidInput) #[doc = "Decompression error."];
+        Decompression(snap::Error) #[doc = "Decompression error."];
         Rlp(rlp::DecoderError) #[doc = "Rlp decoder error."];
     }
 

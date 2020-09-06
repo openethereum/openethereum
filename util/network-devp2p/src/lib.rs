@@ -76,7 +76,6 @@ extern crate mio;
 extern crate parity_bytes;
 extern crate parity_crypto as crypto;
 extern crate parity_path;
-extern crate parity_snappy as snappy;
 extern crate parking_lot;
 extern crate rand;
 extern crate rlp;
@@ -84,6 +83,7 @@ extern crate rustc_hex;
 extern crate serde;
 extern crate serde_json;
 extern crate slab;
+extern crate snap;
 extern crate tiny_keccak;
 
 #[macro_use]

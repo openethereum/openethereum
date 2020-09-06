@@ -49,7 +49,7 @@ memory-cache = { path = "../util/memory-cache" }
 memory-db = "0.11"
 num_cpus = "1.2"
 parity-bytes = "0.1"
-parity-snappy = "0.1"
+snap = "1"
 parking_lot = "0.7"
 trie-db = "0.11.0"
 patricia-trie-ethereum = { path = "../util/patricia-trie-ethereum" }

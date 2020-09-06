@@ -69,6 +69,8 @@ pub enum Error {
     WrongChunkFormat(String),
     /// Unlinked ancient block chain
     UnlinkedAncientBlockChain,
+    /// Compression error
+    CompressionError(snap::Error),
 }
 
 impl fmt::Display for Error {
@@ -119,6 +121,7 @@ impl fmt::Display for Error {
             Error::BadEpochProof(i) => write!(f, "Bad epoch proof for transition to epoch {}", i),
             Error::WrongChunkFormat(ref msg) => write!(f, "Wrong chunk format: {}", msg),
             Error::UnlinkedAncientBlockChain => write!(f, "Unlinked ancient blocks chain"),
+            Error::CompressionError(ref err) => write!(f, "Compression error: {}", err),
         }
     }
 }
@@ -138,6 +141,12 @@ impl From<TrieError> for Error {
 impl From<DecoderError> for Error {
     fn from(err: DecoderError) -> Self {
         Error::Decoder(err)
+    }
+}
+
+impl From<snap::Error> for Error {
+    fn from(err: snap::Error) -> Self {
+        Error::CompressionError(err)
     }
 }
 

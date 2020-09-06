@@ -22,10 +22,10 @@ extern crate ethkey;
 extern crate ipnetwork;
 extern crate libc;
 extern crate parity_crypto as crypto;
-extern crate parity_snappy as snappy;
 extern crate rlp;
 extern crate semver;
 extern crate serde;
+extern crate snap;
 
 #[macro_use]
 extern crate serde_derive;

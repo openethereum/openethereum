@@ -45,7 +45,7 @@ use kvdb::{DBValue, KeyValueDB};
 use num_cpus;
 use parking_lot::Mutex;
 use rlp::{Rlp, RlpStream};
-use snappy;
+use snap;
 use trie::{Trie, TrieMut};
 
 use self::io::SnapshotWriter;
@@ -252,11 +252,12 @@ pub fn chunk_secondary<'a>(
     progress: &'a Progress,
 ) -> Result<Vec<H256>, Error> {
     let mut chunk_hashes = Vec::new();
-    let mut snappy_buffer = vec![0; snappy::max_compressed_len(PREFERRED_CHUNK_SIZE)];
+    let mut snappy_buffer = vec![0; snap::raw::max_compress_len(PREFERRED_CHUNK_SIZE)];
 
     {
         let mut chunk_sink = |raw_data: &[u8]| {
-            let compressed_size = snappy::compress_into(raw_data, &mut snappy_buffer);
+            let compressed_size =
+                snap::raw::Encoder::new().compress(raw_data, &mut snappy_buffer)?;
             let compressed = &snappy_buffer[..compressed_size];
             let hash = keccak(&compressed);
             let size = compressed.len();
@@ -315,7 +316,12 @@ impl<'a> StateChunker<'a> {
 
         let raw_data = stream.out();
 
-        let compressed_size = snappy::compress_into(&raw_data, &mut self.snappy_buffer);
+        let required = snap::raw::max_compress_len(raw_data.len());
+        if self.snappy_buffer.len() < required {
+            self.snappy_buffer.resize_with(required, Default::default);
+        }
+        let compressed_size =
+            snap::raw::Encoder::new().compress(&raw_data, &mut self.snappy_buffer)?;
         let compressed = &self.snappy_buffer[..compressed_size];
         let hash = keccak(&compressed);
 
@@ -362,7 +368,7 @@ pub fn chunk_state<'a>(
         hashes: Vec::new(),
         rlps: Vec::new(),
         cur_size: 0,
-        snappy_buffer: vec![0; snappy::max_compressed_len(PREFERRED_CHUNK_SIZE)],
+        snappy_buffer: vec![0; snap::raw::max_compress_len(PREFERRED_CHUNK_SIZE)],
         writer,
         progress,
         thread_idx,

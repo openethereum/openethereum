@@ -20,6 +20,7 @@ use ethereum_types::Address;
 use evm::{CleanDustMode, Schedule};
 use std::collections::HashSet;
 use types::log_entry::LogEntry;
+use vm::access_list::AccessList;
 
 /// State changes which should be applied in finalize,
 /// after transaction is fully executed.
@@ -39,6 +40,9 @@ pub struct Substate {
 
     /// Created contracts.
     pub contracts_created: Vec<Address>,
+
+    /// List of accesses addresses and slots
+    pub access_list: AccessList,
 }
 
 impl Substate {
@@ -54,6 +58,7 @@ impl Substate {
         self.logs.extend(s.logs);
         self.sstore_clears_refund += s.sstore_clears_refund;
         self.contracts_created.extend(s.contracts_created);
+        self.access_list.accrue(&s.access_list);
     }
 
     /// Get the cleanup mode object from this.

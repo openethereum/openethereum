@@ -101,6 +101,9 @@ pub trait Ext {
         trap: bool,
     ) -> ::std::result::Result<ContractCreateResult, TrapKind>;
 
+    /// Returns the address that will be created in the create call
+    fn calc_address(&self, code: &[u8], address: CreateContractAddress) -> Option<Address>;
+
     /// Message call.
     ///
     /// Returns Err, if we run out of gas.
@@ -184,4 +187,19 @@ pub trait Ext {
 
     /// Check if running in static context.
     fn is_static(&self) -> bool;
+
+    /// Returns if the list is enabled
+    fn al_is_enabled(&self) -> bool;
+
+    /// Checks if contains an storage key
+    fn al_contains_storage_key(&self, address: &Address, key: &H256) -> bool;
+
+    /// Inserts an storage key into the list
+    fn al_insert_storage_key(&mut self, address: Address, key: H256);
+
+    /// Checks if contains an address
+    fn al_contains_address(&self, address: &Address) -> bool;
+
+    /// Inserts an address into the list
+    fn al_insert_address(&mut self, address: Address);
 }

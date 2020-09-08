@@ -36,15 +36,14 @@ use super::sync_packet::{
     PacketInfo, SyncPacket,
     SyncPacket::{
         BlockBodiesPacket, BlockHeadersPacket, NewBlockHashesPacket, NewBlockPacket,
-        PrivateTransactionPacket, ReceiptsPacket, SignedPrivateTransactionPacket,
-        SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
+        ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
     },
 };
 
 use super::{
-    BlockSet, ChainSync, ForkConfirmation, PacketDecodeError, PeerAsking, PeerInfo, SyncRequester,
+    BlockSet, ChainSync, ForkConfirmation, PacketProcessError, PeerAsking, PeerInfo, SyncRequester,
     SyncState, ETH_PROTOCOL_VERSION_62, ETH_PROTOCOL_VERSION_63, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES,
-    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_3,
+    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
 
 /// The Chain Sync Handler: handles responses from peers
@@ -70,12 +69,6 @@ impl SyncHandler {
                 NewBlockHashesPacket => SyncHandler::on_peer_new_hashes(sync, io, peer, &rlp),
                 SnapshotManifestPacket => SyncHandler::on_snapshot_manifest(sync, io, peer, &rlp),
                 SnapshotDataPacket => SyncHandler::on_snapshot_data(sync, io, peer, &rlp),
-                PrivateTransactionPacket => {
-                    SyncHandler::on_private_transaction(sync, io, peer, &rlp)
-                }
-                SignedPrivateTransactionPacket => {
-                    SyncHandler::on_signed_private_transaction(sync, io, peer, &rlp)
-                }
                 _ => {
                     debug!(target: "sync", "{}: Unknown packet {}", peer, packet_id.id());
                     Ok(())
@@ -115,6 +108,8 @@ impl SyncHandler {
             debug!(target: "sync", "Disconnected {}", peer_id);
             sync.clear_peer_download(peer_id);
             sync.peers.remove(&peer_id);
+            sync.delayed_requests
+                .retain(|(request_peer_id, _, _)| *request_peer_id != peer_id);
             sync.active_peers.remove(&peer_id);
 
             if sync.state == SyncState::SnapshotManifest {
@@ -160,12 +155,6 @@ impl SyncHandler {
             trace!(target: "sync", "Ignoring new block from unconfirmed peer {}", peer_id);
             return Ok(());
         }
-        let difficulty: U256 = r.val_at(1)?;
-        if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
-            if peer.difficulty.map_or(true, |pd| difficulty > pd) {
-                peer.difficulty = Some(difficulty);
-            }
-        }
         let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec())?;
         let hash = block.header.hash();
         let number = block.header.number();
@@ -173,10 +162,23 @@ impl SyncHandler {
         if number > sync.highest_block.unwrap_or(0) {
             sync.highest_block = Some(number);
         }
+        let parent_hash = block.header.parent_hash();
+        let difficulty: U256 = r.val_at(1)?;
+        // Most probably the sent block is being imported by peer right now
+        // Use td and hash, that peer must have for now
+        let parent_td = difficulty.checked_sub(*block.header.difficulty());
+        if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
+            if peer
+                .difficulty
+                .map_or(true, |pd| parent_td.map_or(false, |td| td > pd))
+            {
+                peer.difficulty = parent_td;
+            }
+        }
         let mut unknown = false;
 
         if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
-            peer.latest_hash = hash;
+            peer.latest_hash = *parent_hash;
         }
 
         let last_imported_number = sync.new_blocks.last_imported_block_number();
@@ -661,7 +663,6 @@ impl SyncHandler {
         let protocol_version: u8 = r.val_at(0)?;
         let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer_id);
         let warp_protocol = warp_protocol_version != 0;
-        let private_tx_protocol = warp_protocol_version >= PAR_PROTOCOL_VERSION_3.0;
         let peer = PeerInfo {
             protocol_version: protocol_version,
             network_id: r.val_at(1)?,
@@ -673,7 +674,6 @@ impl SyncHandler {
             asking_hash: None,
             ask_time: Instant::now(),
             last_sent_transactions: Default::default(),
-            last_sent_private_transactions: Default::default(),
             expired: false,
             confirmation: if sync.fork_block.is_none() {
                 ForkConfirmation::Confirmed
@@ -692,11 +692,6 @@ impl SyncHandler {
                 None
             },
             block_set: None,
-            private_tx_enabled: if private_tx_protocol {
-                r.val_at(7).unwrap_or(false)
-            } else {
-                false
-            },
             client_version: ClientVersion::from(io.peer_version(peer_id)),
         };
 
@@ -706,16 +701,14 @@ impl SyncHandler {
             difficulty: {:?}, \
             latest:{}, \
             genesis:{}, \
-            snapshot:{:?}, \
-            private_tx_enabled:{})",
+            snapshot:{:?})",
             peer_id,
             peer.protocol_version,
             peer.network_id,
             peer.difficulty,
             peer.latest_hash,
             peer.genesis,
-            peer.snapshot_number,
-            peer.private_tx_enabled
+            peer.snapshot_number
         );
         if io.is_expired() {
             trace!(target: "sync", "Status packet from expired session {}:{}", peer_id, io.peer_version(peer_id));
@@ -739,7 +732,7 @@ impl SyncHandler {
         if false
             || (warp_protocol
                 && (peer.protocol_version < PAR_PROTOCOL_VERSION_1.0
-                    || peer.protocol_version > PAR_PROTOCOL_VERSION_3.0))
+                    || peer.protocol_version > PAR_PROTOCOL_VERSION_2.0))
             || (!warp_protocol
                 && (peer.protocol_version < ETH_PROTOCOL_VERSION_62.0
                     || peer.protocol_version > ETH_PROTOCOL_VERSION_63.0))
@@ -771,7 +764,7 @@ impl SyncHandler {
         io: &mut dyn SyncIo,
         peer_id: PeerId,
         r: &Rlp,
-    ) -> Result<(), PacketDecodeError> {
+    ) -> Result<(), PacketProcessError> {
         // Accept transactions only when fully synced
         if !io.is_chain_queue_empty()
             || (sync.state != SyncState::Idle && sync.state != SyncState::NewBlocks)
@@ -793,72 +786,6 @@ impl SyncHandler {
             transactions.push(tx);
         }
         io.chain().queue_transactions(transactions, peer_id);
-        Ok(())
-    }
-
-    /// Called when peer sends us signed private transaction packet
-    fn on_signed_private_transaction(
-        sync: &mut ChainSync,
-        _io: &mut dyn SyncIo,
-        peer_id: PeerId,
-        r: &Rlp,
-    ) -> Result<(), DownloaderImportError> {
-        if !sync.peers.get(&peer_id).map_or(false, |p| p.can_sync()) {
-            trace!(target: "sync", "{} Ignoring packet from unconfirmed/unknown peer", peer_id);
-            return Ok(());
-        }
-        let private_handler = match sync.private_tx_handler {
-            Some(ref handler) => handler,
-            None => {
-                trace!(target: "sync", "{} Ignoring private tx packet from peer", peer_id);
-                return Ok(());
-            }
-        };
-        trace!(target: "sync", "Received signed private transaction packet from {:?}", peer_id);
-        match private_handler.import_signed_private_transaction(r.as_raw()) {
-            Ok(transaction_hash) => {
-                //don't send the packet back
-                if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
-                    peer.last_sent_private_transactions.insert(transaction_hash);
-                }
-            }
-            Err(e) => {
-                trace!(target: "sync", "Ignoring the message, error queueing: {}", e);
-            }
-        }
-        Ok(())
-    }
-
-    /// Called when peer sends us new private transaction packet
-    fn on_private_transaction(
-        sync: &mut ChainSync,
-        _io: &mut dyn SyncIo,
-        peer_id: PeerId,
-        r: &Rlp,
-    ) -> Result<(), DownloaderImportError> {
-        if !sync.peers.get(&peer_id).map_or(false, |p| p.can_sync()) {
-            trace!(target: "sync", "{} Ignoring packet from unconfirmed/unknown peer", peer_id);
-            return Ok(());
-        }
-        let private_handler = match sync.private_tx_handler {
-            Some(ref handler) => handler,
-            None => {
-                trace!(target: "sync", "{} Ignoring private tx packet from peer", peer_id);
-                return Ok(());
-            }
-        };
-        trace!(target: "sync", "Received private transaction packet from {:?}", peer_id);
-        match private_handler.import_private_transaction(r.as_raw()) {
-            Ok(transaction_hash) => {
-                //don't send the packet back
-                if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
-                    peer.last_sent_private_transactions.insert(transaction_hash);
-                }
-            }
-            Err(e) => {
-                trace!(target: "sync", "Ignoring the message, error queueing: {}", e);
-            }
-        }
         Ok(())
     }
 }

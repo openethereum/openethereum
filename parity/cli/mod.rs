@@ -230,35 +230,10 @@ usage! {
             }
 
         }
-
-        CMD cmd_export_hardcoded_sync
-        {
-            "Print the hashed light clients headers of the given --chain (default: mainnet) in a JSON format. To be used as hardcoded headers in a genesis file.",
-        }
     }
     {
         // Global flags and arguments
         ["Operating Options"]
-            FLAG flag_no_download: (bool) = false, or |c: &Config| c.parity.as_ref()?.no_download.clone(),
-            "--no-download",
-            "Normally new releases will be downloaded ready for updating. This disables it. Not recommended.",
-
-            FLAG flag_no_consensus: (bool) = false, or |c: &Config| c.parity.as_ref()?.no_consensus.clone(),
-            "--no-consensus",
-            "Force the binary to run even if there are known issues regarding consensus. Not recommended.",
-
-            FLAG flag_light: (bool) = false, or |c: &Config| c.parity.as_ref()?.light,
-            "--light",
-            "Experimental: run in light client mode. Light clients synchronize a bare minimum of data and fetch necessary data on-demand from the network. Much lower in storage, potentially higher in bandwidth. Has no effect with subcommands.",
-
-            FLAG flag_no_hardcoded_sync: (bool) = false, or |c: &Config| c.parity.as_ref()?.no_hardcoded_sync,
-            "--no-hardcoded-sync",
-            "By default, if there is no existing database the light client will automatically jump to a block hardcoded in the chain's specifications. This disables this feature.",
-
-            FLAG flag_force_direct: (bool) = false, or |_| None,
-            "--force-direct",
-            "Run the originally installed version of Parity, ignoring any updates that have since been installed.",
-
             ARG arg_mode: (String) = "last", or |c: &Config| c.parity.as_ref()?.mode.clone(),
             "--mode=[MODE]",
             "Set the operating mode. MODE can be one of: last - Uses the last-used mode, active if none; active - Parity continuously syncs the chain; passive - Parity syncs initially, then sleeps and wakes regularly to resync; dark - Parity syncs only when the JSON-RPC is active; offline - Parity doesn't sync.",
@@ -270,22 +245,6 @@ usage! {
             ARG arg_mode_alarm: (u64) = 3600u64, or |c: &Config| c.parity.as_ref()?.mode_alarm.clone(),
             "--mode-alarm=[SECS]",
             "Specify the number of seconds before auto sleep reawake timeout occurs when mode is passive",
-
-            ARG arg_auto_update: (String) = "critical", or |c: &Config| c.parity.as_ref()?.auto_update.clone(),
-            "--auto-update=[SET]",
-            "Set a releases set to automatically update and install. SET can be one of: all - All updates in the our release track; critical - Only consensus/security updates; none - No updates will be auto-installed.",
-
-            ARG arg_auto_update_delay: (u16) = 100u16, or |c: &Config| c.parity.as_ref()?.auto_update_delay.clone(),
-            "--auto-update-delay=[NUM]",
-            "Specify the maximum number of blocks used for randomly delaying updates.",
-
-            ARG arg_auto_update_check_frequency: (u16) = 20u16, or |c: &Config| c.parity.as_ref()?.auto_update_check_frequency.clone(),
-            "--auto-update-check-frequency=[NUM]",
-            "Specify the number of blocks between each auto-update check.",
-
-            ARG arg_release_track: (String) = "current", or |c: &Config| c.parity.as_ref()?.release_track.clone(),
-            "--release-track=[TRACK]",
-            "Set which release track we should use for updates. TRACK can be one of: stable - Stable releases; beta - Beta releases; nightly - Nightly releases (unstable); testing - Testing releases (do not use); current - Whatever track this executable was released on.",
 
             ARG arg_chain: (String) = "foundation", or |c: &Config| c.parity.as_ref()?.chain.clone(),
             "--chain=[CHAIN]",
@@ -310,7 +269,7 @@ usage! {
         ["Convenience Options"]
             FLAG flag_unsafe_expose: (bool) = false, or |c: &Config| c.misc.as_ref()?.unsafe_expose,
             "--unsafe-expose",
-            "All servers will listen on external interfaces and will be remotely accessible. It's equivalent with setting the following: --[ws,jsonrpc,ipfs-api,secretstore,stratum,secretstore-http]-interface=all --*-hosts=all    This option is UNSAFE and should be used with great care!",
+            "All servers will listen on external interfaces and will be remotely accessible. It's equivalent with setting the following: --[ws,jsonrpc,secretstore,stratum,secretstore-http]-interface=all --*-hosts=all    This option is UNSAFE and should be used with great care!",
 
             ARG arg_config: (String) = "$BASE/config.toml", or |_| None,
             "-c, --config=[CONFIG]",
@@ -318,7 +277,7 @@ usage! {
 
             ARG arg_ports_shift: (u16) = 0u16, or |c: &Config| c.misc.as_ref()?.ports_shift,
             "--ports-shift=[SHIFT]",
-            "Add SHIFT to all port numbers Parity is listening on. Includes network port and all servers (HTTP JSON-RPC, WebSockets JSON-RPC, IPFS, SecretStore).",
+            "Add SHIFT to all port numbers Parity is listening on. Includes network port and all servers (HTTP JSON-RPC, WebSockets JSON-RPC, SecretStore).",
 
         ["Account Options"]
             FLAG flag_fast_unlock: (bool) = false, or |c: &Config| c.account.as_ref()?.fast_unlock.clone(),
@@ -341,35 +300,6 @@ usage! {
             "--password=[FILE]...",
             "Provide a file containing a password for unlocking an account. Leading and trailing whitespace is trimmed.",
 
-        ["Private Transactions Options"]
-            FLAG flag_private_enabled: (bool) = false, or |c: &Config| c.private_tx.as_ref()?.enabled,
-            "--private-tx-enabled",
-            "Enable private transactions.",
-
-            ARG arg_private_signer: (Option<String>) = None, or |c: &Config| c.private_tx.as_ref()?.signer.clone(),
-            "--private-signer=[ACCOUNT]",
-            "Specify the account for signing public transaction created upon verified private transaction.",
-
-            ARG arg_private_validators: (Option<String>) = None, or |c: &Config| c.private_tx.as_ref()?.validators.as_ref().map(|vec| vec.join(",")),
-            "--private-validators=[ACCOUNTS]",
-            "Specify the accounts for validating private transactions. ACCOUNTS is a comma-delimited list of addresses.",
-
-            ARG arg_private_account: (Option<String>) = None, or |c: &Config| c.private_tx.as_ref()?.account.clone(),
-            "--private-account=[ACCOUNT]",
-            "Specify the account for signing requests to secret store.",
-
-            ARG arg_private_sstore_url: (Option<String>) = None, or |c: &Config| c.private_tx.as_ref()?.sstore_url.clone(),
-            "--private-sstore-url=[URL]",
-            "Specify secret store URL used for encrypting private transactions.",
-
-            ARG arg_private_sstore_threshold: (Option<u32>) = None, or |c: &Config| c.private_tx.as_ref()?.sstore_threshold.clone(),
-            "--private-sstore-threshold=[NUM]",
-            "Specify secret store threshold used for encrypting private transactions.",
-
-            ARG arg_private_passwords: (Option<String>) = None, or |c: &Config| c.private_tx.as_ref()?.passwords.clone(),
-            "--private-passwords=[FILE]...",
-            "Provide a file containing passwords for unlocking accounts (signer, private account, validators).",
-
         ["UI Options"]
             ARG arg_ui_path: (String) = "$BASE/signer", or |c: &Config| c.ui.as_ref()?.path.clone(),
             "--ui-path=[PATH]",
@@ -391,10 +321,6 @@ usage! {
             FLAG flag_no_ancient_blocks: (bool) = false, or |_| None,
             "--no-ancient-blocks",
             "Disable downloading old blocks after snapshot restoration or warp sync. Not recommended.",
-
-            FLAG flag_no_serve_light: (bool) = false, or |c: &Config| c.network.as_ref()?.no_serve_light.clone(),
-            "--no-serve-light",
-            "Disable serving of light peers.",
 
             ARG arg_warp_barrier: (Option<u64>) = None, or |c: &Config| c.network.as_ref()?.warp_barrier.clone(),
             "--warp-barrier=[NUM]",
@@ -483,7 +409,7 @@ usage! {
             "--jsonrpc-interface=[IP]",
             "Specify the hostname portion of the HTTP JSON-RPC API server, IP should be an interface's IP address, or all (all interfaces) or local.",
 
-            ARG arg_jsonrpc_apis: (String) = "web3,eth,pubsub,net,parity,private,parity_pubsub,traces", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            ARG arg_jsonrpc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-apis=[APIS]",
             "Specify the APIs available through the HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
@@ -524,7 +450,7 @@ usage! {
             "--ws-interface=[IP]",
             "Specify the hostname portion of the WebSockets JSON-RPC server, IP should be an interface's IP address, or all (all interfaces) or local.",
 
-            ARG arg_ws_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,private,traces", or |c: &Config| c.websockets.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            ARG arg_ws_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.websockets.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ws-apis=[APIS]",
             "Specify the JSON-RPC APIs available through the WebSockets interface using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
@@ -549,51 +475,9 @@ usage! {
             "--ipc-path=[PATH]",
             "Specify custom path for JSON-RPC over IPC service.",
 
-            ARG arg_ipc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,parity_accounts,private,traces", or |c: &Config| c.ipc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            ARG arg_ipc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,parity_accounts,traces", or |c: &Config| c.ipc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ipc-apis=[APIS]",
             "Specify custom API set available via JSON-RPC over IPC using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
-
-        ["API and Console Options – IPFS"]
-            FLAG flag_ipfs_api: (bool) = false, or |c: &Config| c.ipfs.as_ref()?.enable.clone(),
-            "--ipfs-api",
-            "Enable IPFS-compatible HTTP API.",
-
-            ARG arg_ipfs_api_port: (u16) = 5001u16, or |c: &Config| c.ipfs.as_ref()?.port.clone(),
-            "--ipfs-api-port=[PORT]",
-            "Configure on which port the IPFS HTTP API should listen.",
-
-            ARG arg_ipfs_api_interface: (String) = "local", or |c: &Config| c.ipfs.as_ref()?.interface.clone(),
-            "--ipfs-api-interface=[IP]",
-            "Specify the hostname portion of the IPFS API server, IP should be an interface's IP address or local.",
-
-            ARG arg_ipfs_api_hosts: (String) = "none", or |c: &Config| c.ipfs.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
-            "--ipfs-api-hosts=[HOSTS]",
-            "List of allowed Host header values. This option will validate the Host header sent by the browser, it is additional security against some attack vectors. Special options: \"all\", \"none\".",
-
-            ARG arg_ipfs_api_cors: (String) = "none", or |c: &Config| c.ipfs.as_ref()?.cors.as_ref().map(|vec| vec.join(",")),
-            "--ipfs-api-cors=[URL]",
-            "Specify CORS header for IPFS API responses. Special options: \"all\", \"none\".",
-
-        ["Light Client Options"]
-            ARG arg_on_demand_response_time_window: (Option<u64>) = None, or |c: &Config| c.light.as_ref()?.on_demand_response_time_window,
-            "--on-demand-time-window=[S]",
-            "Specify the maximum time to wait for a successful response",
-
-            ARG arg_on_demand_request_backoff_start: (Option<u64>) = None, or |c: &Config| c.light.as_ref()?.on_demand_request_backoff_start,
-            "--on-demand-start-backoff=[S]",
-            "Specify light client initial backoff time for a request",
-
-            ARG arg_on_demand_request_backoff_max: (Option<u64>) = None, or |c: &Config| c.light.as_ref()?.on_demand_request_backoff_max,
-            "--on-demand-end-backoff=[S]",
-            "Specify light client maximum backoff time for a request",
-
-            ARG arg_on_demand_request_backoff_rounds_max: (Option<usize>) = None, or |c: &Config| c.light.as_ref()?.on_demand_request_backoff_rounds_max,
-            "--on-demand-max-backoff-rounds=[TIMES]",
-            "Specify light client maximum number of backoff iterations for a request",
-
-            ARG arg_on_demand_request_consecutive_failures: (Option<usize>) = None, or |c: &Config| c.light.as_ref()?.on_demand_request_consecutive_failures,
-            "--on-demand-consecutive-failures=[TIMES]",
-            "Specify light client the number of failures for a request until it gets exponentially backed off",
 
         ["Secret Store Options"]
             FLAG flag_no_secretstore: (bool) = false, or |c: &Config| c.secretstore.as_ref()?.disable.clone(),
@@ -919,14 +803,11 @@ struct Config {
     websockets: Option<Ws>,
     ipc: Option<Ipc>,
     secretstore: Option<SecretStore>,
-    private_tx: Option<PrivateTransactions>,
-    ipfs: Option<Ipfs>,
     mining: Option<Mining>,
     footprint: Option<Footprint>,
     snapshots: Option<Snapshots>,
     misc: Option<Misc>,
     stratum: Option<Stratum>,
-    light: Option<Light>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -935,20 +816,12 @@ struct Operating {
     mode: Option<String>,
     mode_timeout: Option<u64>,
     mode_alarm: Option<u64>,
-    auto_update: Option<String>,
-    auto_update_delay: Option<u16>,
-    auto_update_check_frequency: Option<u16>,
-    release_track: Option<String>,
-    no_download: Option<bool>,
-    no_consensus: Option<bool>,
     chain: Option<String>,
     base_path: Option<String>,
     db_path: Option<String>,
     keys_path: Option<String>,
     identity: Option<String>,
-    light: Option<bool>,
     no_persistent_txqueue: Option<bool>,
-    no_hardcoded_sync: Option<bool>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -959,18 +832,6 @@ struct Account {
     keys_iterations: Option<u32>,
     refresh_time: Option<u64>,
     fast_unlock: Option<bool>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct PrivateTransactions {
-    enabled: Option<bool>,
-    signer: Option<String>,
-    validators: Option<Vec<String>>,
-    account: Option<String>,
-    passwords: Option<String>,
-    sstore_url: Option<String>,
-    sstore_threshold: Option<u32>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -998,7 +859,6 @@ struct Network {
     node_key: Option<String>,
     reserved_peers: Option<String>,
     reserved_only: Option<bool>,
-    no_serve_light: Option<bool>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1060,16 +920,6 @@ struct SecretStore {
     http_interface: Option<String>,
     http_port: Option<u16>,
     path: Option<String>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Ipfs {
-    enable: Option<bool>,
-    port: Option<u16>,
-    interface: Option<String>,
-    cors: Option<Vec<String>>,
-    hosts: Option<Vec<String>>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1154,21 +1004,11 @@ struct Misc {
     unsafe_expose: Option<bool>,
 }
 
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Light {
-    on_demand_response_time_window: Option<u64>,
-    on_demand_request_backoff_start: Option<u64>,
-    on_demand_request_backoff_max: Option<u64>,
-    on_demand_request_backoff_rounds_max: Option<usize>,
-    on_demand_request_consecutive_failures: Option<usize>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        Account, Args, ArgsError, Config, Footprint, Ipc, Ipfs, Light, Mining, Misc, Network,
-        Operating, Rpc, SecretStore, Snapshots, Ws,
+        Account, Args, ArgsError, Config, Footprint, Ipc, Mining, Misc, Network, Operating, Rpc,
+        SecretStore, Snapshots, Ws,
     };
     use clap::ErrorKind as ClapErrorKind;
     use toml;
@@ -1373,7 +1213,6 @@ mod tests {
                 cmd_db: false,
                 cmd_db_kill: false,
                 cmd_db_reset: false,
-                cmd_export_hardcoded_sync: false,
 
                 // Arguments
                 arg_daemon_pid_file: None,
@@ -1397,21 +1236,12 @@ mod tests {
                 arg_mode: "last".into(),
                 arg_mode_timeout: 300u64,
                 arg_mode_alarm: 3600u64,
-                arg_auto_update: "none".into(),
-                arg_auto_update_delay: 200u16,
-                arg_auto_update_check_frequency: 50u16,
-                arg_release_track: "current".into(),
-                flag_no_download: false,
-                flag_no_consensus: false,
                 arg_chain: "xyz".into(),
                 arg_base_path: Some("$HOME/.parity".into()),
                 arg_db_path: Some("$HOME/.parity/chains".into()),
                 arg_keys_path: "$HOME/.parity/keys".into(),
                 arg_identity: "".into(),
-                flag_light: false,
-                flag_no_hardcoded_sync: false,
                 flag_no_persistent_txqueue: false,
-                flag_force_direct: false,
 
                 // -- Convenience Options
                 arg_config: "$BASE/config.toml".into(),
@@ -1424,15 +1254,6 @@ mod tests {
                 arg_keys_iterations: 10240u32,
                 arg_accounts_refresh: 5u64,
                 flag_fast_unlock: false,
-
-                // -- Private Transactions Options
-                flag_private_enabled: true,
-                arg_private_signer: Some("0xdeadbeefcafe0000000000000000000000000000".into()),
-                arg_private_validators: Some("0xdeadbeefcafe0000000000000000000000000000".into()),
-                arg_private_passwords: Some("~/.safe/password.file".into()),
-                arg_private_account: Some("0xdeadbeefcafe0000000000000000000000000000".into()),
-                arg_private_sstore_url: Some("http://localhost:8082".into()),
-                arg_private_sstore_threshold: Some(0),
 
                 arg_ui_path: "$HOME/.parity/signer".into(),
 
@@ -1453,7 +1274,6 @@ mod tests {
                 arg_reserved_peers: Some("./path_to_file".into()),
                 flag_reserved_only: false,
                 flag_no_ancient_blocks: false,
-                flag_no_serve_light: false,
                 arg_warp_barrier: None,
 
                 // -- API and Console Options
@@ -1506,13 +1326,6 @@ mod tests {
                 arg_secretstore_http_interface: "local".into(),
                 arg_secretstore_http_port: 8082u16,
                 arg_secretstore_path: "$HOME/.parity/secretstore".into(),
-
-                // IPFS
-                flag_ipfs_api: false,
-                arg_ipfs_api_port: 5001u16,
-                arg_ipfs_api_interface: "local".into(),
-                arg_ipfs_api_cors: "null".into(),
-                arg_ipfs_api_hosts: "none".into(),
 
                 // -- Sealing/Mining Options
                 arg_author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
@@ -1582,13 +1395,6 @@ mod tests {
                 flag_no_periodic_snapshot: false,
                 arg_snapshot_threads: None,
 
-                // -- Light options.
-                arg_on_demand_response_time_window: Some(2),
-                arg_on_demand_request_backoff_start: Some(9),
-                arg_on_demand_request_backoff_max: Some(15),
-                arg_on_demand_request_backoff_rounds_max: Some(100),
-                arg_on_demand_request_consecutive_failures: Some(1),
-
                 // -- Internal Options
                 flag_can_restart: false,
 
@@ -1637,19 +1443,11 @@ mod tests {
                     mode: Some("dark".into()),
                     mode_timeout: Some(15u64),
                     mode_alarm: Some(10u64),
-                    auto_update: None,
-                    auto_update_delay: None,
-                    auto_update_check_frequency: None,
-                    release_track: None,
-                    no_download: None,
-                    no_consensus: None,
                     chain: Some("./chain.json".into()),
                     base_path: None,
                     db_path: None,
                     keys_path: None,
                     identity: None,
-                    light: None,
-                    no_hardcoded_sync: None,
                     no_persistent_txqueue: None,
                 }),
                 account: Some(Account {
@@ -1677,7 +1475,6 @@ mod tests {
                     node_key: None,
                     reserved_peers: Some("./path/to/reserved_peers".into()),
                     reserved_only: Some(true),
-                    no_serve_light: None,
                 }),
                 websockets: Some(Ws {
                     disable: Some(true),
@@ -1727,14 +1524,6 @@ mod tests {
                     http_interface: None,
                     http_port: Some(8082),
                     path: None,
-                }),
-                private_tx: None,
-                ipfs: Some(Ipfs {
-                    enable: Some(false),
-                    port: Some(5001),
-                    interface: None,
-                    cors: None,
-                    hosts: None,
                 }),
                 mining: Some(Mining {
                     author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
@@ -1786,13 +1575,6 @@ mod tests {
                     fat_db: Some("off".into()),
                     scale_verifiers: Some(false),
                     num_verifiers: None,
-                }),
-                light: Some(Light {
-                    on_demand_response_time_window: Some(2),
-                    on_demand_request_backoff_start: Some(9),
-                    on_demand_request_backoff_max: Some(15),
-                    on_demand_request_backoff_rounds_max: Some(10),
-                    on_demand_request_consecutive_failures: Some(1),
                 }),
                 snapshots: Some(Snapshots {
                     disable_periodic: Some(true),

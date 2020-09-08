@@ -17,12 +17,11 @@
 use std::sync::{mpsc, Arc};
 
 use ethcore::{client::BlockChainClient, snapshot::SnapshotService};
-use light::Provider;
 use sync::{self, ConnectionFilter, NetworkConfiguration, Params, SyncConfig};
 
 pub use ethcore::client::ChainNotify;
 use ethcore_logger::Config as LogConfig;
-pub use sync::{EthSync, ManageNetwork, PrivateTxHandler, SyncProvider};
+pub use sync::{EthSync, ManageNetwork, SyncProvider};
 
 pub type SyncModules = (
     Arc<dyn SyncProvider>,
@@ -36,8 +35,6 @@ pub fn sync(
     network_config: NetworkConfiguration,
     chain: Arc<dyn BlockChainClient>,
     snapshot_service: Arc<dyn SnapshotService>,
-    private_tx_handler: Option<Arc<dyn PrivateTxHandler>>,
-    provider: Arc<dyn Provider>,
     _log_settings: &LogConfig,
     connection_filter: Option<Arc<dyn ConnectionFilter>>,
 ) -> Result<SyncModules, sync::Error> {
@@ -45,9 +42,7 @@ pub fn sync(
         Params {
             config,
             chain,
-            provider,
             snapshot_service,
-            private_tx_handler,
             network_config,
         },
         connection_filter,

@@ -31,7 +31,6 @@ use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
-use updater::Service as UpdateService;
 use version::version_data;
 
 use v1::{
@@ -40,23 +39,22 @@ use v1::{
         block_import::is_major_importing,
         errors,
         external_signer::{SignerService, SigningQueue},
-        fake_sign, ipfs, verify_signature, NetworkSettings,
+        fake_sign, verify_signature, NetworkSettings,
     },
     metadata::Metadata,
     traits::Parity,
     types::{
-        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, ConsensusCapability,
-        Filter, Histogram, LocalTransactionStatus, Log, OperationsInfo, Peers, Receipt,
-        RecoveredAccount, RichHeader, RpcSettings, Transaction, TransactionStats, VersionInfo,
+        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
+        LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
+        Transaction, TransactionStats,
     },
 };
 use Host;
 
 /// Parity implementation.
-pub struct ParityClient<C, M, U> {
+pub struct ParityClient<C, M> {
     client: Arc<C>,
     miner: Arc<M>,
-    updater: Arc<U>,
     sync: Arc<dyn SyncProvider>,
     net: Arc<dyn ManageNetwork>,
     logger: Arc<RotatingLogger>,
@@ -66,7 +64,7 @@ pub struct ParityClient<C, M, U> {
     snapshot: Option<Arc<dyn SnapshotService>>,
 }
 
-impl<C, M, U> ParityClient<C, M, U>
+impl<C, M> ParityClient<C, M>
 where
     C: BlockChainClient,
 {
@@ -75,7 +73,6 @@ where
         client: Arc<C>,
         miner: Arc<M>,
         sync: Arc<dyn SyncProvider>,
-        updater: Arc<U>,
         net: Arc<dyn ManageNetwork>,
         logger: Arc<RotatingLogger>,
         settings: Arc<NetworkSettings>,
@@ -87,7 +84,6 @@ where
             client,
             miner,
             sync,
-            updater,
             net,
             logger,
             settings,
@@ -98,7 +94,7 @@ where
     }
 }
 
-impl<C, M, U, S> Parity for ParityClient<C, M, U>
+impl<C, M, S> Parity for ParityClient<C, M>
 where
     S: StateInfo + 'static,
     C: miner::BlockChainClient
@@ -107,7 +103,6 @@ where
         + Call<State = S>
         + 'static,
     M: MinerService<State = S> + 'static,
-    U: UpdateService + 'static,
 {
     type Metadata = Metadata;
 
@@ -330,18 +325,6 @@ where
         self.sync.enode().ok_or_else(errors::network_disabled)
     }
 
-    fn consensus_capability(&self) -> Result<ConsensusCapability> {
-        Ok(self.updater.capability().into())
-    }
-
-    fn version_info(&self) -> Result<VersionInfo> {
-        Ok(self.updater.version_info().into())
-    }
-
-    fn releases_info(&self) -> Result<Option<OperationsInfo>> {
-        Ok(self.updater.info().map(Into::into))
-    }
-
     fn chain_status(&self) -> Result<ChainStatus> {
         let chain_info = self.client.chain_info();
 
@@ -424,10 +407,6 @@ where
         Box::new(future::ok(receipts.into_iter().map(Into::into).collect()))
     }
 
-    fn ipfs_cid(&self, content: Bytes) -> Result<String> {
-        ipfs::cid(content)
-    }
-
     fn call(&self, requests: Vec<CallRequest>, num: Option<BlockNumber>) -> Result<Vec<Bytes>> {
         let requests = requests
             .into_iter()
@@ -491,12 +470,6 @@ where
         } else {
             Err(errors::status_error(has_peers))
         }
-    }
-
-    fn logs_no_tx_hash(&self, filter: Filter) -> BoxFuture<Vec<Log>> {
-        use v1::impls::eth::base_logs;
-        // only specific impl for lightclient
-        base_logs(&*self.client, &*self.miner, filter)
     }
 
     fn verify_signature(

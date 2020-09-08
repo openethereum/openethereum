@@ -47,18 +47,15 @@ use blockchain::{
 };
 use cache::CacheConfig;
 use dir::{
-    self, default_data_path, default_hypervisor_path, default_local_path,
+    self, default_data_path, default_local_path,
     helpers::{replace_home, replace_home_and_local},
     Directories,
 };
 use ethcore_logger::Config as LogConfig;
-use ethcore_private_tx::{EncryptorConfig, ProviderConfig};
-use export_hardcoded_sync::ExportHsyncCmd;
 use helpers::{
     parity_ipc_path, to_address, to_addresses, to_block_id, to_bootnodes, to_duration, to_mode,
     to_pending_set, to_price, to_queue_penalization, to_queue_strategy, to_u256,
 };
-use ipfs::Configuration as IpfsConfiguration;
 use network::IpFilter;
 use params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
 use parity_rpc::NetworkSettings;
@@ -71,7 +68,6 @@ use secretstore::{
 };
 use snapshot::{self, SnapshotCommand};
 use types::data_format::DataFormat;
-use updater::{ReleaseTrack, UpdateFilter, UpdatePolicy};
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -103,7 +99,6 @@ pub enum Cmd {
     },
     Snapshot(SnapshotCommand),
     Hash(Option<String>),
-    ExportHardcodedSync(ExportHsyncCmd),
 }
 
 pub struct Execute {
@@ -148,7 +143,6 @@ impl Configuration {
                 self.args.arg_mode_alarm,
             )?),
         };
-        let update_policy = self.update_policy()?;
         let logger_config = self.logger_config();
         let ws_conf = self.ws_config()?;
         let snapshot_conf = self.snapshot_config()?;
@@ -162,7 +156,6 @@ impl Configuration {
         let compaction = self.args.arg_db_compaction.parse()?;
         let warp_sync = !self.args.flag_no_warp;
         let experimental_rpcs = self.args.flag_jsonrpc_experimental;
-        let ipfs_conf = self.ipfs_config();
         let secretstore_conf = self.secretstore_config()?;
         let format = self.format()?;
         let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
@@ -286,7 +279,6 @@ impl Configuration {
                 check_seal: !self.args.flag_no_seal_check,
                 with_color: logger_config.color,
                 verifier_settings: self.verifier_settings(),
-                light: self.args.flag_light,
                 max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
             };
             Cmd::Blockchain(BlockchainCmd::Import(import_cmd))
@@ -376,15 +368,6 @@ impl Configuration {
                 snapshot_conf: snapshot_conf,
             };
             Cmd::Snapshot(restore_cmd)
-        } else if self.args.cmd_export_hardcoded_sync {
-            let export_hs_cmd = ExportHsyncCmd {
-                cache_config: cache_config,
-                dirs: dirs,
-                spec: spec,
-                pruning: pruning,
-                compaction: compaction,
-            };
-            Cmd::ExportHardcodedSync(export_hs_cmd)
         } else {
             let daemon = if self.args.cmd_daemon {
                 Some(
@@ -398,8 +381,6 @@ impl Configuration {
             };
 
             let verifier_settings = self.verifier_settings();
-            let (private_provider_conf, private_enc_conf, private_tx_enabled) =
-                self.private_provider_config()?;
 
             let run_cmd = RunCmd {
                 cache_config: cache_config,
@@ -423,7 +404,6 @@ impl Configuration {
                 gas_pricer_conf: self.gas_pricer_config()?,
                 miner_extras: self.miner_extras()?,
                 stratum: self.stratum_options()?,
-                update_policy: update_policy,
                 allow_missing_blocks: self.args.flag_jsonrpc_allow_missing_blocks,
                 mode: mode,
                 tracing: tracing,
@@ -434,30 +414,14 @@ impl Configuration {
                 warp_barrier: self.args.arg_warp_barrier,
                 experimental_rpcs,
                 net_settings: self.network_settings()?,
-                ipfs_conf: ipfs_conf,
                 secretstore_conf: secretstore_conf,
-                private_provider_conf: private_provider_conf,
-                private_encryptor_conf: private_enc_conf,
-                private_tx_enabled,
                 name: self.args.arg_identity,
                 custom_bootnodes: self.args.arg_bootnodes.is_some(),
                 check_seal: !self.args.flag_no_seal_check,
                 download_old_blocks: !self.args.flag_no_ancient_blocks,
                 verifier_settings: verifier_settings,
-                serve_light: !self.args.flag_no_serve_light,
-                light: self.args.flag_light,
                 no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
-                no_hardcoded_sync: self.args.flag_no_hardcoded_sync,
                 max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
-                on_demand_response_time_window: self.args.arg_on_demand_response_time_window,
-                on_demand_request_backoff_start: self.args.arg_on_demand_request_backoff_start,
-                on_demand_request_backoff_max: self.args.arg_on_demand_request_backoff_max,
-                on_demand_request_backoff_rounds_max: self
-                    .args
-                    .arg_on_demand_request_backoff_rounds_max,
-                on_demand_request_consecutive_failures: self
-                    .args
-                    .arg_on_demand_request_consecutive_failures,
             };
             Cmd::Run(run_cmd)
         };
@@ -706,16 +670,6 @@ impl Configuration {
         })
     }
 
-    fn ipfs_config(&self) -> IpfsConfiguration {
-        IpfsConfiguration {
-            enabled: self.args.flag_ipfs_api,
-            port: self.args.arg_ports_shift + self.args.arg_ipfs_api_port,
-            interface: self.ipfs_interface(),
-            cors: self.ipfs_cors(),
-            hosts: self.ipfs_hosts(),
-        }
-    }
-
     fn gas_pricer_config(&self) -> Result<GasPricerConfig, String> {
         fn wei_per_gas(usd_per_tx: f32, usd_per_eth: f32) -> U256 {
             let wei_per_usd: f32 = 1.0e18 / usd_per_eth;
@@ -908,10 +862,6 @@ impl Configuration {
         Self::cors(&cors)
     }
 
-    fn ipfs_cors(&self) -> Option<Vec<String>> {
-        Self::cors(self.args.arg_ipfs_api_cors.as_ref())
-    }
-
     fn hosts(&self, hosts: &str, interface: &str) -> Option<Vec<String>> {
         if self.args.flag_unsafe_expose {
             return None;
@@ -948,10 +898,6 @@ impl Configuration {
         }
 
         Self::parse_hosts(&self.args.arg_ws_origins)
-    }
-
-    fn ipfs_hosts(&self) -> Option<Vec<String>> {
-        self.hosts(&self.args.arg_ipfs_api_hosts, &self.ipfs_interface())
     }
 
     fn ipc_config(&self) -> Result<IpcConfiguration, String> {
@@ -1007,33 +953,6 @@ impl Configuration {
         Ok(conf)
     }
 
-    fn private_provider_config(&self) -> Result<(ProviderConfig, EncryptorConfig, bool), String> {
-        let provider_conf = ProviderConfig {
-            validator_accounts: to_addresses(&self.args.arg_private_validators)?,
-            signer_account: self
-                .args
-                .arg_private_signer
-                .clone()
-                .and_then(|account| to_address(Some(account)).ok()),
-        };
-
-        let encryptor_conf = EncryptorConfig {
-            base_url: self.args.arg_private_sstore_url.clone(),
-            threshold: self.args.arg_private_sstore_threshold.unwrap_or(0),
-            key_server_account: self
-                .args
-                .arg_private_account
-                .clone()
-                .and_then(|account| to_address(Some(account)).ok()),
-        };
-
-        Ok((
-            provider_conf,
-            encryptor_conf,
-            self.args.flag_private_enabled,
-        ))
-    }
-
     fn snapshot_config(&self) -> Result<SnapshotConfiguration, String> {
         let conf = SnapshotConfiguration {
             no_periodic: self.args.flag_no_periodic_snapshot,
@@ -1060,41 +979,6 @@ impl Configuration {
         })
     }
 
-    fn update_policy(&self) -> Result<UpdatePolicy, String> {
-        Ok(UpdatePolicy {
-            enable_downloading: !self.args.flag_no_download,
-            require_consensus: !self.args.flag_no_consensus,
-            filter: match self.args.arg_auto_update.as_ref() {
-                "none" => UpdateFilter::None,
-                "critical" => UpdateFilter::Critical,
-                "all" => UpdateFilter::All,
-                _ => {
-                    return Err(
-                        "Invalid value for `--auto-update`. See `--help` for more information."
-                            .into(),
-                    )
-                }
-            },
-            track: match self.args.arg_release_track.as_ref() {
-                "stable" => ReleaseTrack::Stable,
-                "beta" => ReleaseTrack::Beta,
-                "nightly" => ReleaseTrack::Nightly,
-                "testing" => ReleaseTrack::Testing,
-                "current" => ReleaseTrack::Unknown,
-                _ => {
-                    return Err(
-                        "Invalid value for `--releases-track`. See `--help` for more information."
-                            .into(),
-                    )
-                }
-            },
-            path: default_hypervisor_path(),
-            max_size: 128 * 1024 * 1024,
-            max_delay: self.args.arg_auto_update_delay as u64,
-            frequency: self.args.arg_auto_update_check_frequency as u64,
-        })
-    }
-
     fn directories(&self) -> Directories {
         let local_path = default_local_path();
         let base_path = self
@@ -1106,16 +990,7 @@ impl Configuration {
         let is_using_base_path = self.args.arg_base_path.is_some();
         // If base_path is set and db_path is not we default to base path subdir instead of LOCAL.
         let base_db_path = if is_using_base_path && self.args.arg_db_path.is_none() {
-            if self.args.flag_light {
-                "$BASE/chains_light"
-            } else {
-                "$BASE/chains"
-            }
-        } else if self.args.flag_light {
-            self.args
-                .arg_db_path
-                .as_ref()
-                .map_or(dir::CHAINS_PATH_LIGHT, |s| &s)
+            "$BASE/chains"
         } else {
             self.args
                 .arg_db_path
@@ -1171,10 +1046,6 @@ impl Configuration {
 
     fn ws_interface(&self) -> String {
         self.interface(&self.args.arg_ws_interface)
-    }
-
-    fn ipfs_interface(&self) -> String {
-        self.interface(&self.args.arg_ipfs_api_interface)
     }
 
     fn secretstore_interface(&self) -> String {
@@ -1351,7 +1222,7 @@ mod tests {
     use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
     use blockchain::{BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain};
     use cli::Args;
-    use dir::{default_hypervisor_path, Directories};
+    use dir::Directories;
     use ethcore::{client::VMType, miner::MinerOptions};
     use helpers::default_network_config;
     use miner::pool::PrioritizationStrategy;
@@ -1363,7 +1234,6 @@ mod tests {
     use run::RunCmd;
     use tempdir::TempDir;
     use types::{data_format::DataFormat, ids::BlockId};
-    use updater::{ReleaseTrack, UpdateFilter, UpdatePolicy};
 
     use network::{AllowIP, IpFilter};
 
@@ -1479,7 +1349,6 @@ mod tests {
                 check_seal: true,
                 with_color: !cfg!(windows),
                 verifier_settings: Default::default(),
-                light: false,
                 max_round_blocks_to_import: 12,
             }))
         );
@@ -1645,27 +1514,13 @@ mod tests {
             acc_conf: Default::default(),
             gas_pricer_conf: Default::default(),
             miner_extras: Default::default(),
-            update_policy: UpdatePolicy {
-                enable_downloading: true,
-                require_consensus: true,
-                filter: UpdateFilter::Critical,
-                track: ReleaseTrack::Unknown,
-                path: default_hypervisor_path(),
-                max_size: 128 * 1024 * 1024,
-                max_delay: 100,
-                frequency: 20,
-            },
             mode: Default::default(),
             tracing: Default::default(),
             compaction: Default::default(),
             vm_type: Default::default(),
             experimental_rpcs: false,
             net_settings: Default::default(),
-            ipfs_conf: Default::default(),
             secretstore_conf: Default::default(),
-            private_provider_conf: Default::default(),
-            private_encryptor_conf: Default::default(),
-            private_tx_enabled: false,
             name: "".into(),
             custom_bootnodes: false,
             fat_db: Default::default(),
@@ -1674,16 +1529,8 @@ mod tests {
             check_seal: true,
             download_old_blocks: true,
             verifier_settings: Default::default(),
-            serve_light: true,
-            light: false,
-            no_hardcoded_sync: false,
             no_persistent_txqueue: false,
             max_round_blocks_to_import: 12,
-            on_demand_response_time_window: None,
-            on_demand_request_backoff_start: None,
-            on_demand_request_backoff_max: None,
-            on_demand_request_backoff_rounds_max: None,
-            on_demand_request_consecutive_failures: None,
         };
         expected.secretstore_conf.enabled = cfg!(feature = "secretstore");
         expected.secretstore_conf.http_enabled = cfg!(feature = "secretstore");
@@ -1717,71 +1564,6 @@ mod tests {
         ]);
 
         assert!(conf.miner_options().is_err());
-    }
-
-    #[test]
-    fn should_parse_updater_options() {
-        // when
-        let conf0 = parse(&["parity", "--release-track=testing"]);
-        let conf1 = parse(&[
-            "parity",
-            "--auto-update",
-            "all",
-            "--no-consensus",
-            "--auto-update-delay",
-            "300",
-        ]);
-        let conf2 = parse(&[
-            "parity",
-            "--no-download",
-            "--auto-update=all",
-            "--release-track=beta",
-            "--auto-update-delay=300",
-            "--auto-update-check-frequency=100",
-        ]);
-        let conf3 = parse(&["parity", "--auto-update=xxx"]);
-
-        // then
-        assert_eq!(
-            conf0.update_policy().unwrap(),
-            UpdatePolicy {
-                enable_downloading: true,
-                require_consensus: true,
-                filter: UpdateFilter::Critical,
-                track: ReleaseTrack::Testing,
-                path: default_hypervisor_path(),
-                max_size: 128 * 1024 * 1024,
-                max_delay: 100,
-                frequency: 20,
-            }
-        );
-        assert_eq!(
-            conf1.update_policy().unwrap(),
-            UpdatePolicy {
-                enable_downloading: true,
-                require_consensus: false,
-                filter: UpdateFilter::All,
-                track: ReleaseTrack::Unknown,
-                path: default_hypervisor_path(),
-                max_size: 128 * 1024 * 1024,
-                max_delay: 300,
-                frequency: 20,
-            }
-        );
-        assert_eq!(
-            conf2.update_policy().unwrap(),
-            UpdatePolicy {
-                enable_downloading: false,
-                require_consensus: true,
-                filter: UpdateFilter::All,
-                track: ReleaseTrack::Beta,
-                path: default_hypervisor_path(),
-                max_size: 128 * 1024 * 1024,
-                max_delay: 300,
-                frequency: 100,
-            }
-        );
-        assert!(conf3.update_policy().is_err());
     }
 
     #[test]
@@ -1823,51 +1605,6 @@ mod tests {
         assert_eq!(
             conf3.rpc_hosts(),
             Some(vec!["parity.io".into(), "something.io".into()])
-        );
-    }
-
-    #[test]
-    fn should_parse_ipfs_hosts() {
-        // given
-
-        // when
-        let conf0 = parse(&["parity"]);
-        let conf1 = parse(&["parity", "--ipfs-api-hosts", "none"]);
-        let conf2 = parse(&["parity", "--ipfs-api-hosts", "all"]);
-        let conf3 = parse(&["parity", "--ipfs-api-hosts", "parity.io,something.io"]);
-
-        // then
-        assert_eq!(conf0.ipfs_hosts(), Some(Vec::new()));
-        assert_eq!(conf1.ipfs_hosts(), Some(Vec::new()));
-        assert_eq!(conf2.ipfs_hosts(), None);
-        assert_eq!(
-            conf3.ipfs_hosts(),
-            Some(vec!["parity.io".into(), "something.io".into()])
-        );
-    }
-
-    #[test]
-    fn should_parse_ipfs_cors() {
-        // given
-
-        // when
-        let conf0 = parse(&["parity"]);
-        let conf1 = parse(&["parity", "--ipfs-api-cors", "*"]);
-        let conf2 = parse(&[
-            "parity",
-            "--ipfs-api-cors",
-            "http://parity.io,http://something.io",
-        ]);
-
-        // then
-        assert_eq!(conf0.ipfs_cors(), Some(vec![]));
-        assert_eq!(conf1.ipfs_cors(), None);
-        assert_eq!(
-            conf2.ipfs_cors(),
-            Some(vec![
-                "http://parity.io".into(),
-                "http://something.io".into()
-            ])
         );
     }
 
@@ -1964,7 +1701,6 @@ mod tests {
         let conf = Configuration::parse_cli(&args).unwrap();
         match conf.into_command().unwrap().cmd {
             Cmd::Run(c) => {
-                assert_eq!(c.update_policy.require_consensus, false);
                 assert_eq!(c.net_settings.rpc_interface, "0.0.0.0");
                 match c.http_conf.apis {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
@@ -1972,7 +1708,6 @@ mod tests {
                 }
                 // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
-                assert_eq!(c.ipfs_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),
         }
@@ -1987,7 +1722,6 @@ mod tests {
                 assert_eq!(c.net_settings.chain, "dev");
                 assert_eq!(c.gas_pricer_conf, GasPricerConfig::Fixed(0.into()));
                 assert_eq!(c.miner_options.reseal_min_period, Duration::from_millis(0));
-                assert_eq!(c.update_policy.require_consensus, false);
                 assert_eq!(c.net_settings.rpc_interface, "0.0.0.0");
                 match c.http_conf.apis {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
@@ -1995,7 +1729,6 @@ mod tests {
                 }
                 // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
-                assert_eq!(c.ipfs_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),
         }
@@ -2045,7 +1778,6 @@ mod tests {
         assert_eq!(conf0.ws_config().unwrap().port, 8547);
         assert_eq!(conf0.secretstore_config().unwrap().port, 8084);
         assert_eq!(conf0.secretstore_config().unwrap().http_port, 8083);
-        assert_eq!(conf0.ipfs_config().port, 5002);
         assert_eq!(conf0.stratum_options().unwrap().unwrap().port, 8009);
 
         assert_eq!(conf1.net_addresses().unwrap().0.port(), 30304);
@@ -2055,7 +1787,6 @@ mod tests {
         assert_eq!(conf1.ws_config().unwrap().port, 8547);
         assert_eq!(conf1.secretstore_config().unwrap().port, 8084);
         assert_eq!(conf1.secretstore_config().unwrap().http_port, 8083);
-        assert_eq!(conf1.ipfs_config().port, 5002);
     }
 
     #[test]
@@ -2110,8 +1841,6 @@ mod tests {
             &conf0.secretstore_config().unwrap().http_interface,
             "0.0.0.0"
         );
-        assert_eq!(&conf0.ipfs_config().interface, "0.0.0.0");
-        assert_eq!(conf0.ipfs_config().hosts, None);
     }
 
     #[test]

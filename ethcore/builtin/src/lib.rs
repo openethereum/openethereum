@@ -248,7 +248,7 @@ pub struct Bls12ConstOperations {
     pub price: u64,
 }
 
-/// Discount table for multiexponentiation (Peppinger algorithm)
+/// Discount table for multiexponentiation (Pippenger's Algorithm)
 /// Later on is normalized using the divisor
 pub const BLS12_MULTIEXP_DISCOUNTS_TABLE: [[u64; 2]; BLS12_MULTIEXP_PAIRS_FOR_MAX_DISCOUNT] = [
     [1, 1200],

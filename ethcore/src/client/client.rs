@@ -194,11 +194,6 @@ struct Importer {
 /// Call `import_block()` to import a block asynchronously; `flush_queue()` flushes the queue.
 pub struct Client {
     /// Flag used to disable the client forever. Not to be confused with `liveness`.
-    ///
-    /// For example, auto-updater will disable client forever if there is a
-    /// hard fork registered on-chain that we don't have capability for.
-    /// When hard fork block rolls around, the client (if `update` is false)
-    /// knows it can't proceed further.
     enabled: AtomicBool,
 
     /// Operating mode for the client
@@ -1003,17 +998,6 @@ impl Client {
         self.notify.write().push(Arc::downgrade(&target));
     }
 
-    /// Set a closure to call when the client wants to be restarted.
-    ///
-    /// The parameter passed to the callback is the name of the new chain spec to use after
-    /// the restart.
-    pub fn set_exit_handler<F>(&self, f: F)
-    where
-        F: Fn(String) + 'static + Send,
-    {
-        *self.exit_handler.lock() = Some(Box::new(f));
-    }
-
     /// Returns engine reference.
     pub fn engine(&self) -> &dyn EthEngine {
         &*self.engine
@@ -1768,10 +1752,14 @@ impl ImportBlock for Client {
                 Ok(hash)
             }
             // we only care about block errors (not import errors)
-            Err((block, EthcoreError(EthcoreErrorKind::Block(err), _))) => {
+            Err((Some(block), EthcoreError(EthcoreErrorKind::Block(err), _))) => {
                 self.importer
                     .bad_blocks
-                    .report(block.bytes, format!("{:?}", err));
+                    .report(block.bytes, err.to_string());
+                bail!(EthcoreErrorKind::Block(err))
+            }
+            Err((None, EthcoreError(EthcoreErrorKind::Block(err), _))) => {
+                error!(target: "client", "BlockError {} detected but it was missing raw_bytes of the block", err);
                 bail!(EthcoreErrorKind::Block(err))
             }
             Err((_, e)) => Err(e),
@@ -2063,6 +2051,13 @@ impl BlockChainClient for Client {
         }
     }
 
+    fn is_processing_fork(&self) -> bool {
+        let chain = self.chain.read();
+        self.importer
+            .block_queue
+            .is_processing_fork(&chain.best_block_hash(), &chain)
+    }
+
     fn block_total_difficulty(&self, id: BlockId) -> Option<U256> {
         let chain = self.chain.read();
 
@@ -2292,10 +2287,6 @@ impl BlockChainClient for Client {
 
     fn find_uncles(&self, hash: &H256) -> Option<Vec<H256>> {
         self.chain.read().find_uncle_hashes(hash, MAX_UNCLE_AGE)
-    }
-
-    fn state_data(&self, hash: &H256) -> Option<Bytes> {
-        self.state_db.read().journal_db().state(hash)
     }
 
     fn block_receipts(&self, hash: &H256) -> Option<BlockReceipts> {

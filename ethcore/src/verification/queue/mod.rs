@@ -17,6 +17,7 @@
 //! A queue of blocks. Sits between network or other I/O and the `BlockChain`.
 //! Sorts them ready for blockchain insertion.
 
+use blockchain::BlockChain;
 use client::ClientIoMessage;
 use engines::EthEngine;
 use error::{BlockError, Error, ErrorKind, ImportErrorKind};
@@ -43,6 +44,9 @@ pub mod kind;
 
 const MIN_MEM_LIMIT: usize = 16384;
 const MIN_QUEUE_LIMIT: usize = 512;
+/// Empiric estimation of the minimal length of the processing queue,
+/// That definitely doesn't contain forks inside.
+const MAX_QUEUE_WITH_FORK: usize = 8;
 
 /// Type alias for block queue convenience.
 pub type BlockQueue = VerificationQueue<self::kind::Blocks>;
@@ -148,7 +152,7 @@ pub struct VerificationQueue<K: Kind> {
     deleting: Arc<AtomicBool>,
     ready_signal: Arc<QueueSignal>,
     empty: Arc<Condvar>,
-    processing: RwLock<HashMap<H256, U256>>, // hash to difficulty
+    processing: RwLock<HashMap<H256, (U256, H256)>>, // item's hash to difficulty and parent item hash
     ticks_since_adjustment: AtomicUsize,
     max_queue_size: usize,
     max_mem_use: usize,
@@ -507,36 +511,53 @@ impl<K: Kind> VerificationQueue<K> {
     }
 
     /// Add a block to the queue.
-    pub fn import(&self, input: K::Input) -> Result<H256, (K::Input, Error)> {
+    pub fn import(&self, input: K::Input) -> Result<H256, (Option<K::Input>, Error)> {
         let hash = input.hash();
         let raw_hash = input.raw_hash();
         {
             if self.processing.read().contains_key(&hash) {
                 bail!((
-                    input,
+                    Some(input),
                     ErrorKind::Import(ImportErrorKind::AlreadyQueued).into()
                 ));
             }
 
             let mut bad = self.verification.bad.lock();
             if bad.contains(&hash) || bad.contains(&raw_hash) {
-                bail!((input, ErrorKind::Import(ImportErrorKind::KnownBad).into()));
+                bail!((
+                    Some(input),
+                    ErrorKind::Import(ImportErrorKind::KnownBad).into()
+                ));
             }
 
             if bad.contains(&input.parent_hash()) {
                 bad.insert(hash);
-                bail!((input, ErrorKind::Import(ImportErrorKind::KnownBad).into()));
+                bail!((
+                    Some(input),
+                    ErrorKind::Import(ImportErrorKind::KnownBad).into()
+                ));
             }
         }
 
         match K::create(input, &*self.engine, self.verification.check_seal) {
             Ok(item) => {
+                if self
+                    .processing
+                    .write()
+                    .insert(hash, (item.difficulty(), item.parent_hash()))
+                    .is_some()
+                {
+                    bail!((
+                        None,
+                        ErrorKind::Import(ImportErrorKind::AlreadyQueued).into()
+                    ));
+                }
                 self.verification
                     .sizes
                     .unverified
                     .fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
 
-                self.processing.write().insert(hash, item.difficulty());
+                //self.processing.write().insert(hash, item.difficulty());
                 {
                     let mut td = self.total_difficulty.write();
                     *td = *td + item.difficulty();
@@ -563,7 +584,7 @@ impl<K: Kind> VerificationQueue<K> {
                         self.verification.bad.lock().insert(hash);
                     }
                 }
-                Err((input, err))
+                Err((Some(input), err))
             }
         }
     }
@@ -581,7 +602,7 @@ impl<K: Kind> VerificationQueue<K> {
         bad.reserve(hashes.len());
         for hash in hashes {
             bad.insert(hash.clone());
-            if let Some(difficulty) = processing.remove(hash) {
+            if let Some((difficulty, _)) = processing.remove(hash) {
                 let mut td = self.total_difficulty.write();
                 *td = *td - difficulty;
             }
@@ -593,7 +614,7 @@ impl<K: Kind> VerificationQueue<K> {
             if bad.contains(&output.parent_hash()) {
                 removed_size += output.heap_size_of_children();
                 bad.insert(output.hash());
-                if let Some(difficulty) = processing.remove(&output.hash()) {
+                if let Some((difficulty, _)) = processing.remove(&output.hash()) {
                     let mut td = self.total_difficulty.write();
                     *td = *td - difficulty;
                 }
@@ -617,7 +638,7 @@ impl<K: Kind> VerificationQueue<K> {
         }
         let mut processing = self.processing.write();
         for hash in hashes {
-            if let Some(difficulty) = processing.remove(hash) {
+            if let Some((difficulty, _)) = processing.remove(hash) {
                 let mut td = self.total_difficulty.write();
                 *td = *td - difficulty;
             }
@@ -652,6 +673,24 @@ impl<K: Kind> VerificationQueue<K> {
         let v = &self.verification;
 
         v.unverified.load_len() == 0 && v.verifying.load_len() == 0 && v.verified.load_len() == 0
+    }
+
+    /// Returns true if there are descendants of the current best block in the processing queue
+    pub fn is_processing_fork(&self, best_block_hash: &H256, chain: &BlockChain) -> bool {
+        let processing = self.processing.read();
+        if processing.is_empty() || processing.len() > MAX_QUEUE_WITH_FORK {
+            // Assume, that long enough processing queue doesn't have fork blocks
+            return false;
+        }
+        for (_, item_parent_hash) in processing.values() {
+            if chain
+                .tree_route(*best_block_hash, *item_parent_hash)
+                .map_or(true, |route| route.ancestor != *best_block_hash)
+            {
+                return true;
+            }
+        }
+        false
     }
 
     /// Get queue status.

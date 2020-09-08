@@ -22,9 +22,7 @@ use ethcore::{
     client::{BlockChainClient, BlockId},
     error::{CallError, Error as EthcoreError, ErrorKind},
 };
-use ethcore_private_tx::Error as PrivateTransactionError;
-use jsonrpc_core::{futures, Error, ErrorCode, Result as RpcResult, Value};
-use light::on_demand::error::{Error as OnDemandError, ErrorKind as OnDemandErrorKind};
+use jsonrpc_core::{Error, ErrorCode, Result as RpcResult, Value};
 use rlp::DecoderError;
 use types::{blockchain_info::BlockChainInfo, transaction::Error as TransactionError};
 use v1::{impls::EthClientOptions, types::BlockNumber};
@@ -48,14 +46,13 @@ mod codes {
     #[cfg(any(test, feature = "accounts"))]
     pub const PASSWORD_INVALID: i64 = -32021;
     pub const ACCOUNT_ERROR: i64 = -32023;
-    pub const PRIVATE_ERROR: i64 = -32024;
     pub const REQUEST_REJECTED: i64 = -32040;
     pub const REQUEST_REJECTED_LIMIT: i64 = -32041;
     pub const REQUEST_NOT_FOUND: i64 = -32042;
     pub const ENCRYPTION_ERROR: i64 = -32055;
+    #[cfg(any(test, feature = "accounts"))]
     pub const ENCODING_ERROR: i64 = -32058;
     pub const FETCH_ERROR: i64 = -32060;
-    pub const NO_LIGHT_PEERS: i64 = -32065;
     pub const NO_PEERS: i64 = -32066;
     pub const DEPRECATED: i64 = -32070;
     pub const EXPERIMENTAL_RPC: i64 = -32071;
@@ -67,14 +64,6 @@ pub fn unimplemented(details: Option<String>) -> Error {
         code: ErrorCode::ServerError(codes::UNSUPPORTED_REQUEST),
         message: "This request is not implemented yet. Please create an issue on Github repo."
             .into(),
-        data: details.map(Value::String),
-    }
-}
-
-pub fn light_unimplemented(details: Option<String>) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::UNSUPPORTED_REQUEST),
-        message: "This request is unsupported for light clients.".into(),
         data: details.map(Value::String),
     }
 }
@@ -107,17 +96,6 @@ pub fn request_rejected_limit() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::REQUEST_REJECTED_LIMIT),
         message: "Request has been rejected because of queue limit.".into(),
-        data: None,
-    }
-}
-
-pub fn request_rejected_param_limit(limit: u64, items_desc: &str) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::REQUEST_REJECTED_LIMIT),
-        message: format!(
-            "Requested data size exceeds limit of {} {}.",
-            limit, items_desc
-        ),
         data: None,
     }
 }
@@ -343,14 +321,6 @@ pub fn encryption<T: fmt::Debug>(error: T) -> Error {
     }
 }
 
-pub fn encoding<T: fmt::Debug>(error: T) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::ENCODING_ERROR),
-        message: "Encoding error.".into(),
-        data: Some(Value::String(format!("{:?}", error))),
-    }
-}
-
 pub fn database<T: fmt::Debug>(error: T) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::DATABASE_ERROR),
@@ -391,22 +361,6 @@ pub fn password(error: ::accounts::SignError) -> Error {
         code: ErrorCode::ServerError(codes::PASSWORD_INVALID),
         message: "Account password is invalid or account does not exist.".into(),
         data: Some(Value::String(format!("{:?}", error))),
-    }
-}
-
-pub fn private_message(error: PrivateTransactionError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::PRIVATE_ERROR),
-        message: "Private transactions call failed.".into(),
-        data: Some(Value::String(format!("{:?}", error))),
-    }
-}
-
-pub fn private_message_block_id_not_supported() -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::PRIVATE_ERROR),
-        message: "Pending block id not supported.".into(),
-        data: None,
     }
 }
 
@@ -522,14 +476,6 @@ pub fn unknown_block() -> Error {
     }
 }
 
-pub fn no_light_peers() -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::NO_LIGHT_PEERS),
-        message: "No light peers who can serve data".into(),
-        data: None,
-    }
-}
-
 pub fn deprecated<S: Into<String>, T: Into<Option<S>>>(message: T) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::DEPRECATED),
@@ -557,44 +503,6 @@ pub fn filter_block_not_found(id: BlockId) -> Error {
 			BlockId::Latest => "latest".to_string(),
 		})),
 	}
-}
-
-pub fn on_demand_error(err: OnDemandError) -> Error {
-    match err {
-        OnDemandError(OnDemandErrorKind::ChannelCanceled(e), _) => on_demand_cancel(e),
-        OnDemandError(OnDemandErrorKind::RequestLimit, _) => timeout_new_peer(&err),
-        OnDemandError(OnDemandErrorKind::BadResponse(_), _) => max_attempts_reached(&err),
-        _ => on_demand_others(&err),
-    }
-}
-
-// on-demand sender cancelled.
-pub fn on_demand_cancel(_cancel: futures::sync::oneshot::Canceled) -> Error {
-    internal("on-demand sender cancelled", "")
-}
-
-pub fn max_attempts_reached(err: &OnDemandError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::REQUEST_NOT_FOUND),
-        message: err.to_string(),
-        data: None,
-    }
-}
-
-pub fn timeout_new_peer(err: &OnDemandError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::NO_LIGHT_PEERS),
-        message: err.to_string(),
-        data: None,
-    }
-}
-
-pub fn on_demand_others(err: &OnDemandError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-        message: err.to_string(),
-        data: None,
-    }
 }
 
 pub fn status_error(has_peers: bool) -> Error {

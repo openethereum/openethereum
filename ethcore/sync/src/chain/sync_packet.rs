@@ -45,8 +45,8 @@ pub enum SyncPacket {
     BlockBodiesPacket = 0x06,
     NewBlockPacket = 0x07,
 
-    GetNodeDataPacket = 0x0d,
-    NodeDataPacket = 0x0e,
+    //GetNodeDataPacket = 0x0d,
+    //NodeDataPacket = 0x0e,
     GetReceiptsPacket = 0x0f,
     ReceiptsPacket = 0x10,
 
@@ -55,8 +55,6 @@ pub enum SyncPacket {
     GetSnapshotDataPacket = 0x13,
     SnapshotDataPacket = 0x14,
     ConsensusDataPacket = 0x15,
-    PrivateTransactionPacket = 0x16,
-    SignedPrivateTransactionPacket = 0x17,
 }
 }
 
@@ -82,8 +80,8 @@ impl PacketInfo for SyncPacket {
             | GetBlockBodiesPacket
             | BlockBodiesPacket
             | NewBlockPacket
-            | GetNodeDataPacket
-            | NodeDataPacket
+            //| GetNodeDataPacket
+            //| NodeDataPacket
             | GetReceiptsPacket
             | ReceiptsPacket => ETH_PROTOCOL,
 
@@ -91,9 +89,7 @@ impl PacketInfo for SyncPacket {
             | SnapshotManifestPacket
             | GetSnapshotDataPacket
             | SnapshotDataPacket
-            | ConsensusDataPacket
-            | PrivateTransactionPacket
-            | SignedPrivateTransactionPacket => PAR_PROTOCOL,
+            | ConsensusDataPacket => PAR_PROTOCOL,
         }
     }
 

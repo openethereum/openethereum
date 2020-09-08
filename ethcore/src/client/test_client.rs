@@ -887,6 +887,10 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
+    fn is_processing_fork(&self) -> bool {
+        false
+    }
+
     // works only if blocks are one after another 1 -> 2 -> 3
     fn tree_route(&self, from: &H256, to: &H256) -> Option<TreeRoute> {
         Some(TreeRoute {
@@ -926,17 +930,6 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn find_uncles(&self, _hash: &H256) -> Option<Vec<H256>> {
-        None
-    }
-
-    // TODO: returns just hashes instead of node state rlp(?)
-    fn state_data(&self, hash: &H256) -> Option<Bytes> {
-        // starts with 'f' ?
-        if *hash > H256::from("f000000000000000000000000000000000000000000000000000000000000000") {
-            let mut rlp = RlpStream::new();
-            rlp.append(&hash.clone());
-            return Some(rlp.out());
-        }
         None
     }
 

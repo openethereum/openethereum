@@ -14,35 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{
-    cmp::PartialEq,
-    collections::HashSet,
-    str::FromStr,
-    sync::{Arc, Weak},
-};
+use std::{cmp::PartialEq, collections::HashSet, str::FromStr, sync::Arc};
 
 pub use parity_rpc::signer::SignerService;
 
 use account_utils::{self, AccountProvider};
 use ethcore::{client::Client, miner::Miner, snapshot::SnapshotService};
 use ethcore_logger::RotatingLogger;
-use ethcore_private_tx::Provider as PrivateTransactionManager;
-use ethcore_service::PrivateTxService;
-use hash_fetch::fetch::Client as FetchClient;
+use fetch::Client as FetchClient;
 use jsonrpc_core::{self as core, MetaIoHandler};
-use light::{
-    client::LightChainClient, Cache as LightDataCache, TransactionQueue as LightTransactionQueue,
-};
 use miner::external::ExternalMiner;
 use parity_rpc::{
-    dispatch::{FullDispatcher, LightDispatcher},
+    dispatch::FullDispatcher,
     informant::{ActivityNotifier, ClientNotifier},
     Host, Metadata, NetworkSettings,
 };
 use parity_runtime::Executor;
-use parking_lot::{Mutex, RwLock};
-use sync::{LightSync, ManageNetwork, SyncProvider};
-use updater::Updater;
+use parking_lot::Mutex;
+use sync::{ManageNetwork, SyncProvider};
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Api {
@@ -62,8 +51,6 @@ pub enum Api {
     Parity,
     /// Traces (Safe)
     Traces,
-    /// Private transaction manager (Safe)
-    Private,
     /// Parity PubSub - Generic Publish-Subscriber (Safety depends on other APIs exposed).
     ParityPubSub,
     /// Parity Accounts extensions (UNSAFE: Passwords, Side Effects (new account))
@@ -92,7 +79,6 @@ impl FromStr for Api {
             "parity_pubsub" => Ok(ParityPubSub),
             "parity_set" => Ok(ParitySet),
             "personal" => Ok(Personal),
-            "private" => Ok(Private),
             "pubsub" => Ok(EthPubSub),
             "secretstore" => Ok(SecretStore),
             "signer" => Ok(Signer),
@@ -201,13 +187,11 @@ pub struct FullDependencies {
     pub sync: Arc<dyn SyncProvider>,
     pub net: Arc<dyn ManageNetwork>,
     pub accounts: Arc<AccountProvider>,
-    pub private_tx_service: Option<Arc<PrivateTxService>>,
     pub miner: Arc<Miner>,
     pub external_miner: Arc<ExternalMiner>,
     pub logger: Arc<RotatingLogger>,
     pub settings: Arc<NetworkSettings>,
     pub net_service: Arc<dyn ManageNetwork>,
-    pub updater: Arc<Updater>,
     pub experimental_rpcs: bool,
     pub ws_address: Option<Host>,
     pub fetch: FetchClient,
@@ -335,7 +319,6 @@ impl FullDependencies {
                             self.client.clone(),
                             self.miner.clone(),
                             self.sync.clone(),
-                            self.updater.clone(),
                             self.net_service.clone(),
                             self.logger.clone(),
                             self.settings.clone(),
@@ -382,7 +365,6 @@ impl FullDependencies {
                         ParitySetClient::new(
                             &self.client,
                             &self.miner,
-                            &self.updater,
                             &self.net_service,
                             self.fetch.clone(),
                         )
@@ -397,12 +379,6 @@ impl FullDependencies {
                 Api::SecretStore => {
                     #[cfg(feature = "accounts")]
                     handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
-                }
-                Api::Private => {
-                    handler.extend_with(
-                        PrivateClient::new(self.private_tx_service.as_ref().map(|p| p.provider()))
-                            .to_delegate(),
-                    );
                 }
             }
         }
@@ -426,220 +402,6 @@ impl Dependencies for FullDependencies {
     }
 }
 
-/// Light client notifier. Doesn't do anything yet, but might in the future.
-pub struct LightClientNotifier;
-
-impl ActivityNotifier for LightClientNotifier {
-    fn active(&self) {}
-}
-
-/// RPC dependencies for a light client.
-pub struct LightDependencies<T> {
-    pub signer_service: Arc<SignerService>,
-    pub client: Arc<T>,
-    pub sync: Arc<LightSync>,
-    pub net: Arc<dyn ManageNetwork>,
-    pub accounts: Arc<AccountProvider>,
-    pub logger: Arc<RotatingLogger>,
-    pub settings: Arc<NetworkSettings>,
-    pub on_demand: Arc<::light::on_demand::OnDemand>,
-    pub cache: Arc<Mutex<LightDataCache>>,
-    pub transaction_queue: Arc<RwLock<LightTransactionQueue>>,
-    pub ws_address: Option<Host>,
-    pub fetch: FetchClient,
-    pub experimental_rpcs: bool,
-    pub executor: Executor,
-    pub private_tx_service: Option<Arc<PrivateTransactionManager>>,
-    pub gas_price_percentile: usize,
-    pub poll_lifetime: u32,
-}
-
-impl<C: LightChainClient + 'static> LightDependencies<C> {
-    fn extend_api<T: core::Middleware<Metadata>>(
-        &self,
-        handler: &mut MetaIoHandler<Metadata, T>,
-        apis: &HashSet<Api>,
-        for_generic_pubsub: bool,
-    ) {
-        use parity_rpc::v1::*;
-
-        let dispatcher = LightDispatcher::new(
-            self.sync.clone(),
-            self.client.clone(),
-            self.on_demand.clone(),
-            self.cache.clone(),
-            self.transaction_queue.clone(),
-            Arc::new(Mutex::new(dispatch::Reservations::new(
-                self.executor.clone(),
-            ))),
-            self.gas_price_percentile,
-        );
-        let account_signer = Arc::new(dispatch::Signer::new(self.accounts.clone())) as _;
-        let accounts = account_utils::accounts_list(self.accounts.clone());
-
-        for api in apis {
-            match *api {
-                Api::Debug => {
-                    warn!(target: "rpc", "Debug API is not available in light client mode.")
-                }
-                Api::Web3 => {
-                    handler.extend_with(Web3Client::default().to_delegate());
-                }
-                Api::Net => {
-                    handler.extend_with(light::NetClient::new(self.sync.clone()).to_delegate());
-                }
-                Api::Eth => {
-                    let client = light::EthClient::new(
-                        self.sync.clone(),
-                        self.client.clone(),
-                        self.on_demand.clone(),
-                        self.transaction_queue.clone(),
-                        accounts.clone(),
-                        self.cache.clone(),
-                        self.gas_price_percentile,
-                        self.poll_lifetime,
-                    );
-                    handler.extend_with(Eth::to_delegate(client.clone()));
-
-                    if !for_generic_pubsub {
-                        handler.extend_with(EthFilter::to_delegate(client));
-                        add_signing_methods!(
-                            EthSigning,
-                            handler,
-                            self,
-                            (&dispatcher, &account_signer)
-                        );
-                    }
-                }
-                Api::EthPubSub => {
-                    let client = EthPubSubClient::light(
-                        self.client.clone(),
-                        self.on_demand.clone(),
-                        self.sync.clone(),
-                        self.cache.clone(),
-                        self.executor.clone(),
-                        self.gas_price_percentile,
-                    );
-                    self.client.add_listener(client.handler() as Weak<_>);
-                    let h = client.handler();
-                    self.transaction_queue
-                        .write()
-                        .add_listener(Box::new(move |transactions| {
-                            if let Some(h) = h.upgrade() {
-                                h.notify_new_transactions(transactions);
-                            }
-                        }));
-                    handler.extend_with(EthPubSub::to_delegate(client));
-                }
-                Api::Personal => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(
-                        PersonalClient::new(
-                            &self.accounts,
-                            dispatcher.clone(),
-                            self.experimental_rpcs,
-                        )
-                        .to_delegate(),
-                    );
-                }
-                Api::Signer => {
-                    handler.extend_with(
-                        SignerClient::new(
-                            account_signer.clone(),
-                            dispatcher.clone(),
-                            &self.signer_service,
-                            self.executor.clone(),
-                        )
-                        .to_delegate(),
-                    );
-                }
-                Api::Parity => {
-                    let signer = match self.signer_service.is_enabled() {
-                        true => Some(self.signer_service.clone()),
-                        false => None,
-                    };
-                    handler.extend_with(
-                        light::ParityClient::new(
-                            Arc::new(dispatcher.clone()),
-                            self.logger.clone(),
-                            self.settings.clone(),
-                            signer,
-                            self.ws_address.clone(),
-                            self.gas_price_percentile,
-                        )
-                        .to_delegate(),
-                    );
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(ParityAccountsInfo::to_delegate(
-                        ParityAccountsClient::new(&self.accounts),
-                    ));
-
-                    if !for_generic_pubsub {
-                        add_signing_methods!(
-                            ParitySigning,
-                            handler,
-                            self,
-                            (&dispatcher, &account_signer)
-                        );
-                    }
-                }
-                Api::ParityPubSub => {
-                    if !for_generic_pubsub {
-                        let mut rpc = MetaIoHandler::default();
-                        let apis = ApiSet::List(apis.clone())
-                            .retain(ApiSet::PubSub)
-                            .list_apis();
-                        self.extend_api(&mut rpc, &apis, true);
-                        handler.extend_with(
-                            PubSubClient::new(rpc, self.executor.clone()).to_delegate(),
-                        );
-                    }
-                }
-                Api::ParityAccounts => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(ParityAccounts::to_delegate(ParityAccountsClient::new(
-                        &self.accounts,
-                    )));
-                }
-                Api::ParitySet => handler.extend_with(
-                    light::ParitySetClient::new(
-                        self.client.clone(),
-                        self.sync.clone(),
-                        self.fetch.clone(),
-                    )
-                    .to_delegate(),
-                ),
-                Api::Traces => handler.extend_with(light::TracesClient.to_delegate()),
-                Api::SecretStore => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
-                }
-                Api::Private => {
-                    if let Some(ref tx_manager) = self.private_tx_service {
-                        let private_tx_service = Some(tx_manager.clone());
-                        handler.extend_with(PrivateClient::new(private_tx_service).to_delegate());
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl<T: LightChainClient + 'static> Dependencies for LightDependencies<T> {
-    type Notifier = LightClientNotifier;
-
-    fn activity_notifier(&self) -> Self::Notifier {
-        LightClientNotifier
-    }
-
-    fn extend_with_set<S>(&self, handler: &mut MetaIoHandler<Metadata, S>, apis: &HashSet<Api>)
-    where
-        S: core::Middleware<Metadata>,
-    {
-        self.extend_api(handler, apis, false)
-    }
-}
-
 impl ApiSet {
     /// Retains only APIs in given set.
     pub fn retain(self, set: Self) -> Self {
@@ -647,17 +409,11 @@ impl ApiSet {
     }
 
     pub fn list_apis(&self) -> HashSet<Api> {
-        let mut public_list: HashSet<Api> = [
-            Api::Web3,
-            Api::Net,
-            Api::Eth,
-            Api::EthPubSub,
-            Api::Parity,
-            Api::Private,
-        ]
-        .iter()
-        .cloned()
-        .collect();
+        let mut public_list: HashSet<Api> =
+            [Api::Web3, Api::Net, Api::Eth, Api::EthPubSub, Api::Parity]
+                .iter()
+                .cloned()
+                .collect();
 
         match *self {
             ApiSet::List(ref apis) => apis.clone(),
@@ -715,7 +471,6 @@ mod test {
         assert_eq!(Api::ParitySet, "parity_set".parse().unwrap());
         assert_eq!(Api::Traces, "traces".parse().unwrap());
         assert_eq!(Api::SecretStore, "secretstore".parse().unwrap());
-        assert_eq!(Api::Private, "private".parse().unwrap());
         assert!("rp".parse::<Api>().is_err());
     }
 
@@ -743,7 +498,6 @@ mod test {
             Api::Parity,
             Api::ParityPubSub,
             Api::Traces,
-            Api::Private,
         ]
         .into_iter()
         .collect();
@@ -761,7 +515,6 @@ mod test {
             Api::Parity,
             Api::ParityPubSub,
             Api::Traces,
-            Api::Private,
             // semi-safe
             Api::ParityAccounts,
         ]
@@ -788,7 +541,6 @@ mod test {
                     Api::ParitySet,
                     Api::Signer,
                     Api::Personal,
-                    Api::Private,
                     Api::Debug,
                 ]
                 .into_iter()
@@ -814,7 +566,6 @@ mod test {
                     Api::ParityAccounts,
                     Api::ParitySet,
                     Api::Signer,
-                    Api::Private,
                     Api::Debug,
                 ]
                 .into_iter()
@@ -836,7 +587,6 @@ mod test {
                     Api::Parity,
                     Api::ParityPubSub,
                     Api::Traces,
-                    Api::Private,
                 ]
                 .into_iter()
                 .collect()

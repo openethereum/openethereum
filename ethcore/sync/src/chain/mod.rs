@@ -97,6 +97,7 @@ use super::{SyncConfig, WarpSync};
 use api::{EthProtocolInfo as PeerInfoDigest, PriorityTask, PAR_PROTOCOL};
 use block_sync::{BlockDownloader, DownloadAction};
 use bytes::Bytes;
+use derive_more::Display;
 use ethcore::{
     client::{BlockChainClient, BlockChainInfo, BlockId, BlockQueueInfo, BlockStatus},
     snapshot::RestorationStatus,
@@ -105,16 +106,15 @@ use ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use heapsize::HeapSizeOf;
-use network::{self, client_version::ClientVersion, PacketId, PeerId};
+use network::{self, client_version::ClientVersion, PeerId};
 use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
-use private_tx::PrivateTxHandler;
 use rand::Rng;
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
     cmp,
     collections::{BTreeMap, HashMap, HashSet},
-    sync::{mpsc, Arc},
+    sync::mpsc,
     time::{Duration, Instant},
 };
 use sync_io::SyncIo;
@@ -124,8 +124,8 @@ use types::{transaction::UnverifiedTransaction, BlockNumber};
 use self::{
     handler::SyncHandler,
     sync_packet::{
-        PacketInfo, SyncPacket,
-        SyncPacket::{NewBlockPacket, StatusPacket},
+        PacketInfo,
+        SyncPacket::{self, NewBlockPacket, StatusPacket},
     },
 };
 
@@ -134,7 +134,23 @@ use self::{propagator::SyncPropagator, requester::SyncRequester};
 
 known_heap_size!(0, PeerInfo);
 
-pub type PacketDecodeError = DecoderError;
+/// Possible errors during packet's processing
+#[derive(Debug, Display)]
+pub enum PacketProcessError {
+    /// Error of RLP decoder
+    #[display(fmt = "Decoder Error: {}", _0)]
+    Decoder(DecoderError),
+    /// Underlying client is busy and cannot process the packet
+    /// The packet should be postponed for later response
+    #[display(fmt = "Underlying client is busy")]
+    ClientBusy,
+}
+
+impl From<DecoderError> for PacketProcessError {
+    fn from(err: DecoderError) -> Self {
+        PacketProcessError::Decoder(err).into()
+    }
+}
 
 /// 63 version of Ethereum protocol.
 pub const ETH_PROTOCOL_VERSION_63: (u8, u8) = (63, 0x11);
@@ -144,12 +160,9 @@ pub const ETH_PROTOCOL_VERSION_62: (u8, u8) = (62, 0x11);
 pub const PAR_PROTOCOL_VERSION_1: (u8, u8) = (1, 0x15);
 /// 2 version of Parity protocol (consensus messages added).
 pub const PAR_PROTOCOL_VERSION_2: (u8, u8) = (2, 0x16);
-/// 3 version of Parity protocol (private transactions messages added).
-pub const PAR_PROTOCOL_VERSION_3: (u8, u8) = (3, 0x18);
 
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
-pub const MAX_NODE_DATA_TO_SEND: usize = 1024;
 pub const MAX_RECEIPTS_HEADERS_TO_SEND: usize = 256;
 const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
@@ -319,12 +332,8 @@ pub struct PeerInfo {
     ask_time: Instant,
     /// Holds a set of transactions recently sent to this peer to avoid spamming.
     last_sent_transactions: H256FastSet,
-    /// Holds a set of private transactions and their signatures recently sent to this peer to avoid spamming.
-    last_sent_private_transactions: H256FastSet,
     /// Pending request is expired and result should be ignored
     expired: bool,
-    /// Private transactions enabled
-    private_tx_enabled: bool,
     /// Peer fork confirmation status
     confirmation: ForkConfirmation,
     /// Best snapshot hash
@@ -354,10 +363,6 @@ impl PeerInfo {
             self.expired = true;
         }
     }
-
-    fn reset_private_stats(&mut self) {
-        self.last_sent_private_transactions.clear();
-    }
 }
 
 #[cfg(not(test))]
@@ -375,7 +380,7 @@ pub mod random {
     }
 }
 
-pub type RlpResponseResult = Result<Option<(PacketId, RlpStream)>, PacketDecodeError>;
+pub type RlpResponseResult = Result<Option<(SyncPacket, RlpStream)>, PacketProcessError>;
 pub type Peers = HashMap<PeerId, PeerInfo>;
 
 /// Thread-safe wrapper for `ChainSync`.
@@ -393,11 +398,10 @@ impl ChainSyncApi {
     pub fn new(
         config: SyncConfig,
         chain: &dyn BlockChainClient,
-        private_tx_handler: Option<Arc<dyn PrivateTxHandler>>,
         priority_tasks: mpsc::Receiver<PriorityTask>,
     ) -> Self {
         ChainSyncApi {
-            sync: RwLock::new(ChainSync::new(config, chain, private_tx_handler)),
+            sync: RwLock::new(ChainSync::new(config, chain)),
             priority_tasks: Mutex::new(priority_tasks),
         }
     }
@@ -431,6 +435,23 @@ impl ChainSyncApi {
     /// Dispatch incoming requests and responses
     pub fn dispatch_packet(&self, io: &mut dyn SyncIo, peer: PeerId, packet_id: u8, data: &[u8]) {
         SyncSupplier::dispatch_packet(&self.sync, io, peer, packet_id, data)
+    }
+
+    /// Process the queue with requests, that were delayed with response.
+    pub fn process_delayed_requests(&self, io: &mut dyn SyncIo) {
+        let requests = self.sync.write().retrieve_delayed_requests();
+        if !requests.is_empty() {
+            debug!(target: "sync", "Processing {} delayed requests", requests.len());
+            for (peer_id, packet_id, packet_data) in requests {
+                SyncSupplier::dispatch_delayed_request(
+                    &self.sync,
+                    io,
+                    peer_id,
+                    packet_id,
+                    &packet_data,
+                );
+            }
+        }
     }
 
     /// Process a priority propagation queue.
@@ -635,25 +656,23 @@ pub struct ChainSync {
     /// Connected peers pending Status message.
     /// Value is request timestamp.
     handshaking_peers: HashMap<PeerId, Instant>,
+    /// Requests, that can not be processed at the moment
+    delayed_requests: Vec<(PeerId, u8, Vec<u8>)>,
+    /// Ids of delayed requests, used for lookup, id is composed from peer id and packet id
+    delayed_requests_ids: HashSet<(PeerId, u8)>,
     /// Sync start timestamp. Measured when first peer is connected
     sync_start_time: Option<Instant>,
     /// Transactions propagation statistics
     transactions_stats: TransactionsStats,
     /// Enable ancient block downloading
     download_old_blocks: bool,
-    /// Shared private tx service.
-    private_tx_handler: Option<Arc<dyn PrivateTxHandler>>,
     /// Enable warp sync.
     warp_sync: WarpSync,
 }
 
 impl ChainSync {
     /// Create a new instance of syncing strategy.
-    pub fn new(
-        config: SyncConfig,
-        chain: &dyn BlockChainClient,
-        private_tx_handler: Option<Arc<dyn PrivateTxHandler>>,
-    ) -> Self {
+    pub fn new(config: SyncConfig, chain: &dyn BlockChainClient) -> Self {
         let chain_info = chain.chain_info();
         let best_block = chain.chain_info().best_block_number;
         let state = Self::get_init_state(config.warp_sync, chain);
@@ -665,6 +684,8 @@ impl ChainSync {
             peers: HashMap::new(),
             handshaking_peers: HashMap::new(),
             active_peers: HashSet::new(),
+            delayed_requests: Vec::new(),
+            delayed_requests_ids: HashSet::new(),
             new_blocks: BlockDownloader::new(
                 BlockSet::NewBlocks,
                 &chain_info.best_block_hash,
@@ -678,7 +699,6 @@ impl ChainSync {
             snapshot: Snapshot::new(),
             sync_start_time: None,
             transactions_stats: TransactionsStats::default(),
-            private_tx_handler,
             warp_sync: config.warp_sync,
         };
         sync.update_targets(chain);
@@ -771,6 +791,22 @@ impl ChainSync {
         // Reactivate peers only if some progress has been made
         // since the last sync round of if starting fresh.
         self.active_peers = self.peers.keys().cloned().collect();
+    }
+
+    /// Add a request for later processing
+    pub fn add_delayed_request(&mut self, peer: PeerId, packet_id: u8, data: &[u8]) {
+        // Ignore the request, if there is a request already in queue with the same id
+        if !self.delayed_requests_ids.contains(&(peer, packet_id)) {
+            self.delayed_requests_ids.insert((peer, packet_id));
+            self.delayed_requests.push((peer, packet_id, data.to_vec()));
+            debug!(target: "sync", "Delayed request with packet id {} from peer {} added", packet_id, peer);
+        }
+    }
+
+    /// Drain and return all delayed requests
+    pub fn retrieve_delayed_requests(&mut self) -> Vec<(PeerId, u8, Vec<u8>)> {
+        self.delayed_requests_ids.clear();
+        self.delayed_requests.drain(..).collect()
     }
 
     /// Restart sync
@@ -1208,7 +1244,6 @@ impl ChainSync {
     fn send_status(&mut self, io: &mut dyn SyncIo, peer: PeerId) -> Result<(), network::Error> {
         let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer);
         let warp_protocol = warp_protocol_version != 0;
-        let private_tx_protocol = warp_protocol_version >= PAR_PROTOCOL_VERSION_3.0;
         let protocol = if warp_protocol {
             warp_protocol_version
         } else {
@@ -1229,9 +1264,6 @@ impl ChainSync {
             let manifest_hash = manifest.map_or(H256::new(), |m| keccak(m.into_rlp()));
             packet.append(&manifest_hash);
             packet.append(&block_number);
-            if private_tx_protocol {
-                packet.append(&self.private_tx_handler.is_some());
-            }
         }
         packet.complete_unbounded_list();
         io.respond(StatusPacket.id(), packet.out())
@@ -1356,22 +1388,6 @@ impl ChainSync {
             .collect()
     }
 
-    fn get_private_transaction_peers(&self, transaction_hash: &H256) -> Vec<PeerId> {
-        self.peers
-            .iter()
-            .filter_map(|(id, p)| {
-                if p.protocol_version >= PAR_PROTOCOL_VERSION_3.0
-                    && !p.last_sent_private_transactions.contains(transaction_hash)
-                    && p.private_tx_enabled
-                {
-                    Some(*id)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     /// Maintain other peers. Send out any new blocks and transactions
     pub fn maintain_sync(&mut self, io: &mut dyn SyncIo) {
         self.maybe_start_snapshot_sync(io);
@@ -1408,7 +1424,6 @@ impl ChainSync {
             trace!(target: "sync", "Re-broadcasting transactions to a random peer.");
             self.peers.values_mut().nth(peer).map(|peer_info| {
                 peer_info.last_sent_transactions.clear();
-                peer_info.reset_private_stats()
             });
         }
     }
@@ -1443,23 +1458,6 @@ impl ChainSync {
     /// Broadcast consensus message to peers.
     pub fn propagate_consensus_packet(&mut self, io: &mut dyn SyncIo, packet: Bytes) {
         SyncPropagator::propagate_consensus_packet(self, io, packet);
-    }
-
-    /// Broadcast private transaction message to peers.
-    pub fn propagate_private_transaction(
-        &mut self,
-        io: &mut dyn SyncIo,
-        transaction_hash: H256,
-        packet_id: SyncPacket,
-        packet: Bytes,
-    ) {
-        SyncPropagator::propagate_private_transaction(
-            self,
-            io,
-            transaction_hash,
-            packet_id,
-            packet,
-        );
     }
 }
 
@@ -1566,7 +1564,7 @@ pub mod tests {
         peer_latest_hash: H256,
         client: &dyn BlockChainClient,
     ) -> ChainSync {
-        let mut sync = ChainSync::new(SyncConfig::default(), client, None);
+        let mut sync = ChainSync::new(SyncConfig::default(), client);
         insert_dummy_peer(&mut sync, 0, peer_latest_hash);
         sync
     }
@@ -1585,9 +1583,7 @@ pub mod tests {
                 asking_hash: None,
                 ask_time: Instant::now(),
                 last_sent_transactions: Default::default(),
-                last_sent_private_transactions: Default::default(),
                 expired: false,
-                private_tx_enabled: false,
                 confirmation: super::ForkConfirmation::Confirmed,
                 snapshot_number: None,
                 snapshot_hash: None,

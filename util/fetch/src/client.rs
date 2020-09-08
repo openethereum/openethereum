@@ -479,11 +479,6 @@ impl Response {
         self.status() == StatusCode::OK
     }
 
-    /// Status code == 404.
-    pub fn is_not_found(&self) -> bool {
-        self.status() == StatusCode::NOT_FOUND
-    }
-
     /// Is the content-type text/html?
     pub fn is_html(&self) -> bool {
         self.headers
@@ -716,26 +711,6 @@ mod test {
     fn it_should_fetch() {
         let server = TestServer::run();
         let client = Client::new(4).unwrap();
-        let mut runtime = Runtime::new().unwrap();
-
-        let future = client
-            .get(&format!("http://{}?123", server.addr()), Abort::default())
-            .map(|resp| {
-                assert!(resp.is_success());
-                resp
-            })
-            .map(|resp| resp.concat2())
-            .flatten()
-            .map(|body| assert_eq!(&body[..], b"123"))
-            .map_err(|err| panic!(err));
-
-        runtime.block_on(future).unwrap();
-    }
-
-    #[test]
-    fn it_should_fetch_in_light_mode() {
-        let server = TestServer::run();
-        let client = Client::new(1).unwrap();
         let mut runtime = Runtime::new().unwrap();
 
         let future = client

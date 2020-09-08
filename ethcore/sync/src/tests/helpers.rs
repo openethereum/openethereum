@@ -17,11 +17,16 @@
 use api::PAR_PROTOCOL;
 use bytes::Bytes;
 use chain::{
+<<<<<<< HEAD
     sync_packet::{
         PacketInfo, SyncPacket,
         SyncPacket::{PrivateTransactionPacket, SignedPrivateTransactionPacket},
     },
     ChainSync, SyncSupplier, ETH_PROTOCOL_VERSION_63, PAR_PROTOCOL_VERSION_3,
+=======
+    sync_packet::{PacketInfo, SyncPacket},
+    ChainSync, ForkFilterApi, SyncSupplier, ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_2,
+>>>>>>> 7052d4ce0... Implement eth/64, remove eth/62
 };
 use ethcore::{
     client::{
@@ -33,6 +38,7 @@ use ethcore::{
     spec::Spec,
     test_helpers,
 };
+
 use ethereum_types::H256;
 use io::{IoChannel, IoContext, IoHandler};
 use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId, SessionInfo};
@@ -172,7 +178,7 @@ where
     }
 
     fn eth_protocol_version(&self, _peer: PeerId) -> u8 {
-        ETH_PROTOCOL_VERSION_63.0
+        ETH_PROTOCOL_VERSION_64.0
     }
 
     fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8 {
@@ -426,8 +432,12 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
         for _ in 0..n {
             let chain = TestBlockChainClient::new();
             let ss = Arc::new(TestSnapshotService::new());
+<<<<<<< HEAD
             let private_tx_handler = Arc::new(SimplePrivateTxHandler::default());
             let sync = ChainSync::new(config.clone(), &chain, Some(private_tx_handler.clone()));
+=======
+            let sync = ChainSync::new(config.clone(), &chain, ForkFilterApi::new_dummy(&chain));
+>>>>>>> 7052d4ce0... Implement eth/64, remove eth/62
             net.peers.push(Arc::new(EthPeer {
                 sync: RwLock::new(sync),
                 snapshot_service: ss,
@@ -478,7 +488,11 @@ impl TestNet<EthPeer<EthcoreClient>> {
 
         let private_tx_handler = Arc::new(SimplePrivateTxHandler::default());
         let ss = Arc::new(TestSnapshotService::new());
+<<<<<<< HEAD
         let sync = ChainSync::new(config, &*client, Some(private_tx_handler.clone()));
+=======
+        let sync = ChainSync::new(config, &*client, ForkFilterApi::new_dummy(&*client));
+>>>>>>> 7052d4ce0... Implement eth/64, remove eth/62
         let peer = Arc::new(EthPeer {
             sync: RwLock::new(sync),
             snapshot_service: ss,

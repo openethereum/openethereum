@@ -17,7 +17,7 @@
 //! Evm factory.
 //!
 use super::{interpreter::SharedCache, vm::ActionParams, vmtype::VMType};
-use ethereum_types::U256;
+use ethereum_types::{Address, U256};
 use std::sync::Arc;
 use vm::{Exec, Schedule};
 
@@ -31,7 +31,13 @@ pub struct Factory {
 impl Factory {
     /// Create fresh instance of VM
     /// Might choose implementation depending on supplied gas.
-    pub fn create(&self, params: ActionParams, schedule: &Schedule, depth: usize) -> Box<dyn Exec> {
+    pub fn create(
+        &self,
+        params: ActionParams,
+        schedule: &Schedule,
+        depth: usize,
+        builtins: &[&Address],
+    ) -> Box<dyn Exec> {
         match self.evm {
             VMType::Interpreter => {
                 if Self::can_fit_in_usize(&params.gas) {
@@ -40,6 +46,7 @@ impl Factory {
                         self.evm_cache.clone(),
                         schedule,
                         depth,
+                        builtins,
                     ))
                 } else {
                     Box::new(super::interpreter::Interpreter::<U256>::new(
@@ -47,6 +54,7 @@ impl Factory {
                         self.evm_cache.clone(),
                         schedule,
                         depth,
+                        builtins,
                     ))
                 }
             }
@@ -85,7 +93,7 @@ fn test_create_vm() {
     let mut params = ActionParams::default();
     params.code = Some(Arc::new(Bytes::default()));
     let ext = FakeExt::new();
-    let _vm = Factory::default().create(params, ext.schedule(), ext.depth());
+    let _vm = Factory::default().create(params, ext.schedule(), ext.depth(), &Vec::new());
 }
 
 /// Create tests by injecting different VM factories

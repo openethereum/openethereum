@@ -33,7 +33,7 @@ use criterion::{black_box, Bencher, Criterion};
 use ethereum_types::{Address, U256};
 use evm::Factory;
 use rustc_hex::FromHex;
-use std::{str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use vm::{tests::FakeExt, ActionParams, Ext, GasLeft, Result};
 
 criterion_group!(
@@ -74,7 +74,7 @@ fn simple_loop_log0(gas: U256, b: &mut Bencher) {
         params.gas = gas;
         params.code = Some(Arc::new(code.clone()));
 
-        let vm = factory.create(params, ext.schedule(), 0);
+        let vm = factory.create(params, ext.schedule(), 0, &Vec::new());
 
         result(vm.exec(&mut ext).ok().unwrap())
     });
@@ -110,7 +110,7 @@ fn mem_gas_calculation_same(gas: U256, b: &mut Bencher) {
         params.gas = gas;
         params.code = Some(Arc::new(code.clone()));
 
-        let vm = factory.create(params, ext.schedule(), 0);
+        let vm = factory.create(params, ext.schedule(), 0, &Vec::new());
 
         result(vm.exec(&mut ext).ok().unwrap())
     });
@@ -146,7 +146,7 @@ fn mem_gas_calculation_increasing(gas: U256, b: &mut Bencher) {
         params.gas = gas;
         params.code = Some(Arc::new(code.clone()));
 
-        let vm = factory.create(params, ext.schedule(), 0);
+        let vm = factory.create(params, ext.schedule(), 0, &Vec::new());
 
         result(vm.exec(&mut ext).ok().unwrap())
     });
@@ -169,7 +169,7 @@ fn blockhash_mulmod_small(b: &mut Criterion) {
 			params.gas = U256::from(4_000u64);
 			params.code = Some(Arc::new(code.clone()));
 
-			let vm = factory.create(params, ext.schedule(), 0);
+			let vm = factory.create(params, ext.schedule(), 0, &Vec::new());
 
 			result(vm.exec(&mut ext).ok().unwrap())
 		});
@@ -193,7 +193,7 @@ fn blockhash_mulmod_large(b: &mut Criterion) {
 			params.gas = U256::from(4_000u64);
 			params.code = Some(Arc::new(code.clone()));
 
-			let vm = factory.create(params, ext.schedule(), 0);
+			let vm = factory.create(params, ext.schedule(), 0, &Vec::new());
 
 			result(vm.exec(&mut ext).ok().unwrap())
 		});

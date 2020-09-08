@@ -177,6 +177,10 @@ where
         Ok(ContractCreateResult::Created(contract_address, *gas))
     }
 
+    fn calc_address(&self, code: &[u8], address: CreateContractAddress) -> Option<Address> {
+        Some(contract_address(address, &self.sender, &self.nonce, &code).0)
+    }
+
     fn call(
         &mut self,
         gas: &U256,
@@ -325,7 +329,8 @@ fn do_json_test_for<H: FnMut(&str, HookType)>(
                 &mut tracer,
                 &mut vm_tracer,
             ));
-            let evm = vm_factory.create(params, &schedule, 0);
+            let builtins: Vec<&Address> = machine.builtins().keys().collect();
+            let evm = vm_factory.create(params, &schedule, 0, &builtins);
             let res = evm
                 .exec(&mut ex)
                 .ok()

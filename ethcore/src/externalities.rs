@@ -322,6 +322,15 @@ where
         Ok(into_contract_create_result(out, &address, self.substate))
     }
 
+    fn calc_address(&self, code: &[u8], address_scheme: CreateContractAddress) -> Option<Address> {
+        match self.state.nonce(&self.origin_info.address) {
+            Ok(nonce) => {
+                Some(contract_address(address_scheme, &self.origin_info.address, &nonce, &code).0)
+            }
+            Err(_) => None,
+        }
+    }
+
     fn call(
         &mut self,
         gas: &U256,

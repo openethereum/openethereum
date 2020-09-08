@@ -101,6 +101,9 @@ pub trait Ext {
         trap: bool,
     ) -> ::std::result::Result<ContractCreateResult, TrapKind>;
 
+    /// Returns the address that will be created in the create call
+    fn calc_address(&self, code: &[u8], address: CreateContractAddress) -> Option<Address>;
+
     /// Message call.
     ///
     /// Returns Err, if we run out of gas.

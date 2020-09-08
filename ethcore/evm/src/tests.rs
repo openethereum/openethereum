@@ -45,7 +45,7 @@ fn test_add(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -69,7 +69,7 @@ fn test_sha3(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -93,7 +93,7 @@ fn test_address(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -119,7 +119,7 @@ fn test_origin(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -150,7 +150,7 @@ fn test_selfbalance(factory: super::Factory) {
         x
     };
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
     assert_eq!(gas_left, U256::from(79_992)); // TODO[dvdplm]: do the sums here, SELFBALANCE-5 + PUSH1-3 + ONEBYTE-4 + SSTORE-?? = 100_000 - 79_992
@@ -175,7 +175,7 @@ fn test_sender(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -200,7 +200,7 @@ fn test_chain_id(factory: super::Factory) {
     let mut ext = FakeExt::new_istanbul().with_chain_id(9);
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -239,7 +239,7 @@ fn test_extcodecopy(factory: super::Factory) {
     ext.codes.insert(sender, Arc::new(sender_code));
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -263,7 +263,7 @@ fn test_log_empty(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -295,7 +295,7 @@ fn test_log_sender(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -329,7 +329,7 @@ fn test_blockhash(factory: super::Factory) {
     ext.blockhashes.insert(U256::zero(), blockhash.clone());
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -353,7 +353,7 @@ fn test_calldataload(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -377,7 +377,7 @@ fn test_author(factory: super::Factory) {
     ext.info.author = author;
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -401,7 +401,7 @@ fn test_timestamp(factory: super::Factory) {
     ext.info.timestamp = timestamp;
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -425,7 +425,7 @@ fn test_number(factory: super::Factory) {
     ext.info.number = number;
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -449,7 +449,7 @@ fn test_difficulty(factory: super::Factory) {
     ext.info.difficulty = difficulty;
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -473,7 +473,7 @@ fn test_gas_limit(factory: super::Factory) {
     ext.info.gas_limit = gas_limit;
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -495,7 +495,7 @@ fn test_mul(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -517,7 +517,7 @@ fn test_sub(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -539,7 +539,7 @@ fn test_div(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -561,7 +561,7 @@ fn test_div_zero(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -585,7 +585,7 @@ fn test_mod(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -614,7 +614,7 @@ fn test_smod(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -643,7 +643,7 @@ fn test_sdiv(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -672,7 +672,7 @@ fn test_exp(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -706,7 +706,7 @@ fn test_comparison(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -745,7 +745,7 @@ fn test_signed_comparison(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -784,7 +784,7 @@ fn test_bitops(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -833,7 +833,7 @@ fn test_addmod_mulmod(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -870,7 +870,7 @@ fn test_byte(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -897,7 +897,7 @@ fn test_signextend(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -925,7 +925,7 @@ fn test_badinstruction_int() {
     let mut ext = FakeExt::new();
 
     let err = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap_err()
     };
 
@@ -945,7 +945,7 @@ fn test_pop(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -971,7 +971,7 @@ fn test_extops(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1020,7 +1020,7 @@ fn test_jumps(factory: super::Factory) {
     let mut ext = FakeExt::new();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1049,7 +1049,7 @@ fn test_subs_simple(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1067,7 +1067,7 @@ fn test_subs_two_levels(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1085,7 +1085,7 @@ fn test_subs_invalid_jump(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let current = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap())
     };
 
@@ -1104,7 +1104,7 @@ fn test_subs_shallow_return_stack(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let current = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap())
     };
 
@@ -1139,7 +1139,7 @@ fn test_subs_substack_limit(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1157,7 +1157,7 @@ fn test_subs_substack_out(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let current = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap())
     };
 
@@ -1178,7 +1178,7 @@ fn test_subs_sub_at_end(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1195,7 +1195,7 @@ fn test_subs_walk_into_subroutine(factory: super::Factory) {
     let mut ext = FakeExt::new_berlin();
 
     let current = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap())
     };
 
@@ -1221,7 +1221,7 @@ fn test_calls(factory: super::Factory) {
     };
 
     let gas_left = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 
@@ -1268,7 +1268,7 @@ fn test_create_in_staticcall(factory: super::Factory) {
     ext.is_static = true;
 
     let err = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap_err()
     };
 
@@ -1554,6 +1554,102 @@ fn test_sar(factory: super::Factory) {
     );
 }
 
+// from https://gist.github.com/holiman/174548cad102096858583c6fbbb0649a
+evm_test! {test_access_cost_ext_at_precompiles: test_access_cost_ext_at_precompiles_int}
+fn test_access_cost_ext_at_precompiles(factory: super::Factory) {
+    // 6001 3f 50
+    // 6002 3b 50
+    // 6003 31 50
+    // 60f1 3f 50
+    // 60f2 3b 50
+    // 60f3 31 50
+    // 60f2 3f 50
+    // 60f3 3b 50
+    // 60f1 31 50
+    // 32 31 50
+    // 30 31 50
+    // 00
+
+    let code = hex!(
+        "60013f5060023b506003315060f13f5060f23b5060f3315060f23f5060f33b5060f1315032315030315000"
+    )
+    .to_vec();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(8653);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_yolo();
+    let gas_left = {
+        let builtins = [
+            &Address::from(1),
+            &Address::from(2),
+            &Address::from(3),
+            &Address::from(4),
+            &Address::from(5),
+            &Address::from(6),
+        ];
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &builtins);
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(0));
+}
+
+evm_test! {test_access_cost_extcodecopy_twice: test_access_cost_extcodecopy_twice_int}
+fn test_access_cost_extcodecopy_twice(factory: super::Factory) {
+    let code = hex!("60006000600060ff3c60006000600060ff3c600060006000303c00").to_vec();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(2835);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_yolo();
+    let gas_left = {
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &[]);
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(0));
+}
+
+evm_test! {test_access_cost_sload_sstore: test_access_cost_sload_sstore_int}
+fn test_access_cost_sload_sstore(factory: super::Factory) {
+    // 6001 54 50    sload( 0x1) pop
+    // 6011 6001 55  sstore(loc: 0x01, val:0x11) 20000
+    // 6011 6002 55  sstore(loc: 0x02, val:0x11) 20000 + 2100
+    // 6011 6002 55  sstore(loc: 0x02, val:0x11) 100
+    // 6002 54       sload(0x2)
+    // 6001 54       sload(0x1)
+    let code = hex!("60015450 6011600155 6011600255 6011600255 600254 600154").to_vec();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(44529);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_yolo();
+    let gas_left = {
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &[]);
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(0));
+}
+
+evm_test! {test_access_cost_cheap_expensive_cheap: test_access_cost_cheap_expensive_cheap_int}
+fn test_access_cost_cheap_expensive_cheap(factory: super::Factory) {
+    let code =
+        hex!("60008080808060046000f15060008080808060ff6000f15060008080808060ff6000fa50").to_vec();
+    let mut params = ActionParams::default();
+    params.gas = U256::from(2869);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_yolo();
+    let gas_left = {
+        let builtins = [&Address::from(4)];
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &builtins);
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(0));
+}
+
 fn push_two_pop_one_constantinople_test(
     factory: &super::Factory,
     opcode: u8,
@@ -1580,7 +1676,7 @@ fn push_two_pop_one_constantinople_test(
     let mut ext = FakeExt::new_constantinople();
 
     let _ = {
-        let vm = factory.create(params, ext.schedule(), ext.depth());
+        let vm = factory.create(params, ext.schedule(), ext.depth(), &Vec::new());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
     };
 

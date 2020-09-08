@@ -29,7 +29,7 @@ mod env_info;
 mod error;
 mod ext;
 mod return_data;
-mod schedule;
+pub mod schedule;
 
 pub mod tests;
 

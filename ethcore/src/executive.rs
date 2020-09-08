@@ -584,7 +584,10 @@ impl<'a> CallCreateExecutive<'a> {
                 }
 
                 let origin_info = OriginInfo::from(&params);
-                let exec = self.factory.create(params, self.schedule, self.depth);
+                let builtins: Vec<_> = self.machine.builtins().keys().collect();
+                let exec = self
+                    .factory
+                    .create(params, self.schedule, self.depth, &builtins);
 
                 let out = {
                     let mut ext = Self::as_externalities(
@@ -655,7 +658,10 @@ impl<'a> CallCreateExecutive<'a> {
                 }
 
                 let origin_info = OriginInfo::from(&params);
-                let exec = self.factory.create(params, self.schedule, self.depth);
+                let precompiles: Vec<&Address> = self.machine.builtins().keys().collect();
+                let exec = self
+                    .factory
+                    .create(params, self.schedule, self.depth, &precompiles);
 
                 let out = {
                     let mut ext = Self::as_externalities(

@@ -312,7 +312,10 @@ pub trait BlockChainClient:
     ) -> Option<Vec<H256>>;
 
     /// Get transaction with given hash.
-    fn transaction(&self, id: TransactionId) -> Option<LocalizedTransaction>;
+    fn block_transaction(&self, id: TransactionId) -> Option<LocalizedTransaction>;
+
+    /// Get pool transaction with a given hash.
+    fn queued_transaction(&self, hash: H256) -> Option<Arc<VerifiedTransaction>>;
 
     /// Get uncle with given id.
     fn uncle(&self, id: UncleId) -> Option<encoded::Header>;

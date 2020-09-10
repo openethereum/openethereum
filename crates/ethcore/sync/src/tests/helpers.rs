@@ -18,7 +18,7 @@ use api::PAR_PROTOCOL;
 use bytes::Bytes;
 use chain::{
     sync_packet::{PacketInfo, SyncPacket},
-    ChainSync, ForkFilterApi, SyncSupplier, ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_2,
+    ChainSync, ForkFilterApi, SyncSupplier, ETH_PROTOCOL_VERSION_65, PAR_PROTOCOL_VERSION_2,
 };
 use ethcore::{
     client::{
@@ -168,11 +168,11 @@ where
         None
     }
 
-    fn protocol_version(&self, protocol: ProtocolId, _peer_id: PeerId) -> u8 {
-        if protocol == PAR_PROTOCOL {
+    fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8 {
+        if protocol == &PAR_PROTOCOL {
             PAR_PROTOCOL_VERSION_2.0
         } else {
-            ETH_PROTOCOL_VERSION_64.0
+            self.eth_protocol_version(peer_id)
         }
     }
 

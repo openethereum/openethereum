@@ -25,15 +25,14 @@ use rlp::{Encodable, RlpStream};
 use sync_io::SyncIo;
 use types::{blockchain_info::BlockChainInfo, transaction::SignedTransaction, BlockNumber};
 
-use super::sync_packet::{
-    SyncPacket,
-    SyncPacket::{ConsensusDataPacket, NewBlockHashesPacket, NewBlockPacket, TransactionsPacket},
-};
+use super::sync_packet::SyncPacket::{self, *};
 
 use super::{
-    random, ChainSync, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
+    random, ChainSync, ETH_PROTOCOL_VERSION_65, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
     MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION,
 };
+
+const NEW_POOLED_HASHES_LIMIT: usize = 4096;
 
 /// The Chain Sync Propagator: propagates data to peers
 pub struct SyncPropagator;
@@ -175,14 +174,29 @@ impl SyncPropagator {
             }
             packet.out()
         };
+        let all_transactions_hashes_rlp =
+            rlp::encode_list(&all_transactions_hashes.iter().copied().collect::<Vec<_>>());
 
         // Clear old transactions from stats
         sync.transactions_stats.retain(&all_transactions_hashes);
 
-        let send_packet = |io: &mut dyn SyncIo, peer_id: PeerId, sent: usize, rlp: Bytes| {
+        let send_packet = |io: &mut dyn SyncIo,
+                           peer_id: PeerId,
+                           is_hashes: bool,
+                           sent: usize,
+                           rlp: Bytes| {
             let size = rlp.len();
-            SyncPropagator::send_packet(io, peer_id, TransactionsPacket, rlp);
-            trace!(target: "sync", "{:02} <- Transactions ({} entries; {} bytes)", peer_id, sent, size);
+            SyncPropagator::send_packet(
+                io,
+                peer_id,
+                if is_hashes {
+                    NewPooledTransactionHashesPacket
+                } else {
+                    TransactionsPacket
+                },
+                rlp,
+            );
+            trace!(target: "sync", "{:02} <- {} ({} entries; {} bytes)", peer_id, if is_hashes { "NewPooledTransactionHashes" } else { "Transactions" }, sent, size);
         };
 
         let block_number = io.chain().chain_info().best_block_number;
@@ -200,6 +214,8 @@ impl SyncPropagator {
             let peer_info = sync.peers.get_mut(&peer_id)
 				.expect("peer_id is form peers; peers is result of select_peers_for_transactions; select_peers_for_transactions selects peers from self.peers; qed");
 
+            let is_hashes = peer_info.protocol_version >= ETH_PROTOCOL_VERSION_65.0;
+
             // Send all transactions, if the peer doesn't know about anything
             if peer_info.last_sent_transactions.is_empty() {
                 // update stats
@@ -209,12 +225,14 @@ impl SyncPropagator {
                 }
                 peer_info.last_sent_transactions = all_transactions_hashes.clone();
 
-                send_packet(
-                    io,
-                    peer_id,
-                    all_transactions_hashes.len(),
-                    all_transactions_rlp.clone(),
-                );
+                let rlp = {
+                    if is_hashes {
+                        all_transactions_hashes_rlp.clone()
+                    } else {
+                        all_transactions_rlp.clone()
+                    }
+                };
+                send_packet(io, peer_id, is_hashes, all_transactions_hashes.len(), rlp);
                 sent_to_peers.insert(peer_id);
                 max_sent = cmp::max(max_sent, all_transactions_hashes.len());
                 continue;
@@ -238,20 +256,29 @@ impl SyncPropagator {
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
-                        let mut transaction = RlpStream::new();
-                        tx.rlp_append(&mut transaction);
-                        let appended = packet.append_raw_checked(
-                            &transaction.drain(),
-                            1,
-                            MAX_TRANSACTION_PACKET_SIZE,
-                        );
-                        if !appended {
-                            // Maximal packet size reached just proceed with sending
-                            debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
-                            to_send = to_send.into_iter().take(pushed).collect();
-                            break;
+                        if is_hashes {
+                            if pushed >= NEW_POOLED_HASHES_LIMIT {
+                                debug!(target: "sync", "NewPooledTransactionHashes length limit reached. Sending incomplete list of {}/{} transactions.", pushed, to_send.len());
+                                break;
+                            }
+                            packet.append(&hash);
+                            pushed += 1
+                        } else {
+                            let mut transaction = RlpStream::new();
+                            tx.rlp_append(&mut transaction);
+                            let appended = packet.append_raw_checked(
+                                &transaction.drain(),
+                                1,
+                                MAX_TRANSACTION_PACKET_SIZE,
+                            );
+                            if !appended {
+                                // Maximal packet size reached just proceed with sending
+                                debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
+                                to_send = to_send.into_iter().take(pushed).collect();
+                                break;
+                            }
+                            pushed += 1;
                         }
-                        pushed += 1;
                     }
                 }
                 packet.complete_unbounded_list();
@@ -270,7 +297,7 @@ impl SyncPropagator {
                 .chain(&to_send)
                 .cloned()
                 .collect();
-            send_packet(io, peer_id, to_send.len(), packet.out());
+            send_packet(io, peer_id, is_hashes, to_send.len(), packet.out());
             sent_to_peers.insert(peer_id);
             max_sent = cmp::max(max_sent, to_send.len());
         }
@@ -467,6 +494,8 @@ mod tests {
                 asking: PeerAsking::Nothing,
                 asking_blocks: Vec::new(),
                 asking_hash: None,
+                unfetched_pooled_transactions: Default::default(),
+                asking_pooled_transactions: Default::default(),
                 ask_time: Instant::now(),
                 last_sent_transactions: Default::default(),
                 expired: false,

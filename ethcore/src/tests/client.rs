@@ -72,7 +72,7 @@ fn imports_from_empty() {
 fn should_return_registrar() {
     let db = test_helpers::new_db();
     let tempdir = TempDir::new("").unwrap();
-    let spec = ethereum::new_morden(&tempdir.path().to_owned());
+    let spec = ethereum::new_ropsten(&tempdir.path().to_owned());
 
     let client = Client::new(
         ClientConfig::default(),

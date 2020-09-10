@@ -571,7 +571,7 @@ fn ecip1017_eras_block_reward(era_rounds: u64, mut reward: U256, block_number: u
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{new_homestead_test_machine, new_mcip3_test, new_morden},
+        super::{new_homestead_test_machine, new_mcip3_test, new_ropsten},
         ecip1017_eras_block_reward, Ethash, EthashParams,
     };
     use block::*;
@@ -587,7 +587,7 @@ mod tests {
 
     fn test_spec() -> Spec {
         let tempdir = TempDir::new("").unwrap();
-        new_morden(&tempdir.path())
+        new_ropsten(&tempdir.path())
     }
 
     fn get_default_ethash_params() -> EthashParams {
@@ -645,7 +645,7 @@ mod tests {
         let b = b.close().unwrap();
         assert_eq!(
             b.state.balance(&Address::zero()).unwrap(),
-            U256::from_str("4563918244f40000").unwrap()
+            U256::from_str("4563918244f40001").unwrap()
         );
     }
 
@@ -717,7 +717,7 @@ mod tests {
         let b = b.close().unwrap();
         assert_eq!(
             b.state.balance(&Address::zero()).unwrap(),
-            "478eae0e571ba000".into()
+            "478eae0e571ba001".into()
         );
         assert_eq!(
             b.state.balance(&uncle_author).unwrap(),
@@ -779,7 +779,7 @@ mod tests {
         assert!(schedule.stack_limit > 0);
 
         let schedule = engine.schedule(100);
-        assert!(!schedule.have_delegate_call);
+        assert!(schedule.have_delegate_call);
     }
 
     #[test]

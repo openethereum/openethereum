@@ -67,6 +67,7 @@ pub struct Transaction {
     pub s: U256,
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
+    //TODO dr add optional_access_list and transaction_type
 }
 
 /// Local Transaction Status
@@ -178,21 +179,23 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
         Transaction {
             hash: t.hash(),
-            nonce: t.nonce,
+            nonce: t.tx().nonce,
             block_hash: Some(t.block_hash),
             block_number: Some(t.block_number.into()),
             transaction_index: Some(t.transaction_index.into()),
             from: t.sender(),
-            to: match t.action {
+            to: match t.tx().action {
                 Action::Create => None,
                 Action::Call(ref address) => Some(*address),
             },
-            value: t.value,
-            gas_price: t.gas_price,
-            gas: t.gas,
-            input: Bytes::new(t.data.clone()),
-            creates: match t.action {
-                Action::Create => Some(contract_address(scheme, &t.sender(), &t.nonce, &t.data).0),
+            value: t.tx().value,
+            gas_price: t.tx().gas_price,
+            gas: t.tx().gas,
+            input: Bytes::new(t.tx().data.clone()),
+            creates: match t.tx().action {
+                Action::Create => {
+                    Some(contract_address(scheme, &t.sender(), &t.tx().nonce, &t.tx().data).0)
+                }
                 Action::Call(_) => None,
             },
             raw: ::rlp::encode(&t.signed).into(),
@@ -211,22 +214,24 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
         Transaction {
-            hash: t.hash(),
-            nonce: t.nonce,
+            hash: t.hash(), //TODO check what hash are we sending here
+            nonce: t.tx().nonce,
             block_hash: None,
             block_number: None,
             transaction_index: None,
             from: t.sender(),
-            to: match t.action {
+            to: match t.tx().action {
                 Action::Create => None,
                 Action::Call(ref address) => Some(*address),
             },
-            value: t.value,
-            gas_price: t.gas_price,
-            gas: t.gas,
-            input: Bytes::new(t.data.clone()),
-            creates: match t.action {
-                Action::Create => Some(contract_address(scheme, &t.sender(), &t.nonce, &t.data).0),
+            value: t.tx().value,
+            gas_price: t.tx().gas_price,
+            gas: t.tx().gas,
+            input: Bytes::new(t.tx().data.clone()),
+            creates: match t.tx().action {
+                Action::Create => {
+                    Some(contract_address(scheme, &t.sender(), &t.tx().nonce, &t.tx().data).0)
+                }
                 Action::Call(_) => None,
             },
             raw: ::rlp::encode(&t).into(),
@@ -265,7 +270,7 @@ impl LocalTransactionStatus {
             Canceled(tx) => LocalTransactionStatus::Canceled(convert(tx)),
             Replaced { old, new } => LocalTransactionStatus::Replaced(
                 convert(old),
-                new.signed().gas_price,
+                new.signed().tx().gas_price,
                 new.signed().hash(),
             ),
         }

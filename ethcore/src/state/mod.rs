@@ -42,6 +42,7 @@ use types::{
     state_diff::StateDiff,
     transaction::SignedTransaction,
 };
+
 use vm::EnvInfo;
 
 use bytes::Bytes;
@@ -1602,7 +1603,7 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -1610,7 +1611,7 @@ mod tests {
             value: 100.into(),
             data: FromHex::from_hex("601080600c6000396000f3006000355415600957005b60203560003555")
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1667,14 +1668,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Create,
             value: 100.into(),
             data: FromHex::from_hex("5b600056").unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1706,14 +1707,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1753,14 +1754,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1797,14 +1798,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = Spec::new_test_machine();
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0x1.into()),
             value: 0.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         let result = state.apply(&info, &machine, &t, true).unwrap();
@@ -1839,14 +1840,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = Spec::new_test_machine();
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 0.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1887,14 +1888,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = Spec::new_test_machine();
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 0.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -1957,14 +1958,14 @@ mod tests {
         info.number = 0x789b0;
         let machine = Spec::new_test_machine();
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 0.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2029,14 +2030,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2073,14 +2074,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2145,14 +2146,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2210,14 +2211,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2260,14 +2261,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![], //600480600b6000396000f35b600056
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2328,14 +2329,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2421,14 +2422,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![], //600480600b6000396000f35b600056
-        }
+        })
         .sign(&secret(), None);
 
         state
@@ -2512,14 +2513,14 @@ mod tests {
         info.gas_limit = 1_000_000.into();
         let machine = make_frontier_machine(5);
 
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
             action: Action::Call(0xa.into()),
             value: 100.into(),
             data: vec![],
-        }
+        })
         .sign(&secret(), None);
 
         state

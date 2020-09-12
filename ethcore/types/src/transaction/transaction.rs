@@ -129,9 +129,69 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    /// Append object with a without signature into RLP stream
-    pub fn rlp_append_unsigned_transaction(&self, s: &mut RlpStream, chain_id: Option<u64>) {
-        s.begin_list(if chain_id.is_none() { 6 } else { 9 });
+    /// The message hash of the transaction. This hash is used for signing transaction
+    pub fn hash(&self, chain_id: Option<u64>) -> H256 {
+        let mut stream = RlpStream::new();
+        self.encode(&mut stream, chain_id, None);
+        keccak(stream.as_raw())
+    }
+
+    fn decode(d: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
+        if d.item_count()? != 9 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let hash = keccak(d.as_raw());
+        let signature = SignatureComponents {
+            v: d.val_at(6)?,
+            r: d.val_at(7)?,
+            s: d.val_at(8)?,
+        };
+        Ok(UnverifiedTransaction::new(
+            TypedTransaction::Legacy(Self::decode_data(d)?),
+            signature,
+            hash,
+        ))
+    }
+
+    pub fn decode_data(d: &Rlp) -> Result<Transaction, DecoderError> {
+        Ok(Transaction {
+            nonce: d.val_at(0)?,
+            gas_price: d.val_at(1)?,
+            gas: d.val_at(2)?,
+            action: d.val_at(3)?,
+            value: d.val_at(4)?,
+            data: d.val_at(5)?,
+        })
+    }
+
+    fn encode(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) {
+        let mut list_size = 6;
+        list_size += if chain_id.is_some() { 3 } else { 0 };
+        list_size += if signature.is_some() { 3 } else { 0 };
+        rlp.begin_list(list_size);
+
+        self.rlp_append_open(rlp, chain_id);
+
+        if let Some(signature) = signature {
+            signature.rlp_append(rlp);
+        }
+    }
+
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        self.encode(rlp, chain_id, Some(signature));
+    }
+
+    pub fn rlp_append_open(&self, s: &mut RlpStream, chain_id: Option<u64>) {
         s.append(&self.nonce);
         s.append(&self.gas_price);
         s.append(&self.gas);
@@ -152,59 +212,129 @@ impl HeapSizeOf for Transaction {
     }
 }
 
-#[cfg(any(test, feature = "test-helpers"))]
-impl From<ethjson::state::Transaction> for SignedTransaction {
-    fn from(t: ethjson::state::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        let secret = t.secret.map(|s| Secret::from(s.0));
-        let tx = Transaction {
-            nonce: t.nonce.into(),
-            gas_price: t.gas_price.into(),
-            gas: t.gas_limit.into(),
-            action: match to {
-                Some(to) => Action::Call(to.into()),
-                None => Action::Create,
-            },
-            value: t.value.into(),
-            data: t.data.into(),
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AccessListTx {
+    pub transaction: Transaction,
+    //optional access list
+    pub access_list: Vec<(H160, Vec<H256>)>,
+}
+
+impl AccessListTx {
+    pub fn new(transaction: Transaction, access_list: Vec<(H160, Vec<H256>)>) -> AccessListTx {
+        AccessListTx {
+            transaction,
+            access_list,
+        }
+    }
+
+    pub fn tx(&self) -> &Transaction {
+        &self.transaction
+    }
+
+    pub fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.transaction
+    }
+
+    // decode bytes by this payload spec: rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        let tx_rlp = &Rlp::new(&tx[1..]); //first byte is related to transaction type defined in EIP-2718
+
+        // we need to have 10 items in this list
+        if tx_rlp.item_count()? != 10 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        // first part of list is same as legacy transaction and we are reusing that part.
+        let transaction = Transaction::decode_data(&tx_rlp)?;
+
+        // access list we get from here
+        let accl_rlp = tx_rlp.at(6)?;
+
+        // access_list pattern: [[{20 bytes}, [{32 bytes}...]]...]
+        let mut accl: Vec<(H160, Vec<H256>)> = Vec::new();
+
+        for i in 0..accl_rlp.item_count()? {
+            let accounts = accl_rlp.at(i)?;
+
+            if accounts.item_count()? != 2 {
+                //TODO check what to do if we have only one item, should we be strict or not
+                return Err(DecoderError::Custom("Unknown access list lenght"));
+            }
+            accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
+        }
+
+        // we get signature part from here
+        let signature = SignatureComponents {
+            v: tx_rlp.val_at(7)?,
+            r: tx_rlp.val_at(8)?,
+            s: tx_rlp.val_at(9)?,
         };
-        match secret {
-            Some(s) => tx.sign(&s, None),
-            None => tx.null_sign(1),
+
+        //and here we create UnverifiedTransaction and calculate its hash
+        Ok(UnverifiedTransaction::new(
+            TypedTransaction::AccessList(AccessListTx {
+                transaction,
+                access_list: accl,
+            }),
+            signature,
+            0.into(),
+        )
+        .compute_hash())
+    }
+
+    // encode by this payload spec: 0x03 | rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn encode(&self, signature: Option<&SignatureComponents>) -> Vec<u8> {
+        let mut stream = RlpStream::new();
+        //stream.begin_list(2);
+        //stream.append(&3u8);
+
+        let mut list_size = 7;
+        list_size += if signature.is_some() { 3 } else { 0 };
+        stream.begin_list(list_size);
+        self.transaction.rlp_append_open(&mut stream, None);
+
+        //access list
+        stream.begin_list(self.access_list.len());
+        for access in self.access_list.iter() {
+            stream.begin_list(2);
+            stream.append(&access.0);
+            stream.begin_list(access.1.len());
+            for storage_key in access.1.iter() {
+                stream.append(storage_key);
+            }
         }
+        if let Some(signature) = signature {
+            signature.rlp_append(&mut stream);
+        }
+
+        [&[0x03], stream.as_raw()].concat()
+    }
+
+    pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
+        rlp.append(&self.encode(Some(signature)));
+    }
+
+    pub fn hash(&self) -> H256 {
+        keccak(&self.encode(None))
     }
 }
 
-impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
-    fn from(t: ethjson::transaction::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        UnverifiedTransaction {
-            unsigned: Transaction {
-                nonce: t.nonce.into(),
-                gas_price: t.gas_price.into(),
-                gas: t.gas_limit.into(),
-                action: match to {
-                    Some(to) => Action::Call(to.into()),
-                    None => Action::Create,
-                },
-                value: t.value.into(),
-                data: t.data.into(),
-            },
-            r: t.r.into(),
-            s: t.s.into(),
-            v: t.v.into(),
-            hash: 0.into(),
-        }
-        .compute_hash()
-    }
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum TypedTransaction {
+    Legacy(Transaction),      // old legacy RLP encoded transaction
+    AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
+    // Accesses outside the list are possible, but become more expensive.
+    Unknown,
 }
 
-impl Transaction {
+//Function that are batched from Transaction struct and needs to be reimplemented
+impl TypedTransaction {
     /// The message hash of the transaction.
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
-        let mut stream = RlpStream::new();
-        self.rlp_append_unsigned_transaction(&mut stream, chain_id);
-        keccak(stream.as_raw())
+        match self {
+            Self::Legacy(tx) => tx.hash(chain_id),
+            Self::AccessList(ocl) => ocl.hash(),
+            _ => panic!(),
+        }
     }
 
     /// Signs the transaction as coming from `sender`.
@@ -219,22 +349,11 @@ impl Transaction {
     pub fn with_signature(self, sig: Signature, chain_id: Option<u64>) -> UnverifiedTransaction {
         UnverifiedTransaction {
             unsigned: self,
-            r: sig.r().into(),
-            s: sig.s().into(),
-            v: signature::add_chain_replay_protection(sig.v() as u64, chain_id),
-            hash: 0.into(),
-        }
-        .compute_hash()
-    }
-
-    /// Useful for test incorrectly signed transactions.
-    #[cfg(test)]
-    pub fn invalid_sign(self) -> UnverifiedTransaction {
-        UnverifiedTransaction {
-            unsigned: self,
-            r: U256::one(),
-            s: U256::one(),
-            v: 0,
+            signature: SignatureComponents {
+                r: sig.r().into(),
+                s: sig.s().into(),
+                v: signature::add_chain_replay_protection(sig.v() as u64, chain_id),
+            },
             hash: 0.into(),
         }
         .compute_hash()
@@ -245,9 +364,11 @@ impl Transaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
                 unsigned: self,
-                r: U256::one(),
-                s: U256::one(),
-                v: 0,
+                signature: SignatureComponents {
+                    r: U256::one(),
+                    s: U256::one(),
+                    v: 0,
+                },
                 hash: 0.into(),
             }
             .compute_hash(),
@@ -259,14 +380,16 @@ impl Transaction {
     /// Legacy EIP-86 compatible empty signature.
     /// This method is used in json tests as well as
     /// signature verification tests.
-    #[cfg(any(test, feature = "test-helpers"))]
+    //#[cfg(any(test, feature = "test-helpers"))]
     pub fn null_sign(self, chain_id: u64) -> SignedTransaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
                 unsigned: self,
-                r: U256::zero(),
-                s: U256::zero(),
-                v: chain_id,
+                signature: SignatureComponents {
+                    r: U256::zero(),
+                    s: U256::zero(),
+                    v: chain_id,
+                },
                 hash: 0.into(),
             }
             .compute_hash(),
@@ -274,13 +397,82 @@ impl Transaction {
             public: None,
         }
     }
+
+    /// Useful for test incorrectly signed transactions.
+    #[cfg(test)]
+    pub fn invalid_sign(self) -> UnverifiedTransaction {
+        UnverifiedTransaction {
+            unsigned: self,
+            signature: SignatureComponents {
+                r: U256::one(),
+                s: U256::one(),
+                v: 0,
+            },
+            hash: 0.into(),
+        }
+        .compute_hash()
+    }
+
+    // Next functions are for encoded/decode
+
+    pub fn tx(&self) -> &Transaction {
+        match self {
+            Self::Legacy(tx) => tx,
+            Self::AccessList(ocl) => ocl.tx(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn tx_mut(&mut self) -> &mut Transaction {
+        match self {
+            Self::Legacy(tx) => tx,
+            Self::AccessList(ocl) => ocl.tx_mut(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn decode(tx: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
+        if tx.is_null() {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        //type of transaction can be obtained from first byte. If first bit is 1 it means we are dealing with RLP list.
+        //if it is 0 it means that we are dealing with custom transaction defined in EIP-2918.
+        //let header = tx[0]; tx.is_list()
+        if tx.is_list() {
+            //legacy transaction wrapped around RLP encoding
+            Transaction::decode(tx)
+        } else {
+            let tx_data = tx.data()?;
+            //other transaction types
+            match tx_data[0] {
+                0x03 => AccessListTx::decode(tx_data),
+                _ => Err(DecoderError::Custom("Unknown transaction")),
+            }
+        }
+    }
+
+    fn rlp_append(&self, s: &mut RlpStream, signature: &SignatureComponents) {
+        match self {
+            Self::Legacy(tx) => tx.rlp_append(s, None, signature),
+            Self::AccessList(opt) => opt.rlp_append(s, signature),
+            Self::Unknown => panic!(),
+        }
+    }
 }
 
-/// Signed transaction information without verified signature.
+impl HeapSizeOf for TypedTransaction {
+    fn heap_size_of_children(&self) -> usize {
+        match self {
+            TypedTransaction::Legacy(legacy) => legacy.heap_size_of_children(),
+            TypedTransaction::AccessList(oal) => oal.tx().heap_size_of_children(),
+            TypedTransaction::Unknown => 0,
+        }
+    }
+}
+
+/// Components that constitute transaction signature
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct UnverifiedTransaction {
-    /// Plain Transaction.
-    unsigned: Transaction,
+pub struct SignatureComponents {
     /// The V field of the signature; the LS bit described which half of the curve our point falls
     /// in. The MS bits describe which chain this transaction is for. If 27/28, its for all chains.
     v: u64,
@@ -288,6 +480,72 @@ pub struct UnverifiedTransaction {
     r: U256,
     /// The S field of the signature; helps describe the point on the curve.
     s: U256,
+}
+
+impl SignatureComponents {
+    pub fn rlp_append(&self, s: &mut RlpStream) {
+        s.append(&self.v);
+        s.append(&self.r);
+        s.append(&self.s);
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl From<ethjson::state::Transaction> for SignedTransaction {
+    fn from(t: ethjson::state::Transaction) -> Self {
+        let to: Option<ethjson::hash::Address> = t.to.into();
+        let secret = t.secret.map(|s| Secret::from(s.0));
+        let tx = TypedTransaction::Legacy(Transaction {
+            nonce: t.nonce.into(),
+            gas_price: t.gas_price.into(),
+            gas: t.gas_limit.into(),
+            action: match to {
+                Some(to) => Action::Call(to.into()),
+                None => Action::Create,
+            },
+            value: t.value.into(),
+            data: t.data.into(),
+        });
+        match secret {
+            Some(s) => tx.sign(&s, None),
+            None => tx.null_sign(1),
+        }
+    }
+}
+
+impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
+    fn from(t: ethjson::transaction::Transaction) -> Self {
+        let to: Option<ethjson::hash::Address> = t.to.into();
+        UnverifiedTransaction {
+            unsigned: TypedTransaction::Legacy(Transaction {
+                nonce: t.nonce.into(),
+                gas_price: t.gas_price.into(),
+                gas: t.gas_limit.into(),
+                action: match to {
+                    Some(to) => Action::Call(to.into()),
+                    None => Action::Create,
+                },
+                value: t.value.into(),
+                data: t.data.into(),
+            }),
+            signature: SignatureComponents {
+                r: t.r.into(),
+                s: t.s.into(),
+                v: t.v.into(),
+            },
+            hash: 0.into(),
+        }
+        .compute_hash()
+    }
+}
+
+/// Signed transaction information without verified signature.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnverifiedTransaction {
+    /// Plain Transaction.
+    unsigned: TypedTransaction,
+    /// Transaction signature
+    signature: SignatureComponents,
     /// Hash of the transaction
     hash: H256,
 }
@@ -299,7 +557,7 @@ impl HeapSizeOf for UnverifiedTransaction {
 }
 
 impl Deref for UnverifiedTransaction {
-    type Target = Transaction;
+    type Target = TypedTransaction;
 
     fn deref(&self) -> &Self::Target {
         &self.unsigned
@@ -308,78 +566,59 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &Rlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 9 {
-            return Err(DecoderError::RlpIncorrectListLen);
-        }
-        let hash = keccak(d.as_raw());
-        Ok(UnverifiedTransaction {
-            unsigned: Transaction {
-                nonce: d.val_at(0)?,
-                gas_price: d.val_at(1)?,
-                gas: d.val_at(2)?,
-                action: d.val_at(3)?,
-                value: d.val_at(4)?,
-                data: d.val_at(5)?,
-            },
-            v: d.val_at(6)?,
-            r: d.val_at(7)?,
-            s: d.val_at(8)?,
-            hash,
-        })
+        TypedTransaction::decode(d)
     }
 }
 
 impl rlp::Encodable for UnverifiedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.rlp_append_sealed_transaction(s)
+        self.unsigned.rlp_append(s, &self.signature);
     }
 }
 
 impl UnverifiedTransaction {
-    /// Used to compute hash of created transactions
+    /// Used to compute hash of created transactions. Without chainid but signature added. This is used to verify if transaction is same or not
     fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = keccak(&*self.rlp_bytes());
         self.hash = hash;
         self
     }
 
+    pub fn new(
+        transaction: TypedTransaction,
+        signature: SignatureComponents,
+        hash: H256,
+    ) -> UnverifiedTransaction {
+        UnverifiedTransaction {
+            unsigned: transaction,
+            signature,
+            hash,
+        }
+    }
     /// Checks if the signature is empty.
     pub fn is_unsigned(&self) -> bool {
-        self.r.is_zero() && self.s.is_zero()
-    }
-
-    /// Append object with a signature into RLP stream
-    fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
-        s.begin_list(9);
-        s.append(&self.nonce);
-        s.append(&self.gas_price);
-        s.append(&self.gas);
-        s.append(&self.action);
-        s.append(&self.value);
-        s.append(&self.data);
-        s.append(&self.v);
-        s.append(&self.r);
-        s.append(&self.s);
+        self.signature.r.is_zero() && self.signature.s.is_zero()
     }
 
     ///	Reference to unsigned part of this transaction.
-    pub fn as_unsigned(&self) -> &Transaction {
+    pub fn as_unsigned(&self) -> &TypedTransaction {
+        //TODO check where this is used
         &self.unsigned
     }
 
     /// Returns standardized `v` value (0, 1 or 4 (invalid))
     pub fn standard_v(&self) -> u8 {
-        signature::check_replay_protection(self.v)
+        signature::check_replay_protection(self.signature.v)
     }
 
     /// The `v` value that appears in the RLP.
     pub fn original_v(&self) -> u64 {
-        self.v
+        self.signature.v
     }
 
     /// The chain ID, or `None` if this is a global transaction.
     pub fn chain_id(&self) -> Option<u64> {
-        match self.v {
+        match self.signature.v {
             v if self.is_unsigned() => Some(v),
             v if v >= 35 => Some((v - 35) / 2),
             _ => None,
@@ -388,7 +627,11 @@ impl UnverifiedTransaction {
 
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> Signature {
-        Signature::from_rsv(&self.r.into(), &self.s.into(), self.standard_v())
+        Signature::from_rsv(
+            &self.signature.r.into(),
+            &self.signature.s.into(),
+            self.standard_v(),
+        )
     }
 
     /// Checks whether the signature has a low 's' value.
@@ -450,7 +693,7 @@ impl HeapSizeOf for SignedTransaction {
 
 impl rlp::Encodable for SignedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.transaction.rlp_append_sealed_transaction(s)
+        self.transaction.rlp_append(s)
     }
 }
 
@@ -585,21 +828,23 @@ mod tests {
     use ethereum_types::U256;
     use hash::keccak;
 
+    //TODO CREATE TESTS FOR UnverifiedTransaction
+
     #[test]
     fn sender_test() {
         let bytes = ::rustc_hex::FromHex::from_hex("f85f800182520894095e7baea6a6c7c4c2dfeb977efac326af552d870a801ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804").unwrap();
         let t: UnverifiedTransaction =
             rlp::decode(&bytes).expect("decoding UnverifiedTransaction failed");
-        assert_eq!(t.data, b"");
-        assert_eq!(t.gas, U256::from(0x5208u64));
-        assert_eq!(t.gas_price, U256::from(0x01u64));
-        assert_eq!(t.nonce, U256::from(0x00u64));
-        if let Action::Call(ref to) = t.action {
+        assert_eq!(t.tx().data, b"");
+        assert_eq!(t.tx().gas, U256::from(0x5208u64));
+        assert_eq!(t.tx().gas_price, U256::from(0x01u64));
+        assert_eq!(t.tx().nonce, U256::from(0x00u64));
+        if let Action::Call(ref to) = t.tx().action {
             assert_eq!(*to, "095e7baea6a6c7c4c2dfeb977efac326af552d87".into());
         } else {
             panic!();
         }
-        assert_eq!(t.value, U256::from(0x0au64));
+        assert_eq!(t.tx().value, U256::from(0x0au64));
         assert_eq!(
             public_to_address(&t.recover_public().unwrap()),
             "0f65fe9276bc9a24ae7083ae28e2660ef72df99e".into()
@@ -626,14 +871,14 @@ mod tests {
         use ethkey::{Generator, Random};
 
         let key = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        };
+        });
 
         let hash = t.hash(Some(0));
         let sig = ::ethkey::sign(&key.secret(), &hash).unwrap();
@@ -647,14 +892,14 @@ mod tests {
         use ethkey::{Generator, Random};
 
         let key = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        }
+        })
         .sign(&key.secret(), None);
         assert_eq!(Address::from(keccak(key.public())), t.sender());
         assert_eq!(t.chain_id(), None);
@@ -662,14 +907,14 @@ mod tests {
 
     #[test]
     fn fake_signing() {
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        }
+        })
         .fake_sign(Address::from(0x69));
         assert_eq!(Address::from(0x69), t.sender());
         assert_eq!(t.chain_id(), None);
@@ -682,7 +927,7 @@ mod tests {
     #[test]
     fn should_reject_null_signature() {
         use std::str::FromStr;
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             nonce: U256::zero(),
             gas_price: U256::from(10000000000u64),
             gas: U256::from(21000),
@@ -691,8 +936,10 @@ mod tests {
             ),
             value: U256::from(1),
             data: vec![],
-        }
+        })
         .null_sign(1);
+
+        println!("transaction {:?}", t);
 
         let res = SignedTransaction::new(t.transaction);
         match res {
@@ -705,17 +952,50 @@ mod tests {
     fn should_recover_from_chain_specific_signing() {
         use ethkey::{Generator, Random};
         let key = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        }
+        })
         .sign(&key.secret(), Some(69));
         assert_eq!(Address::from(keccak(key.public())), t.sender());
         assert_eq!(t.chain_id(), Some(69));
+    }
+
+    #[test]
+    fn should_encode_decode_access_list_tx() {
+        use ethkey::{Generator, Random};
+        let key = Random.generate().unwrap();
+        let t = TypedTransaction::AccessList(AccessListTx::new(
+            Transaction {
+                action: Action::Create,
+                nonce: U256::from(42),
+                gas_price: U256::from(3000),
+                gas: U256::from(50_000),
+                value: U256::from(1),
+                data: b"Hello!".to_vec(),
+            },
+            Vec::new(),
+        ))
+        .sign(&key.secret(), Some(69));
+
+        let encoded = rlp::encode(&t);
+        let t_new: UnverifiedTransaction =
+            rlp::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
+        if t_new.unsigned != t.unsigned {
+            assert!(true, "encoded/decoded tx differs from original");
+        }
+    }
+
+    #[test]
+    fn should_decode_access_list_tx() {
+        use rustc_hex::FromHex;
+        let encoded_tx = "b85803f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
+        let _: UnverifiedTransaction =
+            rlp::decode(&FromHex::from_hex(encoded_tx).unwrap()).expect("decoding tx data failed");
     }
 
     #[test]

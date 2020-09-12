@@ -118,7 +118,7 @@ pub fn verify_block_unordered(
         .map(|t| {
             let t = engine.verify_transaction_unordered(t, &header)?;
             if let Some(max_nonce) = nonce_cap {
-                if t.nonce >= max_nonce {
+                if t.tx().nonce >= max_nonce {
                     return Err(BlockError::TooManyTransactions(t.sender()).into());
                 }
             }
@@ -513,7 +513,9 @@ mod tests {
     use types::{
         encoded,
         log_entry::{LocalizedLogEntry, LogEntry},
-        transaction::{Action, SignedTransaction, Transaction, UnverifiedTransaction},
+        transaction::{
+            Action, SignedTransaction, Transaction, TypedTransaction, UnverifiedTransaction,
+        },
     };
 
     fn check_ok(result: Result<(), Error>) {
@@ -746,34 +748,34 @@ mod tests {
 
         let keypair = Random.generate().unwrap();
 
-        let tr1 = Transaction {
+        let tr1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(40_000),
             nonce: U256::one(),
-        }
+        })
         .sign(keypair.secret(), None);
 
-        let tr2 = Transaction {
+        let tr2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(40_000),
             nonce: U256::from(2),
-        }
+        })
         .sign(keypair.secret(), None);
 
-        let tr3 = Transaction {
+        let tr3 = TypedTransaction::Legacy(Transaction {
             action: Action::Call(0x0.into()),
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(0),
             nonce: U256::zero(),
-        }
+        })
         .null_sign(0);
 
         let good_transactions = [tr1.clone(), tr2.clone()];
@@ -1096,14 +1098,14 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let bad_transactions: Vec<_> = (0..3)
             .map(|i| {
-                Transaction {
+                TypedTransaction::Legacy(Transaction {
                     action: Action::Create,
                     value: U256::zero(),
                     data: Vec::new(),
                     gas: 0.into(),
                     gas_price: U256::zero(),
                     nonce: i.into(),
-                }
+                })
                 .sign(keypair.secret(), None)
             })
             .collect();

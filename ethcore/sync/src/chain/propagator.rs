@@ -121,7 +121,7 @@ impl SyncPropagator {
         let (transactions, service_transactions): (Vec<_>, Vec<_>) = transactions
             .iter()
             .map(|tx| tx.signed())
-            .partition(|tx| !tx.gas_price.is_zero());
+            .partition(|tx| !tx.tx().gas_price.is_zero());
 
         // usual transactions could be propagated to all peers
         let mut affected_peers = HashSet::new();

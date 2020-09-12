@@ -52,7 +52,10 @@ use types::{
     header::{ExtendedHeader, Header},
     log_entry::LocalizedLogEntry,
     receipt::{LocalizedReceipt, Receipt},
-    transaction::{self, Action, LocalizedTransaction, SignedTransaction, UnverifiedTransaction},
+    transaction::{
+        self, Action, LocalizedTransaction, SignedTransaction, TypedTransaction,
+        UnverifiedTransaction,
+    },
     BlockNumber,
 };
 use vm::{EnvInfo, LastHashes};
@@ -1410,7 +1413,7 @@ impl Client {
         data: Bytes,
     ) -> SignedTransaction {
         let from = Address::default();
-        transaction::Transaction {
+        TypedTransaction::Legacy(transaction::Transaction {
             nonce: self
                 .nonce(&from, block_id)
                 .unwrap_or_else(|| self.engine.account_start_nonce(0)),
@@ -1419,7 +1422,7 @@ impl Client {
             gas_price: U256::default(),
             value: U256::default(),
             data: data,
-        }
+        })
         .fake_sign(from)
     }
 
@@ -1858,7 +1861,7 @@ impl Call for Client {
 
         let exec = |gas| {
             let mut tx = t.as_unsigned().clone();
-            tx.gas = gas;
+            tx.tx_mut().gas = gas;
             let tx = tx.fake_sign(sender);
 
             let mut clone = state.clone();
@@ -1889,6 +1892,7 @@ impl Call for Client {
             }
         }
         let lower = t
+            .tx()
             .gas_required(&self.engine.schedule(env_info.number))
             .into();
         if cond(lower) {
@@ -2540,14 +2544,14 @@ impl BlockChainClient for Client {
         } else {
             self.importer.miner.sensible_gas_price()
         };
-        let transaction = transaction::Transaction {
+        let transaction = TypedTransaction::Legacy(transaction::Transaction {
             nonce: self.latest_nonce(&authoring_params.author),
             action: Action::Call(address),
             gas: self.importer.miner.sensible_gas_limit(),
             gas_price,
             value: U256::zero(),
             data: data,
-        };
+        });
         let chain_id = self.engine.signing_chain_id(&self.latest_env_info());
         let signature = self
             .engine
@@ -2923,7 +2927,7 @@ impl ProvingBlockChainClient for Client {
             _ => return None,
         };
 
-        env_info.gas_limit = transaction.gas.clone();
+        env_info.gas_limit = transaction.tx().gas.clone();
         let mut jdb = self.state_db.read().journal_db().boxed_clone();
 
         state::prove_transaction_virtual(
@@ -3093,7 +3097,7 @@ fn transaction_receipt(
 
     LocalizedReceipt {
         from: sender,
-        to: match tx.action {
+        to: match tx.tx().action {
             Action::Create => None,
             Action::Call(ref address) => Some(address.clone().into()),
         },
@@ -3103,14 +3107,14 @@ fn transaction_receipt(
         block_number: block_number,
         cumulative_gas_used: receipt.gas_used,
         gas_used: receipt.gas_used - prior_gas_used,
-        contract_address: match tx.action {
+        contract_address: match tx.tx().action {
             Action::Call(_) => None,
             Action::Create => Some(
                 contract_address(
                     machine.create_address_scheme(block_number),
                     &sender,
-                    &tx.nonce,
-                    &tx.data,
+                    &tx.tx().nonce,
+                    &tx.tx().data,
                 )
                 .0,
             ),
@@ -3427,7 +3431,7 @@ mod tests {
         use types::{
             log_entry::{LocalizedLogEntry, LogEntry},
             receipt::{LocalizedReceipt, Receipt, TransactionOutcome},
-            transaction::{Action, LocalizedTransaction, Transaction},
+            transaction::{Action, LocalizedTransaction, Transaction, TypedTransaction},
         };
 
         // given
@@ -3439,14 +3443,14 @@ mod tests {
         let block_hash = 5.into();
         let state_root = 99.into();
         let gas_used = 10.into();
-        let raw_tx = Transaction {
+        let raw_tx = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
             action: Action::Call(10.into()),
             value: 0.into(),
             data: vec![],
-        };
+        });
         let tx1 = raw_tx.clone().sign(secret, None);
         let transaction = LocalizedTransaction {
             signed: tx1.clone().into(),
@@ -3482,7 +3486,7 @@ mod tests {
             receipt,
             LocalizedReceipt {
                 from: tx1.sender().into(),
-                to: match tx1.action {
+                to: match tx1.tx().action {
                     Action::Create => None,
                     Action::Call(ref address) => Some(address.clone().into()),
                 },

@@ -23,7 +23,7 @@ use ethcore::client::TestBlockChainClient;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
 use rlp::encode;
-use types::transaction::{Action, SignedTransaction, Transaction};
+use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;
 use serde_json;
@@ -251,14 +251,14 @@ fn should_confirm_transaction_and_dispatch() {
         )
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(0x50505),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
     tester
         .accounts
         .unlock_account_temporarily(address, "test".into())
@@ -311,14 +311,14 @@ fn should_alter_the_sender_and_nonce() {
         )
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(0x50505),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
 
     let address = tester.accounts.new_account(&"test".into()).unwrap();
     let signature = tester
@@ -375,14 +375,14 @@ fn should_confirm_transaction_with_token() {
         )
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(10_000_000),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
     let (signature, token) = tester
         .accounts
         .sign_with_token(address, "test".into(), t.hash(None))
@@ -441,14 +441,14 @@ fn should_confirm_transaction_with_rlp() {
         )
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(10_000_000),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts
         .sign(address, Some("test".into()), t.hash(None))
@@ -505,14 +505,14 @@ fn should_return_error_when_sender_does_not_match() {
         )
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(10_000_000),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
     tester
         .accounts
         .unlock_account_temporarily(address, "test".into())
@@ -568,14 +568,14 @@ fn should_confirm_sign_transaction_with_rlp() {
         .unwrap();
     assert_eq!(tester.signer.requests().len(), 1);
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x1000),
         gas: U256::from(10_000_000),
         action: Action::Call(recipient),
         value: U256::from(0x1),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts
         .sign(address, Some("test".into()), t.hash(None))

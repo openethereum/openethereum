@@ -1109,7 +1109,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     {
         let sender = t.sender();
         let balance = self.state.balance(&sender)?;
-        let needed_balance = t.value.saturating_add(t.gas.saturating_mul(t.gas_price));
+        let needed_balance = t
+            .tx()
+            .value
+            .saturating_add(t.tx().gas.saturating_mul(t.tx().gas_price));
         if balance < needed_balance {
             // give the sender a sufficient balance
             self.state
@@ -1136,12 +1139,12 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let nonce = self.state.nonce(&sender)?;
 
         let schedule = self.schedule;
-        let base_gas_required = U256::from(t.gas_required(&schedule));
+        let base_gas_required = U256::from(t.tx().gas_required(&schedule));
 
-        if t.gas < base_gas_required {
+        if t.tx().gas < base_gas_required {
             return Err(ExecutionError::NotEnoughBaseGas {
                 required: base_gas_required,
-                got: t.gas,
+                got: t.tx().gas,
             });
         }
 
@@ -1153,29 +1156,29 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             return Err(ExecutionError::SenderMustExist);
         }
 
-        let init_gas = t.gas - base_gas_required;
+        let init_gas = t.tx().gas - base_gas_required;
 
         // validate transaction nonce
-        if check_nonce && t.nonce != nonce {
+        if check_nonce && t.tx().nonce != nonce {
             return Err(ExecutionError::InvalidNonce {
                 expected: nonce,
-                got: t.nonce,
+                got: t.tx().nonce,
             });
         }
 
         // validate if transaction fits into given block
-        if self.info.gas_used + t.gas > self.info.gas_limit {
+        if self.info.gas_used + t.tx().gas > self.info.gas_limit {
             return Err(ExecutionError::BlockGasLimitReached {
                 gas_limit: self.info.gas_limit,
                 gas_used: self.info.gas_used,
-                gas: t.gas,
+                gas: t.tx().gas,
             });
         }
 
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
-        let gas_cost = t.gas.full_mul(t.gas_price);
-        let total_cost = U512::from(t.value) + gas_cost;
+        let gas_cost = t.tx().gas.full_mul(t.tx().gas_price);
+        let total_cost = U512::from(t.tx().value) + gas_cost;
 
         // avoid unaffordable transactions
         let balance512 = U512::from(balance);
@@ -1205,13 +1208,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
-        let (result, output) = match t.action {
+        let (result, output) = match t.tx().action {
             Action::Create => {
                 let (new_address, code_hash) = contract_address(
                     self.machine.create_address_scheme(self.info.number),
                     &sender,
                     &nonce,
-                    &t.data,
+                    &t.tx().data,
                 );
                 let params = ActionParams {
                     code_address: new_address.clone(),
@@ -1220,9 +1223,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.gas_price,
-                    value: ActionValue::Transfer(t.value),
-                    code: Some(Arc::new(t.data.clone())),
+                    gas_price: t.tx().gas_price,
+                    value: ActionValue::Transfer(t.tx().value),
+                    code: Some(Arc::new(t.tx().data.clone())),
                     data: None,
                     call_type: CallType::None,
                     params_type: vm::ParamsType::Embedded,
@@ -1242,11 +1245,11 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.gas_price,
-                    value: ActionValue::Transfer(t.value),
+                    gas_price: t.tx().gas_price,
+                    value: ActionValue::Transfer(t.tx().value),
                     code: self.state.code(address)?,
                     code_hash: self.state.code_hash(address)?,
-                    data: Some(t.data.clone()),
+                    data: Some(t.tx().data.clone()),
                     call_type: CallType::Call,
                     params_type: vm::ParamsType::Separate,
                     access_list: access_list,
@@ -1445,12 +1448,12 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             Ok(FinalizationResult { gas_left, .. }) => gas_left,
             _ => 0.into(),
         };
-        let refunded = cmp::min(refunds_bound, (t.gas - gas_left_prerefund) >> 1);
+        let refunded = cmp::min(refunds_bound, (t.tx().gas - gas_left_prerefund) >> 1);
         let gas_left = gas_left_prerefund + refunded;
 
-        let gas_used = t.gas.saturating_sub(gas_left);
-        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.gas_price);
-        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.gas_price);
+        let gas_used = t.tx().gas.saturating_sub(gas_left);
+        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.tx().gas_price);
+        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.tx().gas_price);
         if overflow_1 || overflow_2 {
             return Err(ExecutionError::TransactionMalformed(
                 "U256 Overflow".to_string(),
@@ -1458,7 +1461,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
-			t.gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
+			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
 
         let sender = t.sender();
         trace!(
@@ -1487,7 +1490,11 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         // perform garbage-collection
         let min_balance = if schedule.kill_dust != CleanDustMode::Off {
-            Some(U256::from(schedule.tx_gas).overflowing_mul(t.gas_price).0)
+            Some(
+                U256::from(schedule.tx_gas)
+                    .overflowing_mul(t.tx().gas_price)
+                    .0,
+            )
         } else {
             None
         };
@@ -1502,10 +1509,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             Err(vm::Error::Internal(msg)) => Err(ExecutionError::Internal(msg)),
             Err(exception) => Ok(Executed {
                 exception: Some(exception),
-                gas: t.gas,
-                gas_used: t.gas,
+                gas: t.tx().gas,
+                gas_used: t.tx().gas,
                 refunded: U256::zero(),
-                cumulative_gas_used: self.info.gas_used + t.gas,
+                cumulative_gas_used: self.info.gas_used + t.tx().gas,
                 logs: vec![],
                 contracts_created: vec![],
                 output: output,
@@ -1519,7 +1526,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 } else {
                     Some(vm::Error::Reverted)
                 },
-                gas: t.gas,
+                gas: t.tx().gas,
                 gas_used: gas_used,
                 refunded: refunded,
                 cumulative_gas_used: self.info.gas_used + gas_used,
@@ -1551,7 +1558,7 @@ mod tests {
         trace, ExecutiveTracer, ExecutiveVMTracer, FlatTrace, MemoryDiff, NoopTracer, NoopVMTracer,
         StorageDiff, Tracer, VMExecutedOperation, VMOperation, VMTrace, VMTracer,
     };
-    use types::transaction::{Action, Transaction};
+    use types::transaction::{Action, Transaction, TypedTransaction};
     use vm::{ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo};
 
     fn make_frontier_machine(max_depth: usize) -> EthereumMachine {
@@ -2445,14 +2452,14 @@ mod tests {
     evm_test_ignore! {test_transact_simple: test_transact_simple_int}
     fn test_transact_simple(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::zero(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
         let contract = contract_address(
@@ -2496,14 +2503,14 @@ mod tests {
     evm_test! {test_transact_invalid_nonce: test_transact_invalid_nonce_int}
     fn test_transact_invalid_nonce(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::zero(),
             nonce: U256::one(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 
@@ -2535,14 +2542,14 @@ mod tests {
     evm_test! {test_transact_gas_limit_reached: test_transact_gas_limit_reached_int}
     fn test_transact_gas_limit_reached(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(80_001),
             gas_price: U256::zero(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 
@@ -2580,14 +2587,14 @@ mod tests {
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}
     fn test_not_enough_cash(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(18),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::one(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 

@@ -46,7 +46,9 @@ use types::{
     log_entry::LocalizedLogEntry,
     pruning_info::PruningInfo,
     receipt::{LocalizedReceipt, Receipt, TransactionOutcome},
-    transaction::{self, Action, LocalizedTransaction, SignedTransaction, Transaction},
+    transaction::{
+        self, Action, LocalizedTransaction, SignedTransaction, Transaction, TypedTransaction,
+    },
     view,
     views::BlockView,
     BlockNumber,
@@ -296,14 +298,14 @@ impl TestBlockChainClient {
 
                 for _ in 0..num_transactions {
                     // Update nonces value
-                    let tx = Transaction {
+                    let tx = TypedTransaction::Legacy(Transaction {
                         action: Action::Create,
                         value: U256::from(100),
                         data: "3331600055".from_hex().unwrap(),
                         gas: U256::from(100_000),
                         gas_price: U256::from(200_000_000_000u64),
                         nonce: nonce,
-                    };
+                    });
                     let signed_tx = tx.sign(keypair.secret(), None);
                     txs.append(&signed_tx);
                     nonce += U256::one();
@@ -369,14 +371,14 @@ impl TestBlockChainClient {
     /// Inserts a transaction with given gas price to miners transactions queue.
     pub fn insert_transaction_with_gas_price_to_queue(&self, gas_price: U256) -> H256 {
         let keypair = Random.generate().unwrap();
-        let tx = Transaction {
+        let tx = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(100),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: gas_price,
             nonce: U256::zero(),
-        };
+        });
         let signed_tx = tx.sign(keypair.secret(), None);
         self.set_balance(signed_tx.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_tx.hash();
@@ -1027,14 +1029,14 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn transact_contract(&self, address: Address, data: Bytes) -> Result<(), transaction::Error> {
-        let transaction = Transaction {
+        let transaction = TypedTransaction::Legacy(Transaction {
             nonce: self.latest_nonce(&self.miner.authoring_params().author),
             action: Action::Call(address),
             gas: self.spec.gas_limit,
             gas_price: U256::zero(),
             value: U256::default(),
             data: data,
-        };
+        });
         let chain_id = Some(self.spec.chain_id());
         let sig = self.spec.engine.sign(transaction.hash(chain_id)).unwrap();
         let signed = SignedTransaction::new(transaction.with_signature(sig, chain_id)).unwrap();

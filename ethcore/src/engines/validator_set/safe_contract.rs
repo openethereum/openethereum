@@ -91,7 +91,7 @@ fn check_first_proof(
     old_header: Header,
     state_items: &[DBValue],
 ) -> Result<Vec<Address>, String> {
-    use types::transaction::{Action, Transaction};
+    use types::transaction::{Action, Transaction, TypedTransaction};
 
     // TODO: match client contract_call_tx more cleanly without duplication.
     const PROVIDED_GAS: u64 = 50_000_000;
@@ -116,14 +116,14 @@ fn check_first_proof(
     let (data, decoder) = validator_set::functions::get_validators::call();
 
     let from = Address::default();
-    let tx = Transaction {
+    let tx = TypedTransaction::Legacy(Transaction {
         nonce: machine.account_start_nonce(number),
         action: Action::Call(contract_address),
         gas: PROVIDED_GAS.into(),
         gas_price: U256::default(),
         value: U256::default(),
         data,
-    }
+    })
     .fake_sign(from);
 
     let res = ::state::check_proof(
@@ -491,7 +491,7 @@ mod tests {
     use test_helpers::{generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data};
     use types::{
         ids::BlockId,
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
     };
     use verification::queue::kind::blocks::Unverified;
 
@@ -537,7 +537,7 @@ mod tests {
 
         client.miner().set_author(miner::Author::Sealer(signer));
         // Remove "1" validator.
-        let tx = Transaction {
+        let tx = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 500_000.into(),
@@ -546,7 +546,7 @@ mod tests {
             data: "bfc708a000000000000000000000000082a978b3f5962a5b0957d9ee9eef472ee55b42f1"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&s0, Some(chain_id));
         client
             .miner()
@@ -555,7 +555,7 @@ mod tests {
         EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 1);
         // Add "1" validator back in.
-        let tx = Transaction {
+        let tx = TypedTransaction::Legacy(Transaction {
             nonce: 1.into(),
             gas_price: 0.into(),
             gas: 500_000.into(),
@@ -564,7 +564,7 @@ mod tests {
             data: "4d238c8e00000000000000000000000082a978b3f5962a5b0957d9ee9eef472ee55b42f1"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&s0, Some(chain_id));
         client
             .miner()
@@ -582,14 +582,14 @@ mod tests {
         // Switch back to the added validator, since the state is updated.
         let signer = Box::new((tap.clone(), v1, "".into()));
         client.miner().set_author(miner::Author::Sealer(signer));
-        let tx = Transaction {
+        let tx = TypedTransaction::Legacy(Transaction {
             nonce: 2.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
             action: Action::Call(Address::default()),
             value: 0.into(),
             data: Vec::new(),
-        }
+        })
         .sign(&s0, Some(chain_id));
         client
             .miner()

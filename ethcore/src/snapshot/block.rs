@@ -131,7 +131,7 @@ mod tests {
     use ethereum_types::{Address, H256, U256};
     use types::{
         block::Block,
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
         view,
         views::BlockView,
     };
@@ -165,24 +165,24 @@ mod tests {
     fn with_transactions() {
         let mut b = Block::default();
 
-        let t1 = Transaction {
+        let t1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        }
+        })
         .fake_sign(Address::from(0x69));
 
-        let t2 = Transaction {
+        let t2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(88),
             gas_price: U256::from(12345),
             gas: U256::from(300000),
             value: U256::from(1000000000),
             data: "Eep!".into(),
-        }
+        })
         .fake_sign(Address::from(0x55));
 
         b.transactions.push(t1.into());

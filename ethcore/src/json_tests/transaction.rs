@@ -74,12 +74,13 @@ pub fn json_transaction_test<H: FnMut(&str, HookType)>(
                     header.set_number(BLOCK_NUMBER);
 
                     let minimal = t
+                        .tx()
                         .gas_required(&spec.engine.schedule(header.number()))
                         .into();
-                    if t.gas < minimal {
+                    if t.tx().gas < minimal {
                         return Err(::types::transaction::Error::InsufficientGas {
                             minimal,
-                            got: t.gas,
+                            got: t.tx().gas,
                         }
                         .into());
                     }

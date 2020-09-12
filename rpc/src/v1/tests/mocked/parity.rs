@@ -368,16 +368,17 @@ fn rpc_parity_transactions_stats() {
 
 #[test]
 fn rpc_parity_local_transactions() {
+    use types::transaction::{Transaction, TypedTransaction};
     let deps = Dependencies::new();
     let io = deps.default_client();
-    let tx = ::types::transaction::Transaction {
+    let tx = TypedTransaction::Legacy(Transaction {
         value: 5.into(),
         gas: 3.into(),
         gas_price: 2.into(),
         action: ::types::transaction::Action::Create,
         data: vec![1, 2, 3],
         nonce: 0.into(),
-    }
+    })
     .fake_sign(3.into());
     let tx = Arc::new(::miner::pool::VerifiedTransaction::from_pending_block_transaction(tx));
     deps.miner

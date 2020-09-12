@@ -23,7 +23,6 @@ use std::{
 };
 
 use ethereum_types::{Address, H256, U256};
-use rlp::Rlp;
 use types::{
     header::Header,
     transaction::{
@@ -456,16 +455,15 @@ impl EthereumMachine {
         &self,
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
-        let rlp = Rlp::new(&transaction);
-        if rlp.as_raw().len() > self.params().max_transaction_size {
+        if transaction.len() > self.params().max_transaction_size {
             debug!(
                 "Rejected oversized transaction of {} bytes",
-                rlp.as_raw().len()
+                transaction.len()
             );
             return Err(transaction::Error::TooBig);
         }
-        rlp.as_val()
-            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+
+        rlp::decode(transaction).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
     }
 }
 

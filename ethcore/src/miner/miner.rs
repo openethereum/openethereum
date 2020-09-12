@@ -1195,7 +1195,7 @@ impl miner::MinerService for Miner {
                         let receipt = &receipts[index];
                         RichReceipt {
                             from: tx.sender(),
-                            to: match tx.action {
+                            to: match tx.tx().action {
                                 Action::Create => None,
                                 Action::Call(ref address) => Some(*address),
                             },
@@ -1203,7 +1203,7 @@ impl miner::MinerService for Miner {
                             transaction_index: index,
                             cumulative_gas_used: receipt.gas_used,
                             gas_used: receipt.gas_used - prev_gas,
-                            contract_address: match tx.action {
+                            contract_address: match tx.tx().action {
                                 Action::Call(_) => None,
                                 Action::Create => {
                                     let sender = tx.sender();
@@ -1212,8 +1212,8 @@ impl miner::MinerService for Miner {
                                             self.engine
                                                 .create_address_scheme(pending.header.number()),
                                             &sender,
-                                            &tx.nonce,
-                                            &tx.data,
+                                            &tx.tx().nonce,
+                                            &tx.tx().data,
                                         )
                                         .0,
                                     )
@@ -1501,7 +1501,7 @@ mod tests {
     use client::{ChainInfo, EachBlockWith, ImportSealedBlock, TestBlockChainClient};
     use miner::{MinerService, PendingOrdering};
     use test_helpers::{generate_dummy_client, generate_dummy_client_with_spec};
-    use types::transaction::Transaction;
+    use types::transaction::{Transaction, TypedTransaction};
 
     #[test]
     fn should_prepare_block_to_seal() {
@@ -1575,14 +1575,14 @@ mod tests {
 
     fn transaction_with_chain_id(chain_id: u64) -> SignedTransaction {
         let keypair = Random.generate().unwrap();
-        Transaction {
+        TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::zero(),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::zero(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), Some(chain_id))
     }
 

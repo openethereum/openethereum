@@ -36,7 +36,7 @@ use tempdir::TempDir;
 use types::{
     encoded,
     header::Header,
-    transaction::{Action, SignedTransaction, Transaction},
+    transaction::{Action, SignedTransaction, Transaction, TypedTransaction},
     view,
     views::BlockView,
 };
@@ -197,14 +197,14 @@ where
         // first block we don't have any balance, so can't send any transactions.
         for _ in 0..txs_per_block {
             b.push_transaction(
-                Transaction {
+                TypedTransaction::Legacy(Transaction {
                     nonce: n.into(),
                     gas_price: tx_gas_prices[n % tx_gas_prices.len()],
                     gas: 100000.into(),
                     action: Action::Create,
                     data: vec![],
                     value: U256::zero(),
-                }
+                })
                 .sign(kp.secret(), Some(test_spec.chain_id())),
                 None,
             )

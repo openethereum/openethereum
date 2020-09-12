@@ -1922,7 +1922,7 @@ mod tests {
     use crate::generator::{BlockBuilder, BlockGenerator, BlockOptions};
     use common_types::{
         receipt::{Receipt, TransactionOutcome},
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
     };
     use ethkey::Secret;
     use keccak_hash::keccak;
@@ -2157,7 +2157,7 @@ mod tests {
 
     #[test]
     fn test_fork_transaction_addresses() {
-        let t1 = Transaction {
+        let t1 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2166,7 +2166,7 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
         let t1_hash = t1.hash();
@@ -2211,7 +2211,7 @@ mod tests {
 
     #[test]
     fn test_overwriting_transaction_addresses() {
-        let t1 = Transaction {
+        let t1 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2220,10 +2220,10 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
-        let t2 = Transaction {
+        let t2 = TypedTransaction::Legacy(Transaction {
             nonce: 1.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2232,10 +2232,10 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
-        let t3 = Transaction {
+        let t3 = TypedTransaction::Legacy(Transaction {
             nonce: 2.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2244,7 +2244,7 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
 
         let genesis = BlockBuilder::genesis();
@@ -2509,7 +2509,7 @@ mod tests {
 
     #[test]
     fn test_logs() {
-        let t1 = Transaction {
+        let t1 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2518,9 +2518,9 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
-        let t2 = Transaction {
+        let t2 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2529,9 +2529,9 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
-        let t3 = Transaction {
+        let t3 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2540,9 +2540,9 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
-        let t4 = Transaction {
+        let t4 = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
@@ -2551,7 +2551,7 @@ mod tests {
             data: "601080600c6000396000f3006000355415600957005b60203560003555"
                 .from_hex()
                 .unwrap(),
-        }
+        })
         .sign(&secret(), None);
         let tx_hash1 = t1.hash();
         let tx_hash2 = t2.hash();

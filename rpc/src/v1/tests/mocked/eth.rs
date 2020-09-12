@@ -37,7 +37,7 @@ use types::{
     ids::{BlockId, TransactionId},
     log_entry::{LocalizedLogEntry, LogEntry},
     receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome},
-    transaction::{Action, Transaction},
+    transaction::{Action, Transaction, TypedTransaction},
 };
 
 use jsonrpc_core::IoHandler;
@@ -1058,7 +1058,7 @@ fn rpc_eth_send_raw_transaction_error() {
 		],
 		"id": 1
 	}"#;
-    let res = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid RLP.","data":"RlpExpectedToBeList"},"id":1}"#.into();
+    let res = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid RLP.","data":"Custom(\"Unknown transaction\")"},"id":1}"#.into();
 
     assert_eq!(tester.io.handle_request_sync(&req), Some(res));
 }
@@ -1075,7 +1075,7 @@ fn rpc_eth_send_raw_transaction() {
         .unlock_account_permanently(address, "abcd".into())
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -1084,7 +1084,7 @@ fn rpc_eth_send_raw_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))

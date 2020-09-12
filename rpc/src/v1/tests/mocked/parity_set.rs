@@ -178,7 +178,7 @@ fn rpc_parity_set_hash_content() {
 
 #[test]
 fn rpc_parity_remove_transaction() {
-    use types::transaction::{Action, Transaction};
+    use types::transaction::{Action, Transaction, TypedTransaction};
 
     let miner = miner_service();
     let client = client_service();
@@ -187,14 +187,14 @@ fn rpc_parity_remove_transaction() {
     let mut io = IoHandler::new();
     io.extend_with(parity_set_client(&client, &miner, &network).to_delegate());
 
-    let tx = Transaction {
+    let tx = TypedTransaction::Legacy(Transaction {
         nonce: 1.into(),
         gas_price: 0x9184e72a000u64.into(),
         gas: 0x76c0.into(),
         action: Action::Call(5.into()),
         value: 0x9184e72au64.into(),
         data: vec![],
-    };
+    });
     let signed = tx.fake_sign(2.into());
     let hash = signed.hash();
 

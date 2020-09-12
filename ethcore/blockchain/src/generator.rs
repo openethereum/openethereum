@@ -22,7 +22,7 @@ use std::collections::VecDeque;
 use common_types::{
     encoded,
     header::Header,
-    transaction::{Action, SignedTransaction, Transaction},
+    transaction::{Action, SignedTransaction, Transaction, TypedTransaction},
     view,
     views::BlockView,
 };
@@ -154,14 +154,14 @@ impl BlockBuilder {
             let data = std::iter::repeat_with(|| rand::random::<u8>())
                 .take(data_len as usize)
                 .collect::<Vec<_>>();
-            Transaction {
+            TypedTransaction::Legacy(Transaction {
                 nonce: 0.into(),
                 gas_price: 0.into(),
                 gas: 100_000.into(),
                 action: Action::Create,
                 value: 100.into(),
                 data,
-            }
+            })
             .sign(&keccak("").into(), None)
         })
         .take(count);

@@ -23,7 +23,7 @@ use parity_runtime::Runtime;
 use parking_lot::Mutex;
 use rlp;
 use rustc_hex::ToHex;
-use types::transaction::{Action, Transaction};
+use types::transaction::{Action, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;
 use v1::{
@@ -117,7 +117,7 @@ fn rpc_eth_send_transaction() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -126,7 +126,7 @@ fn rpc_eth_send_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))
@@ -141,7 +141,7 @@ fn rpc_eth_send_transaction() {
 
     tester.miner.increment_nonce(&address);
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -150,7 +150,7 @@ fn rpc_eth_send_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))
@@ -188,7 +188,7 @@ fn rpc_eth_sign_transaction() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -197,7 +197,7 @@ fn rpc_eth_sign_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))

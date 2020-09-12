@@ -281,7 +281,7 @@ impl<'a> EvmTestClient<'a> {
         tracer: T,
         vm_tracer: V,
     ) -> std::result::Result<TransactSuccess<T::Output, V::Output>, TransactErr> {
-        let initial_gas = transaction.gas;
+        let initial_gas = transaction.tx().gas;
         // Verify transaction
         let is_ok = transaction.verify_basic(true, None);
         if let Err(error) = is_ok {
@@ -347,13 +347,13 @@ impl<'a> EvmTestClient<'a> {
                 trace: result.trace,
                 vm_trace: result.vm_trace,
                 logs: result.receipt.logs,
-                contract_address: if let transaction::Action::Create = transaction.action {
+                contract_address: if let transaction::Action::Create = transaction.tx().action {
                     Some(
                         executive::contract_address(
                             scheme,
                             &transaction.sender(),
-                            &transaction.nonce,
-                            &transaction.data,
+                            &transaction.tx().nonce,
+                            &transaction.tx().data,
                         )
                         .0,
                     )

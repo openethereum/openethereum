@@ -56,6 +56,7 @@ extern crate ethereum_types;
 extern crate ethkey;
 extern crate ethstore;
 extern crate fetch;
+extern crate hyper;
 extern crate journaldb;
 extern crate keccak_hash as hash;
 extern crate kvdb;
@@ -66,7 +67,9 @@ extern crate parity_path as path;
 extern crate parity_rpc;
 extern crate parity_runtime;
 extern crate parity_version;
+extern crate prometheus;
 extern crate registrar;
+extern crate stats;
 
 #[macro_use]
 extern crate log as rlog;
@@ -97,6 +100,7 @@ mod configuration;
 mod db;
 mod helpers;
 mod informant;
+mod metrics;
 mod modules;
 mod params;
 mod presale;

@@ -44,7 +44,7 @@ pub use self::{
     instant_seal::{InstantSeal, InstantSealParams},
     null_engine::{NullEngine, NullEngineParams},
     params::Params,
-    seal::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal},
+    seal::{AuthorityRoundSeal, Ethereum, Seal},
     spec::{ForkSpec, Spec},
     state::State,
     validator_set::ValidatorSet,

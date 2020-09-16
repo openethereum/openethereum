@@ -16,7 +16,7 @@
 
 //! Engine deserialization.
 
-use super::{AuthorityRound, BasicAuthority, Clique, Ethash, InstantSeal, NullEngine};
+use super::{AuthorityRound, Clique, Ethash, InstantSeal, NullEngine};
 
 /// Engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -30,8 +30,6 @@ pub enum Engine {
     /// Ethash engine.
     #[serde(rename = "Ethash")]
     Ethash(Ethash),
-    /// BasicAuthority engine.
-    BasicAuthority(BasicAuthority),
     /// AuthorityRound engine.
     AuthorityRound(AuthorityRound),
     /// Clique engine.
@@ -96,22 +94,6 @@ mod tests {
         let deserialized: Engine = serde_json::from_str(s).unwrap();
         match deserialized {
             Engine::Ethash(_) => {} // ethash is unit tested in its own file.
-            _ => panic!(),
-        };
-
-        let s = r#"{
-			"basicAuthority": {
-				"params": {
-					"durationLimit": "0x0d",
-					"validators" : {
-						"list": ["0xc6d9d2cd449a754c494264e1809c50e34d64562b"]
-					}
-				}
-			}
-		}"#;
-        let deserialized: Engine = serde_json::from_str(s).unwrap();
-        match deserialized {
-            Engine::BasicAuthority(_) => {} // basicAuthority is unit tested in its own file.
             _ => panic!(),
         };
 

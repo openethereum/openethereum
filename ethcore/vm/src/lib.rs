@@ -23,6 +23,7 @@ extern crate parity_bytes as bytes;
 extern crate patricia_trie_ethereum as ethtrie;
 extern crate rlp;
 
+pub mod access_list;
 mod action_params;
 mod call_type;
 mod env_info;

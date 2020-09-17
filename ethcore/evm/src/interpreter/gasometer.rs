@@ -18,7 +18,7 @@ use super::u256_to_address;
 use ethereum_types::{Address, H256, U256};
 use std::cmp;
 
-use super::{access_list::AccessList, stack::VecStack};
+use super::stack::VecStack;
 use evm;
 use instructions::{self, Instruction, InstructionInfo};
 use interpreter::stack::Stack;
@@ -118,7 +118,6 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
         info: &InstructionInfo,
         stack: &VecStack<U256>,
         current_address: &Address,
-        access_list: &AccessList,
         current_mem_size: usize,
     ) -> vm::Result<InstructionRequirements<Gas>> {
         let schedule = ext.schedule();
@@ -127,7 +126,7 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
         let default_gas = Gas::from(schedule.tier_step_gas[tier]);
 
         let accessed_addresses_gas = |addr: &Address, cold_cost: usize| -> Gas {
-            if access_list.contains_address(addr) {
+            if ext.al_contains_address(addr) {
                 schedule.warm_storage_read_cost.into()
             } else {
                 cold_cost.into()
@@ -144,7 +143,7 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                 let newval = stack.peek(1);
                 let val = U256::from(&*ext.storage_at(&key)?);
 
-                let is_cold = !access_list.contains_storage_key(current_address, &key);
+                let is_cold = !ext.al_contains_storage_key(current_address, &key);
 
                 let gas = if schedule.eip1283 {
                     let orig = U256::from(&*ext.initial_storage_at(&key)?);
@@ -163,8 +162,8 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
             }
             instructions::SLOAD => {
                 let key = H256::from(stack.peek(0));
-                let gas = if access_list.is_enabled() {
-                    if access_list.contains_storage_key(current_address, &key) {
+                let gas = if ext.al_is_enabled() {
+                    if ext.al_contains_storage_key(current_address, &key) {
                         schedule.warm_storage_read_cost
                     } else {
                         schedule.cold_sload_cost
@@ -200,7 +199,7 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                         overflowing!(gas.overflow_add(schedule.suicide_to_new_account_cost.into()));
                 }
 
-                if access_list.contains_address(&address) {
+                if ext.al_contains_address(&address) {
                     // EIP2929 If the ETH recipient of a SELFDESTRUCT is not in accessed_addresses
                     // (regardless of whether or not the amount sent is nonzero),
                     // charge an additional COLD_ACCOUNT_ACCESS_COST on top of the existing gas costs,

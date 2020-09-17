@@ -54,6 +54,7 @@ impl<A, B> KeyPair<A, B> for (&A, &B) {
 }
 
 /// List of accessed accounts and storage keys
+#[derive(Debug, Default)]
 pub struct AccessList {
     enabled: bool,
     addresses: HashSet<Address>,
@@ -61,25 +62,12 @@ pub struct AccessList {
 }
 
 impl AccessList {
-    /// Create a new access list, if disabled all inserts will be forgotten
-    pub fn new(enabled: bool) -> Self {
-        if enabled {
-            AccessList {
-                enabled: true,
-                addresses: HashSet::new(),
-                storage_keys: HashSet::new(),
-            }
-        } else {
-            AccessList {
-                enabled: false,
-                addresses: HashSet::with_capacity(0),
-                storage_keys: HashSet::with_capacity(0),
-            }
-        }
-    }
     /// Returns if the list is enabled
     pub fn is_enabled(&self) -> bool {
         self.enabled
+    }
+    pub fn enable(&mut self) {
+        self.enabled = true;
     }
     /// Checks if contains an storage key
     pub fn contains_storage_key(&self, address: &Address, key: &H256) -> bool {
@@ -90,7 +78,7 @@ impl AccessList {
             false
         }
     }
-    /// Inserts an storage key into the list
+    /// Inserts a storage key
     pub fn insert_storage_key(&mut self, address: Address, key: H256) {
         if self.enabled {
             self.storage_keys.insert((address, key));
@@ -104,10 +92,17 @@ impl AccessList {
             false
         }
     }
-    /// Inserts an address into the list
+    /// Inserts an address
     pub fn insert_address(&mut self, address: Address) {
         if self.enabled {
             self.addresses.insert(address);
+        }
+    }
+    /// Merge secondary substate access list into self, accruing each element correspondingly.
+    pub fn accrue(&mut self, access_list: &AccessList) {
+        if self.enabled {
+            self.addresses.extend(access_list.addresses.iter());
+            self.storage_keys.extend(access_list.storage_keys.iter());
         }
     }
 }

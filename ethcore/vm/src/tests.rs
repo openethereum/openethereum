@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::access_list::AccessList;
 use bytes::Bytes;
 use error::TrapKind;
 use ethereum_types::{Address, H256, U256};
@@ -75,6 +76,7 @@ pub struct FakeExt {
     pub balances: HashMap<Address, U256>,
     pub tracing: bool,
     pub is_static: bool,
+    pub access_list: AccessList,
 
     chain_id: u64,
 }
@@ -126,6 +128,11 @@ impl FakeExt {
     pub fn new_yolo() -> Self {
         let mut ext = FakeExt::default();
         ext.schedule = Schedule::new_yolo();
+        ext.access_list.enable();
+        for builtin in 1..0x12 {
+            // up to BLS12_MAP_FP2_TO_G2
+            ext.access_list.insert_address(Address::from(builtin))
+        }
         ext
     }
 
@@ -286,5 +293,25 @@ impl Ext for FakeExt {
 
     fn trace_next_instruction(&mut self, _pc: usize, _instruction: u8, _gas: U256) -> bool {
         self.tracing
+    }
+
+    fn al_is_enabled(&self) -> bool {
+        self.access_list.is_enabled()
+    }
+
+    fn al_contains_storage_key(&self, address: &Address, key: &H256) -> bool {
+        self.access_list.contains_storage_key(address, key)
+    }
+
+    fn al_insert_storage_key(&mut self, address: Address, key: H256) {
+        self.access_list.insert_storage_key(address, key)
+    }
+
+    fn al_contains_address(&self, address: &Address) -> bool {
+        self.access_list.contains_address(address)
+    }
+
+    fn al_insert_address(&mut self, address: Address) {
+        self.access_list.insert_address(address)
     }
 }

@@ -527,6 +527,26 @@ where
     fn trace_executed(&mut self, gas_used: U256, stack_push: &[U256], mem: &[u8]) {
         self.vm_tracer.trace_executed(gas_used, stack_push, mem)
     }
+
+    fn al_is_enabled(&self) -> bool {
+        self.substate.access_list.is_enabled()
+    }
+
+    fn al_contains_storage_key(&self, address: &Address, key: &H256) -> bool {
+        self.substate.access_list.contains_storage_key(address, key)
+    }
+
+    fn al_insert_storage_key(&mut self, address: Address, key: H256) {
+        self.substate.access_list.insert_storage_key(address, key)
+    }
+
+    fn al_contains_address(&self, address: &Address) -> bool {
+        self.substate.access_list.contains_address(address)
+    }
+
+    fn al_insert_address(&mut self, address: Address) {
+        self.substate.access_list.insert_address(address)
+    }
 }
 
 #[cfg(test)]

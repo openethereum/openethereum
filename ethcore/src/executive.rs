@@ -242,6 +242,23 @@ pub struct CallCreateExecutive<'a> {
 }
 
 impl<'a> CallCreateExecutive<'a> {
+    pub fn new_substate(
+        params: &ActionParams,
+        machine: &'a Machine,
+        schedule: &'a Schedule,
+    ) -> Substate {
+        let mut substate = Substate::new();
+        if schedule.eip2929 {
+            substate.access_list.enable();
+            substate.access_list.insert_address(params.address);
+            substate.access_list.insert_address(params.sender);
+            for (builtin_address, _) in machine.builtins() {
+                substate.access_list.insert_address(*builtin_address)
+            }
+        }
+        substate
+    }
+
     /// Create a new call executive using raw data.
     pub fn new_call_raw(
         params: ActionParams,
@@ -277,7 +294,8 @@ impl<'a> CallCreateExecutive<'a> {
             CallCreateExecutiveKind::CallBuiltin(params)
         } else {
             if params.code.is_some() {
-                CallCreateExecutiveKind::ExecCall(params, Substate::new())
+                let substate = Self::new_substate(&params, machine, schedule);
+                CallCreateExecutiveKind::ExecCall(params, substate)
             } else {
                 CallCreateExecutiveKind::Transfer(params)
             }
@@ -317,7 +335,8 @@ impl<'a> CallCreateExecutive<'a> {
 
         let gas = params.gas;
 
-        let kind = CallCreateExecutiveKind::ExecCreate(params, Substate::new());
+        let substate = Self::new_substate(&params, machine, schedule);
+        let kind = CallCreateExecutiveKind::ExecCreate(params, substate);
 
         Self {
             info,
@@ -584,10 +603,7 @@ impl<'a> CallCreateExecutive<'a> {
                 }
 
                 let origin_info = OriginInfo::from(&params);
-                let builtins: Vec<_> = self.machine.builtins().keys().collect();
-                let exec = self
-                    .factory
-                    .create(params, self.schedule, self.depth, &builtins);
+                let exec = self.factory.create(params, self.schedule, self.depth);
 
                 let out = {
                     let mut ext = Self::as_externalities(
@@ -658,10 +674,7 @@ impl<'a> CallCreateExecutive<'a> {
                 }
 
                 let origin_info = OriginInfo::from(&params);
-                let precompiles: Vec<&Address> = self.machine.builtins().keys().collect();
-                let exec = self
-                    .factory
-                    .create(params, self.schedule, self.depth, &precompiles);
+                let exec = self.factory.create(params, self.schedule, self.depth);
 
                 let out = {
                     let mut ext = Self::as_externalities(

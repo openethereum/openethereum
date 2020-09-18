@@ -38,8 +38,8 @@ extern crate parking_lot;
 extern crate primitive_types07;
 extern crate rand;
 extern crate rlp;
-extern crate stats;
 extern crate rlp04;
+extern crate stats;
 extern crate triehash_ethereum;
 
 #[cfg(test)]

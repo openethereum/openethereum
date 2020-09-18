@@ -425,7 +425,12 @@ impl ChainSyncApi {
         priority_tasks: mpsc::Receiver<PriorityTask>,
     ) -> Self {
         ChainSyncApi {
-            sync: RwLock::new(ChainSync::new(config, chain, fork_filter, private_tx_handler)),
+            sync: RwLock::new(ChainSync::new(
+                config,
+                chain,
+                fork_filter,
+                private_tx_handler,
+            )),
             priority_tasks: Mutex::new(priority_tasks),
         }
     }

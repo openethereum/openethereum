@@ -30,9 +30,11 @@ use std::{
 };
 
 use chain::{
+    fork_filter::ForkFilterApi,
     sync_packet::SyncPacket::{PrivateTransactionPacket, SignedPrivateTransactionPacket},
-    fork_filter::ForkFilterApi, ChainSyncApi, SyncState,  SyncStatus as EthSyncStatus, ETH_PROTOCOL_VERSION_63,
-    ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2, PAR_PROTOCOL_VERSION_3
+    ChainSyncApi, SyncState, SyncStatus as EthSyncStatus, ETH_PROTOCOL_VERSION_63,
+    ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
+    PAR_PROTOCOL_VERSION_3,
 };
 use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},

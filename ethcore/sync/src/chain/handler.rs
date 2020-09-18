@@ -44,7 +44,7 @@ use super::sync_packet::{
 use super::{
     BlockSet, ChainSync, ForkConfirmation, PacketProcessError, PeerAsking, PeerInfo, SyncRequester,
     SyncState, ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES,
-    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_3
+    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_3,
 };
 
 /// The Chain Sync Handler: handles responses from peers
@@ -727,7 +727,11 @@ impl SyncHandler {
         } else {
             None
         };
-        let private_tx_enabled = if private_tx_protocol { r_iter.next().and_then(|v| v.as_val().ok()).unwrap_or(false) } else { false };
+        let private_tx_enabled = if private_tx_protocol {
+            r_iter.next().and_then(|v| v.as_val().ok()).unwrap_or(false)
+        } else {
+            false
+        };
 
         let peer = PeerInfo {
             protocol_version,

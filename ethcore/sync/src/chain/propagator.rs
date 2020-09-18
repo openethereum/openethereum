@@ -477,7 +477,7 @@ mod tests {
             SyncConfig::default(),
             &client,
             ForkFilterApi::new_dummy(&client),
-            None
+            None,
         );
         sync.peers.insert(
             0,
@@ -574,7 +574,7 @@ mod tests {
             SyncConfig::default(),
             &client,
             ForkFilterApi::new_dummy(&client),
-            None
+            None,
         );
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();

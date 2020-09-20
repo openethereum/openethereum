@@ -97,12 +97,9 @@ mod accounts {
         let account_settings = AccountProviderSettings {
             unlock_keep_secret: cfg.enable_fast_unlock,
             blacklisted_accounts: match *spec {
-                SpecType::Morden
-                | SpecType::Mordor
+                SpecType::Volta
                 | SpecType::Ropsten
-                | SpecType::Kovan
                 | SpecType::Goerli
-                | SpecType::Kotti
                 | SpecType::Sokol
                 | SpecType::Dev => vec![],
                 _ => vec!["00a329c0648769a73afac7f9381e08fb43dbea72".into()],

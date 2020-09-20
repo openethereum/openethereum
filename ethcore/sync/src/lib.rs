@@ -39,6 +39,7 @@ extern crate primitive_types07;
 extern crate rand;
 extern crate rlp;
 extern crate rlp04;
+extern crate stats;
 extern crate triehash_ethereum;
 
 #[cfg(test)]

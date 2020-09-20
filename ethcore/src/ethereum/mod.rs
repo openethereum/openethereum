@@ -50,14 +50,6 @@ pub fn new_foundation<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     )
 }
 
-/// Create a new Classic mainnet chain spec without the DAO hardfork.
-pub fn new_classic<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/classic.json"),
-    )
-}
-
 /// Create a new POA Network mainnet chain spec.
 pub fn new_poanet<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     load(
@@ -87,24 +79,6 @@ pub fn new_ewc<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     load(params.into(), include_bytes!("../../res/ethereum/ewc.json"))
 }
 
-/// Create a new Expanse mainnet chain spec.
-pub fn new_expanse<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/expanse.json"),
-    )
-}
-
-/// Create a new Musicoin mainnet chain spec.
-pub fn new_musicoin<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    // The musicoin chain spec uses a block reward contract which can be found at
-    // https://gist.github.com/andresilva/6f2afaf9486732a0797f4bdeae018ee9
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/musicoin.json"),
-    )
-}
-
 /// Create a new Ellaism mainnet chain spec.
 pub fn new_ellaism<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     load(
@@ -112,41 +86,11 @@ pub fn new_ellaism<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
         include_bytes!("../../res/ethereum/ellaism.json"),
     )
 }
-
-/// Create a new MIX mainnet chain spec.
-pub fn new_mix<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(params.into(), include_bytes!("../../res/ethereum/mix.json"))
-}
-
-/// Create a new Callisto chain spec
-pub fn new_callisto<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/callisto.json"),
-    )
-}
-
-/// Create a new Morden testnet chain spec.
-pub fn new_morden<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/morden.json"),
-    )
-}
-
 /// Create a new Ropsten testnet chain spec.
 pub fn new_ropsten<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     load(
         params.into(),
         include_bytes!("../../res/ethereum/ropsten.json"),
-    )
-}
-
-/// Create a new Kovan testnet chain spec.
-pub fn new_kovan<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/kovan.json"),
     )
 }
 
@@ -166,27 +110,11 @@ pub fn new_goerli<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     )
 }
 
-/// Create a new Kotti testnet chain spec.
-pub fn new_kotti<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/kotti.json"),
-    )
-}
-
 /// Create a new POA Sokol testnet chain spec.
 pub fn new_sokol<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
     load(
         params.into(),
         include_bytes!("../../res/ethereum/poasokol.json"),
-    )
-}
-
-/// Create a new Morodor testnet chain spec.
-pub fn new_mordor<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(
-        params.into(),
-        include_bytes!("../../res/ethereum/mordor.json"),
     )
 }
 
@@ -341,14 +269,13 @@ pub fn new_kovan_wasm_test_machine() -> EthereumMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::U256;
     use state::*;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
 
     #[test]
     fn ensure_db_good() {
-        let spec = new_morden(&::std::env::temp_dir());
+        let spec = new_ropsten(&::std::env::temp_dir());
         let engine = &spec.engine;
         let genesis_header = spec.genesis_header();
         let db = spec
@@ -382,32 +309,36 @@ mod tests {
             1u64.into()
         );
         assert_eq!(
-            s.balance(&"102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c".into())
+            s.balance(&"874b54a8bd152966d63f706bae1ffeb0411921e5".into())
                 .unwrap(),
-            U256::from(1u64) << 200
+            "c9f2c9cd04674edea40000000".parse().unwrap()
         );
         assert_eq!(
             s.balance(&"0000000000000000000000000000000000000000".into())
                 .unwrap(),
-            0u64.into()
+            1u64.into()
         );
     }
 
     #[test]
-    fn morden() {
-        let morden = new_morden(&::std::env::temp_dir());
+    fn ropsten() {
+        let ropsten = new_ropsten(&::std::env::temp_dir());
 
         assert_eq!(
-            morden.state_root(),
-            "f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9".into()
+            ropsten.state_root(),
+            "217b0bbcfb72e2d57e28f33cb361b9983513177755dc3f33ce3e7022ed62b77b"
+                .parse()
+                .unwrap()
         );
-        let genesis = morden.genesis_block();
+        let genesis = ropsten.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303".into()
+            "41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d"
+                .parse()
+                .unwrap()
         );
 
-        let _ = morden.engine;
+        let _ = ropsten.engine;
     }
 
     #[test]

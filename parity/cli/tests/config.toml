@@ -32,6 +32,12 @@ port = 8180
 [ipc]
 apis = ["rpc", "eth"]
 
+[metrics]
+enable = true
+interface = "local"
+port = 4000
+
+
 [secretstore]
 http_port = 8082
 port = 8083
@@ -59,7 +65,7 @@ fat_db = "off"
 scale_verifiers = false
 
 [snapshots]
-disable_periodic = true
+enable = false
 
 [misc]
 logging = "own_tx=trace"

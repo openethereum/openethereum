@@ -181,84 +181,12 @@ impl ValidatorSet for Multi {
 
 #[cfg(test)]
 mod tests {
-    use accounts::AccountProvider;
-    use client::{traits::ForceUpdateSealing, BlockChainClient, BlockInfo, ChainInfo, ImportBlock};
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
-    use ethkey::Secret;
-    use hash::keccak;
-    use miner::{self, MinerService};
-    use spec::Spec;
-    use std::{collections::BTreeMap, sync::Arc};
-    use test_helpers::{generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data};
-    use types::{header::Header, ids::BlockId};
-    use verification::queue::kind::blocks::Unverified;
+    use std::collections::BTreeMap;
+    use types::header::Header;
 
     use super::Multi;
-
-    #[test]
-    fn uses_current_set() {
-        let tap = Arc::new(AccountProvider::transient_provider());
-        let s0: Secret = keccak("0").into();
-        let v0 = tap.insert_account(s0.clone(), &"".into()).unwrap();
-        let v1 = tap.insert_account(keccak("1").into(), &"".into()).unwrap();
-        let client = generate_dummy_client_with_spec(Spec::new_validator_multi);
-        client
-            .engine()
-            .register_client(Arc::downgrade(&client) as _);
-
-        // Make sure txs go through.
-        client
-            .miner()
-            .set_gas_range_target((1_000_000.into(), 1_000_000.into()));
-
-        // Wrong signer for the first block.
-        let signer = Box::new((tap.clone(), v1, "".into()));
-        client.miner().set_author(miner::Author::Sealer(signer));
-        client
-            .transact_contract(Default::default(), Default::default())
-            .unwrap();
-        ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
-        assert_eq!(client.chain_info().best_block_number, 0);
-        // Right signer for the first block.
-        let signer = Box::new((tap.clone(), v0, "".into()));
-        client.miner().set_author(miner::Author::Sealer(signer));
-        ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
-        assert_eq!(client.chain_info().best_block_number, 1);
-        // This time v0 is wrong.
-        client
-            .transact_contract(Default::default(), Default::default())
-            .unwrap();
-        ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
-        assert_eq!(client.chain_info().best_block_number, 1);
-        let signer = Box::new((tap.clone(), v1, "".into()));
-        client.miner().set_author(miner::Author::Sealer(signer));
-        ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
-        assert_eq!(client.chain_info().best_block_number, 2);
-        // v1 is still good.
-        client
-            .transact_contract(Default::default(), Default::default())
-            .unwrap();
-        ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
-        assert_eq!(client.chain_info().best_block_number, 3);
-
-        // Check syncing.
-        let sync_client =
-            generate_dummy_client_with_spec_and_data(Spec::new_validator_multi, 0, 0, &[]);
-        sync_client
-            .engine()
-            .register_client(Arc::downgrade(&sync_client) as _);
-        for i in 1..4 {
-            sync_client
-                .import_block(
-                    Unverified::from_rlp(client.block(BlockId::Number(i)).unwrap().into_inner())
-                        .unwrap(),
-                )
-                .unwrap();
-        }
-        sync_client.flush_queue();
-        assert_eq!(sync_client.chain_info().best_block_number, 3);
-    }
 
     #[test]
     fn transition_to_fixed_list_instant() {

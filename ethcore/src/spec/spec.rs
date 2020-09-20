@@ -36,7 +36,7 @@ use vm::{ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
 
 use builtin::Builtin;
 use engines::{
-    AuthorityRound, BasicAuthority, Clique, EthEngine, InstantSeal, InstantSealParams, NullEngine,
+    AuthorityRound, Clique, EthEngine, InstantSeal, InstantSealParams, NullEngine,
     DEFAULT_BLOCKHASH_CONTRACT,
 };
 use error::Error;
@@ -675,9 +675,6 @@ impl Spec {
             ethjson::spec::Engine::InstantSeal(None) => {
                 Arc::new(InstantSeal::new(InstantSealParams::default(), machine))
             }
-            ethjson::spec::Engine::BasicAuthority(basic_authority) => {
-                Arc::new(BasicAuthority::new(basic_authority.params.into(), machine))
-            }
             ethjson::spec::Engine::Clique(clique) => Clique::new(clique.params.into(), machine)
                 .expect("Failed to start Clique consensus engine."),
             ethjson::spec::Engine::AuthorityRound(authority_round) => {
@@ -1047,7 +1044,7 @@ impl Spec {
 
     /// TestList.sol used in both specs: https://github.com/paritytech/contracts/pull/30/files
     /// Accounts with secrets keccak("0") and keccak("1") are initially the validators.
-    /// Create a new Spec with BasicAuthority which uses a contract at address 5 to determine
+    /// Create a new Spec with AuRa which uses a contract at address 5 to determine
     /// the current validators using `getValidators`.
     /// Second validator can be removed with
     /// "0xbfc708a000000000000000000000000082a978b3f5962a5b0957d9ee9eef472ee55b42f1" and added
@@ -1064,15 +1061,6 @@ impl Spec {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_validator_contract() -> Self {
         load_bundled!("validator_contract")
-    }
-
-    /// Create a new Spec with BasicAuthority which uses multiple validator sets changing with
-    /// height.
-    /// Account with secrets keccak("0") is the validator for block 1 and with keccak("1")
-    /// onwards.
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub fn new_validator_multi() -> Self {
-        load_bundled!("validator_multi")
     }
 }
 

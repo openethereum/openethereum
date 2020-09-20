@@ -248,7 +248,7 @@ usage! {
 
             ARG arg_chain: (String) = "foundation", or |c: &Config| c.parity.as_ref()?.chain.clone(),
             "--chain=[CHAIN]",
-            "Specify the blockchain type. CHAIN may be either a JSON chain specification file or ethereum, classic, poacore, xdai, volta, ewc, musicoin, ellaism, mix, callisto, morden, mordor, ropsten, kovan, rinkeby, goerli, kotti, poasokol, testnet, or dev.",
+            "Specify the blockchain type. CHAIN may be either a JSON chain specification file or ethereum, poacore, xdai, volta, ewc, ellaism, ropsten, kovan, rinkeby, goerli, poasokol, or dev.",
 
             ARG arg_keys_path: (String) = "$BASE/keys", or |c: &Config| c.parity.as_ref()?.keys_path.clone(),
             "--keys-path=[PATH]",
@@ -465,6 +465,19 @@ usage! {
             ARG arg_ws_max_connections: (usize) = 100usize, or |c: &Config| c.websockets.as_ref()?.max_connections,
             "--ws-max-connections=[CONN]",
             "Maximum number of allowed concurrent WebSockets JSON-RPC connections.",
+
+        ["Metrics"]
+            FLAG flag_metrics: (bool) = false, or |c: &Config| c.metrics.as_ref()?.enable.clone(),
+            "--metrics",
+            "Enable prometheus metrics (only full client).",
+
+            ARG arg_metrics_port: (u16) = 3000u16, or |c: &Config| c.metrics.as_ref()?.port.clone(),
+            "--metrics-port=[PORT]",
+            "Specify the port portion of the metrics server.",
+
+            ARG arg_metrics_interface: (String) = "local", or |c: &Config| c.metrics.as_ref()?.interface.clone(),
+            "--metrics-interface=[IP]",
+            "Specify the hostname portion of the metrics server, IP should be an interface's IP address, or all (all interfaces) or local.",
 
         ["API and Console Options – IPC"]
             FLAG flag_no_ipc: (bool) = false, or |c: &Config| c.ipc.as_ref()?.disable.clone(),
@@ -782,9 +795,9 @@ usage! {
             "Skip block seal check.",
 
         ["Snapshot Options"]
-            FLAG flag_no_periodic_snapshot: (bool) = false, or |c: &Config| c.snapshots.as_ref()?.disable_periodic.clone(),
-            "--no-periodic-snapshot",
-            "Disable automated snapshots which usually occur once every 5000 blocks.",
+            FLAG flag_enable_snapshotting: (bool) = false, or |c: &Config| c.snapshots.as_ref()?.enable.clone(),
+            "--enable-snapshotting",
+            "Enable automated snapshots which usually occur once every 5000 blocks.",
 
             ARG arg_snapshot_threads: (Option<usize>) = None, or |c: &Config| c.snapshots.as_ref()?.processing_threads,
             "--snapshot-threads=[NUM]",
@@ -808,6 +821,7 @@ struct Config {
     snapshots: Option<Snapshots>,
     misc: Option<Misc>,
     stratum: Option<Stratum>,
+    metrics: Option<Metrics>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -901,6 +915,14 @@ struct Ipc {
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct Metrics {
+    enable: Option<bool>,
+    port: Option<u16>,
+    interface: Option<String>,
+}
+
+#[derive(Default, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SecretStore {
     disable: Option<bool>,
     disable_http: Option<bool>,
@@ -990,7 +1012,7 @@ struct Footprint {
 #[derive(Default, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Snapshots {
-    disable_periodic: Option<bool>,
+    enable: Option<bool>,
     processing_threads: Option<usize>,
 }
 
@@ -1007,8 +1029,8 @@ struct Misc {
 #[cfg(test)]
 mod tests {
     use super::{
-        Account, Args, ArgsError, Config, Footprint, Ipc, Mining, Misc, Network, Operating, Rpc,
-        SecretStore, Snapshots, Ws,
+        Account, Args, ArgsError, Config, Footprint, Ipc, Metrics, Mining, Misc, Network,
+        Operating, Rpc, SecretStore, Snapshots, Ws,
     };
     use clap::ErrorKind as ClapErrorKind;
     use toml;
@@ -1138,14 +1160,14 @@ mod tests {
         // given
         let mut config = Config::default();
         let mut operating = Operating::default();
-        operating.chain = Some("mordor".into());
+        operating.chain = Some("goerli".into());
         config.parity = Some(operating);
 
         // when
         let args = Args::parse_with_config(&["parity"], config).unwrap();
 
         // then
-        assert_eq!(args.arg_chain, "mordor".to_owned());
+        assert_eq!(args.arg_chain, "goerli".to_owned());
     }
 
     #[test]
@@ -1153,7 +1175,7 @@ mod tests {
         // given
         let mut config = Config::default();
         let mut operating = Operating::default();
-        operating.chain = Some("mordor".into());
+        operating.chain = Some("goerli".into());
         config.parity = Some(operating);
 
         // when
@@ -1307,6 +1329,11 @@ mod tests {
                 arg_ipc_apis: "web3,eth,net,parity,parity_accounts,personal,traces,secretstore"
                     .into(),
 
+                // METRICS
+                flag_metrics: false,
+                arg_metrics_port: 3000u16,
+                arg_metrics_interface: "local".into(),
+
                 // SECRETSTORE
                 flag_no_secretstore: false,
                 flag_no_secretstore_http: false,
@@ -1392,7 +1419,7 @@ mod tests {
                 // -- Snapshot Optons
                 arg_export_state_at: "latest".into(),
                 arg_snapshot_at: "latest".into(),
-                flag_no_periodic_snapshot: false,
+                flag_enable_snapshotting: false,
                 arg_snapshot_threads: None,
 
                 // -- Internal Options
@@ -1505,6 +1532,11 @@ mod tests {
                     path: None,
                     apis: Some(vec!["rpc".into(), "eth".into()]),
                 }),
+                metrics: Some(Metrics {
+                    enable: Some(true),
+                    interface: Some("local".to_string()),
+                    port: Some(4000),
+                }),
                 secretstore: Some(SecretStore {
                     disable: None,
                     disable_http: None,
@@ -1577,7 +1609,7 @@ mod tests {
                     num_verifiers: None,
                 }),
                 snapshots: Some(Snapshots {
-                    disable_periodic: Some(true),
+                    enable: Some(false),
                     processing_threads: None,
                 }),
                 misc: Some(Misc {

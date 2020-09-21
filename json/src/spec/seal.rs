@@ -41,18 +41,6 @@ pub struct AuthorityRoundSeal {
     pub signature: H520,
 }
 
-/// Tendermint seal.
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TendermintSeal {
-    /// Seal round.
-    pub round: Uint,
-    /// Proposal seal signature.
-    pub proposal: H520,
-    /// Proposal seal signature.
-    pub precommits: Vec<H520>,
-}
-
 /// Seal variants.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -62,8 +50,6 @@ pub enum Seal {
     Ethereum(Ethereum),
     /// AuthorityRound seal.
     AuthorityRound(AuthorityRoundSeal),
-    /// Tendermint seal.
-    Tendermint(TendermintSeal),
     /// Generic seal.
     Generic(Bytes),
 }
@@ -74,7 +60,7 @@ mod tests {
     use ethereum_types::{H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
     use hash::*;
     use serde_json;
-    use spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal};
+    use spec::{AuthorityRoundSeal, Ethereum, Seal};
     use uint::Uint;
 
     #[test]
@@ -91,18 +77,10 @@ mod tests {
 				"step": "0x0",
 				"signature": "0x2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"
 			}
-		},{
-			"tendermint": {
-				"round": "0x3",
-				"proposal": "0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003",
-				"precommits": [
-					"0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
-				]
-			}
 		}]"#;
 
         let deserialized: Vec<Seal> = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized.len(), 4);
+        assert_eq!(deserialized.len(), 3);
 
         // [0]
         assert_eq!(
@@ -129,13 +107,6 @@ mod tests {
         assert_eq!(deserialized[2], Seal::AuthorityRound(AuthorityRoundSeal {
 			step: Uint(U256::from(0x0)),
 			signature: H520(Eth520::from("0x2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"))
-		}));
-
-        // [3]
-        assert_eq!(deserialized[3], Seal::Tendermint(TendermintSeal {
-			round: Uint(U256::from(0x3)),
-			proposal: H520(Eth520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003")),
-			precommits: vec![H520(Eth520::from("0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"))]
 		}));
     }
 }

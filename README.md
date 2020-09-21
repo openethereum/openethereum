@@ -35,7 +35,7 @@ Fast and feature-rich multi-network Ethereum client.
 OpenEthereum is the ParityTech Parity ethereum client in its _minimal maintaince mode_, this means that:
 - code related to non-mainstream features has been removed 
 - will be updated to the last ethereum mainnet network upgrades
-- will support mainnet, kovan and xdai network mainstream chains
+- will mainly support mainnet, kovan and xdai network mainstream chains.
 - only critical bugs will be fixed, no performance improvements or new features are planned
 
 ## 2. Technical Overview <a id="chapter-002"></a>

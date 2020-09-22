@@ -346,7 +346,7 @@ impl BlockDownloader {
             }
         }
 
-        //set highest block that we receive from network. This is only used as stat and nothing more.
+        // Set highest block that we receive from network. This is only used as stat and nothing more.
         if let Some((number, _)) = last_header {
             if self.highest_block.as_ref().map_or(true, |n| number > *n) {
                 self.highest_block = Some(number);

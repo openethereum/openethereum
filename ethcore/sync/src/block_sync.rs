@@ -306,7 +306,7 @@ impl BlockDownloader {
                 return Err(BlockDownloaderImportError::Invalid);
             }
 
-            //if header is already included skip and go to next one in chain.
+            // If header is already included skip and go to next one in chain.
             last_header = Some((number, hash));
             if self.blocks.contains(&hash) {
                 trace_sync!(

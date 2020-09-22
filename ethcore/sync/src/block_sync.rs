@@ -286,7 +286,7 @@ impl BlockDownloader {
             let number = BlockNumber::from(info.header.number());
             let hash = info.header.hash();
 
-            //this part checks if first header is what we expect and that all other header are chained correctly
+            // This part checks if first header is what we expect and that all other header are chained correctly.
             let valid_response = match last_header {
                 // First header must match expected hash.
                 None => expected_hash == hash,

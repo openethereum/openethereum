@@ -318,7 +318,7 @@ impl BlockDownloader {
                 continue;
             }
 
-            //check if received header is present in chain. If it is in chain include header into list that will be inserted
+            // Check if received header is present in chain. If it is in chain include header into list that will be inserted
             match io.chain().block_status(BlockId::Hash(hash.clone())) {
                 BlockStatus::InChain | BlockStatus::Queued => {
                     match self.state {

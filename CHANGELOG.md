@@ -43,7 +43,6 @@ The full list of included changes:
 
 - Add missing forks to fork ID (#11747) 
 
-## OpenEthereum v3.0.0
 
 ## OpenEthereum [v3.0.0](https://github.com/openethereum/openethereum/releases/tag/v3.0.0)
 

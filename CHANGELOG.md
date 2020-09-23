@@ -1,4 +1,4 @@
-## OpenEthereum v3.1
+## OpenEthereum v3.1RC1
 
 OpenEthereum 3.1rc1 is a candidate release based on v2.5.13 which is the last stable version known of the client that does not include any of the issues introduced in v2.7. 
 It removes non core features like Ethereum Classic, Private Transactions, Light Client, Updater, IPFS and Swarm support, currently deprecated flags such as expanse, kotti, mordor testnets.

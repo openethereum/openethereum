@@ -228,7 +228,9 @@ impl CommonParams {
                 false => ::vm::CleanDustMode::BasicOnly,
             };
         }
-        if block_number >= self.wasm_activation_transition && block_number < self.wasm_disable_transition {
+        if block_number >= self.wasm_activation_transition
+            && block_number < self.wasm_disable_transition
+        {
             let mut wasm = ::vm::WasmCosts::default();
             if block_number >= self.kip4_transition {
                 wasm.have_create2 = true;

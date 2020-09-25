@@ -201,6 +201,8 @@ pub struct Interpreter<Cost: CostType> {
 
 impl<Cost: 'static + CostType> vm::Exec for Interpreter<Cost> {
     fn exec(mut self: Box<Self>, ext: &mut dyn vm::Ext) -> vm::ExecTrapResult<GasLeft> {
+        ext.al_insert_address(self.params.address);
+        ext.al_insert_address(self.params.sender);
         loop {
             let result = self.step(ext);
             match result {
@@ -398,8 +400,14 @@ impl<Cost: CostType> Interpreter<Cost> {
                     .gasometer
                     .as_mut()
                     .expect(GASOMETER_PROOF)
-                    .requirements(ext, instruction, info, &self.stack, self.mem.size())
-                {
+                    .requirements(
+                        ext,
+                        instruction,
+                        info,
+                        &self.stack,
+                        &self.params.address,
+                        self.mem.size(),
+                    ) {
                     Ok(t) => t,
                     Err(e) => return InterpreterResult::Done(Err(e)),
                 };
@@ -709,6 +717,15 @@ impl<Cost: CostType> Interpreter<Cost> {
                     return Ok(InstructionResult::UnusedGas(create_gas));
                 }
 
+                let contract_address = {
+                    let contract_code = self.mem.read_slice(init_off, init_size);
+                    ext.calc_address(contract_code, address_scheme)
+                };
+
+                if let Some(contract_address) = contract_address {
+                    ext.al_insert_address(contract_address);
+                }
+
                 let contract_code = self.mem.read_slice(init_off, init_size);
 
                 let create_result = ext.create(
@@ -776,6 +793,8 @@ impl<Cost: CostType> Interpreter<Cost> {
                         },
                     ))
                     .0;
+
+                ext.al_insert_address(code_address);
 
                 // Get sender & receive addresses, check if we have balance
                 let (sender_address, receive_address, has_balance, call_type) = match instruction {
@@ -903,8 +922,9 @@ impl<Cost: CostType> Interpreter<Cost> {
                 return Ok(InstructionResult::StopExecution);
             }
             instructions::SUICIDE => {
-                let address = self.stack.pop_back();
-                ext.suicide(&u256_to_address(&address))?;
+                let address = u256_to_address(&self.stack.pop_back());
+                ext.al_insert_address(address.clone());
+                ext.suicide(&address)?;
                 return Ok(InstructionResult::StopExecution);
             }
             instructions::LOG0
@@ -991,15 +1011,17 @@ impl<Cost: CostType> Interpreter<Cost> {
                 let key = H256::from(&self.stack.pop_back());
                 let word = U256::from(&*ext.storage_at(&key)?);
                 self.stack.push(word);
+
+                ext.al_insert_storage_key(self.params.address, key);
             }
             instructions::SSTORE => {
-                let address = H256::from(&self.stack.pop_back());
+                let key = H256::from(&self.stack.pop_back());
                 let val = self.stack.pop_back();
 
-                let current_val = U256::from(&*ext.storage_at(&address)?);
+                let current_val = U256::from(&*ext.storage_at(&key)?);
                 // Increase refund for clear
                 if ext.schedule().eip1283 {
-                    let original_val = U256::from(&*ext.initial_storage_at(&address)?);
+                    let original_val = U256::from(&*ext.initial_storage_at(&key)?);
                     gasometer::handle_eip1283_sstore_clears_refund(
                         ext,
                         &original_val,
@@ -1012,7 +1034,8 @@ impl<Cost: CostType> Interpreter<Cost> {
                         ext.add_sstore_refund(sstore_clears_schedule);
                     }
                 }
-                ext.set_storage(address, H256::from(&val))?;
+                ext.set_storage(key, H256::from(&val))?;
+                ext.al_insert_storage_key(self.params.address, key);
             }
             instructions::PC => {
                 self.stack.push(U256::from(self.reader.position - 1));
@@ -1031,6 +1054,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                 let address = u256_to_address(&self.stack.pop_back());
                 let balance = ext.balance(&address)?;
                 self.stack.push(balance);
+                ext.al_insert_address(address);
             }
             instructions::CALLER => {
                 self.stack.push(address_to_u256(self.params.sender.clone()));
@@ -1068,11 +1092,15 @@ impl<Cost: CostType> Interpreter<Cost> {
             instructions::EXTCODESIZE => {
                 let address = u256_to_address(&self.stack.pop_back());
                 let len = ext.extcodesize(&address)?.unwrap_or(0);
+
+                ext.al_insert_address(address);
                 self.stack.push(U256::from(len));
             }
             instructions::EXTCODEHASH => {
                 let address = u256_to_address(&self.stack.pop_back());
                 let hash = ext.extcodehash(&address)?.unwrap_or_else(H256::zero);
+
+                ext.al_insert_address(address);
                 self.stack.push(U256::from(hash));
             }
             instructions::CALLDATACOPY => {
@@ -1108,6 +1136,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                     &mut self.stack,
                     code.as_ref().map(|c| &(*c)[..]).unwrap_or(&[]),
                 );
+                ext.al_insert_address(address);
             }
             instructions::GASPRICE => {
                 self.stack.push(self.params.gas_price.clone());

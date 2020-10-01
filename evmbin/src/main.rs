@@ -197,7 +197,7 @@ fn run_state_test(args: Args) {
             {
                 continue;
             }
-
+            let spec = ethjson::spec::spec::ForkSpec::Yolo;
             for (idx, state) in states.into_iter().enumerate() {
                 let post_root = state.hash.into();
                 let transaction = multitransaction.select(&state.indexes).into();

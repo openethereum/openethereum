@@ -44,7 +44,8 @@ use sync::{self, validate_node_url, NetworkConfiguration};
 
 use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
 use blockchain::{
-    BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain, KillBlockchain, ResetBlockchain,
+    BlockchainCmd, DropBlock, DropFutureBlocks, ExportBlockchain, ExportState, ImportBlockchain,
+    Info, KillBlockchain, ResetBlockchain,
 };
 use cache::CacheConfig;
 use dir::{
@@ -210,6 +211,50 @@ impl Configuration {
                 compaction,
                 cache_config,
                 num: self.args.arg_db_reset_num,
+            }))
+        } else if self.args.cmd_db && self.args.cmd_db_info {
+            Cmd::Blockchain(BlockchainCmd::Info(Info {
+                dirs,
+                spec,
+                pruning,
+                pruning_history,
+                pruning_memory: self.args.arg_pruning_memory,
+                tracing,
+                fat_db,
+                compaction,
+                cache_config,
+                max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
+                no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
+            }))
+        } else if self.args.cmd_db && self.args.cmd_db_experimental_drop_block {
+            use std::str::FromStr;
+            Cmd::Blockchain(BlockchainCmd::DropBlock(DropBlock {
+                dirs,
+                spec,
+                pruning,
+                pruning_history,
+                pruning_memory: self.args.arg_pruning_memory,
+                tracing,
+                fat_db,
+                compaction,
+                cache_config,
+                max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
+                no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
+                block_hash: H256::from_str(&self.args.arg_db_drop_block_tx_hash.unwrap()).unwrap(),
+            }))
+        } else if self.args.cmd_db && self.args.cmd_db_experimental_drop_future_blocks {
+            Cmd::Blockchain(BlockchainCmd::DropFutureBlocks(DropFutureBlocks {
+                dirs,
+                spec,
+                pruning,
+                pruning_history,
+                pruning_memory: self.args.arg_pruning_memory,
+                tracing,
+                fat_db,
+                compaction,
+                cache_config,
+                max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
+                no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
             }))
         } else if self.args.cmd_db && self.args.cmd_db_kill {
             Cmd::Blockchain(BlockchainCmd::Kill(KillBlockchain {

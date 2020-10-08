@@ -1122,6 +1122,51 @@ impl BlockChain {
         }
     }
 
+    /// Drop a block from the database.
+    pub fn experimental_drop_block(&self, block_hash: H256) {
+        use ethereum_types::H264;
+
+        let mut batch = self.db.key_value().transaction();
+        Writable::delete::<BlockDetails, H264>(&mut batch, db::COL_EXTRA, &block_hash);
+        batch.delete(db::COL_HEADERS, &block_hash);
+        batch.delete(db::COL_BODIES, &block_hash);
+        self.db
+            .key_value()
+            .write(batch)
+            .expect("Low level database error.");
+        info!("Dropping block {:?}", block_hash);
+    }
+
+    /// Drop all blocks that has been set in the future
+    pub fn experimental_drop_future_blocks(&self) {
+        use ethcore_db::keys::BlockNumberKey;
+        use ethereum_types::H264;
+
+        let mut block_no = self.best_block_number() + 1;
+
+        // kill others
+        let mut batch = self.db.key_value().transaction();
+        loop {
+            Writable::delete::<H256, BlockNumberKey>(&mut batch, db::COL_EXTRA, &block_no);
+            if let Some(block_hash) = self.block_hash(block_no) {
+                Writable::delete::<BlockDetails, H264>(&mut batch, db::COL_EXTRA, &block_hash);
+                batch.delete(db::COL_HEADERS, &block_hash);
+                batch.delete(db::COL_BODIES, &block_hash);
+                info!("Removed future block {} {}", block_no, block_hash);
+            } else {
+                info!("Removed future block {}", block_no);
+            }
+            if self.block_hash(block_no + 1).is_none() {
+                break;
+            }
+            block_no += 1;
+        }
+        self.db
+            .key_value()
+            .write(batch)
+            .expect("Low level database error.");
+    }
+
     /// Insert an epoch transition. Provide an epoch number being transitioned to
     /// and epoch transition object.
     ///

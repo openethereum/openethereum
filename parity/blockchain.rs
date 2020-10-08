@@ -45,6 +45,9 @@ pub enum BlockchainCmd {
     Export(ExportBlockchain),
     ExportState(ExportState),
     Reset(ResetBlockchain),
+    Info(Info),
+    DropBlock(DropBlock),
+    DropFutureBlocks(DropFutureBlocks),
 }
 
 #[derive(Debug, PartialEq)]
@@ -59,6 +62,52 @@ pub struct ResetBlockchain {
     pub compaction: DatabaseCompactionProfile,
     pub cache_config: CacheConfig,
     pub num: u32,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Info {
+    pub dirs: Directories,
+    pub spec: SpecType,
+    pub pruning: Pruning,
+    pub pruning_history: u64,
+    pub pruning_memory: usize,
+    pub tracing: Switch,
+    pub fat_db: Switch,
+    pub compaction: DatabaseCompactionProfile,
+    pub cache_config: CacheConfig,
+    pub max_round_blocks_to_import: usize,
+    pub no_persistent_txqueue: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct DropBlock {
+    pub dirs: Directories,
+    pub spec: SpecType,
+    pub pruning: Pruning,
+    pub pruning_history: u64,
+    pub pruning_memory: usize,
+    pub tracing: Switch,
+    pub fat_db: Switch,
+    pub compaction: DatabaseCompactionProfile,
+    pub cache_config: CacheConfig,
+    pub max_round_blocks_to_import: usize,
+    pub no_persistent_txqueue: bool,
+    pub block_hash: H256,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct DropFutureBlocks {
+    pub dirs: Directories,
+    pub spec: SpecType,
+    pub pruning: Pruning,
+    pub pruning_history: u64,
+    pub pruning_memory: usize,
+    pub tracing: Switch,
+    pub fat_db: Switch,
+    pub compaction: DatabaseCompactionProfile,
+    pub cache_config: CacheConfig,
+    pub max_round_blocks_to_import: usize,
+    pub no_persistent_txqueue: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -135,6 +184,11 @@ pub fn execute(cmd: BlockchainCmd) -> Result<(), String> {
         BlockchainCmd::Export(export_cmd) => execute_export(export_cmd),
         BlockchainCmd::ExportState(export_cmd) => execute_export_state(export_cmd),
         BlockchainCmd::Reset(reset_cmd) => execute_reset(reset_cmd),
+        BlockchainCmd::Info(info_cmd) => execute_info(info_cmd),
+        BlockchainCmd::DropBlock(drop_block_cmd) => execute_drop_block(drop_block_cmd),
+        BlockchainCmd::DropFutureBlocks(drop_future_blocks_cmd) => {
+            execute_drop_future_blocks(drop_future_blocks_cmd)
+        }
     }
 }
 
@@ -533,6 +587,127 @@ pub fn kill_db(cmd: KillBlockchain) -> Result<(), String> {
     user_defaults.is_first_launch = true;
     user_defaults.save(&user_defaults_path)?;
     info!("Database deleted.");
+    Ok(())
+}
+
+fn execute_drop_block(cmd: DropBlock) -> Result<(), String> {
+    let service = start_client(
+        cmd.dirs,
+        cmd.spec,
+        cmd.pruning,
+        cmd.pruning_history,
+        cmd.pruning_memory,
+        cmd.tracing,
+        cmd.fat_db,
+        cmd.compaction,
+        cmd.cache_config,
+        false,
+        cmd.max_round_blocks_to_import,
+    )?;
+    service
+        .client()
+        .chain()
+        .experimental_drop_block(cmd.block_hash);
+    Ok(())
+}
+
+fn execute_drop_future_blocks(cmd: DropFutureBlocks) -> Result<(), String> {
+    let service = start_client(
+        cmd.dirs,
+        cmd.spec,
+        cmd.pruning,
+        cmd.pruning_history,
+        cmd.pruning_memory,
+        cmd.tracing,
+        cmd.fat_db,
+        cmd.compaction,
+        cmd.cache_config,
+        false,
+        cmd.max_round_blocks_to_import,
+    )?;
+    service.client().chain().experimental_drop_future_blocks();
+    Ok(())
+}
+
+fn execute_info(cmd: Info) -> Result<(), String> {
+    let service = start_client(
+        cmd.dirs,
+        cmd.spec,
+        cmd.pruning,
+        cmd.pruning_history,
+        cmd.pruning_memory,
+        cmd.tracing,
+        cmd.fat_db,
+        cmd.compaction,
+        cmd.cache_config,
+        false,
+        cmd.max_round_blocks_to_import,
+    )?;
+
+    let store = ::local_store::create(
+        service.db().key_value().clone(),
+        ::ethcore_db::COL_NODE_INFO,
+        crate::run::FullNodeInfo::new(None),
+    );
+
+    // -- get info about pending transactions
+    let pending_txs = store
+        .pending_transactions()
+        .map_err(|err| err.to_string())?;
+
+    info!("Pending txs count: {}", pending_txs.len());
+    if pending_txs.len() > 0 {
+        for tx in pending_txs {
+            info!("  {:?}", tx.hash());
+        }
+    }
+
+    let to_block_number = service
+        .client()
+        .block_number(BlockId::Latest)
+        .ok_or("Cannot retrieve last block number")?;
+    let from_block_number = std::cmp::max(0, to_block_number as i64 - 32) as u64;
+
+    for block_number in from_block_number..=to_block_number + 127 {
+        let block_id = BlockId::Number(block_number);
+        let block_hash = service.client().block_hash(block_id);
+        let balance_at = service.client().balance(
+            &Address::from(0),
+            ethcore::client::StateOrBlock::Block(block_id),
+        );
+        let traces = service.client().block_traces(block_id);
+
+        let offset = block_number as i64 - to_block_number as i64;
+        let offset = if offset > 0 {
+            format!("+{:03}", offset)
+        } else {
+            format!("{:04}", offset)
+        };
+
+        info!(
+            "Block {} {} {:?} state={} traces={}",
+            offset,
+            block_number,
+            block_hash,
+            balance_at.is_some(),
+            traces.is_some()
+        );
+    }
+
+    info!(
+        "Prunning info earliest_state: {}",
+        service.client().pruning_info().earliest_state
+    );
+    info!("Prunning history: {}", service.client().pruning_history());
+    info!(
+        "Best block number: {}",
+        service.client().chain().best_block_number()
+    );
+    info!(
+        "Best block hash: {}",
+        service.client().chain().best_block_hash()
+    );
+
     Ok(())
 }
 

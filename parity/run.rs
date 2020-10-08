@@ -115,8 +115,14 @@ pub struct RunCmd {
 }
 
 // node info fetcher for the local store.
-struct FullNodeInfo {
+pub struct FullNodeInfo {
     miner: Option<Arc<Miner>>, // TODO: only TXQ needed, just use that after decoupling.
+}
+
+impl FullNodeInfo {
+    pub fn new(miner: Option<Arc<Miner>>) -> Self {
+        FullNodeInfo { miner }
+    }
 }
 
 impl ::local_store::NodeInfo for FullNodeInfo {

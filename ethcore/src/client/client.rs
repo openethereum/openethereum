@@ -1146,6 +1146,11 @@ impl Client {
         }
     }
 
+    /// Get the internal BlockChain.
+    pub fn chain(&self) -> Arc<BlockChain> {
+        self.chain.read().clone()
+    }
+
     /// Get shared miner reference.
     #[cfg(test)]
     pub fn miner(&self) -> Arc<Miner> {
@@ -1155,11 +1160,6 @@ impl Client {
     #[cfg(test)]
     pub fn state_db(&self) -> ::parking_lot::RwLockReadGuard<StateDB> {
         self.state_db.read()
-    }
-
-    #[cfg(test)]
-    pub fn chain(&self) -> Arc<BlockChain> {
-        self.chain.read().clone()
     }
 
     /// Replace io channel. Useful for testing.

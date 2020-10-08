@@ -229,6 +229,22 @@ usage! {
                 "Number of blocks to revert",
             }
 
+            CMD cmd_db_info {
+                "Get information about the current db",
+            }
+
+            CMD cmd_db_experimental_drop_block {
+                "(Experimental, unsafe) Drop block by tx",
+
+                ARG arg_db_drop_block_tx_hash: (Option<String>) = None,
+                "[BLOCK]",
+                "Block hash to remove from the db",
+            }
+
+            CMD cmd_db_experimental_drop_future_blocks {
+                "(Experimental, unsafe) Drop future blocks found in the db",
+            }
+
         }
     }
     {
@@ -1236,6 +1252,7 @@ mod tests {
                 cmd_db: false,
                 cmd_db_kill: false,
                 cmd_db_reset: false,
+                cmd_db_info: false,
 
                 // Arguments
                 arg_daemon_pid_file: None,

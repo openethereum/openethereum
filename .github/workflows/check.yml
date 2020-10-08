@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
       - stable
 jobs:
   check:
@@ -15,7 +15,7 @@ jobs:
       SCCACHE_IDLE_TIMEOUT:     0    
     steps:
       - name:                   Checkout sources
-        uses:                   actions/checkout@master
+        uses:                   actions/checkout@main
         with:
           submodules:           true
       - name:                   Install stable toolchain

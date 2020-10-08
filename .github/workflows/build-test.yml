@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
       - stable
 jobs:
   build-tests:
@@ -23,7 +23,7 @@ jobs:
     runs-on:                    ${{ matrix.platform }}
     steps:
       - name:                   Checkout sources
-        uses:                   actions/checkout@master
+        uses:                   actions/checkout@main
         with:
           submodules:           true
       - name:                   Install toolchain

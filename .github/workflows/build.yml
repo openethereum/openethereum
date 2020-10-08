@@ -29,7 +29,7 @@ jobs:
     runs-on:                    ${{ matrix.platform }}
     steps:
       - name:                   Checkout sources
-        uses:                   actions/checkout@master
+        uses:                   actions/checkout@main
       - name:                   Install toolchain
         uses:                   actions-rs/toolchain@v1
         with:

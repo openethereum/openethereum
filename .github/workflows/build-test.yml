@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         platform:
-          - ubuntu-20.04
+          - ubuntu-16.04
           - macos-latest
           - windows-latest
         toolchain:
@@ -48,7 +48,7 @@ jobs:
           path:                 target
           key:                  ${{ runner.os }}-cargo-build-target-build-tests-${{ hashFiles('**/Cargo.lock') }}
       - name:                   Cache sccache linux
-        if:                     matrix.platform == 'ubuntu-20.04'
+        if:                     matrix.platform == 'ubuntu-16.04'
         uses:                   actions/cache@v2
         with:
           path:                 "/home/runner/.cache/sccache"

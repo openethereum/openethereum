@@ -665,11 +665,17 @@ impl<K: Kind> VerificationQueue<K> {
             .verified
             .fetch_sub(drained_size, AtomicOrdering::SeqCst);
 
+        result
+    }
+
+    /// release taken signal and call async ClientIoMessage::BlockVerified call to client so that it can continue verification.
+    /// difference between sync and async is whose thread pool is used.
+    pub fn resignal_verification(&self) {
+        let verified = self.verification.verified.lock();
         self.ready_signal.reset();
         if !verified.is_empty() {
             self.ready_signal.set_async();
         }
-        result
     }
 
     /// Returns true if there is nothing currently in the queue.

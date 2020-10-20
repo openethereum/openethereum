@@ -19,7 +19,7 @@ use bytes::Bytes;
 use ethereum_types::{Address, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_EMPTY};
-
+use super::access_list::AccessList;
 use call_type::CallType;
 
 use std::sync::Arc;
@@ -90,6 +90,8 @@ pub struct ActionParams {
     pub call_type: CallType,
     /// Param types encoding
     pub params_type: ParamsType,
+    /// Current access list
+    pub access_list: AccessList,
 }
 
 impl Default for ActionParams {
@@ -108,6 +110,7 @@ impl Default for ActionParams {
             data: None,
             call_type: CallType::None,
             params_type: ParamsType::Separate,
+            access_list: AccessList::default()
         }
     }
 }
@@ -131,6 +134,7 @@ impl From<ethjson::vm::Transaction> for ActionParams {
                 false => CallType::Call,
             }, // TODO @debris is this correct?
             params_type: ParamsType::Separate,
+            access_list: AccessList::default(),
         }
     }
 }

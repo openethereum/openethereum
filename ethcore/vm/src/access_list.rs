@@ -54,7 +54,7 @@ impl<A, B> KeyPair<A, B> for (&A, &B) {
 }
 
 /// List of accessed accounts and storage keys
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct AccessList {
     enabled: bool,
     addresses: HashSet<Address>,
@@ -94,6 +94,7 @@ impl AccessList {
     }
     /// Inserts an address
     pub fn insert_address(&mut self, address: Address) {
+        // [adria0] eprintln!("insert_address({:?}) [{}]",address,self.addresses.contains(&address));
         if self.enabled {
             self.addresses.insert(address);
         }

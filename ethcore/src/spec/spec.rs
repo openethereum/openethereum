@@ -32,7 +32,7 @@ use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use rustc_hex::FromHex;
 use types::{header::Header, BlockNumber};
-use vm::{ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
+use vm::{ActionParams, ActionValue, CallType, EnvInfo, ParamsType, AccessList};
 
 use builtin::Builtin;
 use engines::{
@@ -773,6 +773,7 @@ impl Spec {
                         data: None,
                         call_type: CallType::None,
                         params_type: ParamsType::Embedded,
+                        access_list: AccessList::default()
                     };
 
                     let mut substate = Substate::new();

@@ -50,6 +50,17 @@ impl Substate {
     pub fn new() -> Self {
         Substate::default()
     }
+    /// Creates a new substate from an access list
+    pub fn from_access_list(access_list: &AccessList) -> Self {
+        Self {
+            suicides : HashSet::default(),
+            touched: HashSet::default(),
+            logs: Vec::default(),
+            sstore_clears_refund: 0,
+            contracts_created: Vec::default(),
+            access_list: access_list.clone(),
+        }
+    }
 
     /// Merge secondary substate `s` into self, accruing each element correspondingly.
     pub fn accrue(&mut self, s: Substate) {

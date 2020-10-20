@@ -41,6 +41,7 @@ pub use error::{Error, ExecTrapError, ExecTrapResult, Result, TrapError, TrapKin
 pub use ext::{ContractCreateResult, CreateContractAddress, Ext, MessageCallResult};
 pub use return_data::{GasLeft, ReturnData};
 pub use schedule::{CleanDustMode, Schedule, WasmCosts};
+pub use access_list::AccessList;
 
 /// Virtual Machine interface
 pub trait Exec: Send {

@@ -32,7 +32,7 @@ use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction};
 use vm::{
     self, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo, ResumeCall,
-    ResumeCreate, ReturnData, Schedule, TrapError,
+    ResumeCreate, ReturnData, Schedule, TrapError, AccessList
 };
 
 #[cfg(debug_assertions)]
@@ -257,16 +257,19 @@ impl<'a> CallCreateExecutive<'a> {
         machine: &'a Machine,
         schedule: &'a Schedule,
     ) -> Substate {
-        let mut substate = Substate::new();
         if schedule.eip2929 {
+            let mut substate = Substate::from_access_list(&params.access_list);
+            // [adria0] eprintln!("New substate created from previous access_list : {:#?}",params.access_list);
             substate.access_list.enable();
             substate.access_list.insert_address(params.address);
             substate.access_list.insert_address(params.sender);
             for (builtin_address, _) in machine.builtins() {
                 substate.access_list.insert_address(*builtin_address)
             }
+            substate
+        } else {
+            Substate::default()
         }
-        substate
     }
 
     /// Create a new call executive using raw data.
@@ -1240,6 +1243,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     data: None,
                     call_type: CallType::None,
                     params_type: vm::ParamsType::Embedded,
+                    access_list: AccessList::default(),
                 };
                 let res = self.create(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1262,6 +1266,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     data: Some(t.data.clone()),
                     call_type: CallType::Call,
                     params_type: vm::ParamsType::Separate,
+                    access_list: AccessList::default()
                 };
                 let res = self.call(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {

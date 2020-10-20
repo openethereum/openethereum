@@ -200,7 +200,7 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                         overflowing!(gas.overflow_add(schedule.suicide_to_new_account_cost.into()));
                 }
 
-                if ext.al_contains_address(&address) {
+                if !ext.al_contains_address(&address) {
                     // EIP2929 If the ETH recipient of a SELFDESTRUCT is not in accessed_addresses
                     // (regardless of whether or not the amount sent is nonzero),
                     // charge an additional COLD_ACCOUNT_ACCESS_COST on top of the existing gas costs,

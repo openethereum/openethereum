@@ -63,6 +63,11 @@ jobs:
         with:
           path:                 "/Users/runner/Library/Caches/Mozilla.sccache"
           key:                  ${{ runner.os }}-sccache-build-${{ hashFiles('**/Cargo.lock') }}
+      - name:                   Work around MacOS + Cargo + Github Actions cache bug
+        if:                     runner.os == 'macOS'
+        run:                    |
+                                cargo clean --locked --release -p serde_derive
+                                cargo clean --locked --release -p logos_derive
       - name:                   Cache sccache Windows
         if:                     matrix.platform == 'windows-latest'
         uses:                   actions/cache@v2

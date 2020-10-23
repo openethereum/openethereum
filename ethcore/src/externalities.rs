@@ -314,7 +314,7 @@ where
             self.depth,
             self.static_flag,
         );
-        let out = ex.create_with_crossbeam(
+        let out = ex.create_with_stack_depth(
             params,
             self.substate,
             self.stack_depth + 1,

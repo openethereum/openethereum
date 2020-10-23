@@ -1406,58 +1406,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         result
     }
 
-    /// Creates contract with given contract params, if the stack depth is above a threshold, create a new thread to
-    /// execute it.
-    pub fn create_with_crossbeam<T, V>(
-        &mut self,
-        params: ActionParams,
-        substate: &mut Substate,
-        stack_depth: usize,
-        tracer: &mut T,
-        vm_tracer: &mut V,
-    ) -> vm::Result<FinalizationResult>
-    where
-        T: Tracer,
-        V: VMTracer,
-    {
-        /*
-        let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
-        let depth_threshold =
-            local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
-
-        if stack_depth != depth_threshold {
-        */
-        self.create_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-        /*
-        } else {
-            thread::scope(|scope| {
-                let stack_size = cmp::max(
-                    self.schedule.max_depth.saturating_sub(depth_threshold) * STACK_SIZE_PER_DEPTH,
-                    local_stack_size,
-                );
-                scope
-                    .builder()
-                    .stack_size(stack_size)
-                    .spawn(|_| {
-                        self.create_with_stack_depth(
-                            params,
-                            substate,
-                            stack_depth,
-                            tracer,
-                            vm_tracer,
-                        )
-                    })
-                    .expect(
-                        "Sub-thread creation cannot fail; the host might run out of resources; qed",
-                    )
-                    .join()
-            })
-            .expect("Sub-thread never panics; qed")
-            .expect("Sub-thread never panics; qed")
-        }
-        */
-    }
-
     /// Creates contract with given contract params.
     pub fn create<T, V>(
         &mut self,

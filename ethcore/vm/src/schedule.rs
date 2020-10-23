@@ -332,11 +332,12 @@ impl Schedule {
     pub fn new_berlin() -> Schedule {
         let mut schedule = Self::new_istanbul();
         schedule.have_subs = true; // EIP 2315
+
         schedule
     }
 
-    /// Schedule for the YOLO testnet.
-    pub fn new_yolo() -> Schedule {
+    /// Schedule for the Yolov2 testnet of the Ethereum main net.
+    pub fn new_yolo2() -> Schedule {
         let mut schedule = Self::new_istanbul();
         schedule.have_subs = true; // EIP 2315
 

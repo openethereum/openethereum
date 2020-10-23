@@ -68,9 +68,7 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
             let pre: PodState = test.pre_state.into();
 
             for (spec_name, states) in test.post_states {
-                let total = states.len();
-                let yolo_spec_name = ethjson::spec::spec::ForkSpec::Yolo;
-                let spec = match EvmTestClient::spec_from_json(&yolo_spec_name) {
+                let spec = match EvmTestClient::spec_from_json(&spec_name) {
                     Some(spec) => spec,
                     None => {
                         panic!(

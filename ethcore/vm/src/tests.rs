@@ -124,14 +124,15 @@ impl FakeExt {
         ext
     }
 
-    /// New fake externalities with Yolo schedule rules
-    pub fn new_yolo() -> Self {
+    /// New fake externalities with YoloV2 schedule rules
+    pub fn new_yolo2(from: Address, to: Address, builtins: &[Address]) -> Self {
         let mut ext = FakeExt::default();
-        ext.schedule = Schedule::new_yolo();
+        ext.schedule = Schedule::new_yolo2();
         ext.access_list.enable();
-        for builtin in 1..0x12 {
-            // up to BLS12_MAP_FP2_TO_G2
-            ext.access_list.insert_address(Address::from(builtin))
+        ext.access_list.insert_address(from);
+        ext.access_list.insert_address(to);
+        for builtin in builtins {
+            ext.access_list.insert_address(*builtin);
         }
         ext
     }

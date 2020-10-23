@@ -22,7 +22,6 @@ use super::stack::VecStack;
 use evm;
 use instructions::{self, Instruction, InstructionInfo};
 use interpreter::stack::Stack;
-use log::trace;
 use vm::{self, Schedule};
 
 macro_rules! overflowing {
@@ -452,25 +451,21 @@ fn calculate_eip1283_eip2929_sstore_gas<Gas: evm::CostType>(
     Gas::from(
         if current == new {
             // 1. If current value equals new value (this is a no-op), 200 gas is deducted.
-            trace!(target: "eip2929", "calculate-sstore-1={}",schedule.sload_gas);
             schedule.sload_gas
         } else {
             // 2. If current value does not equal new value
             if original == current {
                 // 2.1. If original value equals current value (this storage slot has not been changed by the current execution context)
                 if original.is_zero() {
-                    trace!(target: "eip2929", "calculate-sstore-2.1.1={}", schedule.sstore_set_gas);
                     // 2.1.1. If original value is 0, 20000 gas is deducted.
                     schedule.sstore_set_gas
                 } else {
-                    trace!(target: "eip2929", "calculate-sstore-2.1.2={}",schedule.sstore_reset_gas);
                     // 2.1.2. Otherwise, 5000 gas is deducted.
                     schedule.sstore_reset_gas
 
                     // 2.1.2.1. If new value is 0, add 15000 gas to refund counter.
                 }
             } else {
-                trace!(target: "eip2929", "calculate-sstore-2.2={}",schedule.sload_gas);
                 // 2.2. If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
                 schedule.sload_gas
 
@@ -484,7 +479,6 @@ fn calculate_eip1283_eip2929_sstore_gas<Gas: evm::CostType>(
             }
         } + if is_cold {
             // EIP2929 SSTORE changes section
-            trace!(target: "eip2929", "calculate-sstore-cold-sload={}",schedule.cold_sload_cost);
             schedule.cold_sload_cost
         } else {
             0

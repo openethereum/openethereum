@@ -1555,8 +1555,8 @@ fn test_sar(factory: super::Factory) {
 }
 
 // from https://gist.github.com/holiman/174548cad102096858583c6fbbb0649a
-evm_test! {test_access_cost_ext_at_precompiles: test_access_cost_ext_at_precompiles_int}
-fn test_access_cost_ext_at_precompiles(factory: super::Factory) {
+evm_test! {test_access_list_ext_at_precompiles: test_access_list_ext_at_precompiles_int}
+fn test_access_list_ext_at_precompiles(factory: super::Factory) {
     // 6001 3f 50
     // 6002 3b 50
     // 6003 31 50
@@ -1578,7 +1578,15 @@ fn test_access_cost_ext_at_precompiles(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(8653);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo();
+    let mut ext = FakeExt::new_yolo2(
+        Address::from("0x0000000000000000000000000000000000000000"),
+        Address::from("0x000000000000000000000000636F6E7472616374"),
+        &[
+            Address::from("0x0000000000000000000000000000000000000001"),
+            Address::from("0x0000000000000000000000000000000000000002"),
+            Address::from("0x0000000000000000000000000000000000000003"),
+        ],
+    );
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
@@ -1587,14 +1595,18 @@ fn test_access_cost_ext_at_precompiles(factory: super::Factory) {
     assert_eq!(gas_left, U256::from(0));
 }
 
-evm_test! {test_access_cost_extcodecopy_twice: test_access_cost_extcodecopy_twice_int}
-fn test_access_cost_extcodecopy_twice(factory: super::Factory) {
-    let code = hex!("60006000600060ff3c60006000600060ff3c600060006000303c00").to_vec();
+evm_test! {test_access_list_extcodecopy_twice: test_access_list_extcodecopy_twice_int}
+fn test_access_list_extcodecopy_twice(factory: super::Factory) {
+    let code = hex!("60006000600060ff3c60006000600060ff3c600060006000303c").to_vec();
 
     let mut params = ActionParams::default();
     params.gas = U256::from(2835);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo();
+    let mut ext = FakeExt::new_yolo2(
+        Address::from("0x0000000000000000000000000000000000000000"),
+        Address::from("0x000000000000000000000000636F6E7472616374"),
+        &[],
+    );
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
@@ -1603,8 +1615,8 @@ fn test_access_cost_extcodecopy_twice(factory: super::Factory) {
     assert_eq!(gas_left, U256::from(0));
 }
 
-evm_test! {test_access_cost_sload_sstore: test_access_cost_sload_sstore_int}
-fn test_access_cost_sload_sstore(factory: super::Factory) {
+evm_test! {test_access_list_sload_sstore: test_access_list_sload_sstore_int}
+fn test_access_list_sload_sstore(factory: super::Factory) {
     // 6001 54 50    sload( 0x1) pop
     // 6011 6001 55  sstore(loc: 0x01, val:0x11) 20000
     // 6011 6002 55  sstore(loc: 0x02, val:0x11) 20000 + 2100
@@ -1616,7 +1628,11 @@ fn test_access_cost_sload_sstore(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(44529);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo();
+    let mut ext = FakeExt::new_yolo2(
+        Address::from("0x0000000000000000000000000000000000000000"),
+        Address::from("0x000000000000000000000000636F6E7472616374"),
+        &[],
+    );
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
@@ -1625,14 +1641,18 @@ fn test_access_cost_sload_sstore(factory: super::Factory) {
     assert_eq!(gas_left, U256::from(0));
 }
 
-evm_test! {test_access_cost_cheap_expensive_cheap: test_access_cost_cheap_expensive_cheap_int}
-fn test_access_cost_cheap_expensive_cheap(factory: super::Factory) {
+evm_test! {test_access_list_cheap_expensive_cheap: test_access_list_cheap_expensive_cheap_int}
+fn test_access_list_cheap_expensive_cheap(factory: super::Factory) {
     let code =
         hex!("60008080808060046000f15060008080808060ff6000f15060008080808060ff6000fa50").to_vec();
     let mut params = ActionParams::default();
     params.gas = U256::from(2869);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo();
+    let mut ext = FakeExt::new_yolo2(
+        Address::from("0x0000000000000000000000000000000000000000"),
+        Address::from("0x000000000000000000000000636F6E7472616374"),
+        &[Address::from("0x0000000000000000000000000000000000000004")],
+    );
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
         test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()

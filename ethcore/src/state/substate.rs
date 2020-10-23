@@ -69,7 +69,6 @@ impl Substate {
         self.logs.extend(s.logs);
         self.sstore_clears_refund += s.sstore_clears_refund;
         self.contracts_created.extend(s.contracts_created);
-        self.access_list.accrue(&s.access_list);
     }
 
     /// Get the cleanup mode object from this.

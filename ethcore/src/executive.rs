@@ -35,22 +35,6 @@ use vm::{
     ResumeCreate, ReturnData, Schedule, TrapError, AccessList
 };
 
-#[cfg(debug_assertions)]
-/// Roughly estimate what stack size each level of evm depth will use. (Debug build)
-const STACK_SIZE_PER_DEPTH: usize = 128 * 1024;
-
-#[cfg(not(debug_assertions))]
-/// Roughly estimate what stack size each level of evm depth will use.
-const STACK_SIZE_PER_DEPTH: usize = 24 * 1024;
-
-#[cfg(debug_assertions)]
-/// Entry stack overhead prior to execution. (Debug build)
-const STACK_SIZE_ENTRY_OVERHEAD: usize = 100 * 1024;
-
-#[cfg(not(debug_assertions))]
-/// Entry stack overhead prior to execution.
-const STACK_SIZE_ENTRY_OVERHEAD: usize = 20 * 1024;
-
 #[cfg(any(test, feature = "test-helpers"))]
 /// Precompile that can never be prunned from state trie (0x3, only in tests)
 const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(ethereum_types::H160([
@@ -259,13 +243,8 @@ impl<'a> CallCreateExecutive<'a> {
     ) -> Substate {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
-            // [adria0] eprintln!("New substate created from previous access_list : {:#?}",params.access_list);
-            substate.access_list.enable();
             substate.access_list.insert_address(params.address);
             substate.access_list.insert_address(params.sender);
-            for (builtin_address, _) in machine.builtins() {
-                substate.access_list.insert_address(*builtin_address)
-            }
             substate
         } else {
             Substate::default()
@@ -1211,10 +1190,14 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
-        let mut substate = Substate::new();
-        for (address,_) in self.machine.builtins() {
-            substate.access_list.insert_address(*address);
+        let mut access_list = AccessList::new(schedule.eip2929);
+        if schedule.eip2929 {
+            for (address,_) in self.machine.builtins() {
+                access_list.insert_address(*address);
+            }
         }
+
+        let mut substate = Substate::from_access_list(&access_list);
 
         // NOTE: there can be no invalid transactions from this point.
         if !schedule.keep_unsigned_nonce || !t.is_unsigned() {
@@ -1247,7 +1230,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     data: None,
                     call_type: CallType::None,
                     params_type: vm::ParamsType::Embedded,
-                    access_list: AccessList::default(),
+                    access_list: access_list,
                 };
                 let res = self.create(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1270,7 +1253,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     data: Some(t.data.clone()),
                     call_type: CallType::Call,
                     params_type: vm::ParamsType::Separate,
-                    access_list: AccessList::default()
+                    access_list: access_list
                 };
                 let res = self.call(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1351,52 +1334,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         vm_tracer.done_subtrace();
 
         result
-    }
-
-    /// Calls contract function with given contract params, if the stack depth is above a threshold, create a new thread
-    /// to execute it.
-    pub fn call_with_crossbeam<T, V>(
-        &mut self,
-        params: ActionParams,
-        substate: &mut Substate,
-        stack_depth: usize,
-        tracer: &mut T,
-        vm_tracer: &mut V,
-    ) -> vm::Result<FinalizationResult>
-    where
-        T: Tracer,
-        V: VMTracer,
-    {
-        /*
-        let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
-        let depth_threshold =
-            local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
-
-        if stack_depth != depth_threshold {
-        */
-            self.call_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-        /*
-        } else {
-            thread::scope(|scope| {
-                let stack_size = cmp::max(
-                    self.schedule.max_depth.saturating_sub(depth_threshold) * STACK_SIZE_PER_DEPTH,
-                    local_stack_size,
-                );
-                scope
-                    .builder()
-                    .stack_size(stack_size)
-                    .spawn(|_| {
-                        self.call_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-                    })
-                    .expect(
-                        "Sub-thread creation cannot fail; the host might run out of resources; qed",
-                    )
-                    .join()
-            })
-            .expect("Sub-thread never panics; qed")
-            .expect("Sub-thread never panics; qed")
-        }
-        */
     }
 
     /// Calls contract function with given contract params.

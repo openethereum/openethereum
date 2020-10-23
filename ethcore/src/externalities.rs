@@ -204,7 +204,7 @@ where
             };
 
             let mut ex = Executive::new(self.state, self.env_info, self.machine, self.schedule);
-            let r = ex.call_with_crossbeam(
+            let r = ex.call_with_stack_depth(
                 params,
                 self.substate,
                 self.stack_depth + 1,
@@ -388,7 +388,7 @@ where
             self.depth,
             self.static_flag,
         );
-        let out = ex.call_with_crossbeam(
+        let out = ex.call_with_stack_depth(
             params,
             self.substate,
             self.stack_depth + 1,

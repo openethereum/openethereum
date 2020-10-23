@@ -479,6 +479,7 @@ impl<'a> CallCreateExecutive<'a> {
                     }
                 }
                 state.revert_to_checkpoint();
+                un_substate.access_list.rollback();
             }
             Ok(_) | Err(vm::Error::Internal(_)) => {
                 state.discard_checkpoint();
@@ -1211,6 +1212,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         let mut substate = Substate::new();
+        for (address,_) in self.machine.builtins() {
+            substate.access_list.insert_address(*address);
+        }
 
         // NOTE: there can be no invalid transactions from this point.
         if !schedule.keep_unsigned_nonce || !t.is_unsigned() {
@@ -1363,12 +1367,15 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         T: Tracer,
         V: VMTracer,
     {
+        /*
         let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
         let depth_threshold =
             local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
 
         if stack_depth != depth_threshold {
+        */
             self.call_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
+        /*
         } else {
             thread::scope(|scope| {
                 let stack_size = cmp::max(
@@ -1389,6 +1396,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             .expect("Sub-thread never panics; qed")
             .expect("Sub-thread never panics; qed")
         }
+        */
     }
 
     /// Calls contract function with given contract params.
@@ -1475,12 +1483,15 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         T: Tracer,
         V: VMTracer,
     {
+        /*
         let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
         let depth_threshold =
             local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
 
         if stack_depth != depth_threshold {
+        */
             self.create_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
+        /*
         } else {
             thread::scope(|scope| {
                 let stack_size = cmp::max(
@@ -1507,6 +1518,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             .expect("Sub-thread never panics; qed")
             .expect("Sub-thread never panics; qed")
         }
+        */
     }
 
     /// Creates contract with given contract params.

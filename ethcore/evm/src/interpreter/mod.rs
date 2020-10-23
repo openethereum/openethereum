@@ -201,8 +201,8 @@ pub struct Interpreter<Cost: CostType> {
 
 impl<Cost: 'static + CostType> vm::Exec for Interpreter<Cost> {
     fn exec(mut self: Box<Self>, ext: &mut dyn vm::Ext) -> vm::ExecTrapResult<GasLeft> {
-        ext.al_insert_address(self.params.address);
-        ext.al_insert_address(self.params.sender);
+        // ext.al_insert_address(self.params.address);
+        // ext.al_insert_address(self.params.sender);
         loop {
             let result = self.step(ext);
             match result {

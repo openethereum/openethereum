@@ -44,7 +44,7 @@ pub use schedule::{CleanDustMode, Schedule, WasmCosts};
 pub use access_list::AccessList;
 
 /// Virtual Machine interface
-pub trait Exec: Send {
+pub trait Exec {
     /// This function should be used to execute transaction.
     /// It returns either an error, a known amount of gas left, or parameters to be used
     /// to compute the final gas left.
@@ -52,13 +52,13 @@ pub trait Exec: Send {
 }
 
 /// Resume call interface
-pub trait ResumeCall: Send {
+pub trait ResumeCall {
     /// Resume an execution for call, returns back the Vm interface.
     fn resume_call(self: Box<Self>, result: MessageCallResult) -> Box<dyn Exec>;
 }
 
 /// Resume create interface
-pub trait ResumeCreate: Send {
+pub trait ResumeCreate {
     /// Resume an execution from create, returns back the Vm interface.
     fn resume_create(self: Box<Self>, result: ContractCreateResult) -> Box<dyn Exec>;
 }

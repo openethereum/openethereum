@@ -63,7 +63,7 @@ jobs:
         if:                     runner.os == 'macOS'
         run:                    |
                                 cargo clean --locked --release -p serde_derive
-                                cargo clean --locked --release -p logos_derive
+                                cargo clean --locked --release -p lunarity_lexer
       - name:                   Cache sccache Windows
         if:                     matrix.platform == 'windows-latest'
         uses:                   actions/cache@v2

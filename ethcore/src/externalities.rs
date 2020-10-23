@@ -24,8 +24,8 @@ use std::{cmp, sync::Arc};
 use trace::{Tracer, VMTracer};
 use types::transaction::UNSIGNED_SENDER;
 use vm::{
-    self, ActionParams, ActionValue, CallType, ContractCreateResult, CreateContractAddress,
-    EnvInfo, Ext, MessageCallResult, ReturnData, Schedule, TrapKind, AccessList
+    self, AccessList, ActionParams, ActionValue, CallType, ContractCreateResult,
+    CreateContractAddress, EnvInfo, Ext, MessageCallResult, ReturnData, Schedule, TrapKind,
 };
 
 /// Policy for handling output data on `RETURN` opcode.
@@ -200,7 +200,7 @@ where
                 data: Some(H256::from(number).to_vec()),
                 call_type: CallType::Call,
                 params_type: vm::ParamsType::Separate,
-                access_list: AccessList::default()
+                access_list: AccessList::default(),
             };
 
             let mut ex = Executive::new(self.state, self.env_info, self.machine, self.schedule);
@@ -289,7 +289,7 @@ where
             data: None,
             call_type: CallType::None,
             params_type: vm::ParamsType::Embedded,
-            access_list: self.substate.access_list.clone()
+            access_list: self.substate.access_list.clone(),
         };
 
         if !self.static_flag {
@@ -369,7 +369,7 @@ where
             data: Some(data.to_vec()),
             call_type: call_type,
             params_type: vm::ParamsType::Separate,
-            access_list: self.substate.access_list.clone()
+            access_list: self.substate.access_list.clone(),
         };
 
         if let Some(value) = value {

@@ -31,8 +31,8 @@ use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction};
 use vm::{
-    self, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo, ResumeCall,
-    ResumeCreate, ReturnData, Schedule, TrapError, AccessList
+    self, AccessList, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo,
+    ResumeCall, ResumeCreate, ReturnData, Schedule, TrapError,
 };
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -1192,7 +1192,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         let mut access_list = AccessList::new(schedule.eip2929);
         if schedule.eip2929 {
-            for (address,_) in self.machine.builtins() {
+            for (address, _) in self.machine.builtins() {
                 access_list.insert_address(*address);
             }
         }
@@ -1253,7 +1253,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     data: Some(t.data.clone()),
                     call_type: CallType::Call,
                     params_type: vm::ParamsType::Separate,
-                    access_list: access_list
+                    access_list: access_list,
                 };
                 let res = self.call(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1427,7 +1427,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         if stack_depth != depth_threshold {
         */
-            self.create_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
+        self.create_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
         /*
         } else {
             thread::scope(|scope| {

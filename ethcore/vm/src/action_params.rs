@@ -15,12 +15,12 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Evm input params.
+use super::access_list::AccessList;
 use bytes::Bytes;
+use call_type::CallType;
 use ethereum_types::{Address, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_EMPTY};
-use super::access_list::AccessList;
-use call_type::CallType;
 
 use std::sync::Arc;
 
@@ -110,7 +110,7 @@ impl Default for ActionParams {
             data: None,
             call_type: CallType::None,
             params_type: ParamsType::Separate,
-            access_list: AccessList::default()
+            access_list: AccessList::default(),
         }
     }
 }

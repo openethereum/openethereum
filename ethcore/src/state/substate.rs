@@ -53,7 +53,7 @@ impl Substate {
     /// Creates a new substate from an access list
     pub fn from_access_list(access_list: &AccessList) -> Self {
         Self {
-            suicides : HashSet::default(),
+            suicides: HashSet::default(),
             touched: HashSet::default(),
             logs: Vec::default(),
             sstore_clears_refund: 0,

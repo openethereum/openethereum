@@ -16,6 +16,7 @@
 
 //! Interface for Evm externalities.
 
+use super::AccessList;
 use bytes::Bytes;
 use call_type::CallType;
 use env_info::EnvInfo;
@@ -24,7 +25,6 @@ use ethereum_types::{Address, H256, U256};
 use return_data::ReturnData;
 use schedule::Schedule;
 use std::sync::Arc;
-use super::AccessList;
 
 #[derive(Debug)]
 /// Result of externalities create function.

@@ -1,12 +1,11 @@
 use ethereum_types::{Address, H256};
 use std::{
     borrow::Borrow,
-    collections::{HashMap},
+    collections::HashMap,
     hash::{Hash, Hasher},
 };
 
-use std::sync::Arc;
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::Arc};
 
 // Implementation of a hasheable borrowed pair
 trait KeyPair<A, B> {
@@ -54,24 +53,24 @@ impl<A, B> KeyPair<A, B> for (&A, &B) {
 #[derive(Debug)]
 struct Journal {
     enabled: bool,
-    last_id :usize,
+    last_id: usize,
     addresses: HashMap<Address, usize>,
     storage_keys: HashMap<(Address, H256), usize>,
 }
 #[derive(Debug)]
 pub struct AccessList {
-    id : usize,
-    journal : Arc<RefCell<Journal>>,
+    id: usize,
+    journal: Arc<RefCell<Journal>>,
 }
 
 impl Clone for AccessList {
     fn clone(&self) -> Self {
-        let mut journal = self.journal.as_ref().borrow_mut(); 
+        let mut journal = self.journal.as_ref().borrow_mut();
         let id = journal.last_id + 1;
         journal.last_id = id;
         Self {
-            id : id,
-            journal : self.journal.clone()
+            id: id,
+            journal: self.journal.clone(),
         }
     }
 }
@@ -85,14 +84,14 @@ impl Default for AccessList {
 impl std::fmt::Display for AccessList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let journal = self.journal.as_ref().borrow();
-        for (addr,id) in journal.addresses.iter() {
+        for (addr, id) in journal.addresses.iter() {
             write!(f, "| ADDR {} -> {}\n", addr, id)?;
         }
-        for ((addr,slot),id) in journal.storage_keys.iter() {
+        for ((addr, slot), id) in journal.storage_keys.iter() {
             write!(f, "| SLOT {}:{} -> {}\n", addr, slot, id)?;
         }
         Ok(())
-    }    
+    }
 }
 
 impl AccessList {
@@ -100,25 +99,25 @@ impl AccessList {
     pub fn new(enabled: bool) -> Self {
         let journal = Journal {
             enabled,
-            last_id : 0,
-            addresses : HashMap::new(),
-            storage_keys: HashMap::new()
+            last_id: 0,
+            addresses: HashMap::new(),
+            storage_keys: HashMap::new(),
         };
         Self {
-            id : 0,
-            journal : Arc::new(RefCell::new(journal))
+            id: 0,
+            journal: Arc::new(RefCell::new(journal)),
         }
     }
 
     /// Returns if the list is enabled
     pub fn is_enabled(&self) -> bool {
-        let journal = self.journal.as_ref().borrow(); 
+        let journal = self.journal.as_ref().borrow();
         journal.enabled
     }
-    
+
     /// Enable the access list control
     pub fn enable(&mut self) {
-        let mut journal = self.journal.as_ref().borrow_mut(); 
+        let mut journal = self.journal.as_ref().borrow_mut();
         journal.enabled = true;
     }
 
@@ -126,7 +125,8 @@ impl AccessList {
     pub fn contains_storage_key(&self, address: &Address, key: &H256) -> bool {
         let journal = self.journal.as_ref().borrow();
         if journal.enabled {
-            journal.storage_keys
+            journal
+                .storage_keys
                 .contains_key(&(address, key) as &dyn KeyPair<Address, H256>)
         } else {
             false
@@ -136,7 +136,11 @@ impl AccessList {
     /// Inserts a storage key
     pub fn insert_storage_key(&mut self, address: Address, key: H256) {
         let mut journal = self.journal.as_ref().borrow_mut();
-        if journal.enabled && !journal.storage_keys.contains_key(&(address, key) as &dyn KeyPair<Address, H256>) {
+        if journal.enabled
+            && !journal
+                .storage_keys
+                .contains_key(&(address, key) as &dyn KeyPair<Address, H256>)
+        {
             journal.storage_keys.insert((address, key), self.id);
         }
     }
@@ -161,7 +165,7 @@ impl AccessList {
     pub fn rollback(&self) {
         let mut journal = self.journal.as_ref().borrow_mut();
         // `id < self.id` instead `id != self.if` is to take care about recursive calls
-        journal.addresses.retain(|_,id| *id < self.id);
-        journal.storage_keys.retain(|_,id| *id < self.id);
+        journal.addresses.retain(|_, id| *id < self.id);
+        journal.storage_keys.retain(|_, id| *id < self.id);
     }
 }

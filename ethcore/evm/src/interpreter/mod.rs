@@ -795,7 +795,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                     .0;
 
                 ext.al_insert_address(code_address);
-                    
+
                 // Get sender & receive addresses, check if we have balance
                 let (sender_address, receive_address, has_balance, call_type) = match instruction {
                     instructions::CALL => {

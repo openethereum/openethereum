@@ -5,7 +5,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 
 // Implementation of a hasheable borrowed pair
 trait KeyPair<A, B> {
@@ -60,7 +60,7 @@ struct Journal {
 #[derive(Debug)]
 pub struct AccessList {
     id: usize,
-    journal: Arc<RefCell<Journal>>,
+    journal: Rc<RefCell<Journal>>,
 }
 
 impl Clone for AccessList {
@@ -105,7 +105,7 @@ impl AccessList {
         };
         Self {
             id: 0,
-            journal: Arc::new(RefCell::new(journal)),
+            journal: Rc::new(RefCell::new(journal)),
         }
     }
 

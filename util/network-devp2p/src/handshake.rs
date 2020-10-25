@@ -20,16 +20,15 @@ use ethkey::{
     crypto::{ecdh, ecies},
     recover, sign, Generator, KeyPair, Public, Random, Secret,
 };
-use hash::write_keccak;
 use host::HostInfo;
 use io::{IoContext, StreamToken};
 use mio::tcp::*;
 use network::{Error, ErrorKind};
 use node_table::NodeId;
 use parity_bytes::Bytes;
-use rand::random;
+use rand::{random, Rng};
 use rlp::{Rlp, RlpStream};
-use std::time::Duration;
+use std::{iter::repeat_with, time::Duration};
 
 #[derive(PartialEq, Eq, Debug)]
 enum HandshakeState {
@@ -39,10 +38,10 @@ enum HandshakeState {
     ReadingAuth,
     /// Waiting for extended auth packet
     ReadingAuthEip8,
-    /// Waiting for ack packet
-    ReadingAck,
-    /// Waiting for extended ack packet
-    ReadingAckEip8,
+    /// Waiting for ack packet len
+    ReadingAckLen,
+    /// Waiting for ack packet payload
+    ReadingAckPayload,
     /// Ready to start a session
     StartSession,
 }
@@ -74,7 +73,7 @@ pub struct Handshake {
 }
 
 const V4_AUTH_PACKET_SIZE: usize = 307;
-const V4_ACK_PACKET_SIZE: usize = 210;
+const ACK_PREFIX_LEN: usize = 2;
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 const PROTOCOL_VERSION: u64 = 4;
 // Amount of bytes added when encrypting with encryptECIES.
@@ -153,11 +152,11 @@ impl Handshake {
                 HandshakeState::ReadingAuthEip8 => {
                     self.read_auth_eip8(io, host.secret(), &data)?;
                 }
-                HandshakeState::ReadingAck => {
-                    self.read_ack(host.secret(), &data)?;
+                HandshakeState::ReadingAckLen => {
+                    self.read_ack_len(&data)?;
                 }
-                HandshakeState::ReadingAckEip8 => {
-                    self.read_ack_eip8(host.secret(), &data)?;
+                HandshakeState::ReadingAckPayload => {
+                    self.read_ack_payload(host.secret(), &data)?;
                 }
             }
             if self.state == HandshakeState::StartSession {
@@ -262,39 +261,37 @@ impl Handshake {
         Ok(())
     }
 
-    /// Parse and validate ack message
-    fn read_ack(&mut self, secret: &Secret, data: &[u8]) -> Result<(), Error> {
-        trace!(target: "network", "Received handshake ack from {:?}", self.connection.remote_addr_str());
-        if data.len() != V4_ACK_PACKET_SIZE {
-            debug!(target: "network", "Wrong ack packet size");
+    fn read_ack_len(&mut self, data: &[u8]) -> Result<(), Error> {
+        if data.len() != ACK_PREFIX_LEN {
+            debug!(target: "network", "Couldn't read ack len bytes");
             return Err(ErrorKind::BadProtocol.into());
         }
+
         self.ack_cipher = data.to_vec();
-        match ecies::decrypt(secret, &[], data) {
-            Ok(ack) => {
-                self.remote_ephemeral.clone_from_slice(&ack[0..64]);
-                self.remote_nonce.clone_from_slice(&ack[64..(64 + 32)]);
-                self.state = HandshakeState::StartSession;
-            }
-            Err(_) => {
-                // Try to interpret as EIP-8 packet
-                let total = (((u16::from(data[0])) << 8 | (u16::from(data[1]))) as usize) + 2;
-                if total < V4_ACK_PACKET_SIZE {
-                    debug!(target: "network", "Wrong EIP8 ack packet size");
-                    return Err(ErrorKind::BadProtocol.into());
-                }
-                let rest = total - data.len();
-                self.state = HandshakeState::ReadingAckEip8;
-                self.connection.expect(rest);
-            }
-        }
+
+        let len_bytes = [self.ack_cipher[0], self.ack_cipher[1]];
+        let len = u16::from_be_bytes(len_bytes);
+        self.connection.expect(len as usize);
+        self.state = HandshakeState::ReadingAckPayload;
         Ok(())
     }
 
-    fn read_ack_eip8(&mut self, secret: &Secret, data: &[u8]) -> Result<(), Error> {
-        trace!(target: "network", "Received EIP8 handshake auth from {:?}", self.connection.remote_addr_str());
+    /// Parse and validate ack message
+    fn read_ack_payload(&mut self, secret: &Secret, data: &[u8]) -> Result<(), Error> {
+        trace!(target: "network", "Received handshake ack from {:?}", self.connection.remote_addr_str());
         self.ack_cipher.extend_from_slice(data);
-        let ack = ecies::decrypt(secret, &self.ack_cipher[0..2], &self.ack_cipher[2..])?;
+
+        let expected_len = u16::from_be_bytes([self.ack_cipher[0], self.ack_cipher[1]]);
+        if data.len() != expected_len as usize {
+            debug!(target: "network", "Invalid ack payload len: expected {}, got {}", expected_len, data.len());
+            return Err(ErrorKind::BadProtocol.into());
+        }
+
+        let ack = ecies::decrypt(
+            secret,
+            &self.ack_cipher[..ACK_PREFIX_LEN],
+            &self.ack_cipher[ACK_PREFIX_LEN..],
+        )?;
         let rlp = Rlp::new(&ack);
         self.remote_ephemeral = rlp.val_at(0)?;
         self.remote_nonce = rlp.val_at(1)?;
@@ -314,27 +311,26 @@ impl Handshake {
         Message: Send + Clone + Sync + 'static,
     {
         trace!(target: "network", "Sending handshake auth to {:?}", self.connection.remote_addr_str());
-        let mut data = [0u8; /*Signature::SIZE*/ 65 + /*H256::SIZE*/ 32 + /*Public::SIZE*/ 64 + /*H256::SIZE*/ 32 + 1]; //TODO: use associated constants
-        let len = data.len();
-        {
-            data[len - 1] = 0x0;
-            let (sig, rest) = data.split_at_mut(65);
-            let (hepubk, rest) = rest.split_at_mut(32);
-            let (pubk, rest) = rest.split_at_mut(64);
-            let (nonce, _) = rest.split_at_mut(32);
+        let mut rlp = RlpStream::new_list(4);
+        let shared = *ecdh::agree(secret, &self.id)?;
+        rlp.append(&sign(self.ecdhe.secret(), &(shared ^ self.nonce))?.to_vec());
+        rlp.append(public);
+        rlp.append(&self.nonce);
+        rlp.append(&PROTOCOL_VERSION);
 
-            // E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
-            let shared = *ecdh::agree(secret, &self.id)?;
-            sig.copy_from_slice(&*sign(self.ecdhe.secret(), &(shared ^ self.nonce))?);
-            write_keccak(self.ecdhe.public(), hepubk);
-            pubk.copy_from_slice(public);
-            nonce.copy_from_slice(&self.nonce);
-        }
-        let message = ecies::encrypt(&self.id, &[], &data)?;
-        self.auth_cipher = message.clone();
-        self.connection.send(io, message);
-        self.connection.expect(V4_ACK_PACKET_SIZE);
-        self.state = HandshakeState::ReadingAck;
+        let encoded = rlp
+            .out()
+            .into_iter()
+            .chain(repeat_with(rand::random).take(rand::thread_rng().gen_range::<usize>(100, 301)))
+            .collect::<Vec<_>>();
+        let len = (encoded.len() + ECIES_OVERHEAD) as u16;
+        let prefix = len.to_be_bytes();
+        let message = ecies::encrypt(&self.id, &prefix, &encoded)?;
+        self.auth_cipher.extend_from_slice(&prefix);
+        self.auth_cipher.extend_from_slice(&message);
+        self.connection.send(io, self.auth_cipher.clone());
+        self.connection.expect(ACK_PREFIX_LEN);
+        self.state = HandshakeState::ReadingAckLen;
         Ok(())
     }
 
@@ -517,30 +513,7 @@ mod test {
     }
 
     #[test]
-    fn test_handshake_ack_plain() {
-        let remote = "fda1cff674c90c9a197539fe3dfb53086ace64f83ed7c6eabec741f7f381cc803e52ab2cd55d5569bce4347107a310dfd5f88a010cd2ffd1005ca406f1842877".into();
-        let mut h = create_handshake(Some(&remote));
-        let secret = "49a7b37aa6f6645917e7b807e9d1c00d4fa71f18343b0d4122a4d2df64dd6fee"
-            .parse()
-            .unwrap();
-        let ack = "\
-			049f8abcfa9c0dc65b982e98af921bc0ba6e4243169348a236abe9df5f93aa69d99cadddaa387662\
-			b0ff2c08e9006d5a11a278b1b3331e5aaabf0a32f01281b6f4ede0e09a2d5f585b26513cb794d963\
-			5a57563921c04a9090b4f14ee42be1a5461049af4ea7a7f49bf4c97a352d39c8d02ee4acc416388c\
-			1c66cec761d2bc1c72da6ba143477f049c9d2dde846c252c111b904f630ac98e51609b3b1f58168d\
-			dca6505b7196532e5f85b259a20c45e1979491683fee108e9660edbf38f3add489ae73e3dda2c71b\
-			d1497113d5c755e942d1\
-			"
-        .from_hex()
-        .unwrap();
-
-        h.read_ack(&secret, &ack).unwrap();
-        assert_eq!(h.state, super::HandshakeState::StartSession);
-        check_ack(&h, 4);
-    }
-
-    #[test]
-    fn test_handshake_ack_eip8() {
+    fn test_handshake_ack() {
         let remote = "fda1cff674c90c9a197539fe3dfb53086ace64f83ed7c6eabec741f7f381cc803e52ab2cd55d5569bce4347107a310dfd5f88a010cd2ffd1005ca406f1842877".into();
         let mut h = create_handshake(Some(&remote));
         let secret = "49a7b37aa6f6645917e7b807e9d1c00d4fa71f18343b0d4122a4d2df64dd6fee"
@@ -564,17 +537,15 @@ mod test {
         .from_hex()
         .unwrap();
 
-        h.read_ack(&secret, &ack[0..super::V4_ACK_PACKET_SIZE])
-            .unwrap();
-        assert_eq!(h.state, super::HandshakeState::ReadingAckEip8);
-        h.read_ack_eip8(&secret, &ack[super::V4_ACK_PACKET_SIZE..])
-            .unwrap();
+        h.read_ack_len(&ack[..2]).unwrap();
+        assert_eq!(h.state, super::HandshakeState::ReadingAckPayload);
+        h.read_ack_payload(&secret, &ack[2..]).unwrap();
         assert_eq!(h.state, super::HandshakeState::StartSession);
         check_ack(&h, 4);
     }
 
     #[test]
-    fn test_handshake_ack_eip8_2() {
+    fn test_handshake_ack_2() {
         let remote = "fda1cff674c90c9a197539fe3dfb53086ace64f83ed7c6eabec741f7f381cc803e52ab2cd55d5569bce4347107a310dfd5f88a010cd2ffd1005ca406f1842877".into();
         let mut h = create_handshake(Some(&remote));
         let secret = "49a7b37aa6f6645917e7b807e9d1c00d4fa71f18343b0d4122a4d2df64dd6fee"
@@ -598,11 +569,9 @@ mod test {
         .from_hex()
         .unwrap();
 
-        h.read_ack(&secret, &ack[0..super::V4_ACK_PACKET_SIZE])
-            .unwrap();
-        assert_eq!(h.state, super::HandshakeState::ReadingAckEip8);
-        h.read_ack_eip8(&secret, &ack[super::V4_ACK_PACKET_SIZE..])
-            .unwrap();
+        h.read_ack_len(&ack[..2]).unwrap();
+        assert_eq!(h.state, super::HandshakeState::ReadingAckPayload);
+        h.read_ack_payload(&secret, &ack[2..]).unwrap();
         assert_eq!(h.state, super::HandshakeState::StartSession);
         check_ack(&h, 57);
     }

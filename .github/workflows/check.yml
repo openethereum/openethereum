@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - stable
+      - dev
 jobs:
   check:
     name:                       Check

@@ -20,7 +20,9 @@ use ethcore::{contract_address, CreateContractAddress};
 use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
-use types::transaction::{Action, LocalizedTransaction, PendingTransaction, SignedTransaction,TypedTransaction};
+use types::transaction::{
+    Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
+};
 use v1::types::{Bytes, TransactionCondition};
 
 /// Transaction
@@ -70,7 +72,7 @@ pub struct Transaction {
     /// transaction type
     pub tx_type: u8,
     /// optional access list
-    pub optional_access_list: Option<Vec<(H160,Vec<H256>)>>,
+    pub optional_access_list: Option<Vec<(H160, Vec<H256>)>>,
 }
 
 /// Local Transaction Status
@@ -182,7 +184,7 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
         let optional_access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-           Some(al.access_list.clone())
+            Some(al.access_list.clone())
         } else {
             None
         };
@@ -227,9 +229,9 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
         let optional_access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
             Some(al.access_list.clone())
-         } else {
-             None
-         };
+        } else {
+            None
+        };
         Transaction {
             hash: t.hash(),
             nonce: t.tx().nonce,

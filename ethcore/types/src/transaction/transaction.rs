@@ -320,14 +320,13 @@ impl AccessListTx {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypedTransaction {
-    Legacy(Transaction),      // old legacy RLP encoded transaction
+    Legacy(Transaction), // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
                               // Accesses outside the list are possible, but become more expensive.
 }
 
 //Function that are batched from Transaction struct and needs to be reimplemented
 impl TypedTransaction {
-
     pub fn tx_type(&self) -> u8 {
         match self {
             Self::Legacy(_) => 0x00,

@@ -322,18 +322,24 @@ impl AccessListTx {
 pub enum TypedTransaction {
     Legacy(Transaction),      // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
-    // Accesses outside the list are possible, but become more expensive.
-    Unknown,
+                              // Accesses outside the list are possible, but become more expensive.
 }
 
 //Function that are batched from Transaction struct and needs to be reimplemented
 impl TypedTransaction {
+
+    pub fn tx_type(&self) -> u8 {
+        match self {
+            Self::Legacy(_) => 0x00,
+            Self::AccessList(_) => 0x03,
+        }
+    }
+
     /// The message hash of the transaction.
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
         match self {
             Self::Legacy(tx) => tx.hash(chain_id),
             Self::AccessList(ocl) => ocl.hash(),
-            _ => panic!(),
         }
     }
 
@@ -419,7 +425,6 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx(),
-            _ => panic!(),
         }
     }
 
@@ -427,7 +432,6 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx_mut(),
-            _ => panic!(),
         }
     }
 
@@ -455,7 +459,6 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.rlp_append(s, None, signature),
             Self::AccessList(opt) => opt.rlp_append(s, signature),
-            Self::Unknown => panic!(),
         }
     }
 }
@@ -465,7 +468,6 @@ impl HeapSizeOf for TypedTransaction {
         match self {
             TypedTransaction::Legacy(legacy) => legacy.heap_size_of_children(),
             TypedTransaction::AccessList(oal) => oal.tx().heap_size_of_children(),
-            TypedTransaction::Unknown => 0,
         }
     }
 }

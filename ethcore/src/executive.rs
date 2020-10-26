@@ -28,7 +28,7 @@ use state::{Backend as StateBackend, CleanupMode, State, Substate};
 use std::{cmp, sync::Arc};
 use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
-use types::transaction::{Action, SignedTransaction};
+use types::transaction::{Action, SignedTransaction, TypedTransaction};
 use vm::{
     self, AccessList, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo,
     ResumeCall, ResumeCreate, ReturnData, Schedule, TrapError,
@@ -43,6 +43,11 @@ const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(ethereum_types::H160
 #[cfg(not(any(test, feature = "test-helpers")))]
 /// Precompile that can never be prunned from state trie (none)
 const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = None;
+
+/// Gas per received storage key
+pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
+/// Gas per received address
+pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
 
 /// Returns new address created from address, nonce, and code hash
 pub fn contract_address(
@@ -1135,11 +1140,45 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         T: Tracer,
         V: VMTracer,
     {
+        let schedule = self.schedule;
+
+        //check if particualar transaction type is enabled at this block number in schedule
+        match t.as_unsigned() {
+            TypedTransaction::AccessList(_) => {
+                if !(schedule.eip2929 && schedule.eip2930) {
+                    return Err(ExecutionError::TransactionMalformed(
+                        "OptionalAccessList EIP-2930 or EIP-2929 not enabled".into(),
+                    ));
+                }
+            }
+            TypedTransaction::Legacy(_) => (), //legacy transactions are allways valid
+        };
+
         let sender = t.sender();
         let nonce = self.state.nonce(&sender)?;
 
-        let schedule = self.schedule;
-        let base_gas_required = U256::from(t.tx().gas_required(&schedule));
+        let mut base_gas_required = U256::from(t.tx().gas_required(&schedule));
+
+        let mut access_list = AccessList::new(schedule.eip2929);
+
+        if schedule.eip2929 {
+            for (address, _) in self.machine.builtins() {
+                access_list.insert_address(*address);
+            }
+            if schedule.eip2930 {
+                //optional access list
+                if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
+                    for item in al_tx.access_list.iter() {
+                        access_list.insert_address(item.0);
+                        base_gas_required += EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                        for key in item.1.iter() {
+                            access_list.insert_storage_key(item.0, *key);
+                            base_gas_required += EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
+                        }
+                    }
+                }
+            }
+        }
 
         if t.tx().gas < base_gas_required {
             return Err(ExecutionError::NotEnoughBaseGas {
@@ -1187,13 +1226,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 required: total_cost,
                 got: balance512,
             });
-        }
-
-        let mut access_list = AccessList::new(schedule.eip2929);
-        if schedule.eip2929 {
-            for (address, _) in self.machine.builtins() {
-                access_list.insert_address(*address);
-            }
         }
 
         let mut substate = Substate::from_access_list(&access_list);

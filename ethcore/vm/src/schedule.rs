@@ -149,6 +149,8 @@ pub struct Schedule {
     pub wasm: Option<WasmCosts>,
     /// Enable EIP-2929 rules
     pub eip2929: bool,
+    /// Enable EIP-2930 rules for optional access list transactions. it depends on EIP-2929
+    pub eip2930: bool,
 }
 
 /// Wasm cost table
@@ -295,6 +297,7 @@ impl Schedule {
             keep_unsigned_nonce: false,
             wasm: None,
             eip2929: false,
+            eip2930: false,
         }
     }
 
@@ -421,6 +424,7 @@ impl Schedule {
             keep_unsigned_nonce: false,
             wasm: None,
             eip2929: false,
+            eip2930: false,
         }
     }
 

@@ -222,12 +222,14 @@ fn rpc_eth_sign_transaction() {
         + &format!("\"hash\":\"0x{:x}\",", t.hash())
         + r#""input":"0x","#
         + r#""nonce":"0x1","#
+        + r#""optionalAccessList":null,"#
         + &format!("\"publicKey\":\"0x{:x}\",", t.recover_public().unwrap())
         + &format!("\"r\":\"0x{:x}\",", U256::from(signature.r()))
         + &format!("\"raw\":\"0x{}\",", rlp.to_hex())
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
         + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""txType":0,"#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.original_v()))
         + r#""value":"0x9184e72a""#
         + r#"}},"id":1}"#;

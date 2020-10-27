@@ -706,7 +706,7 @@ usage! {
             "--stratum-secret=[STRING]",
             "Secret for authorizing Stratum server for peers.",
 
-            ARG arg_max_round_blocks_to_import: (usize) = 12usize, or |c: &Config| c.mining.as_ref()?.max_round_blocks_to_import.clone(),
+            ARG arg_max_round_blocks_to_import: (usize) = 1usize, or |c: &Config| c.mining.as_ref()?.max_round_blocks_to_import.clone(),
             "--max-round-blocks-to-import=[S]",
             "Maximal number of blocks to import for each import round.",
 
@@ -1386,7 +1386,7 @@ mod tests {
                 arg_notify_work: Some("http://localhost:3001".into()),
                 flag_refuse_service_transactions: false,
                 flag_infinite_pending_block: false,
-                arg_max_round_blocks_to_import: 12usize,
+                arg_max_round_blocks_to_import: 1usize,
 
                 flag_stratum: false,
                 arg_stratum_interface: "local".to_owned(),

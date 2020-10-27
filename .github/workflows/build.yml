@@ -2,8 +2,6 @@ name:                           Build Release Suite
 
 on:
   push:
-    branches:
-      - stable
     tags:
       - v*
 
@@ -11,7 +9,7 @@ on:
 env:
   AWS_REGION:                   "us-east-1"
   AWS_S3_ARTIFACTS_BUCKET:      "openethereum-releases"
-
+      
 jobs:
   build:
     name:                       Build Release
@@ -21,7 +19,7 @@ jobs:
     strategy:
       matrix:
         platform:
-          - ubuntu-20.04
+          - ubuntu-16.04
           - macos-latest
           - windows-latest
         toolchain:
@@ -29,7 +27,7 @@ jobs:
     runs-on:                    ${{ matrix.platform }}
     steps:
       - name:                   Checkout sources
-        uses:                   actions/checkout@master
+        uses:                   actions/checkout@main
       - name:                   Install toolchain
         uses:                   actions-rs/toolchain@v1
         with:
@@ -52,7 +50,7 @@ jobs:
           path:                 target
           key:                  ${{ runner.os }}-cargo-build-target-build-${{ hashFiles('**/Cargo.lock') }}
       - name:                   Cache sccache linux
-        if:                     matrix.platform == 'ubuntu-20.04'
+        if:                     matrix.platform == 'ubuntu-16.04'
         uses:                   actions/cache@v2
         with:
           path:                 "/home/runner/.cache/sccache"
@@ -105,7 +103,7 @@ jobs:
 
       - name:                   Upload Linux build
         uses:                   actions/upload-artifact@v2
-        if:                     matrix.platform == 'ubuntu-20.04'
+        if:                     matrix.platform == 'ubuntu-16.04'
         with:
           name:                 linux-artifacts
           path:                 artifacts
@@ -132,7 +130,7 @@ jobs:
   zip-artifacts-creator:
     name:                       Create zip artifacts
     needs:                      build
-    runs-on:                    ubuntu-20.04
+    runs-on:                    ubuntu-16.04
     steps:
       - name:                   Set env
         run:                    echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
@@ -253,7 +251,7 @@ jobs:
   draft-release:
     name:                       Draft Release
     needs:                      zip-artifacts-creator
-    runs-on:                    ubuntu-20.04
+    runs-on:                    ubuntu-16.04
     steps:
       - name:                   Set env
         run:                    echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}

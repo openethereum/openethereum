@@ -1369,7 +1369,7 @@ mod tests {
                 check_seal: true,
                 with_color: !cfg!(windows),
                 verifier_settings: Default::default(),
-                max_round_blocks_to_import: 12,
+                max_round_blocks_to_import: 1,
             }))
         );
     }
@@ -1395,7 +1395,7 @@ mod tests {
                 from_block: BlockId::Number(1),
                 to_block: BlockId::Latest,
                 check_seal: true,
-                max_round_blocks_to_import: 12,
+                max_round_blocks_to_import: 1,
             }))
         );
     }
@@ -1423,7 +1423,7 @@ mod tests {
                 code: true,
                 min_balance: None,
                 max_balance: None,
-                max_round_blocks_to_import: 12,
+                max_round_blocks_to_import: 1,
             }))
         );
     }
@@ -1456,7 +1456,7 @@ mod tests {
                 from_block: BlockId::Number(1),
                 to_block: BlockId::Latest,
                 check_seal: true,
-                max_round_blocks_to_import: 12,
+                max_round_blocks_to_import: 1,
             }))
         );
     }
@@ -1550,7 +1550,7 @@ mod tests {
             download_old_blocks: true,
             verifier_settings: Default::default(),
             no_persistent_txqueue: false,
-            max_round_blocks_to_import: 12,
+            max_round_blocks_to_import: 1,
             metrics_conf: MetricsConfiguration::default(),
         };
         expected.secretstore_conf.enabled = cfg!(feature = "secretstore");

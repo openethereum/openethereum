@@ -151,7 +151,7 @@ impl Default for ClientConfig {
             history_mem: 32 * mb,
             check_seal: true,
             transaction_verification_queue_size: 8192,
-            max_round_blocks_to_import: 12,
+            max_round_blocks_to_import: 1,
             snapshot: Default::default(),
         }
     }

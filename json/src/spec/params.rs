@@ -134,6 +134,8 @@ pub struct Params {
     pub transaction_permission_contract_transition: Option<Uint>,
     /// Wasm activation block height, if not activated from start
     pub wasm_activation_transition: Option<Uint>,
+    /// Wasm deactivation block height, if activated.
+    pub wasm_disable_transition: Option<Uint>,
     /// KIP4 activiation block height.
     pub kip4_transition: Option<Uint>,
     /// KIP6 activiation block height.
@@ -158,7 +160,8 @@ mod tests {
 			"accountStartNonce": "0x01",
 			"gasLimitBoundDivisor": "0x20",
 			"maxCodeSize": "0x1000",
-			"wasmActivationTransition": "0x1010"
+			"wasmActivationTransition": "0x1010",
+            "wasmDisableTransition": "0x2010"
 		}"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
@@ -176,6 +179,10 @@ mod tests {
         assert_eq!(
             deserialized.wasm_activation_transition,
             Some(Uint(U256::from(0x1010)))
+        );
+        assert_eq!(
+            deserialized.wasm_disable_transition,
+            Some(Uint(U256::from(0x2010)))
         );
     }
 

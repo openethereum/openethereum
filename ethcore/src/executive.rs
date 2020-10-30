@@ -236,11 +236,7 @@ pub struct CallCreateExecutive<'a> {
 }
 
 impl<'a> CallCreateExecutive<'a> {
-    pub fn new_substate(
-        params: &ActionParams,
-        machine: &'a Machine,
-        schedule: &'a Schedule,
-    ) -> Substate {
+    pub fn new_substate(params: &ActionParams, schedule: &'a Schedule) -> Substate {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
             substate.access_list.insert_address(params.address);
@@ -286,7 +282,7 @@ impl<'a> CallCreateExecutive<'a> {
             CallCreateExecutiveKind::CallBuiltin(params)
         } else {
             if params.code.is_some() {
-                let substate = Self::new_substate(&params, machine, schedule);
+                let substate = Self::new_substate(&params, schedule);
                 CallCreateExecutiveKind::ExecCall(params, substate)
             } else {
                 CallCreateExecutiveKind::Transfer(params)
@@ -327,7 +323,7 @@ impl<'a> CallCreateExecutive<'a> {
 
         let gas = params.gas;
 
-        let substate = Self::new_substate(&params, machine, schedule);
+        let substate = Self::new_substate(&params, schedule);
         let kind = CallCreateExecutiveKind::ExecCreate(params, substate);
 
         Self {

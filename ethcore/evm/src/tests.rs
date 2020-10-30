@@ -1578,7 +1578,7 @@ fn test_access_list_ext_at_precompiles(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(8653);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo2(
+    let mut ext = FakeExt::new_yolo3(
         Address::from("0x0000000000000000000000000000000000000000"),
         Address::from("0x000000000000000000000000636F6E7472616374"),
         &[
@@ -1602,7 +1602,7 @@ fn test_access_list_extcodecopy_twice(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(2835);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo2(
+    let mut ext = FakeExt::new_yolo3(
         Address::from("0x0000000000000000000000000000000000000000"),
         Address::from("0x000000000000000000000000636F6E7472616374"),
         &[],
@@ -1628,7 +1628,7 @@ fn test_access_list_sload_sstore(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(44529);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo2(
+    let mut ext = FakeExt::new_yolo3(
         Address::from("0x0000000000000000000000000000000000000000"),
         Address::from("0x000000000000000000000000636F6E7472616374"),
         &[],
@@ -1648,7 +1648,7 @@ fn test_access_list_cheap_expensive_cheap(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(2869);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_yolo2(
+    let mut ext = FakeExt::new_yolo3(
         Address::from("0x0000000000000000000000000000000000000000"),
         Address::from("0x000000000000000000000000636F6E7472616374"),
         &[Address::from("0x0000000000000000000000000000000000000004")],

@@ -336,8 +336,8 @@ impl Schedule {
         schedule
     }
 
-    /// Schedule for the Yolov2 testnet of the Ethereum main net.
-    pub fn new_yolo2() -> Schedule {
+    /// Schedule for the Yolov3 testnet of the Ethereum main net.
+    pub fn new_yolo3() -> Schedule {
         let mut schedule = Self::new_istanbul();
         schedule.have_subs = true; // EIP 2315
 

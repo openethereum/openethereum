@@ -161,7 +161,7 @@ pub trait Drain {
 }
 
 impl<'x> OpenBlock<'x> {
-    /// Create a new `OpenBlock` ready for transaction pushing.
+    /// t_nb 7.1 Create a new `OpenBlock` ready for transaction pushing.
     pub fn new<'a, I: IntoIterator<Item = ExtendedHeader>>(
         engine: &'x dyn EthEngine,
         factories: Factories,
@@ -176,6 +176,8 @@ impl<'x> OpenBlock<'x> {
         ancestry: I,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
+
+        // t_nb 7.1.1 get parent StateDB.
         let state = State::from_existing(
             db,
             parent.state_root().clone(),
@@ -198,14 +200,17 @@ impl<'x> OpenBlock<'x> {
         let gas_floor_target = cmp::max(gas_range_target.0, engine.params().min_gas_limit);
         let gas_ceil_target = cmp::max(gas_range_target.1, gas_floor_target);
 
+        // t_nb 7.1.2 It calculated child gas limits should be.
         engine.machine().populate_from_parent(
             &mut r.block.header,
             parent,
             gas_floor_target,
             gas_ceil_target,
         );
+        // t_nb 7.1.3 this adds engine specific things 
         engine.populate_from_parent(&mut r.block.header, parent);
 
+        // t_nb 7.1.3 updating last hashes and the DAO fork, for ethash.
         engine.machine().on_new_block(&mut r.block)?;
         engine.on_new_block(&mut r.block, is_epoch_begin, &mut ancestry.into_iter())?;
 
@@ -222,7 +227,7 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_gas_limit(U256::max_value());
     }
 
-    /// Add an uncle to the block, if possible.
+    /// t_nb 7.4 Add an uncle to the block, if possible.
     ///
     /// NOTE Will check chain constraints and the uncle number but will NOT check
     /// that the header itself is actually valid.
@@ -343,11 +348,13 @@ impl<'x> OpenBlock<'x> {
         })
     }
 
-    /// Turn this into a `LockedBlock`.
+    /// t_nb 7.5 Turn this into a `LockedBlock`.
     pub fn close_and_lock(self) -> Result<LockedBlock, Error> {
         let mut s = self;
 
+        // t_nb 7.5.1 engine applies block rewards (Ethash and AuRa do.Clique is empty)
         s.engine.on_close_block(&mut s.block)?;
+        
         s.block.state.commit()?;
 
         s.block.header.set_transactions_root(ordered_trie_root(
@@ -506,7 +513,7 @@ impl Drain for SealedBlock {
     }
 }
 
-/// Enact the block given by block header, transactions and uncles
+/// t_nb 7.0 Enact the block given by block header, transactions and uncles
 pub(crate) fn enact(
     header: Header,
     transactions: Vec<SignedTransaction>,
@@ -532,6 +539,7 @@ pub(crate) fn enact(
         None
     };
 
+    // t_nb 7.1 Created new OpenBlock
     let mut b = OpenBlock::new(
         engine,
         factories,
@@ -556,13 +564,18 @@ pub(crate) fn enact(
 				b.block.header.number(), root, env.author, author_balance);
     }
 
+    // t_nb 7.2 transfer all field from current header to OpenBlock header that we created
     b.populate_from(&header);
+
+    // t_nb 7.3 execute transactions one by one
     b.push_transactions(transactions)?;
 
+    // t_nb 7.4 Push uncles to OpenBlock and check if we have more then max uncles
     for u in uncles {
         b.push_uncle(u)?;
     }
 
+    // t_nb 7.5 close block
     b.close_and_lock()
 }
 

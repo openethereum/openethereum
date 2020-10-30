@@ -275,7 +275,7 @@ impl Importer {
         })
     }
 
-    /// This is triggered by a message coming from a block queue when the block is ready for insertion
+    /// t_nb 6.0 This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
         // Shortcut out if we know we're incapable of syncing the chain.
         if !client.enabled.load(AtomicOrdering::Relaxed) {
@@ -315,7 +315,7 @@ impl Importer {
                     invalid_blocks.insert(hash);
                     continue;
                 }
-
+                // t_nb 6.1 check and lock block
                 match self.check_and_lock_block(&bytes, block, client) {
                     Ok((closed_block, pending)) => {
                         imported_blocks.push(hash);
@@ -394,6 +394,7 @@ impl Importer {
         imported
     }
 
+    // t_nb 6.0.1 check and lock block, 
     fn check_and_lock_block(
         &self,
         bytes: &[u8],
@@ -404,13 +405,14 @@ impl Importer {
         let header = block.header.clone();
 
         // Check the block isn't so old we won't be able to enact it.
+        // t_nb 6.1 check if block is older then last pruned block
         let best_block_number = client.chain.read().best_block_number();
         if client.pruning_info().earliest_state > header.number() {
             warn!(target: "client", "Block import failed for #{} ({})\nBlock is ancient (current best block: #{}).", header.number(), header.hash(), best_block_number);
             bail!("Block is ancient");
         }
 
-        // Check if parent is in chain
+        // t_nb 6.2 Check if parent is in chain
         let parent = match client.block_header_decoded(BlockId::Hash(*header.parent_hash())) {
             Some(h) => h,
             None => {
@@ -420,7 +422,7 @@ impl Importer {
         };
 
         let chain = client.chain.read();
-        // Verify Block Family
+        // t_nb 6.3 verify block family
         let verify_family_result = self.verifier.verify_block_family(
             &header,
             &parent,
@@ -437,6 +439,7 @@ impl Importer {
             bail!(e);
         };
 
+        // t_nb 6.4 verify block external
         let verify_external_result = self.verifier.verify_block_external(&header, engine);
         if let Err(e) = verify_external_result {
             warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
@@ -444,7 +447,9 @@ impl Importer {
         };
 
         // Enact Verified Block
+        // t_nb 6.5 Get build last hashes. Get parent state db. Get epoch_transition
         let last_hashes = client.build_last_hashes(header.parent_hash());
+
         let db = client
             .state_db
             .read()
@@ -1721,11 +1726,15 @@ impl CallContract for Client {
 }
 
 impl ImportBlock for Client {
+    // t_nb 2.0 import block to client
     fn import_block(&self, unverified: Unverified) -> EthcoreResult<H256> {
+
+        // t_nb 2.1 check if header hash is known to us.
         if self.chain.read().is_known(&unverified.hash()) {
             bail!(EthcoreErrorKind::Import(ImportErrorKind::AlreadyInChain));
         }
 
+        // t_nb 2.2 check if parent is known
         let status = self.block_status(BlockId::Hash(unverified.parent_hash()));
         if status == BlockStatus::Unknown {
             bail!(EthcoreErrorKind::Block(BlockError::UnknownParent(
@@ -1743,14 +1752,16 @@ impl ImportBlock for Client {
             None
         };
 
+        // t_nb 2.3
         match self.importer.block_queue.import(unverified) {
             Ok(hash) => {
+                // t_nb 2.4 If block is okay and the queue is empty we propagate the block in a `PriorityTask` to be rebrodcasted
                 if let Some((raw, hash, difficulty)) = raw {
                     self.notify(move |n| n.block_pre_import(&raw, &hash, &difficulty));
                 }
                 Ok(hash)
             }
-            // we only care about block errors (not import errors)
+            // t_nb 2.5 if block is not okay print error. we only care about block errors (not import errors)
             Err((Some(block), EthcoreError(EthcoreErrorKind::Block(err), _))) => {
                 self.importer
                     .bad_blocks

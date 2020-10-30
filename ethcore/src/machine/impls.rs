@@ -238,7 +238,7 @@ impl EthereumMachine {
         Ok(())
     }
 
-    /// Logic to perform on a new block: updating last hashes and the DAO
+    /// t_nb 7.1.3 Logic to perform on a new block: updating last hashes and the DAO
     /// fork, for ethash.
     pub fn on_new_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         self.push_last_hash(block)?;

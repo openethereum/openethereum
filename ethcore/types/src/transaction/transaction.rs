@@ -468,7 +468,7 @@ impl From<SignedTransaction> for UnverifiedTransaction {
 }
 
 impl SignedTransaction {
-    /// Try to verify transaction and recover sender.
+    /// t_nb 5.3.1 Try to verify transaction and recover sender.
     pub fn new(transaction: UnverifiedTransaction) -> Result<Self, ethkey::Error> {
         if transaction.is_unsigned() {
             return Err(ethkey::Error::InvalidSignature);

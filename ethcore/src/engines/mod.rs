@@ -562,7 +562,7 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
         self.machine().create_address_scheme(number)
     }
 
-    /// Verify a particular transaction is valid.
+    /// t_nb 5.3.1 Verify a particular transaction is valid.
     ///
     /// Unordered verification doesn't rely on the transaction execution order,
     /// i.e. it should only verify stuff that doesn't assume any previous transactions

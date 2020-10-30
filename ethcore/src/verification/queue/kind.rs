@@ -93,8 +93,10 @@ pub mod blocks {
     impl Kind for Blocks {
         type Input = Unverified;
         type Unverified = Unverified;
-        type Verified = PreverifiedBlock;
+        type Verified =
+        PreverifiedBlock;
 
+        // t_nb 4.0 verify_block_basic
         fn create(
             input: Self::Input,
             engine: &dyn EthEngine,
@@ -113,6 +115,7 @@ pub mod blocks {
             }
         }
 
+        // t_nb 5.0 verify standalone block
         fn verify(
             un: Self::Unverified,
             engine: &dyn EthEngine,

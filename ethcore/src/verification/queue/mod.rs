@@ -364,7 +364,7 @@ impl<K: Kind> VerificationQueue<K> {
                 }
             }
 
-            // do work.
+            // do work on this item.
             let item = {
                 // acquire these locks before getting the item to verify.
                 let mut unverified = verification.unverified.lock();
@@ -387,10 +387,12 @@ impl<K: Kind> VerificationQueue<K> {
             };
 
             let hash = item.hash();
+            // t_nb 5.0 verify standalone block (this verification is done in VerificationQueue thread pool)
             let is_ready = match K::verify(item, &*engine, verification.check_seal) {
                 Ok(verified) => {
                     let mut verifying = verification.verifying.lock();
                     let mut idx = None;
+                    // find item again and remove it verified queue
                     for (i, e) in verifying.iter_mut().enumerate() {
                         if e.hash == hash {
                             idx = Some(i);
@@ -515,17 +517,20 @@ impl<K: Kind> VerificationQueue<K> {
     }
 
     /// Add a block to the queue.
+    // t_nb 3.0 import block to verification queue
     pub fn import(&self, input: K::Input) -> Result<H256, (Option<K::Input>, Error)> {
         let hash = input.hash();
         let raw_hash = input.raw_hash();
+        // t_nb 3.1 check if block is currently processing or marked as bad.
         {
+            // t_nb 3.1.0 is currently processing
             if self.processing.read().contains_key(&hash) {
                 bail!((
                     Some(input),
                     ErrorKind::Import(ImportErrorKind::AlreadyQueued).into()
                 ));
             }
-
+            // t_nb 3.1.1 is marked as bad
             let mut bad = self.verification.bad.lock();
             if bad.contains(&hash) || bad.contains(&raw_hash) {
                 bail!((
@@ -533,7 +538,7 @@ impl<K: Kind> VerificationQueue<K> {
                     ErrorKind::Import(ImportErrorKind::KnownBad).into()
                 ));
             }
-
+            // t_nb 3.1.2 its parent is marked as bad
             if bad.contains(&input.parent_hash()) {
                 bad.insert(hash);
                 bail!((

@@ -24,6 +24,10 @@ pub const EIP2929_COLD_ACCOUNT_ACCESS_COST: usize = 2600;
 pub const EIP2929_WARM_STORAGE_READ_COST: usize = 100;
 // Gas per sstore reset
 pub const EIP2929_SSTORE_RESET_GAS: usize = 5000 - EIP2929_COLD_SLOAD_COST;
+/// Gas per received storage key
+pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
+/// Gas per received address
+pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
 
 /// Definition of the cost schedule and other parameterisations for the EVM.
 #[derive(Debug)]

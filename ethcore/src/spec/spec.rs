@@ -137,7 +137,7 @@ pub struct CommonParams {
     pub eip2315_transition: BlockNumber,
     /// Number of first block where EIP-2929 rules begin.
     pub eip2929_transition: BlockNumber,
-    /// Number of first block where EIP-2929 rules begin.
+    /// Number of first block where EIP-2930 rules begin.
     pub eip2930_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,

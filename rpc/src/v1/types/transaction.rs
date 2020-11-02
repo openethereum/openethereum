@@ -72,7 +72,7 @@ pub struct Transaction {
     /// transaction type
     pub tx_type: u8,
     /// optional access list
-    pub optional_access_list: Option<Vec<(H160, Vec<H256>)>>,
+    pub access_list: Vec<(H160, Vec<H256>)>,
 }
 
 /// Local Transaction Status
@@ -183,10 +183,10 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
-        let optional_access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone())
+        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
+            al.access_list.clone()
         } else {
-            None
+            Vec::new()
         };
 
         Transaction {
@@ -219,7 +219,7 @@ impl Transaction {
             s: signature.s().into(),
             condition: None,
             tx_type: t.signed.tx_type(),
-            optional_access_list,
+            access_list,
         }
     }
 
@@ -227,10 +227,10 @@ impl Transaction {
     pub fn from_signed(t: SignedTransaction) -> Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
-        let optional_access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone())
+        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
+            al.access_list.clone()
         } else {
-            None
+            Vec::new()
         };
         Transaction {
             hash: t.hash(),
@@ -262,7 +262,7 @@ impl Transaction {
             s: signature.s().into(),
             condition: None,
             tx_type: t.tx_type(),
-            optional_access_list,
+            access_list,
         }
     }
 
@@ -309,7 +309,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"txType":0,"optionalAccessList":null}"#
+            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"txType":0,"accessList":[]}"#
         );
     }
 

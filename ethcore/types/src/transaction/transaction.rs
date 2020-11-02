@@ -110,6 +110,12 @@ pub mod signature {
     }
 }
 
+pub fn rlp_append_chain_id(s: &mut RlpStream, n: u64) {
+    s.append(&n);
+    s.append(&0u8);
+    s.append(&0u8);
+}
+
 /// A set of information describing an externally-originating message call
 /// or contract creation operation.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -185,10 +191,9 @@ impl Transaction {
     pub fn rlp_append(
         &self,
         rlp: &mut RlpStream,
-        chain_id: Option<u64>,
         signature: &SignatureComponents,
     ) {
-        self.encode(rlp, chain_id, Some(signature));
+        self.encode(rlp, None, Some(signature));
     }
 
     pub fn rlp_append_open(&self, s: &mut RlpStream, chain_id: Option<u64>) {
@@ -199,9 +204,7 @@ impl Transaction {
         s.append(&self.value);
         s.append(&self.data);
         if let Some(n) = chain_id {
-            s.append(&n);
-            s.append(&0u8);
-            s.append(&0u8);
+            rlp_append_chain_id(s,n);
         }
     }
 }
@@ -255,8 +258,8 @@ impl AccessListTx {
         for i in 0..accl_rlp.item_count()? {
             let accounts = accl_rlp.at(i)?;
 
+            // check if there is list of 2 items
             if accounts.item_count()? != 2 {
-                //TODO check what to do if we have only one item, should we be strict or not
                 return Err(DecoderError::Custom("Unknown access list lenght"));
             }
             accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
@@ -282,12 +285,11 @@ impl AccessListTx {
     }
 
     // encode by this payload spec: 0x03 | rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
-    pub fn encode(&self, signature: Option<&SignatureComponents>) -> Vec<u8> {
+    pub fn encode(&self, chain_id: Option<u64>, signature: Option<&SignatureComponents>) -> Vec<u8> {
         let mut stream = RlpStream::new();
-        //stream.begin_list(2);
-        //stream.append(&3u8);
 
         let mut list_size = 7;
+        list_size += if chain_id.is_some() { 3 } else { 0 };
         list_size += if signature.is_some() { 3 } else { 0 };
         stream.begin_list(list_size);
         self.transaction.rlp_append_open(&mut stream, None);
@@ -302,19 +304,26 @@ impl AccessListTx {
                 stream.append(storage_key);
             }
         }
+        // append chain_id
+        if let Some(n) = chain_id { 
+            rlp_append_chain_id(&mut stream,n);
+        }
+
+        // append signature
         if let Some(signature) = signature {
             signature.rlp_append(&mut stream);
         }
 
+        //make as vector of bytes
         [&[0x03], stream.as_raw()].concat()
     }
 
     pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
-        rlp.append(&self.encode(Some(signature)));
+        rlp.append(&self.encode(None, Some(signature)));
     }
 
-    pub fn hash(&self) -> H256 {
-        keccak(&self.encode(None))
+    pub fn hash(&self, chain_id: Option<u64>) -> H256 {
+        keccak(&self.encode(chain_id, None))
     }
 }
 
@@ -338,7 +347,7 @@ impl TypedTransaction {
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
         match self {
             Self::Legacy(tx) => tx.hash(chain_id),
-            Self::AccessList(ocl) => ocl.hash(),
+            Self::AccessList(ocl) => ocl.hash(chain_id),
         }
     }
 
@@ -456,7 +465,7 @@ impl TypedTransaction {
 
     fn rlp_append(&self, s: &mut RlpStream, signature: &SignatureComponents) {
         match self {
-            Self::Legacy(tx) => tx.rlp_append(s, None, signature),
+            Self::Legacy(tx) => tx.rlp_append(s, signature),
             Self::AccessList(opt) => opt.rlp_append(s, signature),
         }
     }

@@ -44,11 +44,6 @@ const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(ethereum_types::H160
 /// Precompile that can never be prunned from state trie (none)
 const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = None;
 
-/// Gas per received storage key
-pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
-/// Gas per received address
-pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
-
 /// Returns new address created from address, nonce, and code hash
 pub fn contract_address(
     address_scheme: CreateContractAddress,
@@ -1145,7 +1140,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         //check if particualar transaction type is enabled at this block number in schedule
         match t.as_unsigned() {
             TypedTransaction::AccessList(_) => {
-                if !(schedule.eip2929 && schedule.eip2930) {
+                if !schedule.eip2930 {
                     return Err(ExecutionError::TransactionMalformed(
                         "OptionalAccessList EIP-2930 or EIP-2929 not enabled".into(),
                     ));
@@ -1170,10 +1165,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
                     for item in al_tx.access_list.iter() {
                         access_list.insert_address(item.0);
-                        base_gas_required += EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                        base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
                         for key in item.1.iter() {
                             access_list.insert_storage_key(item.0, *key);
-                            base_gas_required += EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
+                            base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
                         }
                     }
                 }

@@ -1168,7 +1168,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                         base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
                         for key in item.1.iter() {
                             access_list.insert_storage_key(item.0, *key);
-                            base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
+                            base_gas_required +=
+                                vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
                         }
                     }
                 }

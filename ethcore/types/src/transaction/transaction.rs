@@ -188,11 +188,7 @@ impl Transaction {
         }
     }
 
-    pub fn rlp_append(
-        &self,
-        rlp: &mut RlpStream,
-        signature: &SignatureComponents,
-    ) {
+    pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
         self.encode(rlp, None, Some(signature));
     }
 
@@ -204,7 +200,7 @@ impl Transaction {
         s.append(&self.value);
         s.append(&self.data);
         if let Some(n) = chain_id {
-            rlp_append_chain_id(s,n);
+            rlp_append_chain_id(s, n);
         }
     }
 }
@@ -285,7 +281,11 @@ impl AccessListTx {
     }
 
     // encode by this payload spec: 0x03 | rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
-    pub fn encode(&self, chain_id: Option<u64>, signature: Option<&SignatureComponents>) -> Vec<u8> {
+    pub fn encode(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> Vec<u8> {
         let mut stream = RlpStream::new();
 
         let mut list_size = 7;
@@ -305,8 +305,8 @@ impl AccessListTx {
             }
         }
         // append chain_id
-        if let Some(n) = chain_id { 
-            rlp_append_chain_id(&mut stream,n);
+        if let Some(n) = chain_id {
+            rlp_append_chain_id(&mut stream, n);
         }
 
         // append signature

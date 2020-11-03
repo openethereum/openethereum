@@ -342,11 +342,11 @@ impl<'a> EvmTestClient<'a> {
             Ok(result) => Ok(TransactSuccess {
                 state_root,
                 gas_left: initial_gas - result.receipt.gas_used,
-                outcome: result.receipt.outcome,
+                outcome: result.receipt.outcome.clone(),
                 output: result.output,
                 trace: result.trace,
                 vm_trace: result.vm_trace,
-                logs: result.receipt.logs,
+                logs: result.receipt.logs.clone(),
                 contract_address: if let transaction::Action::Create = transaction.tx().action {
                     Some(
                         executive::contract_address(

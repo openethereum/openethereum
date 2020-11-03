@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256, U64};
-use types::receipt::{LocalizedReceipt, Receipt as EthReceipt, RichReceipt, TransactionOutcome};
+use types::receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt};
 use v1::types::Log;
 
 /// Receipt
@@ -110,8 +110,9 @@ impl From<RichReceipt> for Receipt {
     }
 }
 
-impl From<EthReceipt> for Receipt {
-    fn from(r: EthReceipt) -> Self {
+impl From<TypedReceipt> for Receipt {
+    fn from(r: TypedReceipt) -> Self {
+        let TypedReceipt::Legacy(r) = r;
         Receipt {
             from: None,
             to: None,

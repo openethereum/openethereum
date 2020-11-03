@@ -34,7 +34,7 @@ use common_types::{
     },
     header::{ExtendedHeader, Header},
     log_entry::{LocalizedLogEntry, LogEntry},
-    receipt::Receipt,
+    receipt::TypedReceipt,
     transaction::LocalizedTransaction,
     tree_route::TreeRoute,
     view,
@@ -460,13 +460,13 @@ impl BlockProvider for BlockChain {
 							warn!("Block {} ({}) has different number of receipts ({}) to transactions ({}). Database corrupt?", number, hash, receipts.len(), hashes.len());
 							assert!(false);
 						}
-						let mut log_index = receipts.iter().fold(0, |sum, receipt| sum + receipt.logs.len());
+						let mut log_index = receipts.iter().fold(0, |sum, receipt| sum + receipt.receipt().logs.len());
 
 						let receipts_len = receipts.len();
 						hashes.reverse();
 						receipts.reverse();
 						receipts.into_iter()
-							.map(|receipt| receipt.logs)
+							.map(|receipt| receipt.receipt().logs.clone())
 							.zip(hashes)
 							.enumerate()
 							.flat_map(move |(index, (mut logs, tx_hash))| {
@@ -895,7 +895,7 @@ impl BlockChain {
         &self,
         batch: &mut DBTransaction,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
         parent_td: Option<U256>,
         is_best: bool,
         is_ancient: bool,
@@ -1265,7 +1265,7 @@ impl BlockChain {
         &self,
         batch: &mut DBTransaction,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
         extras: ExtrasInsert,
     ) -> ImportRoute {
         let parent_hash = block.header_view().parent_hash();
@@ -1283,7 +1283,7 @@ impl BlockChain {
         &self,
         batch: &mut DBTransaction,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
         route: TreeRoute,
         extras: ExtrasInsert,
     ) -> ImportRoute {
@@ -1659,7 +1659,7 @@ impl BlockChain {
     /// This function returns modified block receipts.
     fn prepare_block_receipts_update(
         &self,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
         info: &BlockInfo,
     ) -> HashMap<H256, BlockReceipts> {
         let mut block_receipts = HashMap::new();
@@ -1921,7 +1921,7 @@ mod tests {
 
     use crate::generator::{BlockBuilder, BlockGenerator, BlockOptions};
     use common_types::{
-        receipt::{Receipt, TransactionOutcome},
+        receipt::{LegacyReceipt, TransactionOutcome, TypedReceipt},
         transaction::{Action, Transaction, TypedTransaction},
     };
     use ethkey::Secret;
@@ -1975,7 +1975,7 @@ mod tests {
         db: &Arc<dyn BlockChainDB>,
         bc: &BlockChain,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
     ) -> ImportRoute {
         insert_block_commit(db, bc, block, receipts, true)
     }
@@ -1984,7 +1984,7 @@ mod tests {
         db: &Arc<dyn BlockChainDB>,
         bc: &BlockChain,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
         commit: bool,
     ) -> ImportRoute {
         let mut batch = db.key_value().transaction();
@@ -2000,7 +2000,7 @@ mod tests {
         batch: &mut DBTransaction,
         bc: &BlockChain,
         block: encoded::Block,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TypedReceipt>,
     ) -> ImportRoute {
         let fork_choice = {
             let header = block.header_view();
@@ -2580,7 +2580,7 @@ mod tests {
             &bc,
             b1.last().encoded(),
             vec![
-                Receipt {
+                TypedReceipt::Legacy(LegacyReceipt {
                     outcome: TransactionOutcome::StateRoot(H256::default()),
                     gas_used: 10_000.into(),
                     log_bloom: Default::default(),
@@ -2596,8 +2596,8 @@ mod tests {
                             data: vec![2],
                         },
                     ],
-                },
-                Receipt {
+                }),
+                TypedReceipt::Legacy(LegacyReceipt {
                     outcome: TransactionOutcome::StateRoot(H256::default()),
                     gas_used: 10_000.into(),
                     log_bloom: Default::default(),
@@ -2606,14 +2606,14 @@ mod tests {
                         topics: vec![],
                         data: vec![3],
                     }],
-                },
+                }),
             ],
         );
         insert_block(
             &db,
             &bc,
             b2.last().encoded(),
-            vec![Receipt {
+            vec![TypedReceipt::Legacy(LegacyReceipt {
                 outcome: TransactionOutcome::StateRoot(H256::default()),
                 gas_used: 10_000.into(),
                 log_bloom: Default::default(),
@@ -2622,13 +2622,13 @@ mod tests {
                     topics: vec![],
                     data: vec![4],
                 }],
-            }],
+            })],
         );
         insert_block(
             &db,
             &bc,
             b3.last().encoded(),
-            vec![Receipt {
+            vec![TypedReceipt::Legacy(LegacyReceipt {
                 outcome: TransactionOutcome::StateRoot(H256::default()),
                 gas_used: 10_000.into(),
                 log_bloom: Default::default(),
@@ -2637,7 +2637,7 @@ mod tests {
                     topics: vec![],
                     data: vec![5],
                 }],
-            }],
+            })],
         );
 
         // when

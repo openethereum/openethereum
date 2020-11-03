@@ -474,7 +474,7 @@ pub struct AuxiliaryData<'a> {
     /// The full block bytes, including the header.
     pub bytes: Option<&'a [u8]>,
     /// The block receipts.
-    pub receipts: Option<&'a [::types::receipt::Receipt]>,
+    pub receipts: Option<&'a [::types::receipt::TypedReceipt]>,
 }
 
 /// Type alias for a function we can make calls through synchronously.

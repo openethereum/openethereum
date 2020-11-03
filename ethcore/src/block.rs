@@ -51,7 +51,7 @@ use hash::keccak;
 use rlp::{encode_list, Encodable, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
-    receipt::{Receipt, TransactionOutcome},
+    receipt::{TransactionOutcome, TypedReceipt},
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
@@ -99,7 +99,7 @@ pub struct ExecutedBlock {
     /// Uncles.
     pub uncles: Vec<Header>,
     /// Transaction receipts.
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TypedReceipt>,
     /// Hashes of already executed transactions.
     pub transactions_set: HashSet<H256>,
     /// Underlaying state.
@@ -248,7 +248,7 @@ impl<'x> OpenBlock<'x> {
         &mut self,
         t: SignedTransaction,
         h: Option<H256>,
-    ) -> Result<&Receipt, Error> {
+    ) -> Result<&TypedReceipt, Error> {
         if self.block.transactions_set.contains(&t.hash()) {
             return Err(TransactionError::AlreadyImported.into());
         }

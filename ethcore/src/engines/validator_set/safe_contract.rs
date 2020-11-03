@@ -25,7 +25,7 @@ use kvdb::DBValue;
 use memory_cache::MemoryLruCache;
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
-use types::{header::Header, ids::BlockId, log_entry::LogEntry, receipt::Receipt};
+use types::{header::Header, ids::BlockId, log_entry::LogEntry, receipt::TypedReceipt};
 use unexpected::Mismatch;
 
 use super::{simple_list::SimpleList, SystemCall, ValidatorSet};
@@ -161,13 +161,13 @@ fn decode_first_proof(rlp: &Rlp) -> Result<(Header, Vec<DBValue>), ::error::Erro
 // inter-contract proofs are a header and receipts.
 // checking will involve ensuring that the receipts match the header and
 // extracting the validator set from the receipts.
-fn encode_proof(header: &Header, receipts: &[Receipt]) -> Bytes {
+fn encode_proof(header: &Header, receipts: &[TypedReceipt]) -> Bytes {
     let mut stream = RlpStream::new_list(2);
     stream.append(header).append_list(receipts);
     stream.drain()
 }
 
-fn decode_proof(rlp: &Rlp) -> Result<(Header, Vec<Receipt>), ::error::Error> {
+fn decode_proof(rlp: &Rlp) -> Result<(Header, Vec<TypedReceipt>), ::error::Error> {
     Ok((rlp.val_at(0)?, rlp.list_at(1)?))
 }
 
@@ -265,7 +265,7 @@ impl ValidatorSafeContract {
         &self,
         bloom: Bloom,
         header: &Header,
-        receipts: &[Receipt],
+        receipts: &[TypedReceipt],
     ) -> Option<SimpleList> {
         let check_log = |log: &LogEntry| {
             log.address == self.contract_address

@@ -19,6 +19,7 @@
 use ethereum_types::{Address, Bloom, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use std::ops::{Deref, DerefMut};
 
 use log_entry::{LocalizedLogEntry, LogEntry};
 use BlockNumber;
@@ -36,7 +37,7 @@ pub enum TransactionOutcome {
 
 /// Information describing execution of a transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Receipt {
+pub struct LegacyReceipt {
     /// The total gas used in the block following execution of the transaction.
     pub gas_used: U256,
     /// The OR-wide combination of all logs' blooms for this transaction.
@@ -47,10 +48,15 @@ pub struct Receipt {
     pub outcome: TransactionOutcome,
 }
 
-impl Receipt {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypedReceipt {
+    Legacy(LegacyReceipt),
+}
+
+impl TypedReceipt {
     /// Create a new receipt.
-    pub fn new(outcome: TransactionOutcome, gas_used: U256, logs: Vec<LogEntry>) -> Self {
-        Self {
+    pub fn new_legacy(outcome: TransactionOutcome, gas_used: U256, logs: Vec<LogEntry>) -> Self {
+        Self::Legacy(LegacyReceipt {
             gas_used,
             log_bloom: logs.iter().fold(Bloom::default(), |mut b, l| {
                 b.accrue_bloom(&l.bloom());
@@ -58,13 +64,39 @@ impl Receipt {
             }),
             logs,
             outcome,
+        })
+    }
+
+    pub fn receipt(&self) -> &LegacyReceipt {
+        match self {
+            Self::Legacy(receipt) => receipt,
+        }
+    }
+
+    pub fn receipt_mut(&mut self) -> &mut LegacyReceipt {
+        match self {
+            Self::Legacy(receipt) => receipt,
         }
     }
 }
 
-impl Encodable for Receipt {
+impl Deref for TypedReceipt {
+    type Target = LegacyReceipt;
+
+    fn deref(&self) -> &Self::Target {
+        self.receipt()
+    }
+}
+
+impl DerefMut for TypedReceipt {
+    fn deref_mut(&mut self) -> &mut LegacyReceipt {
+        self.receipt_mut()
+    }
+}
+
+impl Encodable for TypedReceipt {
     fn rlp_append(&self, s: &mut RlpStream) {
-        match self.outcome {
+        match self.receipt().outcome {
             TransactionOutcome::Unknown => {
                 s.begin_list(3);
             }
@@ -77,23 +109,23 @@ impl Encodable for Receipt {
                 s.append(status_code);
             }
         }
-        s.append(&self.gas_used);
-        s.append(&self.log_bloom);
-        s.append_list(&self.logs);
+        s.append(&self.receipt().gas_used);
+        s.append(&self.receipt().log_bloom);
+        s.append_list(&self.receipt().logs);
     }
 }
 
-impl Decodable for Receipt {
+impl Decodable for TypedReceipt {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? == 3 {
-            Ok(Receipt {
+            Ok(TypedReceipt::Legacy(LegacyReceipt {
                 outcome: TransactionOutcome::Unknown,
                 gas_used: rlp.val_at(0)?,
                 log_bloom: rlp.val_at(1)?,
                 logs: rlp.list_at(2)?,
-            })
+            }))
         } else {
-            Ok(Receipt {
+            Ok(TypedReceipt::Legacy(LegacyReceipt {
                 gas_used: rlp.val_at(1)?,
                 log_bloom: rlp.val_at(2)?,
                 logs: rlp.list_at(3)?,
@@ -105,14 +137,14 @@ impl Decodable for Receipt {
                         TransactionOutcome::StateRoot(first.as_val()?)
                     }
                 },
-            })
+            }))
         }
     }
 }
 
-impl HeapSizeOf for Receipt {
+impl HeapSizeOf for TypedReceipt {
     fn heap_size_of_children(&self) -> usize {
-        self.logs.heap_size_of_children()
+        self.receipt().logs.heap_size_of_children()
     }
 }
 
@@ -176,13 +208,13 @@ pub struct LocalizedReceipt {
 
 #[cfg(test)]
 mod tests {
-    use super::{Receipt, TransactionOutcome};
+    use super::{TransactionOutcome, TypedReceipt};
     use log_entry::LogEntry;
 
     #[test]
     fn test_no_state_root() {
         let expected = ::rustc_hex::FromHex::from_hex("f9014183040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = Receipt::new(
+        let r = TypedReceipt::new_legacy(
             TransactionOutcome::Unknown,
             0x40cae.into(),
             vec![LogEntry {
@@ -197,7 +229,7 @@ mod tests {
     #[test]
     fn test_basic() {
         let expected = ::rustc_hex::FromHex::from_hex("f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = Receipt::new(
+        let r = TypedReceipt::new_legacy(
             TransactionOutcome::StateRoot(
                 "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
             ),
@@ -210,14 +242,14 @@ mod tests {
         );
         let encoded = ::rlp::encode(&r);
         assert_eq!(&encoded[..], &expected[..]);
-        let decoded: Receipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
+        let decoded: TypedReceipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }
 
     #[test]
     fn test_status_code() {
         let expected = ::rustc_hex::FromHex::from_hex("f901428083040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = Receipt::new(
+        let r = TypedReceipt::new_legacy(
             TransactionOutcome::StatusCode(0),
             0x40cae.into(),
             vec![LogEntry {
@@ -228,7 +260,7 @@ mod tests {
         );
         let encoded = ::rlp::encode(&r);
         assert_eq!(&encoded[..], &expected[..]);
-        let decoded: Receipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
+        let decoded: TypedReceipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }
 }

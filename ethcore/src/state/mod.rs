@@ -38,7 +38,7 @@ use state_db::StateDB;
 use trace::{self, FlatTrace, VMTrace};
 use types::{
     basic_account::BasicAccount,
-    receipt::{Receipt, TransactionOutcome},
+    receipt::{TransactionOutcome, TypedReceipt},
     state_diff::StateDiff,
     transaction::SignedTransaction,
 };
@@ -64,7 +64,7 @@ pub use self::{account::Account, backend::Backend, substate::Substate};
 /// Used to return information about an `State::apply` operation.
 pub struct ApplyOutcome<T, V> {
     /// The receipt for the applied transaction.
-    pub receipt: Receipt,
+    pub receipt: TypedReceipt,
     /// The output of the applied transaction.
     pub output: Bytes,
     /// The trace for the applied transaction, empty if tracing was not produced.
@@ -955,8 +955,8 @@ impl<B: Backend> State<B> {
             TransactionOutcome::StateRoot(self.root().clone())
         };
 
-        let output = e.output;
-        let receipt = Receipt::new(outcome, e.cumulative_gas_used, e.logs);
+        let output = e.output; //TODO dr create new types of receipts
+        let receipt = TypedReceipt::new_legacy(outcome, e.cumulative_gas_used, e.logs);
         trace!(target: "state", "Transaction receipt: {:?}", receipt);
 
         Ok(ApplyOutcome {

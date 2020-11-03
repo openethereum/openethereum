@@ -18,7 +18,9 @@
 
 use std::{io::Write, ops};
 
-use common_types::{engines::epoch::Transition as EpochTransition, receipt::Receipt, BlockNumber};
+use common_types::{
+    engines::epoch::Transition as EpochTransition, receipt::TypedReceipt, BlockNumber,
+};
 use ethereum_types::{H256, H264, U256};
 use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
@@ -238,12 +240,12 @@ impl HeapSizeOf for TransactionAddress {
 #[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
 pub struct BlockReceipts {
     /// Block receipts
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TypedReceipt>,
 }
 
 impl BlockReceipts {
     /// Create new block receipts wrapper.
-    pub fn new(receipts: Vec<Receipt>) -> Self {
+    pub fn new(receipts: Vec<TypedReceipt>) -> Self {
         BlockReceipts { receipts: receipts }
     }
 }

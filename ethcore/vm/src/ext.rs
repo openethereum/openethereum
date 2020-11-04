@@ -16,7 +16,6 @@
 
 //! Interface for Evm externalities.
 
-use super::AccessList;
 use bytes::Bytes;
 use call_type::CallType;
 use env_info::EnvInfo;

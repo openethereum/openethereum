@@ -16,7 +16,6 @@
 
 //! Transaction Execution environment.
 use bytes::{Bytes, BytesRef};
-use crossbeam_utils::thread;
 use ethereum_types::{Address, H256, U256, U512};
 use evm::{CallType, FinalizationResult, Finalize};
 use executed::ExecutionError;
@@ -236,6 +235,8 @@ pub struct CallCreateExecutive<'a> {
 }
 
 impl<'a> CallCreateExecutive<'a> {
+
+    /// Create new state with access list.
     pub fn new_substate(params: &ActionParams, schedule: &'a Schedule) -> Substate {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);

@@ -17,6 +17,7 @@
 //! Ethereum virtual machine.
 
 extern crate bit_set;
+extern crate ethcore_builtin as builtin;
 extern crate ethereum_types;
 extern crate heapsize;
 extern crate keccak_hash as hash;

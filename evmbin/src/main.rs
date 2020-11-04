@@ -84,7 +84,7 @@ State test options:
     --chain CHAIN      Run only from specific chain name (i.e. one of EIP150, EIP158,
                        Frontier, Homestead, Byzantium, Constantinople,
                        ConstantinopleFix, Istanbul, EIP158ToByzantiumAt5, FrontierToHomesteadAt5,
-                       HomesteadToDaoAt5, HomesteadToEIP150At5).
+                       HomesteadToDaoAt5, HomesteadToEIP150At5, Berlin, Yolo3).
     --only NAME        Runs only a single test matching the name.
 
 General options:
@@ -197,7 +197,6 @@ fn run_state_test(args: Args) {
             {
                 continue;
             }
-
             for (idx, state) in states.into_iter().enumerate() {
                 let post_root = state.hash.into();
                 let transaction = multitransaction.select(&state.indexes).into();
@@ -287,8 +286,16 @@ fn run_call<T: Informant>(args: Args, informant: T) {
     if code.is_none() && to == Address::default() {
         die("Either --code or --to is required.");
     }
-
     let mut params = ActionParams::default();
+    if spec.engine.params().eip2929_transition == 0 {
+        params.access_list.enable();
+        params.access_list.insert_address(from);
+        params.access_list.insert_address(to);
+        for (builtin, _) in spec.engine.builtins() {
+            params.access_list.insert_address(*builtin);
+        }
+    }
+
     params.call_type = if code.is_none() {
         CallType::Call
     } else {
@@ -378,9 +385,16 @@ impl Args {
 
     pub fn spec(&self) -> Result<spec::Spec, String> {
         Ok(match self.flag_chain {
-            Some(ref filename) => {
-                let file = fs::File::open(filename).map_err(|e| format!("{}", e))?;
-                spec::Spec::load(&::std::env::temp_dir(), file)?
+            Some(ref spec_name) => {
+                let fork_spec: Result<ethjson::spec::ForkSpec, _> =
+                    serde_json::from_str(&format!("{:?}", spec_name));
+                if let Ok(fork_spec) = fork_spec {
+                    ethcore::client::EvmTestClient::spec_from_json(&fork_spec)
+                        .expect("this forkspec is not defined")
+                } else {
+                    let file = fs::File::open(spec_name).map_err(|e| format!("{}", e))?;
+                    spec::Spec::load(&::std::env::temp_dir(), file)?
+                }
             }
             None => ethcore::ethereum::new_foundation(&::std::env::temp_dir()),
         })

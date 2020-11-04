@@ -68,7 +68,6 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
             let pre: PodState = test.pre_state.into();
 
             for (spec_name, states) in test.post_states {
-                let total = states.len();
                 let spec = match EvmTestClient::spec_from_json(&spec_name) {
                     Some(spec) => spec,
                     None => {
@@ -81,11 +80,10 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
 
                 for (i, state) in states.into_iter().enumerate() {
                     let info = format!(
-                        "   - state: {} | {:?} ({}/{}) ...",
-                        name,
+                        "TestState/{}/{:?}/{}/trie",
+                        path.to_string_lossy(),
                         spec_name,
-                        i + 1,
-                        total
+                        i
                     );
                     if skip_test(&state_test, &name, &spec.name, i + 1) {
                         println!("{}: SKIPPED", info);
@@ -112,7 +110,7 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
                         }
                         Ok(Ok(TransactSuccess { state_root, .. })) if state_root != post_root => {
                             println!(
-                                "{} !!! State mismatch (got: {}, expect: {}",
+                                "{}: post state root mismatch: got {:?}, want {:?}",
                                 info, state_root, post_root
                             );
                             flushln!("{} fail", info);
@@ -124,7 +122,7 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
                             ..
                         })) if state_root != post_root => {
                             println!(
-                                "{} !!! State mismatch (got: {}, expect: {}",
+                                "{}: post state root mismatch: got {:?}, want {:?}",
                                 info, state_root, post_root
                             );
                             println!("{} !!! Execution error: {:?}", info, error);

@@ -32,7 +32,7 @@ use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use rustc_hex::FromHex;
 use types::{header::Header, BlockNumber};
-use vm::{ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
+use vm::{AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
 
 use builtin::Builtin;
 use engines::{
@@ -135,6 +135,8 @@ pub struct CommonParams {
     pub eip2028_transition: BlockNumber,
     /// Number of first block where EIP-2315 rules begin.
     pub eip2315_transition: BlockNumber,
+    /// Number of first block where EIP-2929 rules begin.
+    pub eip2929_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -209,6 +211,7 @@ impl CommonParams {
             || block_number >= self.eip1283_reenable_transition;
         schedule.eip1706 = block_number >= self.eip1706_transition;
         schedule.have_subs = block_number >= self.eip2315_transition;
+        schedule.eip2929 = block_number >= self.eip2929_transition;
 
         if block_number >= self.eip1884_transition {
             schedule.have_selfbalance = true;
@@ -222,6 +225,24 @@ impl CommonParams {
         if block_number >= self.eip210_transition {
             schedule.blockhash_gas = 800;
         }
+        if block_number >= self.eip2929_transition {
+            schedule.eip2929 = true;
+            schedule.eip1283 = true;
+
+            schedule.call_gas = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+            schedule.balance_gas = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+            schedule.extcodecopy_base_gas = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+            schedule.extcodehash_gas = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+            schedule.extcodesize_gas = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+
+            schedule.cold_sload_cost = ::vm::schedule::EIP2929_COLD_SLOAD_COST;
+            schedule.cold_account_access_cost = ::vm::schedule::EIP2929_COLD_ACCOUNT_ACCESS_COST;
+            schedule.warm_storage_read_cost = ::vm::schedule::EIP2929_WARM_STORAGE_READ_COST;
+
+            schedule.sload_gas = ::vm::schedule::EIP2929_WARM_STORAGE_READ_COST;
+            schedule.sstore_reset_gas = ::vm::schedule::EIP2929_SSTORE_RESET_GAS;
+        }
+
         if block_number >= self.dust_protection_transition {
             schedule.kill_dust = match self.remove_dust_contracts {
                 true => ::vm::CleanDustMode::WithCodeAndStorage,
@@ -345,6 +366,9 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             eip2315_transition: p
                 .eip2315_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip2929_transition: p
+                .eip2929_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
             dust_protection_transition: p
                 .dust_protection_transition
@@ -757,6 +781,7 @@ impl Spec {
                         data: None,
                         call_type: CallType::None,
                         params_type: ParamsType::Embedded,
+                        access_list: AccessList::default(),
                     };
 
                     let mut substate = Substate::new();

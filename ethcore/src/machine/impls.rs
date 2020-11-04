@@ -32,7 +32,8 @@ use types::{
     BlockNumber,
 };
 use vm::{
-    ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo, ParamsType, Schedule,
+    AccessList, ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo, ParamsType,
+    Schedule,
 };
 
 use block::ExecutedBlock;
@@ -201,6 +202,7 @@ impl EthereumMachine {
             data,
             call_type: call_type.unwrap_or(CallType::Call),
             params_type: ParamsType::Separate,
+            access_list: AccessList::default(),
         };
         let schedule = self.schedule(env_info.number);
         let mut ex = Executive::new(&mut state, &env_info, self, &schedule);

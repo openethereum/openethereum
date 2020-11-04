@@ -167,6 +167,10 @@ where
         Ok(ContractCreateResult::Created(contract_address, *gas))
     }
 
+    fn calc_address(&self, code: &[u8], address: CreateContractAddress) -> Option<Address> {
+        Some(contract_address(address, &self.sender, &self.nonce, &code).0)
+    }
+
     fn call(
         &mut self,
         gas: &U256,
@@ -237,6 +241,26 @@ where
 
     fn sub_sstore_refund(&mut self, value: usize) {
         self.ext.sub_sstore_refund(value)
+    }
+
+    fn al_is_enabled(&self) -> bool {
+        self.ext.al_is_enabled()
+    }
+
+    fn al_contains_storage_key(&self, address: &Address, key: &H256) -> bool {
+        self.ext.al_contains_storage_key(address, key)
+    }
+
+    fn al_insert_storage_key(&mut self, address: Address, key: H256) {
+        self.ext.al_insert_storage_key(address, key)
+    }
+
+    fn al_contains_address(&self, address: &Address) -> bool {
+        self.ext.al_contains_address(address)
+    }
+
+    fn al_insert_address(&mut self, address: Address) {
+        self.ext.al_insert_address(address)
     }
 }
 

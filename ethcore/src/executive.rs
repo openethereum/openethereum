@@ -235,7 +235,6 @@ pub struct CallCreateExecutive<'a> {
 }
 
 impl<'a> CallCreateExecutive<'a> {
-
     /// Create new state with access list.
     pub fn new_substate(params: &ActionParams, schedule: &'a Schedule) -> Substate {
         if schedule.eip2929 {

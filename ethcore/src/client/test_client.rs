@@ -45,7 +45,7 @@ use types::{
     header::Header,
     log_entry::LocalizedLogEntry,
     pruning_info::PruningInfo,
-    receipt::{LocalizedReceipt, TransactionOutcome, TypedReceipt},
+    receipt::{LegacyReceipt, LocalizedReceipt, TransactionOutcome, TypedReceipt},
     transaction::{
         self, Action, LocalizedTransaction, SignedTransaction, Transaction, TypedTransaction,
     },
@@ -940,10 +940,13 @@ impl BlockChainClient for TestBlockChainClient {
     fn block_receipts(&self, hash: &H256) -> Option<BlockReceipts> {
         // starts with 'f' ?
         if *hash > H256::from("f000000000000000000000000000000000000000000000000000000000000000") {
-            let receipt = BlockReceipts::new(vec![TypedReceipt::new_legacy(
-                TransactionOutcome::StateRoot(H256::zero()),
-                U256::zero(),
-                vec![],
+            let receipt = BlockReceipts::new(vec![TypedReceipt::new(
+                None,
+                LegacyReceipt::new(
+                    TransactionOutcome::StateRoot(H256::zero()),
+                    U256::zero(),
+                    vec![],
+                ),
             )]);
             return Some(receipt);
         }

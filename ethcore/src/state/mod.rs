@@ -38,7 +38,7 @@ use state_db::StateDB;
 use trace::{self, FlatTrace, VMTrace};
 use types::{
     basic_account::BasicAccount,
-    receipt::{TransactionOutcome, TypedReceipt},
+    receipt::{LegacyReceipt, TransactionOutcome, TypedReceipt},
     state_diff::StateDiff,
     transaction::SignedTransaction,
 };
@@ -956,7 +956,10 @@ impl<B: Backend> State<B> {
         };
 
         let output = e.output; //TODO dr create new types of receipts
-        let receipt = TypedReceipt::new_legacy(outcome, e.cumulative_gas_used, e.logs);
+        let receipt = TypedReceipt::new(
+            t.tx_type(),
+            LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),
+        );
         trace!(target: "state", "Transaction receipt: {:?}", receipt);
 
         Ok(ApplyOutcome {

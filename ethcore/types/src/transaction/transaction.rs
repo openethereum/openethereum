@@ -16,14 +16,16 @@
 
 //! Transaction data structure.
 
-use std::ops::Deref;
-
 use ethereum_types::{Address, H160, H256, U256};
 use ethjson;
 use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, Rlp, RlpStream};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::Deref,
+};
 
 use transaction::error;
 
@@ -38,6 +40,21 @@ pub const SYSTEM_ADDRESS: Address = H160([
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xfe,
 ]);
+
+pub enum TypedTxId {
+    AccessList = 0x03,
+}
+
+impl TryFrom<u8> for TypedTxId {
+    type Error = ();
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        match v {
+            x if x == TypedTxId::AccessList as u8 => Ok(TypedTxId::AccessList),
+            _ => Err(()),
+        }
+    }
+}
 
 /// Transaction action type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -226,6 +243,10 @@ impl AccessListTx {
         }
     }
 
+    pub fn tx_type(&self) -> TypedTxId {
+        TypedTxId::AccessList
+    }
+
     pub fn tx(&self) -> &Transaction {
         &self.transaction
     }
@@ -318,7 +339,7 @@ impl AccessListTx {
         }
 
         //make as vector of bytes
-        [&[0x03], stream.as_raw()].concat()
+        [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
 
     pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
@@ -339,10 +360,10 @@ pub enum TypedTransaction {
 
 //Function that are batched from Transaction struct and needs to be reimplemented
 impl TypedTransaction {
-    pub fn tx_type(&self) -> u8 {
+    pub fn tx_type(&self) -> Option<TypedTxId> {
         match self {
-            Self::Legacy(_) => 0x00,
-            Self::AccessList(_) => 0x03,
+            Self::Legacy(_) => None,
+            Self::AccessList(_) => Some(TypedTxId::AccessList),
         }
     }
 
@@ -451,10 +472,13 @@ impl TypedTransaction {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
+        let id = tx[0].try_into();
+        if id.is_err() {
+            return Err(DecoderError::Custom("Unknown transaction"));
+        }
         //other transaction types
-        match tx[0] {
-            0x03 => AccessListTx::decode(&tx[1..]),
-            _ => Err(DecoderError::Custom("Unknown transaction")),
+        match id.unwrap() {
+            TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
         }
     }
 

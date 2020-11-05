@@ -112,7 +112,7 @@ impl From<RichReceipt> for Receipt {
 
 impl From<TypedReceipt> for Receipt {
     fn from(r: TypedReceipt) -> Self {
-        let TypedReceipt::Legacy(r) = r;
+        let r = r.receipt().clone();
         Receipt {
             from: None,
             to: None,

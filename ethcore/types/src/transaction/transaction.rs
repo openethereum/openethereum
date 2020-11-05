@@ -236,12 +236,13 @@ impl AccessListTx {
 
     // decode bytes by this payload spec: rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
-        let tx_rlp = &Rlp::new(&tx[1..]); //first byte is related to transaction type defined in EIP-2718
+        let tx_rlp = &Rlp::new(tx);
 
         // we need to have 10 items in this list
         if tx_rlp.item_count()? != 10 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
+
         // first part of list is same as legacy transaction and we are reusing that part.
         let transaction = Transaction::decode_data(&tx_rlp)?;
 
@@ -292,6 +293,12 @@ impl AccessListTx {
         list_size += if chain_id.is_some() { 3 } else { 0 };
         list_size += if signature.is_some() { 3 } else { 0 };
         stream.begin_list(list_size);
+
+        // append chain_id
+        if let Some(n) = chain_id {
+            rlp_append_chain_id(&mut stream, n);
+        }
+
         self.transaction.rlp_append_open(&mut stream, None);
 
         //access list
@@ -303,10 +310,6 @@ impl AccessListTx {
             for storage_key in access.1.iter() {
                 stream.append(storage_key);
             }
-        }
-        // append chain_id
-        if let Some(n) = chain_id {
-            rlp_append_chain_id(&mut stream, n);
         }
 
         // append signature
@@ -443,23 +446,39 @@ impl TypedTransaction {
         }
     }
 
-    pub fn decode(tx: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
-        if tx.is_null() {
+    fn decode_new(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        if tx.is_empty() {
+            // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
+        //other transaction types
+        match tx[0] {
+            0x03 => AccessListTx::decode(&tx[1..]),
+            _ => Err(DecoderError::Custom("Unknown transaction")),
+        }
+    }
+
+    pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        if tx.is_empty() {
+            // at least one byte needs to be present
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let header = tx[0];
         //type of transaction can be obtained from first byte. If first bit is 1 it means we are dealing with RLP list.
-        //if it is 0 it means that we are dealing with custom transaction defined in EIP-2918.
-        //let header = tx[0]; tx.is_list()
+        //if it is 0 it means that we are dealing with custom transaction defined in EIP-2718.
+        if (header & 0x80) != 0x00 {
+            Transaction::decode(&Rlp::new(tx))
+        } else {
+            Self::decode_new(tx)
+        }
+    }
+
+    pub fn decode_rlp(tx: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
         if tx.is_list() {
             //legacy transaction wrapped around RLP encoding
             Transaction::decode(tx)
         } else {
-            let tx_data = tx.data()?;
-            //other transaction types
-            match tx_data[0] {
-                0x03 => AccessListTx::decode(tx_data),
-                _ => Err(DecoderError::Custom("Unknown transaction")),
-            }
+            Self::decode_new(tx.data()?)
         }
     }
 
@@ -576,7 +595,7 @@ impl Deref for UnverifiedTransaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &Rlp) -> Result<Self, DecoderError> {
-        TypedTransaction::decode(d)
+        TypedTransaction::decode_rlp(d)
     }
 }
 
@@ -838,13 +857,10 @@ mod tests {
     use ethereum_types::U256;
     use hash::keccak;
 
-    //TODO CREATE TESTS FOR UnverifiedTransaction
-
     #[test]
     fn sender_test() {
         let bytes = ::rustc_hex::FromHex::from_hex("f85f800182520894095e7baea6a6c7c4c2dfeb977efac326af552d870a801ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804").unwrap();
-        let t: UnverifiedTransaction =
-            rlp::decode(&bytes).expect("decoding UnverifiedTransaction failed");
+        let t = TypedTransaction::decode(&bytes).expect("decoding UnverifiedTransaction failed");
         assert_eq!(t.tx().data, b"");
         assert_eq!(t.tx().gas, U256::from(0x5208u64));
         assert_eq!(t.tx().gas_price, U256::from(0x01u64));
@@ -1001,7 +1017,7 @@ mod tests {
     }
 
     #[test]
-    fn should_decode_access_list_tx() {
+    fn should_decode_access_list_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b85803f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
         let _: UnverifiedTransaction =
@@ -1009,12 +1025,20 @@ mod tests {
     }
 
     #[test]
+    fn should_decode_access_list_solo() {
+        use rustc_hex::FromHex;
+        let encoded_tx = "03f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
+        let _ = TypedTransaction::decode(&FromHex::from_hex(encoded_tx).unwrap())
+            .expect("decoding tx data failed");
+    }
+
+    #[test]
     fn should_agree_with_vitalik() {
         use rustc_hex::FromHex;
 
         let test_vector = |tx_data: &str, address: &'static str| {
-            let signed =
-                rlp::decode(&FromHex::from_hex(tx_data).unwrap()).expect("decoding tx data failed");
+            let signed = TypedTransaction::decode(&FromHex::from_hex(tx_data).unwrap())
+                .expect("decoding tx data failed");
             let signed = SignedTransaction::new(signed).unwrap();
             assert_eq!(signed.sender(), address.into());
             println!("chainid: {:?}", signed.chain_id());

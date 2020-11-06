@@ -48,6 +48,7 @@ use types::{
     receipt::{LegacyReceipt, LocalizedReceipt, TransactionOutcome, TypedReceipt},
     transaction::{
         self, Action, LocalizedTransaction, SignedTransaction, Transaction, TypedTransaction,
+        TypedTxId,
     },
     view,
     views::BlockView,
@@ -941,7 +942,7 @@ impl BlockChainClient for TestBlockChainClient {
         // starts with 'f' ?
         if *hash > H256::from("f000000000000000000000000000000000000000000000000000000000000000") {
             let receipt = BlockReceipts::new(vec![TypedReceipt::new(
-                None,
+                TypedTxId::Legacy,
                 LegacyReceipt::new(
                     TransactionOutcome::StateRoot(H256::zero()),
                     U256::zero(),

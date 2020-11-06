@@ -41,7 +41,6 @@ pub const SYSTEM_ADDRESS: Address = H160([
     0xff, 0xff, 0xff, 0xfe,
 ]);
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypedTxId {
     AccessList = 0x03,

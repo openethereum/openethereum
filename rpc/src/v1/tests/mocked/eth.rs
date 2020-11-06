@@ -37,7 +37,7 @@ use types::{
     ids::{BlockId, TransactionId},
     log_entry::{LocalizedLogEntry, LogEntry},
     receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome},
-    transaction::{Action, Transaction, TypedTransaction,TypedTxId},
+    transaction::{Action, Transaction, TypedTransaction, TypedTxId},
 };
 
 use jsonrpc_core::IoHandler;
@@ -1205,7 +1205,7 @@ fn rpc_eth_pending_receipt() {
         )
         .unwrap(),
         transaction_index: 0,
-        transaction_type:: TypedTxId::Legacy,
+        transaction_type: TypedTxId::Legacy,
         cumulative_gas_used: U256::from(0x20),
         gas_used: U256::from(0x10),
         contract_address: None,

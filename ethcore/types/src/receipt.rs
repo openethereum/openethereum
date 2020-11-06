@@ -153,7 +153,7 @@ impl TypedReceipt {
             TypedTxId::AccessList => {
                 let rlp = Rlp::new(&tx[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
-            },
+            }
             TypedTxId::Legacy => Err(DecoderError::Custom("Unknown transaction")),
         }
     }
@@ -275,7 +275,7 @@ pub struct LocalizedReceipt {
 
 #[cfg(test)]
 mod tests {
-    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt};
+    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
     use log_entry::LogEntry;
 
     #[test]

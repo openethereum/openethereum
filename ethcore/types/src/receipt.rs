@@ -117,11 +117,11 @@ pub enum TypedReceipt {
 
 impl TypedReceipt {
     /// Create a new receipt.
-    pub fn new(type_id: Option<TypedTxId>, legacy_receipt: LegacyReceipt) -> Self {
+    pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
         //curently we are using same receipt for both legacy and typed transaction
         match type_id {
-            Some(TypedTxId::AccessList) => Self::AccessList(legacy_receipt),
-            None => Self::Legacy(legacy_receipt),
+            TypedTxId::AccessList => Self::AccessList(legacy_receipt),
+            TypedTxId::Legacy => Self::Legacy(legacy_receipt),
         }
     }
 
@@ -153,7 +153,8 @@ impl TypedReceipt {
             TypedTxId::AccessList => {
                 let rlp = Rlp::new(&tx[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
-            }
+            },
+            TypedTxId::Legacy => Err(DecoderError::Custom("Unknown transaction")),
         }
     }
 
@@ -213,6 +214,8 @@ impl HeapSizeOf for TypedReceipt {
 /// Receipt with additional info.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RichReceipt {
+    /// Transaction type
+    pub transaction_type: TypedTxId,
     /// Transaction hash.
     pub transaction_hash: H256,
     /// Transaction index.
@@ -240,6 +243,8 @@ pub struct RichReceipt {
 /// Receipt with additional info.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalizedReceipt {
+    /// Transaction type
+    pub transaction_type: TypedTxId,
     /// Transaction hash.
     pub transaction_hash: H256,
     /// Transaction index.
@@ -277,7 +282,7 @@ mod tests {
     fn test_no_state_root() {
         let expected = ::rustc_hex::FromHex::from_hex("f9014183040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let r = TypedReceipt::new(
-            None,
+            TypedTxId::Legacy,
             LegacyReceipt::new(
                 TransactionOutcome::Unknown,
                 0x40cae.into(),
@@ -295,7 +300,7 @@ mod tests {
     fn test_basic() {
         let expected = ::rustc_hex::FromHex::from_hex("f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let r = TypedReceipt::new(
-            None,
+            TypedTxId::Legacy,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
                     "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
@@ -318,7 +323,7 @@ mod tests {
     fn test_status_code() {
         let expected = ::rustc_hex::FromHex::from_hex("f901428083040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let r = TypedReceipt::new(
-            None,
+            TypedTxId::Legacy,
             LegacyReceipt::new(
                 TransactionOutcome::StatusCode(0),
                 0x40cae.into(),

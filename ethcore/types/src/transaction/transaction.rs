@@ -41,8 +41,11 @@ pub const SYSTEM_ADDRESS: Address = H160([
     0xff, 0xff, 0xff, 0xfe,
 ]);
 
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypedTxId {
     AccessList = 0x03,
+    Legacy = 0x80, // With 0x80 we are sure that all other types will no overlap
 }
 
 impl TryFrom<u8> for TypedTxId {
@@ -360,10 +363,10 @@ pub enum TypedTransaction {
 
 //Function that are batched from Transaction struct and needs to be reimplemented
 impl TypedTransaction {
-    pub fn tx_type(&self) -> Option<TypedTxId> {
+    pub fn tx_type(&self) -> TypedTxId {
         match self {
-            Self::Legacy(_) => None,
-            Self::AccessList(_) => Some(TypedTxId::AccessList),
+            Self::Legacy(_) => TypedTxId::Legacy,
+            Self::AccessList(_) => TypedTxId::AccessList,
         }
     }
 
@@ -479,6 +482,7 @@ impl TypedTransaction {
         //other transaction types
         match id.unwrap() {
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
+            TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction")),
         }
     }
 

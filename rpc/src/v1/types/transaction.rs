@@ -218,11 +218,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            tx_type: if let Some(id) = t.signed.tx_type() {
-                id as u8
-            } else {
-                0
-            },
+            tx_type: t.signed.tx_type() as u8,
             access_list,
         }
     }
@@ -265,11 +261,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            tx_type: if let Some(id) = t.tx_type() {
-                id as u8
-            } else {
-                0
-            },
+            tx_type: t.tx_type() as u8,
             access_list,
         }
     }

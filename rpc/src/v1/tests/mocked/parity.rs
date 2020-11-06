@@ -467,6 +467,7 @@ fn rpc_parity_block_receipts() {
         TransactionId::Hash(1.into()),
         LocalizedReceipt {
             transaction_hash: 1.into(),
+            transaction_type: TypedTxId::Legacy,
             transaction_index: 0,
             block_hash: 3.into(),
             block_number: 0,

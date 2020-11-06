@@ -21,7 +21,10 @@ use ethstore::ethkey::{Generator, Random};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::sync::Arc;
 use sync::ManageNetwork;
-use types::receipt::{LocalizedReceipt, TransactionOutcome};
+use types::{
+    receipt::{LocalizedReceipt, TransactionOutcome},
+    transaction::TypedTxId,
+};
 
 use super::manage_network::TestManageNetwork;
 use jsonrpc_core::IoHandler;

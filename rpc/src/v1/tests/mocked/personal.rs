@@ -91,9 +91,6 @@ fn setup_with(c: Config) -> PersonalTester {
     tester
 }
 
-#[cfg(test)]
-use rustc_hex::ToHex;
-
 #[test]
 fn accounts() {
     let tester = setup();

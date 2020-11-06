@@ -22,7 +22,6 @@ use ethereum_types::{Address, U256};
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
 use rlp;
-use rustc_hex::ToHex;
 use types::transaction::{Action, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;
@@ -166,6 +165,7 @@ fn rpc_eth_send_transaction() {
 
 #[test]
 fn rpc_eth_sign_transaction() {
+    use rustc_hex::ToHex;
     let tester = EthTester::default();
     let address = tester.accounts_provider.new_account(&"".into()).unwrap();
     tester
@@ -211,6 +211,7 @@ fn rpc_eth_sign_transaction() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -222,7 +223,6 @@ fn rpc_eth_sign_transaction() {
         + &format!("\"hash\":\"0x{:x}\",", t.hash())
         + r#""input":"0x","#
         + r#""nonce":"0x1","#
-        + r#""accessList":[],"#
         + &format!("\"publicKey\":\"0x{:x}\",", t.recover_public().unwrap())
         + &format!("\"r\":\"0x{:x}\",", U256::from(signature.r()))
         + &format!("\"raw\":\"0x{}\",", rlp.to_hex())

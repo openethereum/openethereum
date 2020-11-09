@@ -350,6 +350,7 @@ impl Schedule {
 
         schedule.eip1283 = true;
         schedule.eip2929 = true;
+        schedule.eip2930 = true;
 
         schedule.cold_sload_cost = EIP2929_COLD_SLOAD_COST;
         schedule.cold_account_access_cost = EIP2929_COLD_ACCOUNT_ACCESS_COST;

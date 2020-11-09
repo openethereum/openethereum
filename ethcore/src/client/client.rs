@@ -389,6 +389,8 @@ impl Importer {
 
         let db = client.db.read();
         db.key_value().flush().expect("DB flush failed.");
+
+        self.block_queue.resignal_verification();
         imported
     }
 

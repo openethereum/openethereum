@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::access_list::AccessList;
 use bytes::Bytes;
 use error::TrapKind;
 use ethereum_types::{Address, H256, U256};
@@ -75,6 +76,7 @@ pub struct FakeExt {
     pub balances: HashMap<Address, U256>,
     pub tracing: bool,
     pub is_static: bool,
+    pub access_list: AccessList,
 
     chain_id: u64,
 }
@@ -122,6 +124,19 @@ impl FakeExt {
         ext
     }
 
+    /// New fake externalities with YoloV2 schedule rules
+    pub fn new_yolo3(from: Address, to: Address, builtins: &[Address]) -> Self {
+        let mut ext = FakeExt::default();
+        ext.schedule = Schedule::new_yolo3();
+        ext.access_list.enable();
+        ext.access_list.insert_address(from);
+        ext.access_list.insert_address(to);
+        for builtin in builtins {
+            ext.access_list.insert_address(*builtin);
+        }
+        ext
+    }
+
     /// Alter fake externalities to allow wasm
     pub fn with_wasm(mut self) -> Self {
         self.schedule.wasm = Some(Default::default());
@@ -162,7 +177,7 @@ impl Ext for FakeExt {
     }
 
     fn balance(&self, address: &Address) -> Result<U256> {
-        Ok(self.balances[address])
+        Ok(self.balances.get(address).cloned().unwrap_or(U256::zero()))
     }
 
     fn blockhash(&mut self, number: &U256) -> H256 {
@@ -189,6 +204,10 @@ impl Ext for FakeExt {
         });
         // TODO: support traps in testing.
         Ok(ContractCreateResult::Failed)
+    }
+
+    fn calc_address(&self, _code: &[u8], _address: CreateContractAddress) -> Option<Address> {
+        None
     }
 
     fn call(
@@ -275,5 +294,25 @@ impl Ext for FakeExt {
 
     fn trace_next_instruction(&mut self, _pc: usize, _instruction: u8, _gas: U256) -> bool {
         self.tracing
+    }
+
+    fn al_is_enabled(&self) -> bool {
+        self.access_list.is_enabled()
+    }
+
+    fn al_contains_storage_key(&self, address: &Address, key: &H256) -> bool {
+        self.access_list.contains_storage_key(address, key)
+    }
+
+    fn al_insert_storage_key(&mut self, address: Address, key: H256) {
+        self.access_list.insert_storage_key(address, key)
+    }
+
+    fn al_contains_address(&self, address: &Address) -> bool {
+        self.access_list.contains_address(address)
+    }
+
+    fn al_insert_address(&mut self, address: Address) {
+        self.access_list.insert_address(address)
     }
 }

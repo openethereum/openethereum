@@ -1030,7 +1030,7 @@ mod tests {
     #[test]
     fn should_decode_access_list_in_rlp() {
         use rustc_hex::FromHex;
-        let encoded_tx = "b85803f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
+        let encoded_tx = "b85801f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
         let _: UnverifiedTransaction =
             rlp::decode(&FromHex::from_hex(encoded_tx).unwrap()).expect("decoding tx data failed");
     }
@@ -1038,7 +1038,7 @@ mod tests {
     #[test]
     fn should_decode_access_list_solo() {
         use rustc_hex::FromHex;
-        let encoded_tx = "03f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
+        let encoded_tx = "01f8552a820bb882c35080018648656c6c6f21c081aea0ed1f268cf14c76ecc77b32e903d0a7d7913d2159fde2155988cd8180b8e09144a04acdfaf2dbfabfe78fa6999d4229c59f9a80545aebd983230cc8fa7328c70e53";
         let _ = TypedTransaction::decode(&FromHex::from_hex(encoded_tx).unwrap())
             .expect("decoding tx data failed");
     }

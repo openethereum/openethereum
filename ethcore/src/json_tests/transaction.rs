@@ -17,7 +17,6 @@
 use super::test_common::*;
 use client::EvmTestClient;
 use ethjson;
-use rlp::Rlp;
 use std::path::Path;
 use transaction_ext::Transaction;
 use types::{

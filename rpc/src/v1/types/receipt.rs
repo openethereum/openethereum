@@ -15,7 +15,10 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256, U64};
-use types::{transaction::TypedTxId, receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt}};
+use types::{
+    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt},
+    transaction::TypedTxId,
+};
 use v1::types::Log;
 
 /// Receipt

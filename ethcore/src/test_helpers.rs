@@ -218,6 +218,7 @@ where
             .seal(test_engine, vec![])
             .unwrap();
 
+
         if let Err(e) = client.import_block(Unverified::from_rlp(b.rlp_bytes()).unwrap()) {
             panic!(
                 "error importing block which is valid by definition: {:?}",

@@ -104,7 +104,7 @@ pub mod signature {
 
     /// Returns refined v
     /// 0 if `v` would have been 27 under "Electrum" notation, 1 if 28 or 4 if invalid.
-    pub fn check_replay_protection(v: u64) -> u8 {
+    pub fn extract_standard_v(v: u64) -> u8 {
         match v {
             v if v == 27 => 0,
             v if v == 28 => 1,
@@ -160,7 +160,7 @@ impl Transaction {
         let legacy_v: u64 = d.val_at(6)?;
 
         let signature = SignatureComponents {
-            v: signature::check_replay_protection(legacy_v),
+            v: signature::extract_standard_v(legacy_v),
             r: d.val_at(7)?,
             s: d.val_at(8)?,
         };
@@ -189,27 +189,34 @@ impl Transaction {
         chain_id: Option<u64>,
         signature: Option<&SignatureComponents>,
     ) {
-        let mut list_size = 6;
-        list_size += if chain_id.is_some() { 3 } else { 0 };
-        list_size += if signature.is_some() { 3 } else { 0 };
+        let list_size = if chain_id.is_some() || signature.is_some() {
+            9
+        } else {
+            6
+        };
         rlp.begin_list(list_size);
 
         self.rlp_append_open(rlp);
 
-        //append chain_id
-        if let Some(n) = chain_id {
-            rlp.append(&n);
-            rlp.append(&0u8);
-            rlp.append(&0u8);
-        }
-
+        //append signature if given. If not, try to append chainId.
         if let Some(signature) = signature {
             signature.rlp_append_with_chain_id(rlp, chain_id);
+        } else {
+            if let Some(n) = chain_id {
+                rlp.append(&n);
+                rlp.append(&0u8);
+                rlp.append(&0u8);
+            }
         }
     }
 
-    pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
-        self.encode(rlp, None, Some(signature));
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        self.encode(rlp, chain_id, Some(signature));
     }
 
     pub fn rlp_append_open(&self, s: &mut RlpStream) {
@@ -314,12 +321,10 @@ impl AccessListTx {
     ) -> Vec<u8> {
         let mut stream = RlpStream::new();
 
-        let mut list_size = 7;
-        list_size += if chain_id.is_some() { 1 } else { 0 };
-        list_size += if signature.is_some() { 3 } else { 0 };
+        let list_size = if signature.is_some() { 11 } else { 8 };
         stream.begin_list(list_size);
 
-        // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size
+        // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
 
         //append legacy transaction
@@ -345,8 +350,8 @@ impl AccessListTx {
         [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
 
-    pub fn rlp_append(&self, rlp: &mut RlpStream, signature: &SignatureComponents) {
-        rlp.append(&self.encode(None, Some(signature)));
+    pub fn rlp_append(&self, rlp: &mut RlpStream, chain_id: Option<u64>, signature: &SignatureComponents) {
+        rlp.append(&self.encode(chain_id, Some(signature)));
     }
 
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
@@ -410,7 +415,7 @@ impl TypedTransaction {
                 signature: SignatureComponents {
                     r: U256::one(),
                     s: U256::one(),
-                    v: 0,
+                    v: 4,
                 },
                 hash: 0.into(),
             }
@@ -514,10 +519,15 @@ impl TypedTransaction {
         }
     }
 
-    fn rlp_append(&self, s: &mut RlpStream, signature: &SignatureComponents) {
+    fn rlp_append(
+        &self,
+        s: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
         match self {
-            Self::Legacy(tx) => tx.rlp_append(s, signature),
-            Self::AccessList(opt) => opt.rlp_append(s, signature),
+            Self::Legacy(tx) => tx.rlp_append(s, chain_id, signature),
+            Self::AccessList(opt) => opt.rlp_append(s, chain_id, signature),
         }
     }
 }
@@ -599,7 +609,7 @@ impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
             signature: SignatureComponents {
                 r: t.r.into(),
                 s: t.s.into(),
-                v: signature::check_replay_protection(t.v.into()),
+                v: signature::extract_standard_v(t.v.into()),
             },
             hash: 0.into(),
         }
@@ -642,7 +652,7 @@ impl rlp::Decodable for UnverifiedTransaction {
 
 impl rlp::Encodable for UnverifiedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.unsigned.rlp_append(s, &self.signature);
+        self.unsigned.rlp_append(s, self.chain_id, &self.signature);
     }
 }
 
@@ -681,7 +691,6 @@ impl UnverifiedTransaction {
 
     /// Returns standardized `v` value (0, 1 or 4 (invalid))
     pub fn standard_v(&self) -> u8 {
-        //signature::check_replay_protection(self.signature.v)
         self.signature.v
     }
 

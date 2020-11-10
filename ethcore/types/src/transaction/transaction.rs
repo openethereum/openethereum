@@ -350,7 +350,12 @@ impl AccessListTx {
         [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
 
-    pub fn rlp_append(&self, rlp: &mut RlpStream, chain_id: Option<u64>, signature: &SignatureComponents) {
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
         rlp.append(&self.encode(chain_id, Some(signature)));
     }
 

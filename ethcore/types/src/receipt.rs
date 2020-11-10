@@ -125,6 +125,13 @@ impl TypedReceipt {
         }
     }
 
+    pub fn tx_type(&self) -> TypedTxId {
+        match self {
+            Self::Legacy(_) => TypedTxId::Legacy,
+            Self::AccessList(_) => TypedTxId::AccessList,
+        }
+    }
+
     pub fn receipt(&self) -> &LegacyReceipt {
         match self {
             Self::Legacy(receipt) => receipt,

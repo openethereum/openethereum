@@ -22,8 +22,7 @@ use ethcore::client::{
     BlockChainClient, BlockId, Call, CallAnalytics, StateClient, StateInfo, TraceId, TransactionId,
 };
 use ethereum_types::H256;
-use rlp::Rlp;
-use types::transaction::SignedTransaction;
+use types::transaction::{SignedTransaction, TypedTransaction};
 
 use jsonrpc_core::Result;
 use v1::{
@@ -194,9 +193,8 @@ where
     ) -> Result<TraceResults> {
         let block = block.unwrap_or_default();
 
-        let tx = Rlp::new(&raw_transaction.into_vec())
-            .as_val()
-            .map_err(|e| errors::invalid_params("Transaction is not valid RLP", e))?;
+        let tx = TypedTransaction::decode(&raw_transaction.0)
+            .map_err(|e| errors::invalid_params("Transaction is not in valid Format", e))?;
         let signed = SignedTransaction::new(tx).map_err(errors::transaction)?;
 
         let id = match block {

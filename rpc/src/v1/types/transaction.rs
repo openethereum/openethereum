@@ -21,7 +21,8 @@ use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::transaction::{
-    Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
+    AccessList, Action, LocalizedTransaction, PendingTransaction, SignedTransaction,
+    TypedTransaction,
 };
 use v1::types::{Bytes, TransactionCondition};
 
@@ -72,7 +73,7 @@ pub struct Transaction {
     /// transaction type
     pub tx_type: u8,
     /// optional access list
-    pub access_list: Vec<(H160, Vec<H256>)>,
+    pub access_list: AccessList,
 }
 
 /// Local Transaction Status

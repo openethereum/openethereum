@@ -18,6 +18,7 @@
 
 use ansi_term::Colour;
 use ethereum_types::{H160, U256};
+use types::transaction::{AccessList, TypedTxId};
 use v1::{
     helpers,
     types::{Bytes, TransactionCondition},
@@ -30,6 +31,9 @@ use std::fmt;
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionRequest {
+    /// type of transaction. If none we assume it is legacy
+    #[serde(default)]
+    pub tx_type: TypedTxId,
     /// Sender
     pub from: Option<H160>,
     /// Recipient
@@ -46,6 +50,8 @@ pub struct TransactionRequest {
     pub nonce: Option<U256>,
     /// Delay until this block condition.
     pub condition: Option<TransactionCondition>,
+    /// Access list
+    pub access_list: Option<AccessList>,
 }
 
 pub fn format_ether(i: U256) -> String {
@@ -97,6 +103,7 @@ impl fmt::Display for TransactionRequest {
 impl From<helpers::TransactionRequest> for TransactionRequest {
     fn from(r: helpers::TransactionRequest) -> Self {
         TransactionRequest {
+            tx_type: r.tx_type,
             from: r.from.map(Into::into),
             to: r.to.map(Into::into),
             gas_price: r.gas_price.map(Into::into),
@@ -105,6 +112,7 @@ impl From<helpers::TransactionRequest> for TransactionRequest {
             data: r.data.map(Into::into),
             nonce: r.nonce.map(Into::into),
             condition: r.condition.map(Into::into),
+            access_list: r.access_list.map(Into::into),
         }
     }
 }
@@ -112,6 +120,7 @@ impl From<helpers::TransactionRequest> for TransactionRequest {
 impl From<helpers::FilledTransactionRequest> for TransactionRequest {
     fn from(r: helpers::FilledTransactionRequest) -> Self {
         TransactionRequest {
+            tx_type: r.tx_type,
             from: Some(r.from),
             to: r.to,
             gas_price: Some(r.gas_price),
@@ -120,6 +129,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data.into()),
             nonce: r.nonce,
             condition: r.condition,
+            access_list: r.access_list,
         }
     }
 }
@@ -127,6 +137,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
 impl Into<helpers::TransactionRequest> for TransactionRequest {
     fn into(self) -> helpers::TransactionRequest {
         helpers::TransactionRequest {
+            tx_type: self.tx_type,
             from: self.from.map(Into::into),
             to: self.to.map(Into::into),
             gas_price: self.gas_price.map(Into::into),
@@ -135,6 +146,7 @@ impl Into<helpers::TransactionRequest> for TransactionRequest {
             data: self.data.map(Into::into),
             nonce: self.nonce.map(Into::into),
             condition: self.condition.map(Into::into),
+            access_list: self.access_list.map(Into::into),
         }
     }
 }
@@ -165,6 +177,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
+                tx_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: Some(H160::from(2)),
                 gas_price: Some(U256::from(1)),
@@ -173,6 +186,7 @@ mod tests {
                 data: Some(vec![0x12, 0x34, 0x56].into()),
                 nonce: Some(U256::from(4)),
                 condition: Some(TransactionCondition::Number(0x13)),
+                access_list: None,
             }
         );
     }
@@ -190,6 +204,7 @@ mod tests {
         let deserialized: TransactionRequest = serde_json::from_str(s).unwrap();
 
         assert_eq!(deserialized, TransactionRequest {
+            tx_type: Default::default(),
 			from: Some(H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap()),
 			to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
 			gas_price: Some(U256::from_str("9184e72a000").unwrap()),
@@ -197,7 +212,8 @@ mod tests {
 			value: Some(U256::from_str("9184e72a").unwrap()),
 			data: Some("d46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675".from_hex().unwrap().into()),
 			nonce: None,
-			condition: None,
+            condition: None,
+            access_list: None,
 		});
     }
 
@@ -209,6 +225,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
+                tx_type: Default::default(),
                 from: Some(H160::from(1).into()),
                 to: None,
                 gas_price: None,
@@ -217,6 +234,7 @@ mod tests {
                 data: None,
                 nonce: None,
                 condition: None,
+                access_list: None,
             }
         );
     }
@@ -236,6 +254,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
+                tx_type: Default::default(),
                 from: Some(H160::from_str("b5f7502a2807cb23615c7456055e1d65b2508625").unwrap()),
                 to: Some(H160::from_str("895d32f2db7d01ebb50053f9e48aacf26584fe40").unwrap()),
                 gas_price: Some(U256::from_str("0ba43b7400").unwrap()),
@@ -244,6 +263,7 @@ mod tests {
                 data: Some(vec![0x85, 0x95, 0xba, 0xb1].into()),
                 nonce: None,
                 condition: None,
+                access_list: None,
             }
         );
     }

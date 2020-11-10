@@ -15,6 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{H160, U256};
+use types::transaction::{AccessList, TypedTxId};
 use v1::{helpers::CallRequest as Request, types::Bytes};
 
 /// Call request
@@ -22,6 +23,8 @@ use v1::{helpers::CallRequest as Request, types::Bytes};
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct CallRequest {
+    /// transaction type
+    pub tx_type: TypedTxId,
     /// From
     pub from: Option<H160>,
     /// To
@@ -36,11 +39,14 @@ pub struct CallRequest {
     pub data: Option<Bytes>,
     /// Nonce
     pub nonce: Option<U256>,
+    /// Access list
+    pub access_list: Option<AccessList>,
 }
 
 impl Into<Request> for CallRequest {
     fn into(self) -> Request {
         Request {
+            tx_type: self.tx_type,
             from: self.from.map(Into::into),
             to: self.to.map(Into::into),
             gas_price: self.gas_price.map(Into::into),
@@ -48,6 +54,7 @@ impl Into<Request> for CallRequest {
             value: self.value.map(Into::into),
             data: self.data.map(Into::into),
             nonce: self.nonce.map(Into::into),
+            access_list: self.access_list.map(Into::into),
         }
     }
 }
@@ -76,6 +83,7 @@ mod tests {
         assert_eq!(
             deserialized,
             CallRequest {
+                tx_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: Some(H160::from(2)),
                 gas_price: Some(U256::from(1)),
@@ -83,6 +91,7 @@ mod tests {
                 value: Some(U256::from(3)),
                 data: Some(vec![0x12, 0x34, 0x56].into()),
                 nonce: Some(U256::from(4)),
+                access_list: None,
             }
         );
     }
@@ -100,13 +109,15 @@ mod tests {
         let deserialized: CallRequest = serde_json::from_str(s).unwrap();
 
         assert_eq!(deserialized, CallRequest {
+            tx_type: Default::default(),
 			from: Some(H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap()),
 			to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
 			gas_price: Some(U256::from_str("9184e72a000").unwrap()),
 			gas: Some(U256::from_str("76c0").unwrap()),
 			value: Some(U256::from_str("9184e72a").unwrap()),
 			data: Some("d46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675".from_hex().unwrap().into()),
-			nonce: None
+            nonce: None,
+            access_list: None,
 		});
     }
 
@@ -118,6 +129,7 @@ mod tests {
         assert_eq!(
             deserialized,
             CallRequest {
+                tx_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: None,
                 gas_price: None,
@@ -125,6 +137,7 @@ mod tests {
                 value: None,
                 data: None,
                 nonce: None,
+                access_list: None,
             }
         );
     }

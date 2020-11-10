@@ -120,6 +120,7 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
         };
 
         Box::new(future::ok(FilledTransactionRequest {
+            tx_type: request.tx_type,
             from,
             used_default_from: request.from.is_none(),
             to: request.to,
@@ -133,6 +134,7 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             value: request.value.unwrap_or_else(|| 0.into()),
             data: request.data.unwrap_or_else(Vec::new),
             condition: request.condition,
+            access_list: request.access_list,
         }))
     }
 

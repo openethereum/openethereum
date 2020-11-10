@@ -22,10 +22,11 @@ use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Encodable, Rlp, RlpStream};
-use std::{
-    convert::{TryFrom, TryInto},
-    ops::Deref,
-};
+use std::{convert::TryInto, ops::Deref};
+
+pub type AccessList = Vec<(H160, Vec<H256>)>;
+
+use super::TypedTxId;
 
 use transaction::error;
 
@@ -40,23 +41,6 @@ pub const SYSTEM_ADDRESS: Address = H160([
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xfe,
 ]);
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypedTxId {
-    AccessList = 0x03,
-    Legacy = 0x80, // With 0x80 we are sure that all other types will no overlap
-}
-
-impl TryFrom<u8> for TypedTxId {
-    type Error = ();
-
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
-        match v {
-            x if x == TypedTxId::AccessList as u8 => Ok(TypedTxId::AccessList),
-            _ => Err(()),
-        }
-    }
-}
 
 /// Transaction action type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -234,11 +218,11 @@ impl HeapSizeOf for Transaction {
 pub struct AccessListTx {
     pub transaction: Transaction,
     //optional access list
-    pub access_list: Vec<(H160, Vec<H256>)>,
+    pub access_list: AccessList,
 }
 
 impl AccessListTx {
-    pub fn new(transaction: Transaction, access_list: Vec<(H160, Vec<H256>)>) -> AccessListTx {
+    pub fn new(transaction: Transaction, access_list: AccessList) -> AccessListTx {
         AccessListTx {
             transaction,
             access_list,
@@ -273,7 +257,7 @@ impl AccessListTx {
         let accl_rlp = tx_rlp.at(6)?;
 
         // access_list pattern: [[{20 bytes}, [{32 bytes}...]]...]
-        let mut accl: Vec<(H160, Vec<H256>)> = Vec::new();
+        let mut accl: AccessList = Vec::new();
 
         for i in 0..accl_rlp.item_count()? {
             let accounts = accl_rlp.at(i)?;
@@ -304,7 +288,7 @@ impl AccessListTx {
         .compute_hash())
     }
 
-    // encode by this payload spec: 0x03 | rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    // encode by this payload spec: 0x01 | rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn encode(
         &self,
         chain_id: Option<u64>,

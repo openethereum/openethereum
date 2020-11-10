@@ -22,8 +22,7 @@ use ethereum_types::U256;
 use ethkey;
 use parity_runtime::Executor;
 use parking_lot::Mutex;
-use rlp::Rlp;
-use types::transaction::{PendingTransaction, SignedTransaction};
+use types::transaction::{PendingTransaction, SignedTransaction, TypedTransaction};
 
 use jsonrpc_core::{
     futures::{future, future::Either, Future, IntoFuture},
@@ -161,7 +160,7 @@ impl<D: Dispatcher + 'static> SignerClient<D> {
     where
         F: FnOnce(PendingTransaction) -> Result<ConfirmationResponse>,
     {
-        let signed_transaction = Rlp::new(&bytes.0).as_val().map_err(errors::rlp)?;
+        let signed_transaction = TypedTransaction::decode(&bytes.0).map_err(errors::rlp)?;
         let signed_transaction = SignedTransaction::new(signed_transaction)
             .map_err(|e| errors::invalid_params("Invalid signature.", e))?;
         let sender = signed_transaction.sender();

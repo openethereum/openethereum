@@ -256,6 +256,7 @@ mod test {
 
     fn request() -> ConfirmationPayload {
         ConfirmationPayload::SendTransaction(FilledTransactionRequest {
+            tx_type: Default::default(),
             from: Address::from(1),
             used_default_from: false,
             to: Some(Address::from(2)),
@@ -265,6 +266,7 @@ mod test {
             data: vec![],
             nonce: None,
             condition: None,
+            access_list: None,
         })
     }
 

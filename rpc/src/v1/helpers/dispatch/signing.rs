@@ -21,7 +21,10 @@ use bytes::Bytes;
 use crypto::DEFAULT_MAC;
 use ethereum_types::{Address, H256, U256};
 use ethkey::Signature;
-use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
+use jsonrpc_core::{Error, ErrorCode};
+use types::transaction::{
+    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,
+};
 
 use jsonrpc_core::Result;
 use v1::helpers::{errors, FilledTransactionRequest};
@@ -48,14 +51,26 @@ impl super::Accounts for Signer {
         nonce: U256,
         password: SignWith,
     ) -> Result<WithToken<SignedTransaction>> {
-        let t = TypedTransaction::Legacy(Transaction {
-            nonce: nonce,
+        let legacy_tx = Transaction {
+            nonce,
             action: filled.to.map_or(Action::Create, Action::Call),
             gas: filled.gas,
             gas_price: filled.gas_price,
             value: filled.value,
             data: filled.data,
-        }); //Only allow legacy transaction to be signed
+        };
+        let t = match filled.tx_type {
+            TypedTxId::Legacy => TypedTransaction::Legacy(legacy_tx),
+            TypedTxId::AccessList => {
+                if filled.access_list.is_none() {
+                    return Err(Error::new(ErrorCode::InvalidParams));
+                }
+                TypedTransaction::AccessList(AccessListTx::new(
+                    legacy_tx,
+                    filled.access_list.unwrap(),
+                ))
+            }
+        };
 
         let hash = t.hash(chain_id);
         let signature = signature(&*self.accounts, filled.from, hash, password)?;

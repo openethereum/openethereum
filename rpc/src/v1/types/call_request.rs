@@ -24,6 +24,7 @@ use v1::{helpers::CallRequest as Request, types::Bytes};
 #[serde(rename_all = "camelCase")]
 pub struct CallRequest {
     /// transaction type
+    #[serde(default)]
     pub tx_type: TypedTxId,
     /// From
     pub from: Option<H160>,

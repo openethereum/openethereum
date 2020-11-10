@@ -204,7 +204,7 @@ impl Transaction {
         }
 
         if let Some(signature) = signature {
-            signature.rlp_append(rlp);
+            signature.rlp_append_with_chain_id(rlp,chain_id);
         }
     }
 
@@ -356,7 +356,7 @@ impl AccessListTx {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypedTransaction {
-    Legacy(Transaction), // old legacy RLP encoded transaction
+    Legacy(Transaction),      // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
                               // Accesses outside the list are possible, but become more expensive.
 }
@@ -374,7 +374,7 @@ impl TypedTransaction {
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
         match self {
             Self::Legacy(tx) => tx.hash(chain_id),
-            Self::AccessList(ocl) => ocl.hash(chain_id),
+            Self::AccessList(tx) => tx.hash(chain_id),
         }
     }
 
@@ -595,11 +595,11 @@ impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
                 value: t.value.into(),
                 data: t.data.into(),
             }),
-            chain_id: None,
+            chain_id: signature::extract_chain_id_from_legacy_v(t.v.into()),
             signature: SignatureComponents {
                 r: t.r.into(),
                 s: t.s.into(),
-                v: t.v.into(),
+                v: signature::check_replay_protection(t.v.into()),
             },
             hash: 0.into(),
         }

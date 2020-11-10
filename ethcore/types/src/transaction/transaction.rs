@@ -204,7 +204,7 @@ impl Transaction {
         }
 
         if let Some(signature) = signature {
-            signature.rlp_append_with_chain_id(rlp,chain_id);
+            signature.rlp_append_with_chain_id(rlp, chain_id);
         }
     }
 
@@ -356,7 +356,7 @@ impl AccessListTx {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypedTransaction {
-    Legacy(Transaction),      // old legacy RLP encoded transaction
+    Legacy(Transaction), // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
                               // Accesses outside the list are possible, but become more expensive.
 }
@@ -1045,7 +1045,10 @@ mod tests {
                 value: U256::from(1),
                 data: b"Hello!".to_vec(),
             },
-            vec![(H160::from(10), vec![H256::from(102),H256::from(103)]), (H160::from(400),vec![])],
+            vec![
+                (H160::from(10), vec![H256::from(102), H256::from(103)]),
+                (H160::from(400), vec![]),
+            ],
         ))
         .sign(&key.secret(), Some(69));
         let encoded = rlp::encode(&t);

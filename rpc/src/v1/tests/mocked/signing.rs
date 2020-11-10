@@ -607,10 +607,11 @@ fn should_compose_transaction() {
 		"id": 1
 	}"#;
 
-    let response = r#"{"jsonrpc":"2.0","result":{"condition":null,"data":"0x","from":"0x"#
-        .to_owned()
-        + &from
-        + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"value":"0x5"},"id":1}"#;
+    let response =
+        r#"{"jsonrpc":"2.0","result":{"accessList":null,"condition":null,"data":"0x","from":"0x"#
+            .to_owned()
+            + &from
+            + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"txType":128,"value":"0x5"},"id":1}"#;
 
     // then
     let res = tester.io.handle_request(&request).wait().unwrap();

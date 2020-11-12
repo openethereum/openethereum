@@ -493,7 +493,7 @@ impl TypedTransaction {
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }
-        //other transaction types
+        // other transaction types
         match id.unwrap() {
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
             TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction")),

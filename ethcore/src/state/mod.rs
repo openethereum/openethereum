@@ -955,7 +955,7 @@ impl<B: Backend> State<B> {
             TransactionOutcome::StateRoot(self.root().clone())
         };
 
-        let output = e.output; //TODO dr create new types of receipts
+        let output = e.output;
         let receipt = TypedReceipt::new(
             t.tx_type(),
             LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),

@@ -1137,7 +1137,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     {
         let schedule = self.schedule;
 
-        //check if particualar transaction type is enabled at this block number in schedule
+        // check if particualar transaction type is enabled at this block number in schedule
         match t.as_unsigned() {
             TypedTransaction::AccessList(_) => {
                 if !schedule.eip2930 {
@@ -1161,7 +1161,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 access_list.insert_address(*address);
             }
             if schedule.eip2930 {
-                //optional access list
+                // optional access list
                 if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
                     for item in al_tx.access_list.iter() {
                         access_list.insert_address(item.0);

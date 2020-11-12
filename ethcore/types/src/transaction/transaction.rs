@@ -160,7 +160,7 @@ impl Transaction {
         let legacy_v: u64 = d.val_at(6)?;
 
         let signature = SignatureComponents {
-            v: signature::extract_standard_v(legacy_v),
+            standard_v: signature::extract_standard_v(legacy_v),
             r: d.val_at(7)?,
             s: d.val_at(8)?,
         };
@@ -295,7 +295,7 @@ impl AccessListTx {
 
         // we get signature part from here
         let signature = SignatureComponents {
-            v: tx_rlp.val_at(8)?,
+            standard_v: tx_rlp.val_at(8)?,
             r: tx_rlp.val_at(9)?,
             s: tx_rlp.val_at(10)?,
         };
@@ -371,7 +371,6 @@ pub enum TypedTransaction {
                               // Accesses outside the list are possible, but become more expensive.
 }
 
-//Function that are batched from Transaction struct and needs to be reimplemented
 impl TypedTransaction {
     pub fn tx_type(&self) -> TypedTxId {
         match self {
@@ -404,7 +403,7 @@ impl TypedTransaction {
             signature: SignatureComponents {
                 r: sig.r().into(),
                 s: sig.s().into(),
-                v: sig.v().into(),
+                standard_v: sig.v().into(),
             },
             hash: 0.into(),
         }
@@ -420,7 +419,7 @@ impl TypedTransaction {
                 signature: SignatureComponents {
                     r: U256::one(),
                     s: U256::one(),
-                    v: 4,
+                    standard_v: 4,
                 },
                 hash: 0.into(),
             }
@@ -433,7 +432,7 @@ impl TypedTransaction {
     /// Legacy EIP-86 compatible empty signature.
     /// This method is used in json tests as well as
     /// signature verification tests.
-    //#[cfg(any(test, feature = "test-helpers"))]
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn null_sign(self, chain_id: u64) -> SignedTransaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
@@ -442,7 +441,7 @@ impl TypedTransaction {
                 signature: SignatureComponents {
                     r: U256::zero(),
                     s: U256::zero(),
-                    v: 0u8,
+                    standard_v: 0,
                 },
                 hash: 0.into(),
             }
@@ -461,7 +460,7 @@ impl TypedTransaction {
             signature: SignatureComponents {
                 r: U256::one(),
                 s: U256::one(),
-                v: 0,
+                standard_v: 0,
             },
             hash: 0.into(),
         }
@@ -550,8 +549,8 @@ impl HeapSizeOf for TypedTransaction {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureComponents {
     /// The V field of the signature; the LS bit described which half of the curve our point falls
-    /// in. The MS bits describe which chain this transaction is for. If 27/28, its for all chains.
-    v: u8,
+    /// in. It can be 0 or 1.
+    standard_v: u8,
     /// The R field of the signature; helps describe the point on the curve.
     r: U256,
     /// The S field of the signature; helps describe the point on the curve.
@@ -560,13 +559,16 @@ pub struct SignatureComponents {
 
 impl SignatureComponents {
     pub fn rlp_append(&self, s: &mut RlpStream) {
-        s.append(&self.v);
+        s.append(&self.standard_v);
         s.append(&self.r);
         s.append(&self.s);
     }
 
     pub fn rlp_append_with_chain_id(&self, s: &mut RlpStream, chain_id: Option<u64>) {
-        s.append(&signature::add_chain_replay_protection(self.v, chain_id));
+        s.append(&signature::add_chain_replay_protection(
+            self.standard_v,
+            chain_id,
+        ));
         s.append(&self.r);
         s.append(&self.s);
     }
@@ -614,7 +616,7 @@ impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
             signature: SignatureComponents {
                 r: t.r.into(),
                 s: t.s.into(),
-                v: signature::extract_standard_v(t.v.into()),
+                standard_v: signature::extract_standard_v(t.v.into()),
             },
             hash: 0.into(),
         }
@@ -690,18 +692,17 @@ impl UnverifiedTransaction {
 
     ///	Reference to unsigned part of this transaction.
     pub fn as_unsigned(&self) -> &TypedTransaction {
-        //TODO check where this is used
         &self.unsigned
     }
 
     /// Returns standardized `v` value (0, 1 or 4 (invalid))
     pub fn standard_v(&self) -> u8 {
-        self.signature.v
+        self.signature.standard_v
     }
 
     /// The `v` value that appears in the RLP.
     pub fn original_v(&self) -> u64 {
-        signature::add_chain_replay_protection(self.signature.v, self.chain_id)
+        signature::add_chain_replay_protection(self.signature.standard_v, self.chain_id)
     }
 
     /// The chain ID, or `None` if this is a global transaction.

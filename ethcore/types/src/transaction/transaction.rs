@@ -327,7 +327,7 @@ impl AccessListTx {
         // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
 
-        //append legacy transaction
+        // append legacy transaction
         self.transaction.rlp_append_open(&mut stream);
 
         // access list

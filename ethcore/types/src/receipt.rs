@@ -65,15 +65,14 @@ impl LegacyReceipt {
         }
     }
     pub fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? == 3 {
-            Ok(LegacyReceipt {
+        match rlp.item_count()? {
+            3 => Ok(LegacyReceipt {
                 outcome: TransactionOutcome::Unknown,
                 gas_used: rlp.val_at(0)?,
                 log_bloom: rlp.val_at(1)?,
                 logs: rlp.list_at(2)?,
-            })
-        } else {
-            Ok(LegacyReceipt {
+            }),
+            4 => Ok(LegacyReceipt {
                 gas_used: rlp.val_at(1)?,
                 log_bloom: rlp.val_at(2)?,
                 logs: rlp.list_at(3)?,
@@ -85,7 +84,8 @@ impl LegacyReceipt {
                         TransactionOutcome::StateRoot(first.as_val()?)
                     }
                 },
-            })
+            }),
+            _ => Err(DecoderError::RlpIncorrectListLen),
         }
     }
 

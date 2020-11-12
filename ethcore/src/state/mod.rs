@@ -996,7 +996,7 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
-    /// Commits our cached account changes into the trie.
+    /// t_nb 8.5.2 Commits our cached account changes into the trie.
     pub fn commit(&mut self) -> Result<(), Error> {
         assert!(self.checkpoints.borrow().is_empty());
         // first, commit the sub trees.
@@ -1036,7 +1036,7 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
-    /// Propagate local cache into shared canonical state cache.
+    /// t_nb 9.4 Propagate local cache into shared canonical state cache.
     fn propagate_to_global_cache(&mut self) {
         let mut addresses = self.cache.borrow_mut();
         trace!("Committing cache {:?} entries", addresses.len());

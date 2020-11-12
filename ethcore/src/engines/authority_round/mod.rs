@@ -1307,7 +1307,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         Ok(())
     }
 
-    // t_nb 7.1.5 
+    // t_nb 8.1.5 
     fn on_new_block(
         &self,
         block: &mut ExecutedBlock,

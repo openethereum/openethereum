@@ -147,6 +147,7 @@ impl StateDB {
         Ok(records)
     }
 
+    /// t_nb 9.15 
     /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
     /// backing database and reverting any non-canonical historical commit's insertions.
     pub fn mark_canonical(
@@ -158,7 +159,7 @@ impl StateDB {
         self.db.mark_canonical(batch, end_era, canon_id)
     }
 
-    /// Propagate local cache into the global cache and synchonize
+    /// t_nb 9.10 Propagate local cache into the global cache and synchonize
     /// the global cache with the best block state.
     /// This function updates the global cache by removing entries
     /// that are invalidated by chain reorganization. `sync_cache`

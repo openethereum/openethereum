@@ -1476,7 +1476,7 @@ impl BlockChain {
         }
     }
 
-    /// Apply pending insertion updates
+    /// t_nb 9.12 commit changed to become current greatest by applying pending insertion updates
     pub fn commit(&self) {
         let mut pending_best_ancient_block = self.pending_best_ancient_block.write();
         let mut pending_best_block = self.pending_best_block.write();

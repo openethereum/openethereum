@@ -332,6 +332,7 @@ impl JournalDB for OverlayRecentDB {
         self.journal_overlay.read().earliest_era
     }
 
+    /// t_nb 9.6
     fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: &H256) -> io::Result<u32> {
         trace!(target: "journaldb", "entry: #{} ({})", now, id);
 

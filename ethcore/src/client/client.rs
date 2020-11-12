@@ -396,7 +396,7 @@ impl Importer {
         imported
     }
 
-    // t_nb 6.0.1 check and lock block, 
+    // t_nb 6.0.1 check and lock block,
     fn check_and_lock_block(
         &self,
         bytes: &[u8],
@@ -616,7 +616,7 @@ impl Importer {
 
         // t_nb 9.2 calcuate route between current and latest block.
         let route = chain.tree_route(best_hash, *parent).expect("forks are only kept when it has common ancestors; tree route from best to prospective's parent always exists; qed");
-        
+
         // t_nb 9.3 Check block total difficulty
         let fork_choice = if route.is_from_route_finalized {
             ForkChoice::Old
@@ -624,17 +624,18 @@ impl Importer {
             self.engine.fork_choice(&new, &best)
         };
 
-        // t_n v 9.3 CHECK! I *think* this is fine, even if the state_root is equal to another
+        // t_nb 9.4 CHECK! I *think* this is fine, even if the state_root is equal to another
         // already-imported block of the same number.
         // TODO: Prove it with a test.
         let mut state = block.state.drop().1;
 
-        // check epoch end signal, potentially generating a proof on the current
-        // state.
+        // t_nb 9.5 check epoch end signal, potentially generating a proof on the current
+        // state. Write transition into db.
         if let Some(pending) = pending {
             chain.insert_pending_transition(&mut batch, header.hash(), pending);
         }
 
+        // t_nb 9.6 push state to database Transaction. (It calls journal_under from JournalDB)
         state
             .journal_under(&mut batch, number, hash)
             .expect("DB commit failed");
@@ -645,6 +646,7 @@ impl Importer {
                 let AncestryAction::MarkFinalized(a) = ancestry_action;
 
                 if a != header.hash() {
+                    // t_nb 9.7 if there are finalized ancester, mark that chainge in block in db. (Used by AuRa)
                     chain
                         .mark_finalized(&mut batch, a)
                         .expect("Engine's ancestry action must be known blocks; qed");
@@ -657,6 +659,7 @@ impl Importer {
             })
             .collect();
 
+        // t_nb 9.8 insert block
         let route = chain.insert_block(
             &mut batch,
             block_data,
@@ -667,6 +670,7 @@ impl Importer {
             },
         );
 
+        // t_nb 9.9 insert traces (if they are enabled)
         client.tracedb.read().import(
             &mut batch,
             TraceImportRequest {
@@ -679,15 +683,22 @@ impl Importer {
         );
 
         let is_canon = route.enacted.last().map_or(false, |h| h == hash);
+
+        // t_nb 9.10 sync cache
         state.sync_cache(&route.enacted, &route.retracted, is_canon);
         // Final commit to the DB
+        // t_nb 9.11 Write Transaction to database (cached)
         client.db.read().key_value().write_buffered(batch);
+        // t_nb 9.12 commit changed to become current greatest by applying pending insertion updates (Sync point)
         chain.commit();
 
+        // t_nb 9.13 check epoch end. Related only to AuRa and it seems light engine
         self.check_epoch_end(&header, &finalized, &chain, client);
 
+        // t_nb 9.14 update last hashes. They are build in step 7.5
         client.update_last_hashes(&parent, hash);
 
+        // t_nb 9.15 prune ancient states
         if let Err(e) = client.prune_ancient(state, &chain) {
             warn!("Failed to prune ancient state data: {}", e);
         }
@@ -1110,7 +1121,7 @@ impl Client {
         with_call(&call)
     }
 
-    // prune ancient states until below the memory limit or only the minimum amount remain.
+    // t_nb 9.15 prune ancient states until below the memory limit or only the minimum amount remain.
     fn prune_ancient(
         &self,
         mut state_db: StateDB,
@@ -1150,6 +1161,7 @@ impl Client {
         Ok(())
     }
 
+    // t_nb 9.14 update last hashes. They are build in step 7.5
     fn update_last_hashes(&self, parent: &H256, hash: &H256) {
         let mut hashes = self.last_hashes.write();
         if hashes.front().map_or(false, |h| h == parent) {
@@ -1735,7 +1747,6 @@ impl CallContract for Client {
 impl ImportBlock for Client {
     // t_nb 2.0 import block to client
     fn import_block(&self, unverified: Unverified) -> EthcoreResult<H256> {
-
         // t_nb 2.1 check if header hash is known to us.
         if self.chain.read().is_known(&unverified.hash()) {
             bail!(EthcoreErrorKind::Import(ImportErrorKind::AlreadyInChain));

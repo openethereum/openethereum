@@ -330,7 +330,7 @@ impl AccessListTx {
         //append legacy transaction
         self.transaction.rlp_append_open(&mut stream);
 
-        //access list
+        // access list
         stream.begin_list(self.access_list.len());
         for access in self.access_list.iter() {
             stream.begin_list(2);

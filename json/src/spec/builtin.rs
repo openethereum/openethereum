@@ -37,6 +37,11 @@ pub struct Modexp {
     pub divisor: u64,
 }
 
+/// Pricing for EIP2565 modular exponentiation.
+#[derive(Debug, PartialEq, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct Modexp2565 {}
+
 /// Pricing for constant alt_bn128 operations (ECADD and ECMUL)
 #[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
@@ -101,8 +106,10 @@ pub enum Pricing {
     },
     /// Linear pricing.
     Linear(Linear),
-    /// Pricing for modular exponentiation.
+    /// Pricing for EIP198 modular exponentiation.
     Modexp(Modexp),
+    /// Pricing for EIP2565 modular exponentiation.
+    Modexp2565(Modexp2565),
     /// Pricing for alt_bn128_pairing exponentiation.
     AltBn128Pairing(AltBn128Pairing),
     /// Pricing for constant alt_bn128 operations
@@ -190,7 +197,7 @@ pub struct PricingAt {
 mod tests {
     use super::{
         AltBn128ConstOperations, BTreeMap, Bls12G1Multiexp, Bls12G2Multiexp, Builtin,
-        BuiltinCompat, Linear, Modexp, Pricing, PricingAt,
+        BuiltinCompat, Linear, Modexp, Modexp2565, Pricing, PricingAt,
     };
     use macros::map;
     use serde_json;
@@ -355,6 +362,29 @@ mod tests {
                     price: Pricing::Bls12G2Multiexp(Bls12G2Multiexp{
                             base: 55000
                     }),
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn deserialization_modexp2565() {
+        let s = r#"{
+			"name": "modexp",
+			"pricing": {
+				"10000000": {
+					"price": { "modexp2565": {  } }
+				}
+			}
+		}"#;
+        let builtin: Builtin = serde_json::from_str::<BuiltinCompat>(s).unwrap().into();
+        assert_eq!(builtin.name, "modexp");
+        assert_eq!(
+            builtin.pricing,
+            btreemap![
+                10000000 => PricingAt {
+                    info: None,
+                    price: Pricing::Modexp2565(Modexp2565{}),
                 }
             ]
         );

@@ -300,7 +300,7 @@ impl AccessListTx {
             s: tx_rlp.val_at(10)?,
         };
 
-        //and here we create UnverifiedTransaction and calculate its hash
+        // and here we create UnverifiedTransaction and calculate its hash
         Ok(UnverifiedTransaction::new(
             TypedTransaction::AccessList(AccessListTx {
                 transaction,

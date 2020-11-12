@@ -67,7 +67,10 @@ jobs:
           key:                  ${{ runner.os }}-sccache-build-tests-${{ hashFiles('**/Cargo.lock') }}
       - name:                   Work around MacOS + Cargo + Github Actions cache bug
         if:                     runner.os == 'macOS'
-        run:                    cargo clean --locked --release -p serde_derive
+        run:                    |
+                                cargo clean --locked --release -p serde_derive
+                                cargo clean --locked --release -p logos_derive
+                                
       - name:                   Install sccache for ${{ matrix.platform }}
         shell:                  pwsh
         run:                    pwsh scripts/actions/install-sccache.ps1 ${{ runner.os}}

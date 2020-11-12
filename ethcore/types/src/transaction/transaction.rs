@@ -346,7 +346,7 @@ impl AccessListTx {
             signature.rlp_append(&mut stream);
         }
 
-        //make as vector of bytes
+        // make as vector of bytes
         [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
 

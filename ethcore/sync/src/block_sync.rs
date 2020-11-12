@@ -762,7 +762,7 @@ mod tests {
     use triehash_ethereum::ordered_trie_root;
     use types::{
         header::Header as BlockHeader,
-        transaction::{SignedTransaction, Transaction},
+        transaction::{SignedTransaction, Transaction, TypedTransaction},
     };
 
     fn dummy_header(number: u64, parent_hash: H256) -> BlockHeader {
@@ -778,7 +778,7 @@ mod tests {
 
     fn dummy_signed_tx() -> SignedTransaction {
         let keypair = Random.generate().unwrap();
-        Transaction::default().sign(keypair.secret(), None)
+        TypedTransaction::Legacy(Transaction::default()).sign(keypair.secret(), None)
     }
 
     fn import_headers(

@@ -518,7 +518,7 @@ impl TransactionQueue {
             .read()
             .pending_from_sender(state_readiness, address)
             .last()
-            .map(|tx| tx.signed().nonce.saturating_add(U256::from(1)))
+            .map(|tx| tx.signed().tx().nonce.saturating_add(U256::from(1)))
     }
 
     /// Retrieve a transaction from the pool.
@@ -572,7 +572,7 @@ impl TransactionQueue {
     /// Returns gas price of currently the worst transaction in the pool.
     pub fn current_worst_gas_price(&self) -> U256 {
         match self.pool.read().worst_transaction() {
-            Some(tx) => tx.signed().gas_price,
+            Some(tx) => tx.signed().tx().gas_price,
             None => self.options.read().minimal_gas_price,
         }
     }
@@ -659,7 +659,7 @@ mod tests {
         );
 
         for tx in pending {
-            assert!(tx.signed().nonce > 0.into());
+            assert!(tx.signed().tx().nonce > 0.into());
         }
     }
 }

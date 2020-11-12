@@ -239,7 +239,7 @@ mod tests {
 
     use ethkey::{Brain, Generator};
     use std::sync::Arc;
-    use types::transaction::{Condition, PendingTransaction, Transaction};
+    use types::transaction::{Condition, PendingTransaction, Transaction, TypedTransaction};
 
     // we want to test: round-trip of good transactions.
     // failure to roundtrip bad transactions (but that it doesn't panic)
@@ -271,8 +271,8 @@ mod tests {
         let keypair = Brain::new("abcd".into()).generate().unwrap();
         let transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
-                let mut tx = Transaction::default();
-                tx.nonce = nonce.into();
+                let mut tx = TypedTransaction::Legacy(Transaction::default());
+                tx.tx_mut().nonce = nonce.into();
 
                 let signed = tx.sign(keypair.secret(), None);
                 let condition = match nonce {
@@ -308,8 +308,8 @@ mod tests {
         let keypair = Brain::new("abcd".into()).generate().unwrap();
         let mut transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
-                let mut tx = Transaction::default();
-                tx.nonce = nonce.into();
+                let mut tx = TypedTransaction::Legacy(Transaction::default());
+                tx.tx_mut().nonce = nonce.into();
 
                 let signed = tx.sign(keypair.secret(), None);
 
@@ -318,8 +318,8 @@ mod tests {
             .collect();
 
         transactions.push({
-            let mut tx = Transaction::default();
-            tx.nonce = 10.into();
+            let mut tx = TypedTransaction::Legacy(Transaction::default());
+            tx.tx_mut().nonce = 10.into();
 
             let signed = tx.fake_sign(Default::default());
             PendingTransaction::new(signed, None)

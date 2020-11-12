@@ -79,11 +79,11 @@ impl txpool::Listener<Transaction> for Logger {
             "[{hash:?}] Sender: {sender}, nonce: {nonce}, gasPrice: {gas_price}, gas: {gas}, value: {value}, dataLen: {data}))",
             hash = tx.hash(),
             sender = tx.sender(),
-            nonce = tx.signed().nonce,
-            gas_price = tx.signed().gas_price,
-            gas = tx.signed().gas,
-            value = tx.signed().value,
-            data = tx.signed().data.len(),
+            nonce = tx.signed().tx().nonce,
+            gas_price = tx.signed().tx().gas_price,
+            gas = tx.signed().tx().gas,
+            value = tx.signed().tx().value,
+            data = tx.signed().tx().data.len(),
         );
 
         if let Some(old) = old {
@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(
             *received.lock(),
             vec![
-                "13aff4201ac1dc49daf6a7cf07b558ed956511acbaabf9502bdacc353953766d"
+                "de96bdcdf864c95eb7f81eff1e3290be24a0f327732e0c4251c1896a565a80db"
                     .parse()
                     .unwrap()
             ]
@@ -158,14 +158,14 @@ mod tests {
     }
 
     fn new_tx() -> Arc<Transaction> {
-        let signed = transaction::Transaction {
+        let signed = transaction::TypedTransaction::Legacy(transaction::Transaction {
             action: transaction::Action::Create,
             data: vec![1, 2, 3],
             nonce: 5.into(),
             gas: 21_000.into(),
             gas_price: 5.into(),
             value: 0.into(),
-        }
+        })
         .fake_sign(5.into());
 
         Arc::new(Transaction::from_pending_block_transaction(signed))

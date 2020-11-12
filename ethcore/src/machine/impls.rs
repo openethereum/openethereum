@@ -23,7 +23,6 @@ use std::{
 };
 
 use ethereum_types::{Address, H256, U256};
-use rlp::Rlp;
 use types::{
     header::Header,
     transaction::{
@@ -456,16 +455,15 @@ impl EthereumMachine {
         &self,
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
-        let rlp = Rlp::new(&transaction);
-        if rlp.as_raw().len() > self.params().max_transaction_size {
+        if transaction.len() > self.params().max_transaction_size {
             debug!(
                 "Rejected oversized transaction of {} bytes",
-                rlp.as_raw().len()
+                transaction.len()
             );
             return Err(transaction::Error::TooBig);
         }
-        rlp.as_val()
-            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+
+        rlp::decode(transaction).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
     }
 }
 
@@ -476,7 +474,7 @@ pub struct AuxiliaryData<'a> {
     /// The full block bytes, including the header.
     pub bytes: Option<&'a [u8]>,
     /// The block receipts.
-    pub receipts: Option<&'a [::types::receipt::Receipt]>,
+    pub receipts: Option<&'a [::types::receipt::TypedReceipt]>,
 }
 
 /// Type alias for a function we can make calls through synchronously.

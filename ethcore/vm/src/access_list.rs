@@ -213,7 +213,7 @@ mod tests {
         access_list.insert_address(Address::from(1));
         access_list.insert_storage_key(Address::from(2), H256::from(3));
 
-        let mut access_list_call = access_list.clone();
+        let access_list_call = access_list.clone();
         assert_eq!(true, access_list_call.contains_address(&Address::from(1)));
         assert_eq!(
             true,

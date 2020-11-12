@@ -22,8 +22,7 @@ use ethereum_types::{Address, U256};
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
 use rlp;
-use rustc_hex::ToHex;
-use types::transaction::{Action, Transaction};
+use types::transaction::{Action, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;
 use v1::{
@@ -117,7 +116,7 @@ fn rpc_eth_send_transaction() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -126,7 +125,7 @@ fn rpc_eth_send_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))
@@ -141,7 +140,7 @@ fn rpc_eth_send_transaction() {
 
     tester.miner.increment_nonce(&address);
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -150,7 +149,7 @@ fn rpc_eth_send_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))
@@ -166,6 +165,7 @@ fn rpc_eth_send_transaction() {
 
 #[test]
 fn rpc_eth_sign_transaction() {
+    use rustc_hex::ToHex;
     let tester = EthTester::default();
     let address = tester.accounts_provider.new_account(&"".into()).unwrap();
     tester
@@ -188,7 +188,7 @@ fn rpc_eth_sign_transaction() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -197,7 +197,7 @@ fn rpc_eth_sign_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
         .sign(address, None, t.hash(None))
@@ -211,6 +211,7 @@ fn rpc_eth_sign_transaction() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -228,6 +229,7 @@ fn rpc_eth_sign_transaction() {
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
         + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""txType":128,"#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.original_v()))
         + r#""value":"0x9184e72a""#
         + r#"}},"id":1}"#;

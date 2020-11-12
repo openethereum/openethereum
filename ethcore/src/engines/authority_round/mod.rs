@@ -1764,7 +1764,7 @@ mod tests {
     use test_helpers::{generate_dummy_client_with_spec, get_temp_state_db, TestNotify};
     use types::{
         header::Header,
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
     };
 
     fn aura<F>(f: F) -> Arc<AuthorityRound>
@@ -2286,14 +2286,14 @@ mod tests {
         )
         .unwrap();
         b2.push_transaction(
-            Transaction {
+            TypedTransaction::Legacy(Transaction {
                 action: Action::Create,
                 nonce: U256::from(0),
                 gas_price: U256::from(3000),
                 gas: U256::from(53_000),
                 value: U256::from(1),
                 data: vec![],
-            }
+            })
             .fake_sign(addr2),
             None,
         )

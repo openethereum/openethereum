@@ -24,7 +24,7 @@ use hash::keccak;
 use jsonrpc_core::IoHandler;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
-use types::transaction::{Action, Transaction};
+use types::transaction::{Action, Transaction, TypedTransaction};
 
 use ethkey::Secret;
 use serde_json::to_value;
@@ -90,9 +90,6 @@ fn setup_with(c: Config) -> PersonalTester {
 
     tester
 }
-
-#[cfg(test)]
-use rustc_hex::ToHex;
 
 #[test]
 fn accounts() {
@@ -265,7 +262,7 @@ fn sign_and_send_test(method: &str) {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -274,7 +271,7 @@ fn sign_and_send_test(method: &str) {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     tester
         .accounts
         .unlock_account_temporarily(address, "password123".into())
@@ -293,7 +290,7 @@ fn sign_and_send_test(method: &str) {
 
     tester.miner.increment_nonce(&address);
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -302,7 +299,7 @@ fn sign_and_send_test(method: &str) {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     tester
         .accounts
         .unlock_account_temporarily(address, "password123".into())

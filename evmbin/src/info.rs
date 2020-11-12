@@ -141,7 +141,7 @@ pub fn run_transaction<T: Informant>(
     let result = run(
         &spec,
         trie_spec,
-        transaction.gas,
+        transaction.tx().gas,
         pre_state,
         |mut client| {
             let result = client.transact(env_info, transaction, trace::NoopTracer, informant);

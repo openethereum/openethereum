@@ -507,7 +507,7 @@ impl TypedTransaction {
         }
         let header = tx[0];
         //type of transaction can be obtained from first byte. If first bit is 1 it means we are dealing with RLP list.
-        //if it is 0 it means that we are dealing with custom transaction defined in EIP-2718.
+        // if it is 0 it means that we are dealing with custom transaction defined in EIP-2718.
         if (header & 0x80) != 0x00 {
             Transaction::decode(&Rlp::new(tx))
         } else {

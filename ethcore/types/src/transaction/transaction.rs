@@ -262,7 +262,7 @@ impl AccessListTx {
         &mut self.transaction
     }
 
-    // decode bytes by this payload spec: rlp([3, [nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    // decode bytes by this payload spec: rlp([3, [chainId, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
         let tx_rlp = &Rlp::new(tx);
 

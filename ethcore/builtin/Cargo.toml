@@ -22,4 +22,5 @@ eth_pairings = { git = "https://github.com/matter-labs/eip1962.git", default-fea
 
 [dev-dependencies]
 hex-literal = "0.2.1"
+rustc-hex  = "1.0" 
 maplit = "1.0.2"

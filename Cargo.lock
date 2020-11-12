@@ -1100,6 +1100,7 @@ dependencies = [
  "num",
  "parity-bytes",
  "parity-crypto 0.4.2",
+ "rustc-hex 1.0.0",
 ]
 
 [[package]]

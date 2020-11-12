@@ -288,7 +288,7 @@ impl AccessListTx {
 
             // check if there is list of 2 items
             if accounts.item_count()? != 2 {
-                return Err(DecoderError::Custom("Unknown access list lenght"));
+                return Err(DecoderError::Custom("Unknown access list length"));
             }
             accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
         }

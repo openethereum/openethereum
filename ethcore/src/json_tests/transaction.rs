@@ -17,10 +17,12 @@
 use super::test_common::*;
 use client::EvmTestClient;
 use ethjson;
-use rlp::Rlp;
 use std::path::Path;
 use transaction_ext::Transaction;
-use types::{header::Header, transaction::UnverifiedTransaction};
+use types::{
+    header::Header,
+    transaction::{TypedTransaction, UnverifiedTransaction},
+};
 
 pub fn json_transaction_test<H: FnMut(&str, HookType)>(
     path: &Path,
@@ -65,8 +67,7 @@ pub fn json_transaction_test<H: FnMut(&str, HookType)>(
             };
 
             let rlp: Vec<u8> = test.rlp.clone().into();
-            let res = Rlp::new(&rlp)
-                .as_val()
+            let res = TypedTransaction::decode(&rlp)
                 .map_err(::error::Error::from)
                 .and_then(|t: UnverifiedTransaction| {
                     let mut header: Header = Default::default();
@@ -74,12 +75,13 @@ pub fn json_transaction_test<H: FnMut(&str, HookType)>(
                     header.set_number(BLOCK_NUMBER);
 
                     let minimal = t
+                        .tx()
                         .gas_required(&spec.engine.schedule(header.number()))
                         .into();
-                    if t.gas < minimal {
+                    if t.tx().gas < minimal {
                         return Err(::types::transaction::Error::InsufficientGas {
                             minimal,
-                            got: t.gas,
+                            got: t.tx().gas,
                         }
                         .into());
                     }

@@ -69,7 +69,7 @@ fn should_return_correct_nonces_when_dropped_because_of_limit() {
     );
     let (tx1, tx2) = Tx::gas_price(2).signed_pair();
     let sender = tx1.sender();
-    let nonce = tx1.nonce;
+    let nonce = tx1.tx().nonce;
 
     // when
     let r1 = txq.import(TestClient::new(), vec![tx1].retracted());
@@ -129,7 +129,7 @@ fn should_never_drop_local_transactions_from_different_senders() {
     );
     let (tx1, tx2) = Tx::gas_price(2).signed_pair();
     let sender = tx1.sender();
-    let nonce = tx1.nonce;
+    let nonce = tx1.tx().nonce;
 
     // when
     let r1 = txq.import(TestClient::new(), vec![tx1].local());
@@ -662,12 +662,14 @@ fn should_not_replace_same_transaction_if_the_fee_is_less_than_minimal_bump() {
     assert_eq!(
         txq.pending(client.clone(), PendingSettings::all_prioritized(0, 0))[0]
             .signed()
+            .tx()
             .gas_price,
         U256::from(20)
     );
     assert_eq!(
         txq.pending(client.clone(), PendingSettings::all_prioritized(0, 0))[1]
             .signed()
+            .tx()
             .gas_price,
         U256::from(2)
     );
@@ -688,7 +690,7 @@ fn should_return_correct_nonce_when_transactions_from_given_address_exist() {
     let txq = new_queue();
     let tx = Tx::default().signed();
     let from = tx.sender();
-    let nonce = tx.nonce;
+    let nonce = tx.tx().nonce;
 
     // when
     txq.import(TestClient::new(), vec![tx.local()]);

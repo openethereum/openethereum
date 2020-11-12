@@ -36,7 +36,7 @@ use ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
 use kvdb::KeyValueDB;
 use rlp::{Rlp, RlpStream};
-use types::{encoded, header::Header, ids::BlockId, receipt::Receipt};
+use types::{encoded, header::Header, ids::BlockId, receipt::TypedReceipt};
 
 /// Snapshot creation and restoration for PoA chains.
 /// Chunk format:
@@ -353,7 +353,7 @@ impl Rebuilder for ChunkRebuilder {
                 uncles: last_rlp.list_at(2)?,
             };
             let block_data = block.rlp_bytes();
-            let receipts: Vec<Receipt> = last_rlp.list_at(3)?;
+            let receipts: Vec<TypedReceipt> = last_rlp.list_at(3)?;
 
             {
                 let hash = block.header.hash();

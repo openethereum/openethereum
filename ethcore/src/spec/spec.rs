@@ -137,6 +137,8 @@ pub struct CommonParams {
     pub eip2315_transition: BlockNumber,
     /// Number of first block where EIP-2929 rules begin.
     pub eip2929_transition: BlockNumber,
+    /// Number of first block where EIP-2930 rules begin.
+    pub eip2930_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -212,6 +214,7 @@ impl CommonParams {
         schedule.eip1706 = block_number >= self.eip1706_transition;
         schedule.have_subs = block_number >= self.eip2315_transition;
         schedule.eip2929 = block_number >= self.eip2929_transition;
+        schedule.eip2930 = block_number >= self.eip2930_transition;
 
         if block_number >= self.eip1884_transition {
             schedule.have_selfbalance = true;
@@ -369,6 +372,9 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             eip2929_transition: p
                 .eip2929_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip2930_transition: p
+                .eip2930_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
             dust_protection_transition: p
                 .dust_protection_transition
@@ -956,7 +962,7 @@ impl Spec {
     /// initialize genesis epoch data, using in-memory database for
     /// constructor.
     pub fn genesis_epoch_data(&self) -> Result<Vec<u8>, String> {
-        use types::transaction::{Action, Transaction};
+        use types::transaction::{Action, Transaction, TypedTransaction};
 
         let genesis = self.genesis_header();
 
@@ -983,14 +989,14 @@ impl Spec {
             };
 
             let from = Address::default();
-            let tx = Transaction {
+            let tx = TypedTransaction::Legacy(Transaction {
                 nonce: self.engine.account_start_nonce(0),
                 action: Action::Call(a),
                 gas: U256::max_value(),
                 gas_price: U256::default(),
                 value: U256::default(),
                 data: d,
-            }
+            })
             .fake_sign(from);
 
             let res = ::state::prove_transaction_virtual(

@@ -40,7 +40,7 @@ use ethstore::ethkey::{Generator, Random};
 use parity_runtime::{Executor, Runtime};
 use parking_lot::Mutex;
 use serde_json;
-use types::transaction::{Action, SignedTransaction, Transaction};
+use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 struct SigningTester {
     pub runtime: Runtime,
@@ -379,7 +379,7 @@ fn should_add_sign_transaction_to_the_queue() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -388,7 +388,7 @@ fn should_add_sign_transaction_to_the_queue() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts
         .sign(address, Some("test".into()), t.hash(None))
@@ -403,6 +403,7 @@ fn should_add_sign_transaction_to_the_queue() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -420,6 +421,7 @@ fn should_add_sign_transaction_to_the_queue() {
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
         + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""txType":128,"#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.original_v()))
         + r#""value":"0x9184e72a""#
         + r#"}},"id":1}"#;
@@ -459,7 +461,7 @@ fn should_dispatch_transaction_if_account_is_unlock() {
         .unlock_account_permanently(acc, "test".into())
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -468,7 +470,7 @@ fn should_dispatch_transaction_if_account_is_unlock() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester.accounts.sign(acc, None, t.hash(None)).unwrap();
     let t = t.with_signature(signature, None);
 
@@ -605,10 +607,11 @@ fn should_compose_transaction() {
 		"id": 1
 	}"#;
 
-    let response = r#"{"jsonrpc":"2.0","result":{"condition":null,"data":"0x","from":"0x"#
-        .to_owned()
-        + &from
-        + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"value":"0x5"},"id":1}"#;
+    let response =
+        r#"{"jsonrpc":"2.0","result":{"accessList":null,"condition":null,"data":"0x","from":"0x"#
+            .to_owned()
+            + &from
+            + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"txType":128,"value":"0x5"},"id":1}"#;
 
     // then
     let res = tester.io.handle_request(&request).wait().unwrap();

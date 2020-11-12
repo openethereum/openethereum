@@ -16,12 +16,15 @@
 
 use bytes::Bytes;
 use ethereum_types::{Address, H256, U256};
+use types::transaction::{AccessList, TypedTxId};
 
 use v1::types::{Origin, TransactionCondition};
 
 /// Transaction request coming from RPC
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct TransactionRequest {
+    /// type of transaction.
+    pub tx_type: TypedTxId,
     /// Sender
     pub from: Option<Address>,
     /// Recipient
@@ -38,11 +41,15 @@ pub struct TransactionRequest {
     pub nonce: Option<U256>,
     /// Delay until this condition is met.
     pub condition: Option<TransactionCondition>,
+    /// Access list
+    pub access_list: Option<AccessList>,
 }
 
 /// Transaction request coming from RPC with default values filled in.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct FilledTransactionRequest {
+    /// type of transaction.
+    pub tx_type: TypedTxId,
     /// Sender
     pub from: Address,
     /// Indicates if the sender was filled by default value.
@@ -61,11 +68,14 @@ pub struct FilledTransactionRequest {
     pub nonce: Option<U256>,
     /// Delay until this condition is met.
     pub condition: Option<TransactionCondition>,
+    /// Access list
+    pub access_list: Option<AccessList>,
 }
 
 impl From<FilledTransactionRequest> for TransactionRequest {
     fn from(r: FilledTransactionRequest) -> Self {
         TransactionRequest {
+            tx_type: r.tx_type,
             from: Some(r.from),
             to: r.to,
             gas_price: Some(r.gas_price),
@@ -74,6 +84,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data),
             nonce: r.nonce,
             condition: r.condition,
+            access_list: r.access_list,
         }
     }
 }
@@ -81,6 +92,8 @@ impl From<FilledTransactionRequest> for TransactionRequest {
 /// Call request
 #[derive(Debug, Default, PartialEq)]
 pub struct CallRequest {
+    /// type of transaction.
+    pub tx_type: TypedTxId,
     /// From
     pub from: Option<Address>,
     /// To
@@ -95,6 +108,8 @@ pub struct CallRequest {
     pub data: Option<Vec<u8>>,
     /// Nonce
     pub nonce: Option<U256>,
+    /// Access list
+    pub access_list: Option<AccessList>,
 }
 
 /// Confirmation object

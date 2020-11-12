@@ -20,7 +20,10 @@ use ethcore::{contract_address, CreateContractAddress};
 use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
-use types::transaction::{Action, LocalizedTransaction, PendingTransaction, SignedTransaction};
+use types::transaction::{
+    AccessList, Action, LocalizedTransaction, PendingTransaction, SignedTransaction,
+    TypedTransaction,
+};
 use v1::types::{Bytes, TransactionCondition};
 
 /// Transaction
@@ -67,6 +70,10 @@ pub struct Transaction {
     pub s: U256,
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
+    /// transaction type
+    pub tx_type: u8,
+    /// optional access list
+    pub access_list: AccessList,
 }
 
 /// Local Transaction Status
@@ -176,23 +183,32 @@ impl Transaction {
     pub fn from_localized(mut t: LocalizedTransaction) -> Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
+
+        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
+            al.access_list.clone()
+        } else {
+            Vec::new()
+        };
+
         Transaction {
             hash: t.hash(),
-            nonce: t.nonce,
+            nonce: t.tx().nonce,
             block_hash: Some(t.block_hash),
             block_number: Some(t.block_number.into()),
             transaction_index: Some(t.transaction_index.into()),
             from: t.sender(),
-            to: match t.action {
+            to: match t.tx().action {
                 Action::Create => None,
                 Action::Call(ref address) => Some(*address),
             },
-            value: t.value,
-            gas_price: t.gas_price,
-            gas: t.gas,
-            input: Bytes::new(t.data.clone()),
-            creates: match t.action {
-                Action::Create => Some(contract_address(scheme, &t.sender(), &t.nonce, &t.data).0),
+            value: t.tx().value,
+            gas_price: t.tx().gas_price,
+            gas: t.tx().gas,
+            input: Bytes::new(t.tx().data.clone()),
+            creates: match t.tx().action {
+                Action::Create => {
+                    Some(contract_address(scheme, &t.sender(), &t.tx().nonce, &t.tx().data).0)
+                }
                 Action::Call(_) => None,
             },
             raw: ::rlp::encode(&t.signed).into(),
@@ -203,6 +219,8 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
+            tx_type: t.signed.tx_type() as u8,
+            access_list,
         }
     }
 
@@ -210,23 +228,30 @@ impl Transaction {
     pub fn from_signed(t: SignedTransaction) -> Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
+        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
+            al.access_list.clone()
+        } else {
+            Vec::new()
+        };
         Transaction {
             hash: t.hash(),
-            nonce: t.nonce,
+            nonce: t.tx().nonce,
             block_hash: None,
             block_number: None,
             transaction_index: None,
             from: t.sender(),
-            to: match t.action {
+            to: match t.tx().action {
                 Action::Create => None,
                 Action::Call(ref address) => Some(*address),
             },
-            value: t.value,
-            gas_price: t.gas_price,
-            gas: t.gas,
-            input: Bytes::new(t.data.clone()),
-            creates: match t.action {
-                Action::Create => Some(contract_address(scheme, &t.sender(), &t.nonce, &t.data).0),
+            value: t.tx().value,
+            gas_price: t.tx().gas_price,
+            gas: t.tx().gas,
+            input: Bytes::new(t.tx().data.clone()),
+            creates: match t.tx().action {
+                Action::Create => {
+                    Some(contract_address(scheme, &t.sender(), &t.tx().nonce, &t.tx().data).0)
+                }
                 Action::Call(_) => None,
             },
             raw: ::rlp::encode(&t).into(),
@@ -237,6 +262,8 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
+            tx_type: t.tx_type() as u8,
+            access_list,
         }
     }
 
@@ -265,7 +292,7 @@ impl LocalTransactionStatus {
             Canceled(tx) => LocalTransactionStatus::Canceled(convert(tx)),
             Replaced { old, new } => LocalTransactionStatus::Replaced(
                 convert(old),
-                new.signed().gas_price,
+                new.signed().tx().gas_price,
                 new.signed().hash(),
             ),
         }
@@ -283,7 +310,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null}"#
+            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"txType":0,"accessList":[]}"#
         );
     }
 

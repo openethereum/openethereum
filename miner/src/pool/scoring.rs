@@ -67,7 +67,7 @@ impl NonceAndGasPrice {
             return true;
         }
 
-        &old.transaction.gas_price > new.gas_price()
+        &old.transaction.tx().gas_price > new.gas_price()
     }
 }
 

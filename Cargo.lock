@@ -447,6 +447,9 @@ dependencies = [
  "rlp 0.3.0",
  "rlp_derive",
  "rustc-hex 1.0.0",
+ "serde",
+ "serde_json",
+ "serde_repr",
  "unexpected",
 ]
 
@@ -4274,6 +4277,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_repr"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dc6b7951b17b051f3210b063f12cc17320e2fe30ae05b0fe2a3abb068551c76"
+dependencies = [
+ "proc-macro2 1.0.20",
+ "quote 1.0.7",
+ "syn 1.0.40",
 ]
 
 [[package]]

@@ -266,7 +266,7 @@ impl AccessListTx {
     pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
         let tx_rlp = &Rlp::new(tx);
 
-        // we need to have 10 items in this list
+        // we need to have 11 items in this list
         if tx_rlp.item_count()? != 11 {
             return Err(DecoderError::RlpIncorrectListLen);
         }

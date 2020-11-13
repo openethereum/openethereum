@@ -28,7 +28,7 @@ use node_table::NodeId;
 use parity_bytes::Bytes;
 use rand::{random, Rng};
 use rlp::{Rlp, RlpStream};
-use std::{iter::repeat_with, time::Duration};
+use std::{iter::repeat, time::Duration};
 
 #[derive(PartialEq, Eq, Debug)]
 enum HandshakeState {
@@ -321,7 +321,7 @@ impl Handshake {
         let encoded = rlp
             .out()
             .into_iter()
-            .chain(repeat_with(rand::random).take(rand::thread_rng().gen_range::<usize>(100, 301)))
+            .chain(repeat(0).take(rand::thread_rng().gen_range::<usize>(100, 301)))
             .collect::<Vec<_>>();
         let len = (encoded.len() + ECIES_OVERHEAD) as u16;
         let prefix = len.to_be_bytes();

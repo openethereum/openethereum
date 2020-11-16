@@ -147,7 +147,7 @@ impl StateDB {
         Ok(records)
     }
 
-    /// t_nb 9.15 
+    /// t_nb 9.15
     /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
     /// backing database and reverting any non-canonical historical commit's insertions.
     pub fn mark_canonical(

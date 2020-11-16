@@ -207,7 +207,7 @@ impl<'x> OpenBlock<'x> {
             gas_floor_target,
             gas_ceil_target,
         );
-        // t_nb 8.1.3 this adds engine specific things 
+        // t_nb 8.1.3 this adds engine specific things
         engine.populate_from_parent(&mut r.block.header, parent);
 
         // t_nb 8.1.3 updating last hashes and the DAO fork, for ethash.
@@ -354,7 +354,7 @@ impl<'x> OpenBlock<'x> {
 
         // t_nb 8.5.1 engine applies block rewards (Ethash and AuRa do.Clique is empty)
         s.engine.on_close_block(&mut s.block)?;
-        
+
         // t_nb 8.5.2 commit account changes from cache to tree
         s.block.state.commit()?;
 

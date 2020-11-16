@@ -376,7 +376,7 @@ impl Importer {
                     );
                 }
 
-                // t_nb 11 notify rest of system about new block inclusion 
+                // t_nb 11 notify rest of system about new block inclusion
                 client.notify(|notify| {
                     notify.new_blocks(NewBlocks::new(
                         imported_blocks.clone(),

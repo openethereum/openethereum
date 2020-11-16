@@ -155,7 +155,7 @@ impl SyncHandler {
             trace!(target: "sync", "Ignoring new block from unconfirmed peer {}", peer_id);
             return Ok(());
         }
-	    // t_nb 1.0 decode RLP
+        // t_nb 1.0 decode RLP
         let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec())?;
         let hash = block.header.hash();
         let number = block.header.number();
@@ -167,7 +167,7 @@ impl SyncHandler {
         let difficulty: U256 = r.val_at(1)?;
         // Most probably the sent block is being imported by peer right now
         // Use td and hash, that peer must have for now
-	    // t_nb 1.1 check new block diffuculty it can be found as second item in RLP and update peer diffuculty
+        // t_nb 1.1 check new block diffuculty it can be found as second item in RLP and update peer diffuculty
         let parent_td = difficulty.checked_sub(*block.header.difficulty());
 
         if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {

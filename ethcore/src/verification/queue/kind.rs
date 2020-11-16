@@ -93,8 +93,7 @@ pub mod blocks {
     impl Kind for Blocks {
         type Input = Unverified;
         type Unverified = Unverified;
-        type Verified =
-        PreverifiedBlock;
+        type Verified = PreverifiedBlock;
 
         // t_nb 4.0 verify_block_basic
         fn create(

@@ -392,7 +392,7 @@ impl<K: Kind> VerificationQueue<K> {
                 Ok(verified) => {
                     let mut verifying = verification.verifying.lock();
                     let mut idx = None;
-                    // find item again and remove it verified queue
+                    // find item again and remove it from verified queue
                     for (i, e) in verifying.iter_mut().enumerate() {
                         if e.hash == hash {
                             idx = Some(i);

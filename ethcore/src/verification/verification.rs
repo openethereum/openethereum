@@ -71,7 +71,7 @@ pub fn verify_block_basic(
 ) -> Result<(), Error> {
     // t_nb 4.1  verify header params
     verify_header_params(&block.header, engine, true, check_seal)?;
-    // t_nb 4.2 verify header time (TODO addded in new version)
+    // t_nb 4.2 verify header time (addded in new OE version)
     // t_nb 4.3 verify block integrity
     verify_block_integrity(block)?;
 

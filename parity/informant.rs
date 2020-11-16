@@ -336,6 +336,7 @@ impl<T: InformantData> Informant<T> {
 }
 
 impl ChainNotify for Informant<FullNodeInformantData> {
+    // t_nb 11.2 Informant. Prints new block inclusiong to console/log.
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if new_blocks.has_more_blocks_to_import {
             return;

@@ -1421,7 +1421,7 @@ impl ChainSync {
         self.check_resume(io);
     }
 
-    /// called when block is imported to chain - propagates the blocks and updates transactions sent to peers
+    /// t_nb 11.4 called when block is imported to chain - propagates the blocks and updates transactions sent to peers
     pub fn chain_new_blocks(
         &mut self,
         io: &mut dyn SyncIo,

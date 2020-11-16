@@ -364,6 +364,7 @@ impl Importer {
             if !imported_blocks.is_empty() {
                 let route = ChainRoute::from(import_results.as_ref());
 
+                // t_nb 10 Notify miner about new included block.
                 if !has_more_blocks_to_import {
                     self.miner.chain_new_blocks(
                         client,
@@ -375,6 +376,7 @@ impl Importer {
                     );
                 }
 
+                // t_nb 11 notify rest of system about new block inclusion 
                 client.notify(|notify| {
                     notify.new_blocks(NewBlocks::new(
                         imported_blocks.clone(),

@@ -356,7 +356,7 @@ impl Rebuilder for ChunkRebuilder {
                 uncles: last_rlp.list_at(2)?,
             };
             let block_data = block.rlp_bytes();
-            let receipts: Vec<TypedReceipt> = last_rlp.list_at(3)?;
+            let receipts= TypedReceipt::decode_rlp_list(&last_rlp.at(3)?)?;
 
             {
                 let hash = block.header.hash();

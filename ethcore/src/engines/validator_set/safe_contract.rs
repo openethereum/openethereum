@@ -163,12 +163,13 @@ fn decode_first_proof(rlp: &Rlp) -> Result<(Header, Vec<DBValue>), ::error::Erro
 // extracting the validator set from the receipts.
 fn encode_proof(header: &Header, receipts: &[TypedReceipt]) -> Bytes {
     let mut stream = RlpStream::new_list(2);
-    stream.append(header).append_list(receipts);
+    stream.append(header);
+    TypedReceipt::rlp_append_list(&mut stream,receipts);
     stream.drain()
 }
 
 fn decode_proof(rlp: &Rlp) -> Result<(Header, Vec<TypedReceipt>), ::error::Error> {
-    Ok((rlp.val_at(0)?, rlp.list_at(1)?))
+    Ok((rlp.val_at(0)?, TypedReceipt::decode_rlp_list(&rlp.at(1)?)?))
 }
 
 // given a provider and caller, generate proof. this will just be a state proof
@@ -406,7 +407,7 @@ impl ValidatorSet for ValidatorSafeContract {
 
             // ensure receipts match header.
             // TODO: optimize? these were just decoded.
-            let found_root = ::triehash::ordered_trie_root(receipts.iter().map(::rlp::encode));
+            let found_root = ::triehash::ordered_trie_root(receipts.iter().map(|r| r.encode()));
             if found_root != *old_header.receipts_root() {
                 return Err(::error::BlockError::InvalidReceiptsRoot(Mismatch {
                     expected: *old_header.receipts_root(),

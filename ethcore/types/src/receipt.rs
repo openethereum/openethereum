@@ -146,7 +146,7 @@ impl TypedReceipt {
         }
     }
 
-    fn decode_new(tx: &[u8]) -> Result<Self, DecoderError> {
+    fn decode(tx: &[u8]) -> Result<Self, DecoderError> {
         if tx.is_empty() {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
@@ -165,13 +165,25 @@ impl TypedReceipt {
         }
     }
 
-    pub fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+    pub fn decode_rlp(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.is_list() {
             //legacy transaction wrapped around RLP encoding
             Ok(Self::Legacy(LegacyReceipt::decode(rlp)?))
         } else {
-            Self::decode_new(rlp.data()?)
+            Self::decode(rlp.data()?)
         }
+    }
+
+    pub fn decode_rlp_list(rlp: &Rlp) -> Result<Vec<Self>, DecoderError> {
+        if rlp.is_list() {
+            // at least one byte needs to be present
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let mut output = Vec::with_capacity(rlp.item_count()?);
+        for tx in rlp.iter() {
+            output.push(Self::decode_rlp(&tx)?);
+        }
+        Ok(output)
     }
 
     pub fn rlp_append(&self, s: &mut RlpStream) {
@@ -181,6 +193,28 @@ impl TypedReceipt {
                 let mut rlps = RlpStream::new();
                 receipt.rlp_append(&mut rlps);
                 s.append(&[&[TypedTxId::AccessList as u8], rlps.as_raw()].concat());
+            }
+        }
+    }
+
+    pub fn rlp_append_list(s: &mut RlpStream, list: &[TypedReceipt]) {
+        s.begin_list(list.len());
+        for rec in list.iter() {
+            rec.rlp_append(s)
+        }
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        match self {
+            Self::Legacy(receipt) => {
+                let mut s = RlpStream::new();
+                receipt.rlp_append(&mut s);
+                s.drain()
+            },
+            Self::AccessList(receipt) => {
+                let mut rlps = RlpStream::new();
+                receipt.rlp_append(&mut rlps);
+                [&[TypedTxId::AccessList as u8], rlps.as_raw()].concat()
             }
         }
     }
@@ -200,17 +234,17 @@ impl DerefMut for TypedReceipt {
     }
 }
 
-impl Encodable for TypedReceipt {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        self.rlp_append(s)
-    }
-}
+// impl Encodable for TypedReceipt {
+//     fn rlp_append(&self, s: &mut RlpStream) {
+//         self.rlp_append(s)
+//     }
+// }
 
-impl Decodable for TypedReceipt {
-    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        TypedReceipt::decode(rlp)
-    }
-}
+// impl Decodable for TypedReceipt {
+//     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+//         TypedReceipt::decode_rlp(rlp)
+//     }
+// }
 
 impl HeapSizeOf for TypedReceipt {
     fn heap_size_of_children(&self) -> usize {
@@ -300,7 +334,7 @@ mod tests {
                 }],
             ),
         );
-        assert_eq!(&::rlp::encode(&r)[..], &expected[..]);
+        assert_eq!(r.encode(), expected);
     }
 
     #[test]
@@ -320,9 +354,9 @@ mod tests {
                 }],
             ),
         );
-        let encoded = ::rlp::encode(&r);
-        assert_eq!(&encoded[..], &expected[..]);
-        let decoded: TypedReceipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
+        let encoded = r.encode();
+        assert_eq!(encoded, expected);
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }
 
@@ -343,9 +377,9 @@ mod tests {
                 }],
             ),
         );
-        let encoded = ::rlp::encode(&r);
+        let encoded = r.encode();
         assert_eq!(&encoded[..], &expected[..]);
-        let decoded: TypedReceipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }
 
@@ -364,9 +398,9 @@ mod tests {
                 }],
             ),
         );
-        let encoded = ::rlp::encode(&r);
+        let encoded = r.encode();
         assert_eq!(&encoded[..], &expected[..]);
-        let decoded: TypedReceipt = ::rlp::decode(&encoded).expect("decoding receipt failed");
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }
 }

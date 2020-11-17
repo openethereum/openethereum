@@ -237,10 +237,22 @@ impl HeapSizeOf for TransactionAddress {
 }
 
 /// Contains all block receipts.
-#[derive(Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
+#[derive(Clone)]
 pub struct BlockReceipts {
     /// Block receipts
     pub receipts: Vec<TypedReceipt>,
+}
+
+impl rlp::Encodable for BlockReceipts {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        TypedReceipt::rlp_append_list(s, &self.receipts);
+    }
+}
+
+impl rlp::Decodable for BlockReceipts {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        Ok(BlockReceipts::new(TypedReceipt::decode_rlp_list(rlp)?))
+    }
 }
 
 impl BlockReceipts {

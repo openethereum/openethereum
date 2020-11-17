@@ -1114,7 +1114,7 @@ mod tests {
     fn should_decode_access_list_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
-        let _ = TypedTransaction::decode(&FromHex::from_hex(encoded_tx).unwrap())
+        let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
             .expect("decoding tx data failed");
     }
 

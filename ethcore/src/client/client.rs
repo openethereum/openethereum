@@ -41,7 +41,7 @@ use itertools::Itertools;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use rand::OsRng;
-use rlp::PayloadInfo;
+use rlp::{Rlp,PayloadInfo};
 use rustc_hex::FromHex;
 use trie::{Trie, TrieFactory, TrieSpec};
 use types::{
@@ -517,7 +517,8 @@ impl Importer {
         db: &dyn KeyValueDB,
         chain: &BlockChain,
     ) -> EthcoreResult<()> {
-        let receipts = ::rlp::decode_list(receipts_bytes);
+        let receipts = TypedReceipt::decode_rlp_list(&Rlp::new(receipts_bytes))
+            .unwrap_or_else(|e| panic!("Receipt bytes should be valid: {:?}", e));
         let _import_lock = self.import_lock.lock();
 
         {

@@ -291,7 +291,7 @@ impl Rebuilder for PowRebuilder {
             let pair = rlp.at(idx)?;
             let abridged_rlp = pair.at(0)?.as_raw().to_owned();
             let abridged_block = AbridgedBlock::from_raw(abridged_rlp);
-            let receipts: Vec<::types::receipt::TypedReceipt> = pair.list_at(1)?;
+            let receipts = ::types::receipt::TypedReceipt::decode_rlp_list(&pair.at(1)?)?;
             let receipts_root = ordered_trie_root(pair.at(1)?.iter().map(|r| r.as_raw()));
 
             let block = abridged_block.to_block(parent_hash, cur_number, receipts_root)?;

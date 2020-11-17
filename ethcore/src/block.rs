@@ -357,7 +357,7 @@ impl<'x> OpenBlock<'x> {
         s.block.header.set_uncles_hash(keccak(&uncle_bytes));
         s.block.header.set_state_root(s.block.state.root().clone());
         s.block.header.set_receipts_root(ordered_trie_root(
-            s.block.receipts.iter().map(|r| r.rlp_bytes()),
+            s.block.receipts.iter().map(|r| r.encode()),
         ));
         s.block
             .header
@@ -444,7 +444,7 @@ impl LockedBlock {
             receipt.outcome = TransactionOutcome::Unknown;
         }
         self.block.header.set_receipts_root(ordered_trie_root(
-            self.block.receipts.iter().map(|r| r.rlp_bytes()),
+            self.block.receipts.iter().map(|r| r.encode()),
         ));
     }
 

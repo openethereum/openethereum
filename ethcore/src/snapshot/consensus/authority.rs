@@ -36,7 +36,10 @@ use ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
 use kvdb::KeyValueDB;
 use rlp::{Rlp, RlpStream};
-use types::{encoded, header::Header, ids::BlockId, receipt::TypedReceipt};
+use types::{
+    encoded, header::Header, ids::BlockId, receipt::TypedReceipt,
+    transaction::TypedTransaction,
+};
 
 /// Snapshot creation and restoration for PoA chains.
 /// Chunk format:
@@ -114,9 +117,9 @@ impl SnapshotComponents for PoaSnapshot {
 
         rlps.push({
             let mut stream = RlpStream::new_list(5);
+            stream.append(&block.header);
+            TypedTransaction::rlp_append_list(&mut stream, &block.transactions);
             stream
-                .append(&block.header)
-                .append_list(&block.transactions)
                 .append_list(&block.uncles)
                 .append(&receipts)
                 .append(&parent_td);
@@ -349,7 +352,7 @@ impl Rebuilder for ChunkRebuilder {
             let last_rlp = rlp.at(num_items - 1)?;
             let block = Block {
                 header: last_rlp.val_at(0)?,
-                transactions: last_rlp.list_at(1)?,
+                transactions: TypedTransaction::decode_rlp_list(&last_rlp.at(1)?)?,
                 uncles: last_rlp.list_at(2)?,
             };
             let block_data = block.rlp_bytes();

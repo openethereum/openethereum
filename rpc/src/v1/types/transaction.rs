@@ -211,7 +211,7 @@ impl Transaction {
                 }
                 Action::Call(_) => None,
             },
-            raw: ::rlp::encode(&t.signed).into(),
+            raw: Bytes::new(t.signed.encode()),
             public_key: t.recover_public().ok().map(Into::into),
             chain_id: t.chain_id().map(U64::from),
             standard_v: t.standard_v().into(),
@@ -254,7 +254,7 @@ impl Transaction {
                 }
                 Action::Call(_) => None,
             },
-            raw: ::rlp::encode(&t).into(),
+            raw: t.encode().into(),
             public_key: t.public_key().map(Into::into),
             chain_id: t.chain_id().map(U64::from),
             standard_v: t.standard_v().into(),

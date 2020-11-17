@@ -20,9 +20,8 @@ use std::{fmt, sync::Arc, time::Duration};
 
 use io::IoHandler;
 use kvdb::KeyValueDB;
-use rlp::Rlp;
 use types::transaction::{
-    Condition as TransactionCondition, PendingTransaction, SignedTransaction, UnverifiedTransaction,
+    Condition as TransactionCondition, PendingTransaction, SignedTransaction, UnverifiedTransaction, TypedTransaction
 };
 
 extern crate common_types as types;
@@ -98,7 +97,7 @@ struct TransactionEntry {
 
 impl TransactionEntry {
     fn into_pending(self) -> Option<PendingTransaction> {
-        let tx: UnverifiedTransaction = match Rlp::new(&self.rlp_bytes).as_val() {
+        let tx: UnverifiedTransaction = match TypedTransaction::decode(&self.rlp_bytes) {
             Err(e) => {
                 warn!(target: "local_store", "Invalid persistent transaction stored: {}", e);
                 return None;
@@ -120,7 +119,7 @@ impl TransactionEntry {
 impl From<PendingTransaction> for TransactionEntry {
     fn from(pending: PendingTransaction) -> Self {
         TransactionEntry {
-            rlp_bytes: ::rlp::encode(&pending.transaction),
+            rlp_bytes: pending.transaction.encode(),
             condition: pending.condition.map(Into::into),
         }
     }

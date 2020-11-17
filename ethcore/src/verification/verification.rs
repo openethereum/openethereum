@@ -821,12 +821,12 @@ mod tests {
         let good_transactions_root = ordered_trie_root(
             good_transactions
                 .iter()
-                .map(|t| ::rlp::encode::<UnverifiedTransaction>(t)),
+                .map(|t| t.encode()),
         );
         let eip86_transactions_root = ordered_trie_root(
             eip86_transactions
                 .iter()
-                .map(|t| ::rlp::encode::<UnverifiedTransaction>(t)),
+                .map(|t| t.encode()),
         );
 
         let mut parent = good.clone();

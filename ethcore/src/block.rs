@@ -494,7 +494,7 @@ impl SealedBlock {
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(3);
         block_rlp.append(&self.block.header);
-        block_rlp.append_list(&self.block.transactions);
+        SignedTransaction::rlp_append_list(&mut block_rlp, &self.block.transactions);
         block_rlp.append_list(&self.block.uncles);
         block_rlp.out()
     }

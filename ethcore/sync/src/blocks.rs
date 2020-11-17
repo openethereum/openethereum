@@ -23,7 +23,7 @@ use network;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use triehash_ethereum::ordered_trie_root;
-use types::{header::Header as BlockHeader, transaction::UnverifiedTransaction};
+use types::{header::Header as BlockHeader, transaction::{TypedTransaction,UnverifiedTransaction}};
 
 known_heap_size!(0, HeaderId);
 
@@ -65,7 +65,7 @@ impl SyncBody {
 
         let result = SyncBody {
             transactions_bytes: transactions_rlp.as_raw().to_vec(),
-            transactions: transactions_rlp.as_list()?,
+            transactions: TypedTransaction::decode_rlp_list(&transactions_rlp)?,
             uncles_bytes: uncles_rlp.as_raw().to_vec(),
             uncles: uncles_rlp.as_list()?,
         };

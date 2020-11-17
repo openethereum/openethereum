@@ -21,7 +21,9 @@ use ethereum_types::H256;
 use hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 use triehash::ordered_trie_root;
-use types::{block::Block, header::Header, views::BlockView};
+use types::{
+    block::Block, header::Header, transaction::TypedTransaction, views::BlockView,
+};
 
 const HEADER_FIELDS: usize = 8;
 const BLOCK_FIELDS: usize = 2;
@@ -62,9 +64,9 @@ impl AbridgedBlock {
             .append(&header.extra_data());
 
         // write block values.
-        stream
-            .append_list(&block_view.transactions())
-            .append_list(&block_view.uncles());
+
+        TypedTransaction::rlp_append_list(&mut stream, &block_view.transactions());
+        stream.append_list(&block_view.uncles());
 
         // write seal fields.
         for field in seal_fields {
@@ -97,7 +99,7 @@ impl AbridgedBlock {
         header.set_timestamp(rlp.val_at(6)?);
         header.set_extra_data(rlp.val_at(7)?);
 
-        let transactions = rlp.list_at(8)?;
+        let transactions = TypedTransaction::decode_rlp_list(&rlp.at(8)?)?;
         let uncles: Vec<Header> = rlp.list_at(9)?;
 
         header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| r.as_raw())));
@@ -191,7 +193,7 @@ mod tests {
         let receipts_root = b.header.receipts_root().clone();
         b.header
             .set_transactions_root(::triehash::ordered_trie_root(
-                b.transactions.iter().map(::rlp::encode),
+                b.transactions.iter().map(|tx|tx.encode()),
             ));
 
         let encoded = encode_block(&b);

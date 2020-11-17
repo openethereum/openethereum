@@ -21,7 +21,7 @@ use ethjson;
 use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
-use rlp::{self, DecoderError, Encodable, Rlp, RlpStream};
+use rlp::{self, DecoderError, Rlp, RlpStream};
 use std::{convert::TryInto, ops::Deref};
 
 pub type AccessList = Vec<(H160, Vec<H256>)>;
@@ -143,9 +143,59 @@ pub struct Transaction {
 impl Transaction {
     /// The message hash of the transaction. This hash is used for signing transaction
     pub fn hash(&self, chain_id: Option<u64>) -> H256 {
+        keccak(self.encode(chain_id, None))
+    }
+
+    /// encode raw transaction
+    fn encode(&self, chain_id: Option<u64>, signature: Option<&SignatureComponents>) -> Vec<u8> {
         let mut stream = RlpStream::new();
-        self.encode(&mut stream, chain_id, None);
-        keccak(stream.as_raw())
+        self.encode_rlp(&mut stream, chain_id, signature);
+        stream.drain()
+    }
+
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        self.encode_rlp(rlp, chain_id, Some(signature));
+    }
+
+    fn encode_rlp(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) {
+        let list_size = if chain_id.is_some() || signature.is_some() {
+            9
+        } else {
+            6
+        };
+        rlp.begin_list(list_size);
+
+        self.rlp_append_data_open(rlp);
+
+        //append signature if given. If not, try to append chainId.
+        if let Some(signature) = signature {
+            signature.rlp_append_with_chain_id(rlp, chain_id);
+        } else {
+            if let Some(n) = chain_id {
+                rlp.append(&n);
+                rlp.append(&0u8);
+                rlp.append(&0u8);
+            }
+        }
+    }
+
+    fn rlp_append_data_open(&self, s: &mut RlpStream) {
+        s.append(&self.nonce);
+        s.append(&self.gas_price);
+        s.append(&self.gas);
+        s.append(&self.action);
+        s.append(&self.value);
+        s.append(&self.data);
     }
 
     fn decode(d: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
@@ -172,7 +222,7 @@ impl Transaction {
         ))
     }
 
-    pub fn decode_data(d: &Rlp, offset: usize) -> Result<Transaction, DecoderError> {
+    fn decode_data(d: &Rlp, offset: usize) -> Result<Transaction, DecoderError> {
         Ok(Transaction {
             nonce: d.val_at(offset)?,
             gas_price: d.val_at(offset + 1)?,
@@ -181,51 +231,6 @@ impl Transaction {
             value: d.val_at(offset + 4)?,
             data: d.val_at(offset + 5)?,
         })
-    }
-
-    fn encode(
-        &self,
-        rlp: &mut RlpStream,
-        chain_id: Option<u64>,
-        signature: Option<&SignatureComponents>,
-    ) {
-        let list_size = if chain_id.is_some() || signature.is_some() {
-            9
-        } else {
-            6
-        };
-        rlp.begin_list(list_size);
-
-        self.rlp_append_open(rlp);
-
-        //append signature if given. If not, try to append chainId.
-        if let Some(signature) = signature {
-            signature.rlp_append_with_chain_id(rlp, chain_id);
-        } else {
-            if let Some(n) = chain_id {
-                rlp.append(&n);
-                rlp.append(&0u8);
-                rlp.append(&0u8);
-            }
-        }
-    }
-
-    pub fn rlp_append(
-        &self,
-        rlp: &mut RlpStream,
-        chain_id: Option<u64>,
-        signature: &SignatureComponents,
-    ) {
-        self.encode(rlp, chain_id, Some(signature));
-    }
-
-    pub fn rlp_append_open(&self, s: &mut RlpStream) {
-        s.append(&self.nonce);
-        s.append(&self.gas_price);
-        s.append(&self.gas);
-        s.append(&self.action);
-        s.append(&self.value);
-        s.append(&self.data);
     }
 }
 
@@ -328,7 +333,7 @@ impl AccessListTx {
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
 
         // append legacy transaction
-        self.transaction.rlp_append_open(&mut stream);
+        self.transaction.rlp_append_data_open(&mut stream);
 
         // access list
         stream.begin_list(self.access_list.len());
@@ -514,6 +519,18 @@ impl TypedTransaction {
         }
     }
 
+    pub fn decode_rlp_list(rlp: &Rlp) -> Result<Vec<UnverifiedTransaction>, DecoderError> {
+        if rlp.is_list() {
+            // at least one byte needs to be present
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let mut output = Vec::with_capacity(rlp.item_count()?);
+        for tx in rlp.iter() {
+            output.push(Self::decode_rlp(&tx)?);
+        }
+        Ok(output)
+    }
+
     pub fn decode_rlp(tx: &Rlp) -> Result<UnverifiedTransaction, DecoderError> {
         if tx.is_list() {
             //legacy transaction wrapped around RLP encoding
@@ -532,6 +549,22 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.rlp_append(s, chain_id, signature),
             Self::AccessList(opt) => opt.rlp_append(s, chain_id, signature),
+        }
+    }
+
+    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[UnverifiedTransaction])
+    {
+        s.begin_list(tx_list.len());
+        for tx in tx_list.iter() {
+            tx.unsigned.rlp_append(s, tx.chain_id, &tx.signature);
+        }
+    }
+
+    fn encode(&self, chain_id: Option<u64>, signature: &SignatureComponents) -> Vec<u8> {
+        let signature = Some(signature);
+        match self {
+            Self::Legacy(tx) => tx.encode(chain_id, signature),
+            Self::AccessList(opt) => opt.encode(chain_id, signature),
         }
     }
 }
@@ -651,19 +684,18 @@ impl Deref for UnverifiedTransaction {
     }
 }
 
-impl rlp::Decodable for UnverifiedTransaction {
-    fn decode(d: &Rlp) -> Result<Self, DecoderError> {
-        TypedTransaction::decode_rlp(d)
-    }
-}
-
-impl rlp::Encodable for UnverifiedTransaction {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        self.unsigned.rlp_append(s, self.chain_id, &self.signature);
-    }
-}
-
 impl UnverifiedTransaction {
+    pub fn encode(&self) -> Vec<u8> {
+        self.unsigned.encode(self.chain_id, &self.signature)
+    }
+
+    pub fn rlp_bytes(&self) -> Vec<u8> {
+        let mut s = RlpStream::new();
+        self.unsigned
+            .rlp_append(&mut s, self.chain_id, &self.signature);
+        s.drain()
+    }
+
     /// Used to compute hash of created transactions. Without chainid but signature added. This is used to verify if transaction is same or not
     fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = keccak(&*self.rlp_bytes());
@@ -776,12 +808,6 @@ impl HeapSizeOf for SignedTransaction {
     }
 }
 
-impl rlp::Encodable for SignedTransaction {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        self.transaction.rlp_append(s)
-    }
-}
-
 impl Deref for SignedTransaction {
     type Target = UnverifiedTransaction;
     fn deref(&self) -> &Self::Target {
@@ -829,6 +855,15 @@ impl SignedTransaction {
     pub fn deconstruct(self) -> (UnverifiedTransaction, Address, Option<Public>) {
         (self.transaction, self.sender, self.public)
     }
+
+    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[SignedTransaction])
+    {
+        s.begin_list(tx_list.len());
+        for tx in tx_list.iter() {
+            tx.unsigned.rlp_append(s, tx.chain_id, &tx.signature);
+        }
+    }
+
 }
 
 /// Signed Transaction that is a part of canon blockchain.
@@ -1066,10 +1101,10 @@ mod tests {
             ],
         ))
         .sign(&key.secret(), Some(69));
-        let encoded = rlp::encode(&t);
+        let encoded = t.encode();
 
-        let t_new: UnverifiedTransaction =
-            rlp::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
+        let t_new =
+            TypedTransaction::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
         if t_new.unsigned != t.unsigned {
             assert!(true, "encoded/decoded tx differs from original");
         }
@@ -1079,8 +1114,8 @@ mod tests {
     fn should_decode_access_list_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
-        let _: UnverifiedTransaction =
-            rlp::decode(&FromHex::from_hex(encoded_tx).unwrap()).expect("decoding tx data failed");
+        let _ = TypedTransaction::decode(&FromHex::from_hex(encoded_tx).unwrap())
+            .expect("decoding tx data failed");
     }
 
     #[test]
@@ -1089,6 +1124,22 @@ mod tests {
         let encoded_tx = "01f8630103018261a894b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a825544c001a0cb51495c66325615bcd591505577c9dde87bd59b04be2e6ba82f6d7bdea576e3a049e4f02f37666bd91a052a56e91e71e438590df861031ee9a321ce058df3dc2b";
         let _ = TypedTransaction::decode(&FromHex::from_hex(encoded_tx).unwrap())
             .expect("decoding tx data failed");
+    }
+
+    #[test]
+    fn test_rlp_data() {
+        let mut rlp_list = RlpStream::new();
+        rlp_list.begin_list(3);
+        rlp_list.append(&100u8);
+        rlp_list.append(&"0000000");
+        rlp_list.append(&5u8);
+        let rlp_list = Rlp::new(rlp_list.as_raw());
+        println!("rlp list data: {:?}", rlp_list.as_raw());
+
+        let mut rlp = RlpStream::new();
+        rlp.append(&"1111111");
+        let rlp = Rlp::new(rlp.as_raw());
+        println!("rlp list data: {:?}", rlp.data());
     }
 
     #[test]

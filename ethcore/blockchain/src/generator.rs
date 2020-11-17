@@ -27,12 +27,11 @@ use common_types::{
     views::BlockView,
 };
 use keccak_hash::keccak;
-use rlp::encode;
-use rlp_derive::RlpEncodable;
+use rlp::{encode,RlpStream};
 use triehash_ethereum::ordered_trie_root;
 
 /// Helper structure, used for encoding blocks.
-#[derive(Default, Clone, RlpEncodable)]
+#[derive(Default, Clone)]
 pub struct Block {
     /// Block header
     pub header: Header,
@@ -40,6 +39,15 @@ pub struct Block {
     pub transactions: Vec<SignedTransaction>,
     /// Block uncles
     pub uncles: Vec<Header>,
+}
+
+impl rlp::Encodable for Block {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(3);
+        s.append(&self.header);
+        SignedTransaction::rlp_append_list(s,&self.transactions);
+        s.append_list(&self.uncles);
+    }
 }
 
 impl Block {
@@ -205,7 +213,7 @@ impl BlockBuilder {
             let metadata = get_metadata();
             let block_number = parent_number + 1;
             let transactions = metadata.transactions;
-            let transactions_root = ordered_trie_root(transactions.iter().map(rlp::encode));
+            let transactions_root = ordered_trie_root(transactions.iter().map(|tx|tx.encode()));
 
             block.header.set_parent_hash(parent_hash);
             block.header.set_number(block_number);

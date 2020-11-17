@@ -26,7 +26,8 @@ use ethereum_types::{Address, H256, U256};
 use types::{
     header::Header,
     transaction::{
-        self, SignedTransaction, UnverifiedTransaction, SYSTEM_ADDRESS, UNSIGNED_SENDER,
+        self, SignedTransaction, TypedTransaction, UnverifiedTransaction, SYSTEM_ADDRESS,
+        UNSIGNED_SENDER,
     },
     BlockNumber,
 };
@@ -462,8 +463,13 @@ impl EthereumMachine {
             );
             return Err(transaction::Error::TooBig);
         }
+        //TODO dr check where this is used. if it is from list or single transaction
+        TypedTransaction::decode(transaction)
+            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
 
-        rlp::decode(transaction).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+        /* or if this is from list use
+        TypedTransaction::decode_rlp(&Rlp::new(transaction)).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+        */
     }
 }
 
@@ -548,7 +554,7 @@ mod tests {
     fn should_disallow_unsigned_transactions() {
         let rlp = "ea80843b9aca0083015f90948921ebb5f79e9e3920abe571004d0b1d5119c154865af3107a400080038080";
         let transaction: UnverifiedTransaction =
-            ::rlp::decode(&::rustc_hex::FromHex::from_hex(rlp).unwrap()).unwrap();
+            TypedTransaction::decode(&::rustc_hex::FromHex::from_hex(rlp).unwrap()).unwrap();
         let spec = ::ethereum::new_ropsten_test();
         let ethparams = get_default_ethash_extensions();
 

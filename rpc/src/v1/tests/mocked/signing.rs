@@ -396,7 +396,7 @@ fn should_add_sign_transaction_to_the_queue() {
     let t = t.with_signature(signature, None);
     let t = SignedTransaction::new(t).unwrap();
     let signature = t.signature();
-    let rlp = rlp::encode(&t);
+    let rlp = t.encode();
 
     let response = r#"{"jsonrpc":"2.0","result":{"#.to_owned()
         + r#""raw":"0x"#

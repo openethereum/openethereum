@@ -204,7 +204,7 @@ fn rpc_eth_sign_transaction() {
         .unwrap();
     let t = t.with_signature(signature, None);
     let signature = t.signature();
-    let rlp = rlp::encode(&t);
+    let rlp = t.encode();
 
     let response = r#"{"jsonrpc":"2.0","result":{"#.to_owned()
         + r#""raw":"0x"#

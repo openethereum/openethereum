@@ -308,7 +308,7 @@ impl TestBlockChainClient {
                         nonce: nonce,
                     });
                     let signed_tx = tx.sign(keypair.secret(), None);
-                    txs.append(&signed_tx);
+                    txs.append(&signed_tx.encode());
                     nonce += U256::one();
                 }
 
@@ -1057,7 +1057,7 @@ impl IoClient for TestBlockChainClient {
         // import right here
         let txs = transactions
             .into_iter()
-            .filter_map(|bytes| Rlp::new(&bytes).as_val().ok())
+            .filter_map(|bytes| TypedTransaction::decode(&bytes).ok())
             .collect();
         self.miner.import_external_transactions(self, txs);
     }

@@ -31,7 +31,6 @@ use std::{
 };
 
 use ethereum_types::{H256, U256};
-use rlp::Encodable;
 use txpool;
 use types::transaction;
 

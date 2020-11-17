@@ -468,7 +468,7 @@ fn should_confirm_transaction_with_rlp() {
         .sign(address, Some("test".into()), t.hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
-    let rlp = encode(&t);
+    let rlp = t.encode();
 
     assert_eq!(tester.signer.requests().len(), 1);
 
@@ -535,7 +535,7 @@ fn should_return_error_when_sender_does_not_match() {
         .unwrap();
     let signature = tester.accounts.sign(address, None, t.hash(None)).unwrap();
     let t = t.with_signature(signature, None);
-    let rlp = encode(&t);
+    let rlp = t.encode();
 
     assert_eq!(tester.signer.requests().len(), 1);
 
@@ -599,7 +599,7 @@ fn should_confirm_sign_transaction_with_rlp() {
         .sign(address, Some("test".into()), t.hash(None))
         .unwrap();
     let t = SignedTransaction::new(t.with_signature(signature.clone(), None)).unwrap();
-    let rlp = encode(&t);
+    let rlp = t.encode();
 
     // when
     let request = r#"{

@@ -351,7 +351,7 @@ impl<'x> OpenBlock<'x> {
         s.block.state.commit()?;
 
         s.block.header.set_transactions_root(ordered_trie_root(
-            s.block.transactions.iter().map(|e| e.rlp_bytes()),
+            s.block.transactions.iter().map(|e| e.encode()),
         ));
         let uncle_bytes = encode_list(&s.block.uncles);
         s.block.header.set_uncles_hash(keccak(&uncle_bytes));
@@ -760,7 +760,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(e.rlp_bytes(), orig_bytes);
+        assert_eq!(e.encode(), orig_bytes);
 
         let db = e.drain().state.drop().1;
         assert_eq!(orig_db.journal_db().keys(), db.journal_db().keys());

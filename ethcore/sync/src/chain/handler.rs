@@ -834,7 +834,7 @@ impl SyncHandler {
         trace!(target: "sync", "{:02} -> Transactions ({} entries)", peer_id, item_count);
         let mut transactions = Vec::with_capacity(item_count);
         for i in r.iter() {
-            let tx = if i.is_list {
+            let tx = if i.is_list() {
                 i.as_raw().to_vec() // legacy transaction. just add it raw
             } else {
                 i.data()?.to_vec() // typed transaction. remove header from start and send only payload.

@@ -19,7 +19,7 @@
 use super::transaction::TypedTxId;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
 use heapsize::HeapSizeOf;
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use rlp::{DecoderError, Rlp, RlpStream};
 use std::{
     convert::TryInto,
     ops::{Deref, DerefMut},
@@ -161,7 +161,7 @@ impl TypedReceipt {
                 let rlp = Rlp::new(&tx[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
             }
-            TypedTxId::Legacy => Err(DecoderError::Custom("Unknown transaction")),
+            TypedTxId::Legacy => Ok(Self::Legacy(LegacyReceipt::decode(&Rlp::new(tx))?)),
         }
     }
 
@@ -210,7 +210,7 @@ impl TypedReceipt {
                 let mut s = RlpStream::new();
                 receipt.rlp_append(&mut s);
                 s.drain()
-            },
+            }
             Self::AccessList(receipt) => {
                 let mut rlps = RlpStream::new();
                 receipt.rlp_append(&mut rlps);
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_basic_access_list() {
-        let expected = ::rustc_hex::FromHex::from_hex("B9016601f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let expected = ::rustc_hex::FromHex::from_hex("01f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let r = TypedReceipt::new(
             TypedTxId::AccessList,
             LegacyReceipt::new(
@@ -378,7 +378,7 @@ mod tests {
             ),
         );
         let encoded = r.encode();
-        assert_eq!(&encoded[..], &expected[..]);
+        assert_eq!(&encoded, &expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
     }

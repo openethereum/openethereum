@@ -48,7 +48,7 @@ use verification::PreverifiedBlock;
 use vm::{EnvInfo, LastHashes};
 
 use hash::keccak;
-use rlp::{encode_list, Encodable, RlpStream};
+use rlp::{encode_list, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
     receipt::{TransactionOutcome, TypedReceipt},

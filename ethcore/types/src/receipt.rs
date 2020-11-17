@@ -175,7 +175,7 @@ impl TypedReceipt {
     }
 
     pub fn decode_rlp_list(rlp: &Rlp) -> Result<Vec<Self>, DecoderError> {
-        if rlp.is_list() {
+        if !rlp.is_list() {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }

@@ -437,7 +437,7 @@ impl TypedTransaction {
     /// Legacy EIP-86 compatible empty signature.
     /// This method is used in json tests as well as
     /// signature verification tests.
-    #[cfg(any(test, feature = "test-helpers"))]
+    //#[cfg(any(test, feature = "test-helpers"))]
     pub fn null_sign(self, chain_id: u64) -> SignedTransaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
@@ -520,7 +520,7 @@ impl TypedTransaction {
     }
 
     pub fn decode_rlp_list(rlp: &Rlp) -> Result<Vec<UnverifiedTransaction>, DecoderError> {
-        if rlp.is_list() {
+        if !rlp.is_list() {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }

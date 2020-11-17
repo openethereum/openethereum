@@ -513,7 +513,9 @@ mod tests {
     use types::{
         encoded,
         log_entry::{LocalizedLogEntry, LogEntry},
-        transaction::{Action, SignedTransaction, Transaction, TypedTransaction},
+        transaction::{
+            Action, SignedTransaction, Transaction, TypedTransaction, UnverifiedTransaction,
+        },
     };
 
     fn check_ok(result: Result<(), Error>) {
@@ -816,10 +818,16 @@ mod tests {
         let mut uncles_rlp = RlpStream::new();
         uncles_rlp.append_list(&good_uncles);
         let good_uncles_hash = keccak(uncles_rlp.as_raw());
-        let good_transactions_root =
-            ordered_trie_root(good_transactions.iter().map(|t| t.encode()));
-        let eip86_transactions_root =
-            ordered_trie_root(eip86_transactions.iter().map(|t| t.encode()));
+        let good_transactions_root = ordered_trie_root(
+            good_transactions
+                .iter()
+                .map(|t| t.encode()),
+        );
+        let eip86_transactions_root = ordered_trie_root(
+            eip86_transactions
+                .iter()
+                .map(|t| t.encode()),
+        );
 
         let mut parent = good.clone();
         parent.set_number(9);

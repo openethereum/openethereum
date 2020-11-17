@@ -463,14 +463,9 @@ impl EthereumMachine {
             );
             return Err(transaction::Error::TooBig);
         }
-        //TODO dr check where this is used. if it is from list or single transaction
-        //TypedTransaction::decode(transaction)
-        //    .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
 
-        /* or if this is from list use*/
-        use rlp::Rlp;
-        TypedTransaction::decode_rlp(&Rlp::new(transaction)).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
-        
+        TypedTransaction::decode(transaction)
+            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
     }
 }
 

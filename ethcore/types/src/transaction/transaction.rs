@@ -688,7 +688,7 @@ impl UnverifiedTransaction {
         self.unsigned.encode(self.chain_id, &self.signature)
     }
 
-    pub fn rlp_bytes(&self) -> Vec<u8> {
+    fn rlp_bytes(&self) -> Vec<u8> {
         let mut s = RlpStream::new();
         self.unsigned
             .rlp_append(&mut s, self.chain_id, &self.signature);

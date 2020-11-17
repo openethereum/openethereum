@@ -272,7 +272,7 @@ impl<C: Client> txpool::Verifier<Transaction>
         };
 
         // Verify RLP payload
-        if let Err(err) = self.client.decode_transaction(&transaction.rlp_bytes()) {
+        if let Err(err) = self.client.decode_transaction(&transaction.encode()) {
             debug!(target: "txqueue", "[{:?}] Rejected transaction's rlp payload", err);
             bail!(err)
         }

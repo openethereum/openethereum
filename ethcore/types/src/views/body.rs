@@ -58,7 +58,7 @@ impl<'a> BodyView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        TypedTransaction::decode_rlp_list(&self.rlp.at(1).rlp).unwrap_or_else(|e| {
+        TypedTransaction::decode_rlp_list(&self.rlp.at(0).rlp).unwrap_or_else(|e| {
             panic!(
                 "body transactions, view rlp is trusted and should be valid: {:?}",
                 e

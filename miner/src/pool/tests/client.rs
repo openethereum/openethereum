@@ -152,10 +152,8 @@ impl pool::client::Client for TestClient {
         if rlp.as_raw().len() > self.max_transaction_size {
             return Err(transaction::Error::TooBig);
         }
-        //TODO dr is it solo or from list
         TypedTransaction::decode(transaction)
             .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
-        //rlp.as_val()
     }
 }
 

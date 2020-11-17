@@ -36,7 +36,7 @@ use itertools::Itertools;
 use kvdb::DBValue;
 use kvdb_memorydb;
 use parking_lot::RwLock;
-use rlp::{Rlp, RlpStream};
+use rlp::RlpStream;
 use rustc_hex::FromHex;
 use types::{
     basic_account::BasicAccount,

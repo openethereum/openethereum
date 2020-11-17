@@ -21,7 +21,8 @@ use std::{fmt, sync::Arc, time::Duration};
 use io::IoHandler;
 use kvdb::KeyValueDB;
 use types::transaction::{
-    Condition as TransactionCondition, PendingTransaction, SignedTransaction, UnverifiedTransaction, TypedTransaction
+    Condition as TransactionCondition, PendingTransaction, SignedTransaction, TypedTransaction,
+    UnverifiedTransaction,
 };
 
 extern crate common_types as types;

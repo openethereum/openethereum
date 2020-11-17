@@ -23,7 +23,10 @@ use network;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use triehash_ethereum::ordered_trie_root;
-use types::{header::Header as BlockHeader, transaction::{TypedTransaction,UnverifiedTransaction}};
+use types::{
+    header::Header as BlockHeader,
+    transaction::{TypedTransaction, UnverifiedTransaction},
+};
 
 known_heap_size!(0, HeaderId);
 

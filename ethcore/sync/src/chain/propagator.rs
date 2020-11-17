@@ -238,11 +238,8 @@ impl SyncPropagator {
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
-                        let appended = packet.append_raw_checked(
-                            &tx.encode(),
-                            1,
-                            MAX_TRANSACTION_PACKET_SIZE,
-                        );
+                        let appended =
+                            packet.append_raw_checked(&tx.encode(), 1, MAX_TRANSACTION_PACKET_SIZE);
                         if !appended {
                             // Maximal packet size reached just proceed with sending
                             debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
@@ -701,7 +698,9 @@ mod tests {
                     return None;
                 }
 
-                rlp.at(0).ok().and_then(|r|  TypedTransaction::decode_rlp(&r).ok())
+                rlp.at(0)
+                    .ok()
+                    .and_then(|r| TypedTransaction::decode_rlp(&r).ok())
             })
             .collect();
         assert_eq!(sent_transactions.len(), 2);

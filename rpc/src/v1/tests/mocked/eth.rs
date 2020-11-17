@@ -30,7 +30,6 @@ use ethereum_types::{Address, Bloom, H160, H256, U256};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
-use rlp;
 use rustc_hex::{FromHex, ToHex};
 use sync::SyncState;
 use types::{
@@ -694,7 +693,6 @@ fn rpc_eth_transaction_count_by_number_pending() {
 #[test]
 fn rpc_eth_pending_transaction_by_hash() {
     use ethereum_types::H256;
-    use rlp;
     use types::transaction::SignedTransaction;
 
     let tester = EthTester::default();

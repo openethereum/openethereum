@@ -41,7 +41,7 @@ use itertools::Itertools;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use rand::OsRng;
-use rlp::{Rlp,PayloadInfo};
+use rlp::{PayloadInfo, Rlp};
 use rustc_hex::FromHex;
 use trie::{Trie, TrieFactory, TrieSpec};
 use types::{

@@ -80,7 +80,10 @@ pub mod blocks {
 
     use engines::EthEngine;
     use error::{BlockError, Error, ErrorKind};
-    use types::{header::Header, transaction::{UnverifiedTransaction,TypedTransaction}};
+    use types::{
+        header::Header,
+        transaction::{TypedTransaction, UnverifiedTransaction},
+    };
     use verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
 
     use bytes::Bytes;

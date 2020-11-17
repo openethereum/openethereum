@@ -21,9 +21,7 @@ use bytes::Bytes;
 use ethereum_types::H256;
 use hash::keccak;
 use header::Header;
-use transaction::{
-    LocalizedTransaction, TypedTransaction, UnverifiedTransaction,
-};
+use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
 use views::{HeaderView, TransactionView};
 use BlockNumber;
 
@@ -61,7 +59,10 @@ impl<'a> BodyView<'a> {
     /// Return List of transactions in given block.
     pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
         TypedTransaction::decode_rlp_list(&self.rlp.at(1).rlp).unwrap_or_else(|e| {
-            panic!("body transactions, view rlp is trusted and should be valid: {:?}", e)
+            panic!(
+                "body transactions, view rlp is trusted and should be valid: {:?}",
+                e
+            )
         })
     }
 
@@ -113,7 +114,10 @@ impl<'a> BodyView<'a> {
     pub fn transaction_at(&self, index: usize) -> Option<UnverifiedTransaction> {
         self.transactions_rlp().iter().nth(index).map(|rlp| {
             TypedTransaction::decode_rlp(&rlp.rlp).unwrap_or_else(|e| {
-                panic!("body transaction_a, view rlp is trusted and should be valid: {:?}", e)
+                panic!(
+                    "body transaction_a, view rlp is trusted and should be valid: {:?}",
+                    e
+                )
             })
         })
     }

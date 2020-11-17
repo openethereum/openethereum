@@ -77,8 +77,12 @@ impl<'a> BlockView<'a> {
 
     /// Return List of transactions in given block.
     pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
-        TypedTransaction::decode_rlp_list(&self.rlp.at(1).rlp)
-            .unwrap_or_else(|e| panic!("block transactions, view rlp is trusted and should be valid: {:?}", e))
+        TypedTransaction::decode_rlp_list(&self.rlp.at(1).rlp).unwrap_or_else(|e| {
+            panic!(
+                "block transactions, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return List of transactions with additional localization info.
@@ -128,8 +132,12 @@ impl<'a> BlockView<'a> {
     /// Returns transaction at given index without deserializing unnecessary data.
     pub fn transaction_at(&self, index: usize) -> Option<UnverifiedTransaction> {
         self.transactions_rlp().iter().nth(index).map(|rlp| {
-            TypedTransaction::decode_rlp(&rlp.rlp)
-                .unwrap_or_else(|e| panic!("block transaction_at, view rlp is trusted and should be valid.{:?}", e))
+            TypedTransaction::decode_rlp(&rlp.rlp).unwrap_or_else(|e| {
+                panic!(
+                    "block transaction_at, view rlp is trusted and should be valid.{:?}",
+                    e
+                )
+            })
         })
     }
 

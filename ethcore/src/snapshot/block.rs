@@ -21,9 +21,7 @@ use ethereum_types::H256;
 use hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 use triehash::ordered_trie_root;
-use types::{
-    block::Block, header::Header, transaction::TypedTransaction, views::BlockView,
-};
+use types::{block::Block, header::Header, transaction::TypedTransaction, views::BlockView};
 
 const HEADER_FIELDS: usize = 8;
 const BLOCK_FIELDS: usize = 2;
@@ -193,7 +191,7 @@ mod tests {
         let receipts_root = b.header.receipts_root().clone();
         b.header
             .set_transactions_root(::triehash::ordered_trie_root(
-                b.transactions.iter().map(|tx|tx.encode()),
+                b.transactions.iter().map(|tx| tx.encode()),
             ));
 
         let encoded = encode_block(&b);

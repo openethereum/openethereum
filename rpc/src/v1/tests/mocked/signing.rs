@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use rlp;
 use std::{str::FromStr, sync::Arc, thread, time::Duration};
 
 use jsonrpc_core::{futures::Future, IoHandler, Success};

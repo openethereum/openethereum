@@ -18,7 +18,9 @@ use std::sync::{atomic, Arc};
 
 use ethereum_types::{Address, H256, U256};
 use rlp::Rlp;
-use types::transaction::{self, SignedTransaction, Transaction, UnverifiedTransaction,TypedTransaction};
+use types::transaction::{
+    self, SignedTransaction, Transaction, TypedTransaction, UnverifiedTransaction,
+};
 
 use pool::{self, client::AccountDetails};
 
@@ -151,7 +153,8 @@ impl pool::client::Client for TestClient {
             return Err(transaction::Error::TooBig);
         }
         //TODO dr is it solo or from list
-        TypedTransaction::decode(transaction).map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+        TypedTransaction::decode(transaction)
+            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
         //rlp.as_val()
     }
 }

@@ -552,8 +552,7 @@ impl TypedTransaction {
         }
     }
 
-    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[UnverifiedTransaction])
-    {
+    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[UnverifiedTransaction]) {
         s.begin_list(tx_list.len());
         for tx in tx_list.iter() {
             tx.unsigned.rlp_append(s, tx.chain_id, &tx.signature);
@@ -856,14 +855,12 @@ impl SignedTransaction {
         (self.transaction, self.sender, self.public)
     }
 
-    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[SignedTransaction])
-    {
+    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[SignedTransaction]) {
         s.begin_list(tx_list.len());
         for tx in tx_list.iter() {
             tx.unsigned.rlp_append(s, tx.chain_id, &tx.signature);
         }
     }
-
 }
 
 /// Signed Transaction that is a part of canon blockchain.

@@ -164,7 +164,7 @@ fn decode_first_proof(rlp: &Rlp) -> Result<(Header, Vec<DBValue>), ::error::Erro
 fn encode_proof(header: &Header, receipts: &[TypedReceipt]) -> Bytes {
     let mut stream = RlpStream::new_list(2);
     stream.append(header);
-    TypedReceipt::rlp_append_list(&mut stream,receipts);
+    TypedReceipt::rlp_append_list(&mut stream, receipts);
     stream.drain()
 }
 

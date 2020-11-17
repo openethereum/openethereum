@@ -21,7 +21,6 @@ use ethcore::client::TestBlockChainClient;
 use ethereum_types::{Address, U256};
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
-use rlp;
 use types::transaction::{Action, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;

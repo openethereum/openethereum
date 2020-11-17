@@ -950,7 +950,7 @@ mod tests {
             };
 
             let mut rlp_strem = RlpStream::new();
-             SignedTransaction::rlp_append_list(&mut rlp_strem, &[dummy_signed_tx()]);
+            SignedTransaction::rlp_append_list(&mut rlp_strem, &[dummy_signed_tx()]);
             let txs = rlp_strem.drain();
             let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| r.as_raw()));
 

@@ -22,7 +22,6 @@ use accounts::AccountProvider;
 use ethcore::client::TestBlockChainClient;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
-use rlp::encode;
 use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 use jsonrpc_core::IoHandler;

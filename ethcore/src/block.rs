@@ -760,7 +760,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(e.encode(), orig_bytes);
+        assert_eq!(e.rlp_bytes(), orig_bytes);
 
         let db = e.drain().state.drop().1;
         assert_eq!(orig_db.journal_db().keys(), db.journal_db().keys());

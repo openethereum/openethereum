@@ -100,7 +100,14 @@ impl AbridgedBlock {
         let transactions = TypedTransaction::decode_rlp_list(&rlp.at(8)?)?;
         let uncles: Vec<Header> = rlp.list_at(9)?;
 
-        header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| r.as_raw())));
+        header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| {
+            if r.is_list() {
+                r.as_raw()
+            } else {
+                // We already checked if list is valid with decode_rlp_list above
+                r.data().expect("To raw rlp list to be valid")
+            }
+        })));
         header.set_receipts_root(receipts_root);
 
         let mut uncles_rlp = RlpStream::new();

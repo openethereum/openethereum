@@ -952,7 +952,13 @@ mod tests {
             let mut rlp_strem = RlpStream::new();
             SignedTransaction::rlp_append_list(&mut rlp_strem, &[dummy_signed_tx()]);
             let txs = rlp_strem.drain();
-            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| r.as_raw()));
+            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("It is expected that raw rlp list is valid")
+                }
+            }));
 
             let mut rlp = RlpStream::new_list(2);
             rlp.append_raw(&txs, 1);
@@ -1027,8 +1033,9 @@ mod tests {
             } else {
                 encode_list(&[i as u32])
             };
-            let receipts_root =
-                ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| r.as_raw()));
+            let receipts_root = ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| {
+                r.as_raw() //for tests we are going to take raw output of item and go with that
+            }));
             receipts.push(receipts_rlp);
 
             // Construct the block header.

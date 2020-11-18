@@ -475,7 +475,16 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
 fn verify_block_integrity(block: &Unverified) -> Result<(), Error> {
     let block_rlp = Rlp::new(&block.bytes);
     let tx = block_rlp.at(1)?;
-    let expected_root = ordered_trie_root(tx.iter().map(|r| r.as_raw()));
+    let expected_root = ordered_trie_root(tx.iter().map(|r| {
+        if r.is_list() {
+            r.as_raw()
+        } else {
+            // This is already checked in Unverified structure and that is why we are okay to asume that data is valid.
+            r.data().expect(
+                "Unverified block should already check if raw list of transactions is valid",
+            )
+        }
+    }));
     if &expected_root != block.header.transactions_root() {
         bail!(BlockError::InvalidTransactionsRoot(Mismatch {
             expected: expected_root,

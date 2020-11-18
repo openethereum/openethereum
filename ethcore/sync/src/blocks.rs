@@ -503,11 +503,14 @@ impl BlockCollection {
                 if receipt_byte.is_list() {
                     temp_receipts.push(receipt_byte.as_raw())
                 } else {
-                    temp_receipts.push(receipt_byte.data().map_err(|e| {
-                        network::ErrorKind::Rlp(e)
-                    })?);
+                    temp_receipts.push(
+                        receipt_byte
+                            .data()
+                            .map_err(|e| network::ErrorKind::Rlp(e))?,
+                    );
                 }
             }
+
             // calculate trie root and use it as hash
             ordered_trie_root(temp_receipts.iter())
         };

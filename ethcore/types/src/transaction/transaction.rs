@@ -500,7 +500,7 @@ impl TypedTransaction {
         // other transaction types
         match id.unwrap() {
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
-            TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction")),
+            TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
         }
     }
 
@@ -684,15 +684,18 @@ impl Deref for UnverifiedTransaction {
 }
 
 impl UnverifiedTransaction {
-    pub fn encode(&self) -> Vec<u8> {
-        self.unsigned.encode(self.chain_id, &self.signature)
+    pub fn rlp_append(&self, s: &mut RlpStream) {
+        self.unsigned.rlp_append(s, self.chain_id, &self.signature);
     }
 
     fn rlp_bytes(&self) -> Vec<u8> {
         let mut s = RlpStream::new();
-        self.unsigned
-            .rlp_append(&mut s, self.chain_id, &self.signature);
+        self.rlp_append(&mut s);
         s.drain()
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        self.unsigned.encode(self.chain_id, &self.signature)
     }
 
     /// Used to compute hash of created transactions. Without chainid but signature added. This is used to verify if transaction is same or not

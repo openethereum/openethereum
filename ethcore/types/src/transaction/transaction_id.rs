@@ -38,7 +38,7 @@ impl TryFrom<u8> for TypedTxId {
     fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
             x if x == TypedTxId::AccessList as u8 => Ok(TypedTxId::AccessList),
-            x if (x & 0x80) != 0x0 => Ok(TypedTxId::Legacy),
+            x if (x & 0x80) != 0x00 => Ok(TypedTxId::Legacy),
             _ => Err(()),
         }
     }

@@ -1027,14 +1027,19 @@ mod tests {
             // Construct the receipts. Receipt root for the first two blocks is the same.
             //
             // The RLP-encoded integers are clearly not receipts, but the BlockDownloader treats
-            // all receipts as byte blobs, so it does not matter.
+            // all receipts as byte blobs, so it does not matter. It is just important that they are
+            // represended as list (0xc1) so that they passes as legacy list
             let receipts_rlp = if i < 2 {
-                encode_list(&[0u32])
+                vec![0xC1, 0]
             } else {
-                encode_list(&[i as u32])
+                vec![0xC1, i as u8]
             };
             let receipts_root = ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| {
-                r.as_raw() //for tests we are going to take raw output of item and go with that
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("expect proper test data")
+                }
             }));
             receipts.push(receipts_rlp);
 

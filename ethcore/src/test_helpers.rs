@@ -104,7 +104,7 @@ pub fn create_test_block_with_data(
     rlp.append(header);
     rlp.begin_list(transactions.len());
     for t in transactions {
-        rlp.append_raw(&t.encode(), 1);
+        t.rlp_append(&mut rlp);
     }
     rlp.append_list(&uncles);
     rlp.out()

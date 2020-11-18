@@ -308,7 +308,7 @@ impl TestBlockChainClient {
                         nonce: nonce,
                     });
                     let signed_tx = tx.sign(keypair.secret(), None);
-                    txs.append(&signed_tx.encode());
+                    signed_tx.rlp_append(&mut txs);
                     nonce += U256::one();
                 }
 

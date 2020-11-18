@@ -171,7 +171,7 @@ impl SyncPropagator {
         let all_transactions_rlp = {
             let mut packet = RlpStream::new_list(transactions.len());
             for tx in &transactions {
-                packet.append(&tx.encode());
+                tx.rlp_append(&mut packet);
             }
             packet.out()
         };

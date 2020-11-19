@@ -951,6 +951,7 @@ impl Configuration {
             signer_path: self.directories().signer.into(),
             support_token_api,
             max_connections: self.args.arg_ws_max_connections,
+            max_payload: self.args.arg_ws_max_payload,
         };
 
         Ok(conf)

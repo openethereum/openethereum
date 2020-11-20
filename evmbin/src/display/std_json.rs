@@ -21,7 +21,7 @@ use std::{collections::HashMap, io};
 use bytes::ToPretty;
 use ethcore::{pod_state, trace};
 use ethereum_types::{H256, U256};
-
+use super::config::Config;
 use display;
 use info as vm;
 
@@ -61,30 +61,40 @@ pub struct Informant<Trace, Out> {
     subdepth: usize,
     trace_sink: Trace,
     out_sink: Out,
+    config: Config,
 }
 
 impl Default for Informant<io::Stderr, io::Stdout> {
     fn default() -> Self {
-        Self::new(io::stderr(), io::stdout())
+        Self::new(io::stderr(), io::stdout(), Config::default())
     }
 }
 
 impl Informant<io::Stdout, io::Stdout> {
     /// std json informant using out only.
-    pub fn out_only() -> Self {
-        Self::new(io::stdout(), io::stdout())
+    pub fn out_only(config: Config) -> Self {
+        Self::new(io::stdout(), io::stdout(),config)
     }
 }
 
 impl Informant<io::Stderr, io::Stderr> {
     /// std json informant using err only.
-    pub fn err_only() -> Self {
-        Self::new(io::stderr(), io::stderr())
+    pub fn err_only(config: Config) -> Self {
+        Self::new(io::stderr(), io::stderr(),config)
+    }
+}
+
+impl Informant<io::Stderr, io::Stdout> {
+    pub fn new_default(config: Config) -> Self {
+        let mut informant = Self::default();
+        informant.config = config;
+        informant
     }
 }
 
 impl<Trace: Writer, Out: Writer> Informant<Trace, Out> {
-    pub fn new(trace_sink: Trace, out_sink: Out) -> Self {
+    
+    pub fn new(trace_sink: Trace, out_sink: Out, config: Config) -> Self {
         Informant {
             code: Default::default(),
             instruction: Default::default(),
@@ -95,6 +105,7 @@ impl<Trace: Writer, Out: Writer> Informant<Trace, Out> {
             subdepth: 0,
             trace_sink,
             out_sink,
+            config
         }
     }
 
@@ -133,7 +144,7 @@ impl<Trace: Writer, Out: Writer> Informant<Trace, Out> {
 }
 
 impl<Trace: Writer, Out: Writer> vm::Informant for Informant<Trace, Out> {
-    type Sink = (Trace, Out);
+    type Sink = (Trace, Out, Config);
 
     fn before_test(&mut self, name: &str, action: &str) {
         let out_data = json!({
@@ -147,11 +158,11 @@ impl<Trace: Writer, Out: Writer> vm::Informant for Informant<Trace, Out> {
     fn set_gas(&mut self, _gas: U256) {}
 
     fn clone_sink(&self) -> Self::Sink {
-        (self.trace_sink.clone(), self.out_sink.clone())
+        (self.trace_sink.clone(), self.out_sink.clone(), self.config.clone())
     }
     fn finish(
         result: vm::RunResult<<Self as trace::VMTracer>::Output>,
-        (ref mut trace_sink, ref mut out_sink): &mut Self::Sink,
+        (ref mut trace_sink, ref mut out_sink, _): &mut Self::Sink,
     ) {
         match result {
             Ok(success) => {
@@ -240,7 +251,7 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
     fn prepare_subtrace(&mut self, code: &[u8]) {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant<Trace, Out>| {
-            let mut vm = Informant::new(informant.trace_sink.clone(), informant.out_sink.clone());
+            let mut vm = Informant::new(informant.trace_sink.clone(), informant.out_sink.clone(),informant.config);
             vm.depth = informant.depth + 1;
             vm.code = code.to_vec();
             informant.subinfos.push(vm);
@@ -293,7 +304,7 @@ pub mod tests {
         let trace_writer: TestWriter = Default::default();
         let out_writer: TestWriter = Default::default();
         let res = trace_writer.0.clone();
-        (Informant::new(trace_writer, out_writer), res)
+        (Informant::new(trace_writer, out_writer, Config::default()), res)
     }
 
     #[test]

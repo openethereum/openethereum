@@ -18,11 +18,11 @@
 
 use std::{collections::HashMap, mem};
 
+use super::config::Config;
 use bytes::ToPretty;
+use display;
 use ethcore::trace;
 use ethereum_types::{H256, U256};
-
-use display;
 use info as vm;
 
 /// JSON formatting informant.
@@ -44,9 +44,16 @@ pub struct Informant {
     subinfos: Vec<Informant>,
     subdepth: usize,
     unmatched: bool,
+    config: Config,
 }
 
 impl Informant {
+    pub fn new(config: Config) -> Informant {
+        let mut def = Informant::default();
+        def.config = config;
+        def
+    }
+
     fn with_informant_in_depth<F: Fn(&mut Informant)>(
         informant: &mut Informant,
         depth: usize,
@@ -67,8 +74,11 @@ impl Informant {
     }
 
     fn informant_trace(informant: &Informant, gas_used: U256) -> String {
-        let info = ::evm::Instruction::from_u8(informant.instruction).map(|i| i.info());
+        if informant.config.omit_trace_output() {
+            return String::new();
+        }
 
+        let info = ::evm::Instruction::from_u8(informant.instruction).map(|i| i.info());
         json!({
             "pc": informant.pc,
             "op": informant.instruction,
@@ -85,7 +95,7 @@ impl Informant {
 }
 
 impl vm::Informant for Informant {
-    type Sink = ();
+    type Sink = Config;
 
     fn before_test(&mut self, name: &str, action: &str) {
         println!("{}", json!({"action": action, "test": name}));
@@ -96,14 +106,16 @@ impl vm::Informant for Informant {
     }
 
     fn clone_sink(&self) -> Self::Sink {
-        ()
+        self.config
     }
 
-    fn finish(result: vm::RunResult<Self::Output>, _sink: &mut Self::Sink) {
+    fn finish(result: vm::RunResult<Self::Output>, config: &mut Self::Sink) {
         match result {
             Ok(success) => {
-                for trace in success.traces.unwrap_or_else(Vec::new) {
-                    println!("{}", trace);
+                if !config.omit_trace_output() {
+                    for trace in success.traces.unwrap_or_else(Vec::new) {
+                        println!("{}", trace);
+                    }
                 }
 
                 let success_msg = json!({
@@ -115,8 +127,10 @@ impl vm::Informant for Informant {
                 println!("{}", success_msg)
             }
             Err(failure) => {
-                for trace in failure.traces.unwrap_or_else(Vec::new) {
-                    println!("{}", trace);
+                if !config.omit_trace_output() {
+                    for trace in failure.traces.unwrap_or_else(Vec::new) {
+                        println!("{}", trace);
+                    }
                 }
 
                 let failure_msg = json!({
@@ -205,6 +219,7 @@ impl trace::VMTracer for Informant {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant| {
             let mut vm = Informant::default();
+            vm.config = informant.config;
             vm.depth = informant.depth + 1;
             vm.code = code.to_vec();
             vm.gas_used = informant.gas_used;

@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-//! VM Output display utils.
-
-use std::time::Duration;
-
-pub mod json;
-pub mod simple;
-pub mod std_json;
-pub mod config;
+//! Config used by display informants
 
 
-
-/// Formats duration into human readable format.
-pub fn format_time(time: &Duration) -> String {
-    format!("{}.{:.9}s", time.as_secs(), time.subsec_nanos())
+#[derive(Default, Copy, Clone)]
+pub struct Config {
+    omit_trace_output: bool
 }
 
-/// Formats the time as microseconds.
-pub fn as_micros(time: &Duration) -> u64 {
-    time.as_secs() * 1_000_000 + time.subsec_nanos() as u64 / 1_000
+impl Config {
+    pub fn new(omit_trace_output: bool) -> Config {
+        Config {
+            omit_trace_output,
+        }
+    }
+
+    pub fn omit_trace_output(&self) -> bool {
+        self.omit_trace_output
+    }
 }

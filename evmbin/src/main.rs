@@ -108,7 +108,7 @@ fn main() {
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
-        
+
     let config = args.config();
 
     if args.cmd_state_test {
@@ -342,7 +342,7 @@ struct Args {
     flag_std_dump_json: bool,
     flag_std_err_only: bool,
     flag_std_out_only: bool,
-    flag_omit_trace_output: bool, 
+    flag_omit_trace_output: bool,
 }
 
 impl Args {

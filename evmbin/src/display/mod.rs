@@ -18,12 +18,10 @@
 
 use std::time::Duration;
 
+pub mod config;
 pub mod json;
 pub mod simple;
 pub mod std_json;
-pub mod config;
-
-
 
 /// Formats duration into human readable format.
 pub fn format_time(time: &Duration) -> String {

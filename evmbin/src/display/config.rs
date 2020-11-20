@@ -16,17 +16,14 @@
 
 //! Config used by display informants
 
-
 #[derive(Default, Copy, Clone)]
 pub struct Config {
-    omit_trace_output: bool
+    omit_trace_output: bool,
 }
 
 impl Config {
     pub fn new(omit_trace_output: bool) -> Config {
-        Config {
-            omit_trace_output,
-        }
+        Config { omit_trace_output }
     }
 
     pub fn omit_trace_output(&self) -> bool {

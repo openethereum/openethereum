@@ -92,7 +92,7 @@ General options:
     --std-json                Display results in standardized JSON format.
     --std-err-only            With --std-json redirect to err output only.
     --std-out-only            With --std-json redirect to out output only.
-    --omit-trace-output        With --std-json omit trace output.
+    --omit-trace-output       With --std-json omit trace output.
     --std-dump-json           Display results in standardized JSON format
                               with additional state dump.
 

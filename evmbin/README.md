@@ -5,11 +5,11 @@ EVM implementation for OpenEthereum.
 ### Usage
 
 ```
-EVM implementation for OpenEthereum.
+EVM implementation for Parity.
   Copyright 2015-2020 Parity Technologies (UK) Ltd.
 
 Usage:
-    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only]
+    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only --omit-trace-output]
     openethereum-evm stats [options]
     openethereum-evm stats-jsontests-vm <file>
     openethereum-evm [options]
@@ -30,16 +30,21 @@ Transaction options:
     --gas-price WEI    Supplied gas price as hex (without 0x).
 
 State test options:
+    --chain CHAIN      Run only from specific chain name (i.e. one of EIP150, EIP158,
+                       Frontier, Homestead, Byzantium, Constantinople,
+                       ConstantinopleFix, Istanbul, EIP158ToByzantiumAt5, FrontierToHomesteadAt5,
+                       HomesteadToDaoAt5, HomesteadToEIP150At5, Berlin, Yolo3).
     --only NAME        Runs only a single test matching the name.
-    --chain CHAIN      Run only tests from specific chain.
 
 General options:
-    --json             Display verbose results in JSON.
-    --std-json         Display results in standardized JSON format.
-    --std-err-only     With --std-json redirect to err output only.
-    --std-out-only     With --std-json redirect to out output only.
-    --std-dump-json    Display results in standardized JSON format
-                       with additional state dump.
+    --json                    Display verbose results in JSON.
+    --std-json                Display results in standardized JSON format.
+    --std-err-only            With --std-json redirect to err output only.
+    --std-out-only            With --std-json redirect to out output only.
+    --omit-trace-output       With --std-json omit trace output.
+    --std-dump-json           Display results in standardized JSON format
+                              with additional state dump.
+
 Display result state dump in standardized JSON format.
     --chain CHAIN      Chain spec file path.
     -h, --help         Display this message and exit.

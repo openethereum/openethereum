@@ -74,11 +74,16 @@ impl Informant {
     }
 
     fn informant_trace(informant: &Informant, gas_used: U256) -> String {
+        let memory = if informant.config.omit_memory_output() {
+            "".to_string()
+        } else {
+            format!("0x{}", informant.memory.to_hex())
+        };
         let storage = if informant.config.omit_storage_output() {
             None
         } else {
             Some(&informant.storage)
-        }
+        };
         let info = ::evm::Instruction::from_u8(informant.instruction).map(|i| i.info());
         json!({
             "pc": informant.pc,
@@ -86,7 +91,7 @@ impl Informant {
             "opName": info.map(|i| i.name).unwrap_or(""),
             "gas": format!("{:#x}", gas_used.saturating_add(informant.gas_cost)),
             "gasCost": format!("{:#x}", informant.gas_cost),
-            "memory": format!("0x{}", informant.memory.to_hex()),
+            "memory": memory,
             "stack": informant.stack,
             "storage": storage,
             "depth": informant.depth,
@@ -113,10 +118,8 @@ impl vm::Informant for Informant {
     fn finish(result: vm::RunResult<Self::Output>, config: &mut Self::Sink) {
         match result {
             Ok(success) => {
-                if !config.omit_storage_output() {
-                    for trace in success.traces.unwrap_or_else(Vec::new) {
-                        println!("{}", trace);
-                    }
+                for trace in success.traces.unwrap_or_else(Vec::new) {
+                    println!("{}", trace);
                 }
 
                 let success_msg = json!({

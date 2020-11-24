@@ -19,14 +19,19 @@
 #[derive(Default, Copy, Clone)]
 pub struct Config {
     omit_storage_output: bool,
+    omit_memory_output: bool,
 }
 
 impl Config {
-    pub fn new(omit_storage_output: bool) -> Config {
-        Config { omit_storage_output }
+    pub fn new(omit_storage_output: bool, omit_memory_output: bool) -> Config {
+        Config { omit_storage_output, omit_memory_output }
     }
 
     pub fn omit_storage_output(&self) -> bool {
         self.omit_storage_output
+    }
+
+    pub fn omit_memory_output(&self) -> bool {
+        self.omit_memory_output
     }
 }

@@ -318,11 +318,11 @@ impl Handshake {
         rlp.append(&self.nonce);
         rlp.append(&PROTOCOL_VERSION);
 
-        let encoded = rlp
-            .out()
-            .into_iter()
-            .chain(repeat(0).take(rand::thread_rng().gen_range::<usize>(100, 301)))
-            .collect::<Vec<_>>();
+        let mut encoded = rlp.out();
+        encoded.resize(
+            encoded.len() + rand::thread_rng().gen_range::<usize>(100, 301),
+            0,
+        );
         let len = (encoded.len() + ECIES_OVERHEAD) as u16;
         let prefix = len.to_be_bytes();
         let message = ecies::encrypt(&self.id, &prefix, &encoded)?;

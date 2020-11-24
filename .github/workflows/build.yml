@@ -9,6 +9,7 @@ on:
 env:
   AWS_REGION:                   "us-east-1"
   AWS_S3_ARTIFACTS_BUCKET:      "openethereum-releases"
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 jobs:
   build:

@@ -60,7 +60,7 @@ EVM implementation for Parity.
   Copyright 2015-2020 Parity Technologies (UK) Ltd.
 
 Usage:
-    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only --omit-trace-output]
+    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only --omit-storage-output]
     openethereum-evm stats [options]
     openethereum-evm stats-jsontests-vm <file>
     openethereum-evm [options]
@@ -92,7 +92,7 @@ General options:
     --std-json                Display results in standardized JSON format.
     --std-err-only            With --std-json redirect to err output only.
     --std-out-only            With --std-json redirect to out output only.
-    --omit-trace-output       With --std-json omit trace output.
+    --omit-storage-output       With --std-json omit trace output.
     --std-dump-json           Display results in standardized JSON format
                               with additional state dump.
 
@@ -342,7 +342,7 @@ struct Args {
     flag_std_dump_json: bool,
     flag_std_err_only: bool,
     flag_std_out_only: bool,
-    flag_omit_trace_output: bool,
+    flag_omit_storage_output: bool,
 }
 
 impl Args {
@@ -406,7 +406,7 @@ impl Args {
     }
 
     pub fn config(&self) -> display::config::Config {
-        display::config::Config::new(self.flag_omit_trace_output)
+        display::config::Config::new(self.flag_omit_storage_output)
     }
 }
 

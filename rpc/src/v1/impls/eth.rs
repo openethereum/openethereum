@@ -680,11 +680,6 @@ where
         values: Vec<H256>,
         num: Option<BlockNumber>,
     ) -> BoxFuture<EthAccount> {
-        try_bf!(errors::require_experimental(
-            self.options.allow_experimental_rpcs,
-            "1186"
-        ));
-
         let key1 = keccak(address);
 
         let num = num.unwrap_or_default();

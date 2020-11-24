@@ -554,16 +554,14 @@ impl ChainNotify for EthSync {
 
     fn start(&self) {
         match self.network.start() {
-			Err((err, listen_address)) => {
-				match err.into() {
-					ErrorKind::Io(ref e) if e.kind() == io::ErrorKind::AddrInUse => {
-						warn!("Network port {:?} is already in use, make sure that another instance of an Ethereum client is not running or change the port using the --port option.", listen_address.expect("Listen address is not set."))
-					},
-					err => warn!("Error starting network: {}", err),
-				}
-			},
-			_ => {},
-		}
+            Err((err, listen_address)) => match err.into() {
+                ErrorKind::Io(ref e) if e.kind() == io::ErrorKind::AddrInUse => {
+                    warn!("Network port {:?} is already in use, make sure that another instance of an Ethereum client is not running or change the port using the --port option.", listen_address.expect("Listen address is not set."))
+                }
+                err => warn!("Error starting network: {}", err),
+            },
+            _ => {}
+        }
 
         self.network
             .register_protocol(

@@ -13,6 +13,7 @@ jobs:
     env:
       SCCACHE_CACHE_SIZE:       "1G"
       SCCACHE_IDLE_TIMEOUT:     0    
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name:                   Checkout sources
         uses:                   actions/checkout@main

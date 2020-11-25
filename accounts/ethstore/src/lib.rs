@@ -18,7 +18,6 @@
 
 #![warn(missing_docs)]
 
-extern crate dir;
 extern crate itertools;
 extern crate libc;
 extern crate parking_lot;
@@ -29,7 +28,6 @@ extern crate serde_json;
 extern crate smallvec;
 extern crate tempdir;
 extern crate time;
-extern crate tiny_keccak;
 
 extern crate ethereum_types;
 extern crate ethkey as _ethkey;

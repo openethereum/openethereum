@@ -24,7 +24,10 @@ pub struct Config {
 
 impl Config {
     pub fn new(omit_storage_output: bool, omit_memory_output: bool) -> Config {
-        Config { omit_storage_output, omit_memory_output }
+        Config {
+            omit_storage_output,
+            omit_memory_output,
+        }
     }
 
     pub fn omit_storage_output(&self) -> bool {

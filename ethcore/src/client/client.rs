@@ -1197,15 +1197,27 @@ impl Client {
 
     /// Get a copy of the best block's state.
     pub fn latest_state_and_header(&self) -> (State<StateDB>, Header) {
-        let header = self.best_block_header();
-        let state = State::from_existing(
-            self.state_db.read().boxed_clone_canon(&header.hash()),
-            *header.state_root(),
-            self.engine.account_start_nonce(header.number()),
-            self.factories.clone(),
-        )
-        .expect("State root of best block header always valid.");
-        (state, header)
+        let mut nb_tries = 5;
+        // Here, we are taking latest block and then latest state. If in between those two calls `best` block got prunned app will panic.
+        // This is something that should not happend often and it is edge case.
+        // Locking read best_block lock would be more straighforward, but can introduce overlaping locks,
+        // because of this we are just taking 5 tries to get best state in most cases it will work on first try.
+        while nb_tries != 0 {
+            let header = self.best_block_header();
+            match State::from_existing(
+                self.state_db.read().boxed_clone_canon(&header.hash()),
+                *header.state_root(),
+                self.engine.account_start_nonce(header.number()),
+                self.factories.clone(),
+            ) {
+                Ok(ret) => return (ret, header),
+                Err(_) => {
+                    warn!("Couldn't fetch state of best block header: {:?}", header);
+                    nb_tries -= 1;
+                }
+            }
+        }
+        panic!("Couldn't get latest state in 5 tries");
     }
 
     /// Attempt to get a copy of a specific block's final state.

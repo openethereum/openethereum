@@ -976,8 +976,10 @@ impl ChainSync {
                     ancient_block_number,
                 );
                 if let Some(hash) = chain.first_block_hash {
-                    trace!(target: "sync", "Downloader target set to {:?}", hash);
+                    info!(target: "sync", "Downloader target for old blocks is set to {:?}", hash);
                     downloader.set_target(&hash);
+                } else {
+                    info!(target: "sync", "Downloader target could not be found");
                 }
                 self.old_blocks = Some(downloader);
             }
@@ -1344,7 +1346,7 @@ impl ChainSync {
             },
             SyncState::SnapshotWaiting => match io.snapshot_service().restoration_status() {
                 RestorationStatus::Inactive => {
-                    trace!(target:"sync", "Snapshot restoration is complete");
+                    info!(target:"sync", "Snapshot restoration is complete");
                     self.restart(io);
                 }
                 RestorationStatus::Initializing { .. } => {
@@ -1443,7 +1445,7 @@ impl ChainSync {
             SyncPropagator::propagate_proposed_blocks(self, io, proposed);
         }
         if !invalid.is_empty() {
-            trace!(target: "sync", "Bad blocks in the queue, restarting");
+            info!(target: "sync", "Bad blocks in the queue, restarting sync");
             self.restart(io);
         }
 

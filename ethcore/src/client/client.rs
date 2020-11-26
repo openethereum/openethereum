@@ -527,6 +527,10 @@ impl Importer {
         let receipts = ::rlp::decode_list(receipts_bytes);
         let _import_lock = self.import_lock.lock();
 
+        if unverified.header.number() >= chain.best_block_header().number() {
+            warn!("Ancient block is number is higher then best block number");
+        }
+
         {
             trace_time!("import_old_block");
             // verify the block, passing the chain for updating the epoch verifier.

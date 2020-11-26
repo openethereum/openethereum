@@ -661,7 +661,7 @@ impl BlockDownloader {
 
             if self.target_hash.as_ref().map_or(false, |t| t == &h) {
                 self.state = State::Complete;
-                trace_sync!(self, "Sync target reached");
+                info!("Sync target {:?} for old blocks reached. Syncing ancient blocks finished.", self.target_hash);
                 return download_action;
             }
 

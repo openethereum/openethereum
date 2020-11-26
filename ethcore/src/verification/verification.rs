@@ -69,30 +69,30 @@ pub fn verify_block_basic(
     engine: &dyn EthEngine,
     check_seal: bool,
 ) -> Result<(), Error> {
-    // t_nb 4.1  verify header params
+    /// t_nb 4.1  verify header params
     verify_header_params(&block.header, engine, true, check_seal)?;
-    // t_nb 4.2 verify header time (addded in new OE version)
-    // t_nb 4.3 verify block integrity
+    /// t_nb 4.2 verify header time (addded in new OE version)
+    /// t_nb 4.3 verify block integrity
     verify_block_integrity(block)?;
 
     if check_seal {
-        // t_nb 4.4 Check block seal. It calls engine to verify block basic
+        /// t_nb 4.4 Check block seal. It calls engine to verify block basic
         engine.verify_block_basic(&block.header)?;
     }
 
-    // t_nb 4.5 for all uncled verify header and call engine to verify block basic
+    /// t_nb 4.5 for all uncled verify header and call engine to verify block basic
     for uncle in &block.uncles {
-        // t_nb 4.5.1
+        /// t_nb 4.5.1
         verify_header_params(uncle, engine, false, check_seal)?;
         if check_seal {
-            // t_nb 4.5.2
+            /// t_nb 4.5.2
             engine.verify_block_basic(uncle)?;
         }
     }
 
-    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
+    /// t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
 
-    // t_nb 4.7 for every transaction call engine.verify_transaction_basic
+    /// t_nb 4.7 for every transaction call engine.verify_transaction_basic
     for t in &block.transactions {
         engine.verify_transaction_basic(t, &block.header)?;
     }
@@ -110,10 +110,10 @@ pub fn verify_block_unordered(
 ) -> Result<PreverifiedBlock, Error> {
     let header = block.header;
     if check_seal {
-        // t_nb 5.1
+        /// t_nb 5.1
         engine.verify_block_unordered(&header)?;
         for uncle in &block.uncles {
-            // t_nb 5.2
+            /// t_nb 5.2
             engine.verify_block_unordered(uncle)?;
         }
     }
@@ -124,14 +124,14 @@ pub fn verify_block_unordered(
         None
     };
 
-    // t_nb 5.3 iterate over all transactions
+    /// t_nb 5.3 iterate over all transactions
     let transactions = block
         .transactions
         .into_iter()
         .map(|t| {
-            // t_nb 5.3.1 call verify_unordered. Check signatures and calculate address
+            /// t_nb 5.3.1 call verify_unordered. Check signatures and calculate address
             let t = engine.verify_transaction_unordered(t, &header)?;
-            // t_nb 5.3.2 check if nonce is more then max nonce (EIP-168 and EIP169)
+            /// t_nb 5.3.2 check if nonce is more then max nonce (EIP-168 and EIP169)
             if let Some(max_nonce) = nonce_cap {
                 if t.nonce >= max_nonce {
                     return Err(BlockError::TooManyTransactions(t.sender()).into());
@@ -169,7 +169,7 @@ pub fn verify_block_family<C: BlockInfo + CallContract>(
     do_full: Option<FullFamilyParams<C>>,
 ) -> Result<(), Error> {
     // TODO: verify timestamp
-    // t_nb 6.3.1 verify parent
+    /// t_nb 6.3.1 verify parent
     verify_parent(&header, &parent, engine)?;
     engine.verify_block_family(&header, &parent)?;
 
@@ -178,10 +178,10 @@ pub fn verify_block_family<C: BlockInfo + CallContract>(
         None => return Ok(()),
     };
 
-    // t_nb 6.3.2 verify uncles
+    /// t_nb 6.3.2 verify uncles
     verify_uncles(params.block, params.block_provider, engine)?;
 
-    // t_nb 6.3.3 verify all transactions
+    /// t_nb 6.3.3 verify all transactions
     for tx in &params.block.transactions {
         // transactions are verified against the parent header since the current
         // state wasn't available when the tx was created

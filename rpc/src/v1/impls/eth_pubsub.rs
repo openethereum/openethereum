@@ -175,7 +175,7 @@ impl<C> ChainNotificationHandler<C> {
 }
 
 impl<C: BlockChainClient> ChainNotify for ChainNotificationHandler<C> {
-    // t_nb 11.3 RPC. Notify subscriber header/logs about new block
+    /// t_nb 11.3 RPC. Notify subscriber header/logs about new block
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if self.heads_subscribers.read().is_empty() && self.logs_subscribers.read().is_empty() {
             return;

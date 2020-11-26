@@ -315,13 +315,13 @@ impl Importer {
                     invalid_blocks.insert(hash);
                     continue;
                 }
-                // t_nb 7.0 check and lock block
+                /// t_nb 7.0 check and lock block
                 match self.check_and_lock_block(&bytes, block, client) {
                     Ok((closed_block, pending)) => {
                         imported_blocks.push(hash);
                         let transactions_len = closed_block.transactions.len();
 
-                        // t_nb 8.0 commit block to db
+                        /// t_nb 8.0 commit block to db
                         let route = self.commit_block(
                             closed_block,
                             &header,
@@ -364,7 +364,7 @@ impl Importer {
             if !imported_blocks.is_empty() {
                 let route = ChainRoute::from(import_results.as_ref());
 
-                // t_nb 10 Notify miner about new included block.
+                /// t_nb 10 Notify miner about new included block.
                 if !has_more_blocks_to_import {
                     self.miner.chain_new_blocks(
                         client,
@@ -376,7 +376,7 @@ impl Importer {
                     );
                 }
 
-                // t_nb 11 notify rest of system about new block inclusion
+                /// t_nb 11 notify rest of system about new block inclusion
                 client.notify(|notify| {
                     notify.new_blocks(NewBlocks::new(
                         imported_blocks.clone(),
@@ -398,7 +398,7 @@ impl Importer {
         imported
     }
 
-    // t_nb 6.0.1 check and lock block,
+    /// t_nb 6.0.1 check and lock block,
     fn check_and_lock_block(
         &self,
         bytes: &[u8],
@@ -409,14 +409,14 @@ impl Importer {
         let header = block.header.clone();
 
         // Check the block isn't so old we won't be able to enact it.
-        // t_nb 7.1 check if block is older then last pruned block
+        /// t_nb 7.1 check if block is older then last pruned block
         let best_block_number = client.chain.read().best_block_number();
         if client.pruning_info().earliest_state > header.number() {
             warn!(target: "client", "Block import failed for #{} ({})\nBlock is ancient (current best block: #{}).", header.number(), header.hash(), best_block_number);
             bail!("Block is ancient");
         }
 
-        // t_nb 7.2 Check if parent is in chain
+        /// t_nb 7.2 Check if parent is in chain
         let parent = match client.block_header_decoded(BlockId::Hash(*header.parent_hash())) {
             Some(h) => h,
             None => {
@@ -426,7 +426,7 @@ impl Importer {
         };
 
         let chain = client.chain.read();
-        // t_nb 7.3 verify block family
+        /// t_nb 7.3 verify block family
         let verify_family_result = self.verifier.verify_block_family(
             &header,
             &parent,
@@ -443,7 +443,7 @@ impl Importer {
             bail!(e);
         };
 
-        // t_nb 7.4 verify block external
+        /// t_nb 7.4 verify block external
         let verify_external_result = self.verifier.verify_block_external(&header, engine);
         if let Err(e) = verify_external_result {
             warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
@@ -451,7 +451,7 @@ impl Importer {
         };
 
         // Enact Verified Block
-        // t_nb 7.5 Get build last hashes. Get parent state db. Get epoch_transition
+        /// t_nb 7.5 Get build last hashes. Get parent state db. Get epoch_transition
         let last_hashes = client.build_last_hashes(header.parent_hash());
 
         let db = client
@@ -463,7 +463,7 @@ impl Importer {
             .epoch_transition(parent.number(), *header.parent_hash())
             .is_some();
 
-        // t_nb 8.0 Block enacting. Execution of transactions.
+        /// t_nb 8.0 Block enacting. Execution of transactions.
         let enact_result = enact_verified(
             block,
             engine,
@@ -484,7 +484,7 @@ impl Importer {
             }
         };
 
-        // t_nb 7.6 Strip receipts for blocks before validate_receipts_transition,
+        /// t_nb 7.6 Strip receipts for blocks before validate_receipts_transition,
         // if the expected receipts root header does not match.
         // (i.e. allow inconsistency in receipts outcome before the transition block)
         if header.number() < engine.params().validate_receipts_transition
@@ -493,7 +493,7 @@ impl Importer {
             locked_block.strip_receipts_outcomes();
         }
 
-        // t_nb 7.7 Final Verification. See if block that we created (executed) matches exactly with block that we received.
+        /// t_nb 7.7 Final Verification. See if block that we created (executed) matches exactly with block that we received.
         if let Err(e) = self
             .verifier
             .verify_block_final(&header, &locked_block.header)
@@ -580,7 +580,7 @@ impl Importer {
 
         let mut batch = DBTransaction::new();
 
-        // t_nb 9.1 Gather all ancestry actions. (Used only by AuRa)
+        /// t_nb 9.1 Gather all ancestry actions. (Used only by AuRa)
         let ancestry_actions = self
             .engine
             .ancestry_actions(&header, &mut chain.ancestry_with_metadata_iter(*parent));
@@ -616,28 +616,28 @@ impl Importer {
             }
         };
 
-        // t_nb 9.2 calcuate route between current and latest block.
+        /// t_nb 9.2 calcuate route between current and latest block.
         let route = chain.tree_route(best_hash, *parent).expect("forks are only kept when it has common ancestors; tree route from best to prospective's parent always exists; qed");
 
-        // t_nb 9.3 Check block total difficulty
+        /// t_nb 9.3 Check block total difficulty
         let fork_choice = if route.is_from_route_finalized {
             ForkChoice::Old
         } else {
             self.engine.fork_choice(&new, &best)
         };
 
-        // t_nb 9.4 CHECK! I *think* this is fine, even if the state_root is equal to another
+        /// t_nb 9.4 CHECK! I *think* this is fine, even if the state_root is equal to another
         // already-imported block of the same number.
         // TODO: Prove it with a test.
         let mut state = block.state.drop().1;
 
-        // t_nb 9.5 check epoch end signal, potentially generating a proof on the current
+        /// t_nb 9.5 check epoch end signal, potentially generating a proof on the current
         // state. Write transition into db.
         if let Some(pending) = pending {
             chain.insert_pending_transition(&mut batch, header.hash(), pending);
         }
 
-        // t_nb 9.6 push state to database Transaction. (It calls journal_under from JournalDB)
+        /// t_nb 9.6 push state to database Transaction. (It calls journal_under from JournalDB)
         state
             .journal_under(&mut batch, number, hash)
             .expect("DB commit failed");
@@ -648,7 +648,7 @@ impl Importer {
                 let AncestryAction::MarkFinalized(a) = ancestry_action;
 
                 if a != header.hash() {
-                    // t_nb 9.7 if there are finalized ancester, mark that chainge in block in db. (Used by AuRa)
+                    /// t_nb 9.7 if there are finalized ancester, mark that chainge in block in db. (Used by AuRa)
                     chain
                         .mark_finalized(&mut batch, a)
                         .expect("Engine's ancestry action must be known blocks; qed");
@@ -661,7 +661,7 @@ impl Importer {
             })
             .collect();
 
-        // t_nb 9.8 insert block
+        /// t_nb 9.8 insert block
         let route = chain.insert_block(
             &mut batch,
             block_data,
@@ -672,7 +672,7 @@ impl Importer {
             },
         );
 
-        // t_nb 9.9 insert traces (if they are enabled)
+        /// t_nb 9.9 insert traces (if they are enabled)
         client.tracedb.read().import(
             &mut batch,
             TraceImportRequest {
@@ -686,21 +686,21 @@ impl Importer {
 
         let is_canon = route.enacted.last().map_or(false, |h| h == hash);
 
-        // t_nb 9.10 sync cache
+        /// t_nb 9.10 sync cache
         state.sync_cache(&route.enacted, &route.retracted, is_canon);
         // Final commit to the DB
-        // t_nb 9.11 Write Transaction to database (cached)
+        /// t_nb 9.11 Write Transaction to database (cached)
         client.db.read().key_value().write_buffered(batch);
-        // t_nb 9.12 commit changed to become current greatest by applying pending insertion updates (Sync point)
+        /// t_nb 9.12 commit changed to become current greatest by applying pending insertion updates (Sync point)
         chain.commit();
 
-        // t_nb 9.13 check epoch end. Related only to AuRa and it seems light engine
+        /// t_nb 9.13 check epoch end. Related only to AuRa and it seems light engine
         self.check_epoch_end(&header, &finalized, &chain, client);
 
-        // t_nb 9.14 update last hashes. They are build in step 7.5
+        /// t_nb 9.14 update last hashes. They are build in step 7.5
         client.update_last_hashes(&parent, hash);
 
-        // t_nb 9.15 prune ancient states
+        /// t_nb 9.15 prune ancient states
         if let Err(e) = client.prune_ancient(state, &chain) {
             warn!("Failed to prune ancient state data: {}", e);
         }
@@ -1123,7 +1123,7 @@ impl Client {
         with_call(&call)
     }
 
-    // t_nb 9.15 prune ancient states until below the memory limit or only the minimum amount remain.
+    /// t_nb 9.15 prune ancient states until below the memory limit or only the minimum amount remain.
     fn prune_ancient(
         &self,
         mut state_db: StateDB,
@@ -1163,7 +1163,7 @@ impl Client {
         Ok(())
     }
 
-    // t_nb 9.14 update last hashes. They are build in step 7.5
+    /// t_nb 9.14 update last hashes. They are build in step 7.5
     fn update_last_hashes(&self, parent: &H256, hash: &H256) {
         let mut hashes = self.last_hashes.write();
         if hashes.front().map_or(false, |h| h == parent) {
@@ -1747,14 +1747,14 @@ impl CallContract for Client {
 }
 
 impl ImportBlock for Client {
-    // t_nb 2.0 import block to client
+    /// t_nb 2.0 import block to client
     fn import_block(&self, unverified: Unverified) -> EthcoreResult<H256> {
-        // t_nb 2.1 check if header hash is known to us.
+        /// t_nb 2.1 check if header hash is known to us.
         if self.chain.read().is_known(&unverified.hash()) {
             bail!(EthcoreErrorKind::Import(ImportErrorKind::AlreadyInChain));
         }
 
-        // t_nb 2.2 check if parent is known
+        /// t_nb 2.2 check if parent is known
         let status = self.block_status(BlockId::Hash(unverified.parent_hash()));
         if status == BlockStatus::Unknown {
             bail!(EthcoreErrorKind::Block(BlockError::UnknownParent(
@@ -1772,16 +1772,16 @@ impl ImportBlock for Client {
             None
         };
 
-        // t_nb 2.3
+        /// t_nb 2.3
         match self.importer.block_queue.import(unverified) {
             Ok(hash) => {
-                // t_nb 2.4 If block is okay and the queue is empty we propagate the block in a `PriorityTask` to be rebrodcasted
+                /// t_nb 2.4 If block is okay and the queue is empty we propagate the block in a `PriorityTask` to be rebrodcasted
                 if let Some((raw, hash, difficulty)) = raw {
                     self.notify(move |n| n.block_pre_import(&raw, &hash, &difficulty));
                 }
                 Ok(hash)
             }
-            // t_nb 2.5 if block is not okay print error. we only care about block errors (not import errors)
+            /// t_nb 2.5 if block is not okay print error. we only care about block errors (not import errors)
             Err((Some(block), EthcoreError(EthcoreErrorKind::Block(err), _))) => {
                 self.importer
                     .bad_blocks

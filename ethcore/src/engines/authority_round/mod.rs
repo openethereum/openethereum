@@ -1307,7 +1307,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         Ok(())
     }
 
-    // t_nb 8.1.5
+    /// t_nb 8.1.5
     fn on_new_block(
         &self,
         block: &mut ExecutedBlock,
@@ -1532,7 +1532,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         Ok(())
     }
 
-    // t_nb 6.4 Check the validators.
+    /// t_nb 6.4 Check the validators.
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         let (validators, set_number) = self.epoch_set(header)?;
 

@@ -279,7 +279,7 @@ impl SyncPropagator {
         sent_to_peers
     }
 
-    // t_nb 11.4.1 propagate latest blocks to peers
+    /// t_nb 11.4.1 propagate latest blocks to peers
     pub fn propagate_latest_blocks(sync: &mut ChainSync, io: &mut dyn SyncIo, sealed: &[H256]) {
         let chain_info = io.chain().chain_info();
         if (((chain_info.best_block_number as i64) - (sync.last_sent_block_number as i64)).abs()
@@ -288,19 +288,19 @@ impl SyncPropagator {
         {
             let peers = sync.get_lagging_peers(&chain_info);
             if sealed.is_empty() {
-                // t_nb 11.4.2
+                /// t_nb 11.4.2
                 let hashes = SyncPropagator::propagate_new_hashes(sync, &chain_info, io, &peers);
                 let peers = ChainSync::select_random_peers(&peers);
-                // t_nb 11.4.3
+                /// t_nb 11.4.3
                 let blocks =
                     SyncPropagator::propagate_blocks(sync, &chain_info, io, sealed, &peers);
                 if blocks != 0 || hashes != 0 {
                     trace!(target: "sync", "Sent latest {} blocks and {} hashes to peers.", blocks, hashes);
                 }
             } else {
-                // t_nb 11.4.3
+                /// t_nb 11.4.3
                 SyncPropagator::propagate_blocks(sync, &chain_info, io, sealed, &peers);
-                // t_nb 11.4.2
+                /// t_nb 11.4.2
                 SyncPropagator::propagate_new_hashes(sync, &chain_info, io, &peers);
                 trace!(target: "sync", "Sent sealed block to all peers");
             };

@@ -1228,7 +1228,7 @@ impl ChainSync {
                 }
 
                 if is_complete {
-                    trace!(target: "sync", "Background block download is complete");
+                    info!(target: "sync", "Background block download is complete");
                     self.old_blocks = None;
                 }
             }

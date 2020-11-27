@@ -531,7 +531,7 @@ impl BlockDownloader {
                     } else {
                         let n = start - cmp::min(self.retract_step, start);
                         if n == 0 {
-                            debug_sync!(self, "Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
+                            info!("Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
                             self.reset_to_block(&best_hash, best);
                         } else {
                             self.retract_step *= 2;
@@ -547,8 +547,7 @@ impl BlockDownloader {
                                     );
                                 }
                                 None => {
-                                    debug_sync!(
-                                        self,
+                                    info!(
                                         "Could not revert to previous block, last: {} ({})",
                                         start,
                                         self.last_imported_hash

@@ -528,7 +528,7 @@ impl Importer {
         let _import_lock = self.import_lock.lock();
 
         if unverified.header.number() >= chain.best_block_header().number() {
-            warn!("Ancient block is number is higher then best block number");
+            warn!("Ancient block number is higher then best block number");
         }
 
         {

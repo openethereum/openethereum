@@ -26,6 +26,7 @@ use v1::types::Log;
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
     /// Transaction Type
+    #[serde(skip_serializing)]
     pub transaction_type: TypedTxId,
     /// Transaction Hash
     pub transaction_hash: Option<H256>,

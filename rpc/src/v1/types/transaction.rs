@@ -71,8 +71,10 @@ pub struct Transaction {
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
     /// transaction type
-    pub tx_type: u8,
+    #[serde(skip_serializing)]
+    pub transaction_type: u8,
     /// optional access list
+    #[serde(skip_serializing)]
     pub access_list: AccessList,
 }
 
@@ -219,7 +221,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            tx_type: t.signed.tx_type() as u8,
+            transaction_type: t.signed.tx_type() as u8,
             access_list,
         }
     }
@@ -262,7 +264,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            tx_type: t.tx_type() as u8,
+            transaction_type: t.tx_type() as u8,
             access_list,
         }
     }
@@ -310,7 +312,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"txType":0,"accessList":[]}"#
+            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null}"#
         );
     }
 

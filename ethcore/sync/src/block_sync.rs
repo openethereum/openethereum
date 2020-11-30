@@ -241,7 +241,7 @@ impl BlockDownloader {
         self.last_round_start_hash = start_hash.clone();
         self.imported_this_round = None;
         self.round_parents = VecDeque::new();
-        self.target_hash = None;
+        //self.target_hash = None; // target_hash is only used for old (ancient) block download. And once set should not be reseted in any way.
         self.retract_step = 1;
     }
 

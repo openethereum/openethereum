@@ -969,17 +969,17 @@ impl ChainSync {
             if let (Some(ancient_block_hash), Some(ancient_block_number)) =
                 (chain.ancient_block_hash, chain.ancient_block_number)
             {
-                trace!(target: "sync", "Downloading old blocks from {:?} (#{}) till {:?} (#{:?})", ancient_block_hash, ancient_block_number, chain.first_block_hash, chain.first_block_number);
+                info!(target: "sync", "Downloading old blocks from {:?} (#{}) till {:?} (#{:?})", ancient_block_hash, ancient_block_number, chain.first_block_hash, chain.first_block_number);
                 let mut downloader = BlockDownloader::new(
                     BlockSet::OldBlocks,
                     &ancient_block_hash,
                     ancient_block_number,
                 );
                 if let Some(hash) = chain.first_block_hash {
-                    info!(target: "sync", "Downloader target for old blocks is set to {:?}", hash);
+                    trace!(target: "sync", "Downloader target for old blocks is set to {:?}", hash);
                     downloader.set_target(&hash);
                 } else {
-                    info!(target: "sync", "Downloader target could not be found");
+                    trace!(target: "sync", "Downloader target could not be found");
                 }
                 self.old_blocks = Some(downloader);
             }

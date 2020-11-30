@@ -234,18 +234,6 @@ impl DerefMut for TypedReceipt {
     }
 }
 
-// impl Encodable for TypedReceipt {
-//     fn rlp_append(&self, s: &mut RlpStream) {
-//         self.rlp_append(s)
-//     }
-// }
-
-// impl Decodable for TypedReceipt {
-//     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-//         TypedReceipt::decode_rlp(rlp)
-//     }
-// }
-
 impl HeapSizeOf for TypedReceipt {
     fn heap_size_of_children(&self) -> usize {
         self.receipt().logs.heap_size_of_children()

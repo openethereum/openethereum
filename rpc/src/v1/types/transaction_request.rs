@@ -51,7 +51,6 @@ pub struct TransactionRequest {
     /// Delay until this block condition.
     pub condition: Option<TransactionCondition>,
     /// Access list
-    #[serde(skip_serializing)]
     pub access_list: Option<AccessList>,
 }
 

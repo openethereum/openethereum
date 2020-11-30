@@ -168,7 +168,7 @@ impl KeyServerSet for OnChainKeyServerSet {
 }
 
 impl ChainNotify for OnChainKeyServerSet {
-    /// t_nb 11.6 SecretStore OnChainKeyServerSet.
+    // t_nb 11.6 SecretStore OnChainKeyServerSet.
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if new_blocks.has_more_blocks_to_import {
             return;

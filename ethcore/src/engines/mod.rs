@@ -488,7 +488,7 @@ pub trait Engine<M: Machine>: Sync + Send {
         header_timestamp > parent_timestamp
     }
 
-    /// t_nb 9.1 Gather all ancestry actions. Called at the last stage when a block is committed. The Engine must guarantee that
+    // t_nb 9.1 Gather all ancestry actions. Called at the last stage when a block is committed. The Engine must guarantee that
     /// the ancestry exists.
     fn ancestry_actions(
         &self,
@@ -507,7 +507,7 @@ pub trait Engine<M: Machine>: Sync + Send {
     }
 }
 
-/// t_nb 9.3 Check whether a given block is the best block based on the default total difficulty rule.
+// t_nb 9.3 Check whether a given block is the best block based on the default total difficulty rule.
 pub fn total_difficulty_fork_choice(new: &ExtendedHeader, best: &ExtendedHeader) -> ForkChoice {
     if new.total_score() > best.total_score() {
         ForkChoice::New
@@ -562,7 +562,7 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
         self.machine().create_address_scheme(number)
     }
 
-    /// t_nb 5.3.1 Verify a particular transaction is valid.
+    // t_nb 5.3.1 Verify a particular transaction is valid.
     ///
     /// Unordered verification doesn't rely on the transaction execution order,
     /// i.e. it should only verify stuff that doesn't assume any previous transactions

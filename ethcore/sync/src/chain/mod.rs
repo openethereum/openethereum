@@ -1421,7 +1421,7 @@ impl ChainSync {
         self.check_resume(io);
     }
 
-    /// t_nb 11.4 called when block is imported to chain - propagates the blocks and updates transactions sent to peers
+    // t_nb 11.4 called when block is imported to chain - propagates the blocks and updates transactions sent to peers
     pub fn chain_new_blocks(
         &mut self,
         io: &mut dyn SyncIo,
@@ -1437,9 +1437,9 @@ impl ChainSync {
 
         if !is_syncing || !sealed.is_empty() || !proposed.is_empty() {
             trace!(target: "sync", "Propagating blocks, state={:?}", self.state);
-            /// t_nb 11.4.1 propagate latest blocks
+            // t_nb 11.4.1 propagate latest blocks
             SyncPropagator::propagate_latest_blocks(self, io, sealed);
-            /// t_nb 11.4.4 propagate proposed blocks
+            // t_nb 11.4.4 propagate proposed blocks
             SyncPropagator::propagate_proposed_blocks(self, io, proposed);
         }
         if !invalid.is_empty() {
@@ -1448,7 +1448,7 @@ impl ChainSync {
         }
 
         if !is_syncing && !enacted.is_empty() && !self.peers.is_empty() {
-            /// t_nb 11.4.5 Select random peer to re-broadcast transactions to.
+            // t_nb 11.4.5 Select random peer to re-broadcast transactions to.
             let peer = random::new().gen_range(0, self.peers.len());
             trace!(target: "sync", "Re-broadcasting transactions to a random peer.");
             self.peers.values_mut().nth(peer).map(|peer_info| {

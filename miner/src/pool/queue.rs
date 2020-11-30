@@ -251,7 +251,7 @@ impl TransactionQueue {
         self.pool.write().listener_mut().0.set_in_chain_checker(f)
     }
 
-    /// t_nb 10.2
+    // t_nb 10.2
     /// Import a set of transactions to the pool.
     ///
     /// Given blockchain and state access (Client)
@@ -472,7 +472,7 @@ impl TransactionQueue {
         (pending_readiness, state_readiness)
     }
 
-    /// t_nb 10.5.1 Culls all stalled transactions from the pool.
+    // t_nb 10.5.1 Culls all stalled transactions from the pool.
     pub fn cull<C: client::NonceClient + Clone>(&self, client: C) {
         trace_time!("pool::cull");
         // We don't care about future transactions, so nonce_cap is not important.

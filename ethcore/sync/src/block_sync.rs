@@ -549,8 +549,7 @@ impl BlockDownloader {
                                 None => {
                                     info!(
                                         "Could not revert to previous block, last: {} ({})",
-                                        start,
-                                        self.last_imported_hash
+                                        start, self.last_imported_hash
                                     );
                                     self.reset_to_block(&best_hash, best);
                                 }
@@ -660,7 +659,10 @@ impl BlockDownloader {
 
             if self.target_hash.as_ref().map_or(false, |t| t == &h) {
                 self.state = State::Complete;
-                info!("Sync target {:?} for old blocks reached. Syncing ancient blocks finished.", self.target_hash);
+                info!(
+                    "Sync target {:?} for old blocks reached. Syncing ancient blocks finished.",
+                    self.target_hash
+                );
                 return download_action;
             }
 

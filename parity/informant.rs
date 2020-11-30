@@ -302,7 +302,7 @@ impl<T: InformantData> Informant<T> {
                 false => String::new(),
             },
             match chain_info.ancient_block_number {
-                Some(ancient_number) => format!("(Ancient:#{})", ancient_number),
+                Some(ancient_number) => format!(" (Ancient:#{})", ancient_number),
                 None => String::new(),
             },
             match sync_info.as_ref() {
@@ -310,13 +310,13 @@ impl<T: InformantData> Informant<T> {
                     match importing {
                         true => format!("{}",
                             if self.target.executes_transactions() {
-                                paint(Green.bold(), format!("{:>8}   ", format!("LastImport#{}", sync_info.last_imported_block_number)))
+                                paint(Green.bold(), format!("{:>8}   ", format!("LI:#{}", sync_info.last_imported_block_number)))
                             } else {
                                 String::new()
                             }
                         ),
                         false => match chain_info.ancient_block_number {
-                            Some(number) => format!("{}   ", paint(Yellow.bold(), format!("{:>8}", format!("#{}", number)))),
+                            Some(number) => format!("{}   ", paint(Yellow.bold(), format!("{:>8}", format!("AB:#{}", number)))),
                             None => String::new(),
                         }
                     },

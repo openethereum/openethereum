@@ -1,3 +1,5 @@
+For questions please use https://discord.io/openethereum, issues are for bugs and feature requests.
+
 _Before filing a new issue, please **provide the following information**._
 
 - **OpenEthereum version (>=3.1.0)**: 0.0.0

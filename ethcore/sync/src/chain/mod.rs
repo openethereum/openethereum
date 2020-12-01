@@ -1116,10 +1116,18 @@ impl ChainSync {
 					let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
 
 					if force || equal_or_higher_difficulty {
-						if let Some(request) = self.old_blocks.as_mut().and_then(|d| d.request_blocks(peer_id, io, num_active_peers)) {
-							SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
-							return;
-						}
+                        let mut is_complete = false;
+						if let Some(old_blocks) = self.old_blocks.as_mut() {
+                            if let Some(request) = old_blocks.request_blocks(peer_id, io, num_active_peers) {
+                                SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
+                                return;
+                            }
+                            is_complete = old_blocks.is_complete();
+
+                        }
+                        if is_complete { // if old_blocks is in complete state, set it to None.
+                            self.old_blocks = None;
+                        }
 					} else {
 						trace!(
 							target: "sync",

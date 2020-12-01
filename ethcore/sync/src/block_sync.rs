@@ -516,8 +516,24 @@ impl BlockDownloader {
                         self.last_imported_hash
                     );
                 } else {
-                    let best = io.chain().chain_info().best_block_number;
-                    let best_hash = io.chain().chain_info().best_block_hash;
+                    let (best, best_hash) = match self.block_set {
+                        BlockSet::NewBlocks => (
+                            io.chain().chain_info().best_block_number,
+                            io.chain().chain_info().best_block_hash,
+                        ),
+                        BlockSet::OldBlocks => {
+                            if let (Some(best), Some(best_hash)) = (
+                                io.chain().chain_info().ancient_block_number,
+                                io.chain().chain_info().ancient_block_hash,
+                            ) {
+                                (best, best_hash) // best ancient block number and hash.
+                            } else {
+                                // None on ancient block/hash means that all ancient are already downloaded and stored in DB.
+                                self.state = State::Complete;
+                                return;
+                            }
+                        }
+                    };
                     let oldest_reorg = io.chain().pruning_info().earliest_state;
                     if self.block_set == BlockSet::NewBlocks && best > start && start < oldest_reorg
                     {

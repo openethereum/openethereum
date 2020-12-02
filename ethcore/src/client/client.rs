@@ -71,7 +71,8 @@ use client::{
     TransactionInfo, UncleId,
 };
 use engines::{
-    epoch::PendingTransition, EngineError, EpochTransition, EthEngine, ForkChoice, MAX_UNCLE_AGE,
+    epoch::PendingTransition, EngineError, EpochTransition, EthEngine, ForkChoice, SealingState,
+    MAX_UNCLE_AGE,
 };
 use error::{
     BlockError, CallError, Error as EthcoreError, ErrorKind as EthcoreErrorKind, EthcoreResult,
@@ -2817,7 +2818,7 @@ impl ImportSealedBlock for Client {
             &[],
             route.enacted(),
             route.retracted(),
-            self.engine.seals_internally().is_some(),
+            self.engine.sealing_state() != SealingState::External,
         );
         self.notify(|notify| {
             notify.new_blocks(NewBlocks::new(

@@ -39,7 +39,7 @@ use client::{traits::ForceUpdateSealing, EngineClient};
 use engines::{
     block_reward,
     block_reward::{BlockRewardContract, RewardKind},
-    ConstructedVerifier, Engine, EngineError, Seal,
+    ConstructedVerifier, Engine, EngineError, Seal, SealingState,
 };
 use error::{BlockError, Error, ErrorKind};
 use ethereum_types::{Address, H256, H520, U128, U256};
@@ -237,15 +237,15 @@ impl EpochManager {
         }
     }
 
-    // zoom to epoch for given header. returns true if succeeded, false otherwise.
-    fn zoom_to(
+    /// Zooms to the epoch after the header with the given hash. Returns true if succeeded, false otherwise.
+    fn zoom_to_after(
         &mut self,
         client: &dyn EngineClient,
         machine: &EthereumMachine,
         validators: &dyn ValidatorSet,
-        header: &Header,
+        hash: H256,
     ) -> bool {
-        let last_was_parent = self.finality_checker.subchain_head() == Some(*header.parent_hash());
+        let last_was_parent = self.finality_checker.subchain_head() == Some(hash);
 
         // early exit for current target == chain head, but only if the epochs are
         // the same.
@@ -254,13 +254,13 @@ impl EpochManager {
         }
 
         self.force = false;
-        debug!(target: "engine", "Zooming to epoch for block {}", header.hash());
+        debug!(target: "engine", "Zooming to epoch after block {}", hash);
 
         // epoch_transition_for can be an expensive call, but in the absence of
         // forks it will only need to be called for the block directly after
         // epoch transition, in which case it will be O(1) and require a single
         // DB lookup.
-        let last_transition = match client.epoch_transition_for(*header.parent_hash()) {
+        let last_transition = match client.epoch_transition_for(hash) {
             Some(t) => t,
             None => {
                 // this really should never happen unless the block passed
@@ -823,7 +823,12 @@ impl AuthorityRound {
                 }
             };
 
-            if !epoch_manager.zoom_to(&*client, &self.machine, &*self.validators, header) {
+            if !epoch_manager.zoom_to_after(
+                &*client,
+                &self.machine,
+                &*self.validators,
+                *header.parent_hash(),
+            ) {
                 debug!(target: "engine", "Unable to zoom to epoch.");
                 return Err(EngineError::RequiresClient.into());
             }
@@ -957,7 +962,12 @@ impl AuthorityRound {
         };
 
         let mut epoch_manager = self.epoch_manager.lock();
-        if !epoch_manager.zoom_to(&*client, &self.machine, &*self.validators, chain_head) {
+        if !epoch_manager.zoom_to_after(
+            &*client,
+            &self.machine,
+            &*self.validators,
+            *chain_head.parent_hash(),
+        ) {
             return Vec::new();
         }
 
@@ -1154,9 +1164,56 @@ impl Engine<EthereumMachine> for AuthorityRound {
         header.set_difficulty(score);
     }
 
-    fn seals_internally(&self) -> Option<bool> {
-        // TODO: accept a `&Call` here so we can query the validator set.
-        Some(self.signer.read().is_some())
+    fn sealing_state(&self) -> SealingState {
+        let our_addr = match *self.signer.read() {
+            Some(ref signer) => signer.address(),
+            None => {
+                warn!(target: "engine", "Not preparing block; cannot sign.");
+                return SealingState::NotReady;
+            }
+        };
+
+        let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+            Some(client) => client,
+            None => {
+                warn!(target: "engine", "Not preparing block: missing client ref.");
+                return SealingState::NotReady;
+            }
+        };
+
+        let parent = match client.as_full_client() {
+            Some(full_client) => full_client.best_block_header(),
+            None => {
+                debug!(target: "engine", "Not preparing block: not a full client.");
+                return SealingState::NotReady;
+            }
+        };
+
+        let validators = if self.immediate_transitions {
+            CowLike::Borrowed(&*self.validators)
+        } else {
+            let mut epoch_manager = self.epoch_manager.lock();
+            if !epoch_manager.zoom_to_after(
+                &*client,
+                &self.machine,
+                &*self.validators,
+                parent.hash(),
+            ) {
+                debug!(target: "engine", "Not preparing block: Unable to zoom to epoch.");
+                return SealingState::NotReady;
+            }
+            CowLike::Owned(epoch_manager.validators().clone())
+        };
+
+        let step = self.step.inner.load();
+
+        if !is_step_proposer(&*validators, &parent.hash(), step, &our_addr) {
+            trace!(target: "engine", "Not preparing block: not a proposer for step {}. (Our address: {})",
+               step, our_addr);
+            return SealingState::NotReady;
+        }
+
+        SealingState::Ready
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {

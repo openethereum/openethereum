@@ -276,8 +276,8 @@ impl AccessListTx {
             return Err(DecoderError::RlpIncorrectListLen);
         }
 
-        let chain_id = tx_rlp.val_at(0)?;
-        let chain_id = if chain_id == 0 { None } else { Some(chain_id) };
+        let chain_id = Some(tx_rlp.val_at(0)?);
+        //let chain_id = if chain_id == 0 { None } else { Some(chain_id) };
 
         // first part of list is same as legacy transaction and we are reusing that part.
         let transaction = Transaction::decode_data(&tx_rlp, 1)?;
@@ -318,7 +318,7 @@ impl AccessListTx {
         .compute_hash())
     }
 
-    // encode by this payload spec: 0x01 | rlp([3, [chain_id, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    // encode by this payload spec: 0x01 | rlp([1, [chain_id, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn encode(
         &self,
         chain_id: Option<u64>,
@@ -688,19 +688,13 @@ impl UnverifiedTransaction {
         self.unsigned.rlp_append(s, self.chain_id, &self.signature);
     }
 
-    fn rlp_bytes(&self) -> Vec<u8> {
-        let mut s = RlpStream::new();
-        self.rlp_append(&mut s);
-        s.drain()
-    }
-
     pub fn encode(&self) -> Vec<u8> {
         self.unsigned.encode(self.chain_id, &self.signature)
     }
 
-    /// Used to compute hash of created transactions. Without chainid but signature added. This is used to verify if transaction is same or not
+    /// Used to compute hash of created transactions.
     fn compute_hash(mut self) -> UnverifiedTransaction {
-        let hash = keccak(&*self.rlp_bytes());
+        let hash = keccak(&*self.encode());
         self.hash = hash;
         self
     }

@@ -159,6 +159,11 @@ where
         Ok(true)
     }
 
+    fn clear_engine_signer(&self) -> Result<bool> {
+        self.miner.set_author(None);
+        Ok(true)
+    }
+
     fn add_reserved_peer(&self, peer: String) -> Result<bool> {
         match self.net.add_reserved_peer(peer) {
             Ok(()) => Ok(true),

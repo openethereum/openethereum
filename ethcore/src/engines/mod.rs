@@ -458,7 +458,7 @@ pub trait Engine<M: Machine>: Sync + Send {
     }
 
     /// Register a component which signs consensus messages.
-    fn set_signer(&self, _signer: Box<dyn EngineSigner>) {}
+    fn set_signer(&self, _signer: Option<Box<dyn EngineSigner>>) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, M::Error> {

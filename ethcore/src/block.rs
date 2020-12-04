@@ -161,7 +161,7 @@ pub trait Drain {
 }
 
 impl<'x> OpenBlock<'x> {
-    // t_nb 8.1 Create a new `OpenBlock` ready for transaction pushing.
+    /// t_nb 8.1 Create a new `OpenBlock` ready for transaction pushing.
     pub fn new<'a, I: IntoIterator<Item = ExtendedHeader>>(
         engine: &'x dyn EthEngine,
         factories: Factories,
@@ -348,7 +348,7 @@ impl<'x> OpenBlock<'x> {
         })
     }
 
-    // t_nb 8.5 Turn this into a `LockedBlock`.
+    /// t_nb 8.5 Turn this into a `LockedBlock`.
     pub fn close_and_lock(self) -> Result<LockedBlock, Error> {
         let mut s = self;
 
@@ -581,7 +581,7 @@ pub(crate) fn enact(
     b.close_and_lock()
 }
 
-// t_nb 8.0 Enact the block given by `block_bytes` using `engine` on the database `db` with given `parent` block header
+/// t_nb 8.0 Enact the block given by `block_bytes` using `engine` on the database `db` with given `parent` block header
 pub fn enact_verified(
     block: PreverifiedBlock,
     engine: &dyn EthEngine,

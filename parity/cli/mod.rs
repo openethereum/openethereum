@@ -1518,7 +1518,7 @@ mod tests {
                     origins: Some(vec!["none".into()]),
                     hosts: None,
                     max_connections: None,
-                    max_payloads: None,
+                    max_payload: None,
                 }),
                 rpc: Some(Rpc {
                     disable: Some(true),

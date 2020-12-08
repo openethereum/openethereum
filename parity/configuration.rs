@@ -1484,6 +1484,7 @@ mod tests {
                     signer_path: expected.into(),
                     support_token_api: true,
                     max_connections: 100,
+                    max_payload: 5,
                 },
                 LogConfig {
                     color: !cfg!(windows),

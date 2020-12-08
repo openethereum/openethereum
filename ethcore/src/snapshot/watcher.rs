@@ -111,6 +111,7 @@ impl Watcher {
 }
 
 impl ChainNotify for Watcher {
+    // t_nb 11.1 check number of block and trigger snapshot creation if needed.
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if self.oracle.is_major_importing() || new_blocks.has_more_blocks_to_import {
             return;

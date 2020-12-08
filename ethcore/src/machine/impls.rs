@@ -455,6 +455,7 @@ impl EthereumMachine {
     pub fn decode_transaction(
         &self,
         transaction: &[u8],
+        schedule: &Schedule,
     ) -> Result<UnverifiedTransaction, transaction::Error> {
         if transaction.len() > self.params().max_transaction_size {
             debug!(
@@ -464,8 +465,17 @@ impl EthereumMachine {
             return Err(transaction::Error::TooBig);
         }
 
-        TypedTransaction::decode(transaction)
-            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+        let tx = TypedTransaction::decode(transaction)
+            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))?;
+
+        match tx.tx_type() {
+            transaction::TypedTxId::AccessList if schedule.eip2930 => {
+                return Err(transaction::Error::TransactionTypeNotEnabled)
+            }
+            _ => (),
+        };
+
+        Ok(tx)
     }
 }
 

@@ -127,7 +127,7 @@ fn rpc_eth_send_transaction() {
     });
     let signature = tester
         .accounts_provider
-        .sign(address, None, t.hash(None))
+        .sign(address, None, t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 
@@ -151,7 +151,7 @@ fn rpc_eth_send_transaction() {
     });
     let signature = tester
         .accounts_provider
-        .sign(address, None, t.hash(None))
+        .sign(address, None, t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 
@@ -199,7 +199,7 @@ fn rpc_eth_sign_transaction() {
     });
     let signature = tester
         .accounts_provider
-        .sign(address, None, t.hash(None))
+        .sign(address, None, t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
     let signature = t.signature();

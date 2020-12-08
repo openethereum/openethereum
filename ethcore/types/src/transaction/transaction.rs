@@ -142,7 +142,7 @@ pub struct Transaction {
 
 impl Transaction {
     /// The message hash of the transaction. This hash is used for signing transaction
-    pub fn hash(&self, chain_id: Option<u64>) -> H256 {
+    pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
         keccak(self.encode(chain_id, None))
     }
 
@@ -318,16 +318,22 @@ impl AccessListTx {
         .compute_hash())
     }
 
-    // encode by this payload spec: 0x01 | rlp([1, [chain_id, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
-    pub fn encode(
+    fn encode_payload(
         &self,
+        tx_type: Option<u8>, //used only for signature hashing for EIP-2930
         chain_id: Option<u64>,
         signature: Option<&SignatureComponents>,
-    ) -> Vec<u8> {
+    ) -> RlpStream {
         let mut stream = RlpStream::new();
 
-        let list_size = if signature.is_some() { 11 } else { 8 };
+        let mut list_size = if signature.is_some() { 11 } else { 8 };
+        list_size += if tx_type.is_some() { 1 } else { 0 };
         stream.begin_list(list_size);
+
+        // append tx_type at beggining of list, this is used only for data hash for signature.
+        if let Some(tx_type) = tx_type {
+            stream.append(&tx_type);
+        }
 
         // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
@@ -350,7 +356,16 @@ impl AccessListTx {
         if let Some(signature) = signature {
             signature.rlp_append(&mut stream);
         }
+        stream
+    }
 
+    // encode by this payload spec: 0x01 | rlp([1, [chain_id, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn encode(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> Vec<u8> {
+        let stream = self.encode_payload(None, chain_id, signature);
         // make as vector of bytes
         [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
@@ -364,8 +379,12 @@ impl AccessListTx {
         rlp.append(&self.encode(chain_id, Some(signature)));
     }
 
-    pub fn hash(&self, chain_id: Option<u64>) -> H256 {
-        keccak(&self.encode(chain_id, None))
+    pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
+        keccak(
+            &self
+                .encode_payload(Some(TypedTxId::AccessList as u8), chain_id, None)
+                .as_raw(),
+        )
     }
 }
 
@@ -385,16 +404,16 @@ impl TypedTransaction {
     }
 
     /// The message hash of the transaction.
-    pub fn hash(&self, chain_id: Option<u64>) -> H256 {
+    pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
         match self {
-            Self::Legacy(tx) => tx.hash(chain_id),
-            Self::AccessList(tx) => tx.hash(chain_id),
+            Self::Legacy(tx) => tx.signature_hash(chain_id),
+            Self::AccessList(tx) => tx.signature_hash(chain_id),
         }
     }
 
     /// Signs the transaction as coming from `sender`.
     pub fn sign(self, secret: &Secret, chain_id: Option<u64>) -> SignedTransaction {
-        let sig = ::ethkey::sign(secret, &self.hash(chain_id))
+        let sig = ::ethkey::sign(secret, &self.signature_hash(chain_id))
             .expect("data is valid and context has signing capabilities; qed");
         SignedTransaction::new(self.with_signature(sig, chain_id))
             .expect("secret is valid so it's recoverable")
@@ -765,7 +784,7 @@ impl UnverifiedTransaction {
     pub fn recover_public(&self) -> Result<Public, ethkey::Error> {
         Ok(recover(
             &self.signature(),
-            &self.unsigned.hash(self.chain_id()),
+            &self.unsigned.signature_hash(self.chain_id()),
         )?)
     }
 
@@ -991,7 +1010,7 @@ mod tests {
             data: b"Hello!".to_vec(),
         });
 
-        let hash = t.hash(Some(0));
+        let hash = t.signature_hash(Some(0));
         let sig = ::ethkey::sign(&key.secret(), &hash).unwrap();
         let u = t.with_signature(sig, Some(0));
 

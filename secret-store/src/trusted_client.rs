@@ -98,7 +98,9 @@ impl TrustedClient {
             data: tx_data,
         });
         let chain_id = engine.signing_chain_id(&client.latest_env_info());
-        let signature = self.self_key_pair.sign(&transaction.hash(chain_id))?;
+        let signature = self
+            .self_key_pair
+            .sign(&transaction.signature_hash(chain_id))?;
         let signed = SignedTransaction::new(transaction.with_signature(signature, chain_id))?;
         miner
             .import_own_transaction(&*client, signed.into())

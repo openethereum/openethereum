@@ -72,7 +72,7 @@ impl super::Accounts for Signer {
             }
         };
 
-        let hash = t.hash(chain_id);
+        let hash = t.signature_hash(chain_id);
         let signature = signature(&*self.accounts, filled.from, hash, password)?;
 
         Ok(signature.map(|sig| {

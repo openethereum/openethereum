@@ -2556,7 +2556,7 @@ impl BlockChainClient for Client {
         let chain_id = self.engine.signing_chain_id(&self.latest_env_info());
         let signature = self
             .engine
-            .sign(transaction.hash(chain_id))
+            .sign(transaction.signature_hash(chain_id))
             .map_err(|e| transaction::Error::InvalidSignature(e.to_string()))?;
         let signed = SignedTransaction::new(transaction.with_signature(signature, chain_id))?;
         self.importer
@@ -2576,10 +2576,15 @@ impl IoClient for Client {
         self.queue_transactions
             .queue(&self.io_channel.read(), len, move |client| {
                 trace_time!("import_queued_transactions");
-
+                let best_block_number = client.best_block_header().number();
                 let txs: Vec<UnverifiedTransaction> = transactions
                     .iter()
-                    .filter_map(|bytes| client.engine.decode_transaction(bytes).ok())
+                    .filter_map(|bytes| {
+                        client
+                            .engine
+                            .decode_transaction(bytes, best_block_number)
+                            .ok()
+                    })
                     .collect();
 
                 client.notify(|notify| {

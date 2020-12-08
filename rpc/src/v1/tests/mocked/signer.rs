@@ -270,7 +270,10 @@ fn should_confirm_transaction_and_dispatch() {
         .accounts
         .unlock_account_temporarily(address, "test".into())
         .unwrap();
-    let signature = tester.accounts.sign(address, None, t.hash(None)).unwrap();
+    let signature = tester
+        .accounts
+        .sign(address, None, t.signature_hash(None))
+        .unwrap();
     let t = t.with_signature(signature, None);
 
     assert_eq!(tester.signer.requests().len(), 1);
@@ -332,7 +335,7 @@ fn should_alter_the_sender_and_nonce() {
     let address = tester.accounts.new_account(&"test".into()).unwrap();
     let signature = tester
         .accounts
-        .sign(address, Some("test".into()), t.hash(None))
+        .sign(address, Some("test".into()), t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 
@@ -396,7 +399,7 @@ fn should_confirm_transaction_with_token() {
     });
     let (signature, token) = tester
         .accounts
-        .sign_with_token(address, "test".into(), t.hash(None))
+        .sign_with_token(address, "test".into(), t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 
@@ -464,7 +467,7 @@ fn should_confirm_transaction_with_rlp() {
     });
     let signature = tester
         .accounts
-        .sign(address, Some("test".into()), t.hash(None))
+        .sign(address, Some("test".into()), t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
     let rlp = t.encode();
@@ -532,7 +535,10 @@ fn should_return_error_when_sender_does_not_match() {
         .accounts
         .unlock_account_temporarily(address, "test".into())
         .unwrap();
-    let signature = tester.accounts.sign(address, None, t.hash(None)).unwrap();
+    let signature = tester
+        .accounts
+        .sign(address, None, t.signature_hash(None))
+        .unwrap();
     let t = t.with_signature(signature, None);
     let rlp = t.encode();
 
@@ -595,7 +601,7 @@ fn should_confirm_sign_transaction_with_rlp() {
     });
     let signature = tester
         .accounts
-        .sign(address, Some("test".into()), t.hash(None))
+        .sign(address, Some("test".into()), t.signature_hash(None))
         .unwrap();
     let t = SignedTransaction::new(t.with_signature(signature.clone(), None)).unwrap();
     let rlp = t.encode();

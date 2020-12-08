@@ -276,7 +276,10 @@ fn sign_and_send_test(method: &str) {
         .accounts
         .unlock_account_temporarily(address, "password123".into())
         .unwrap();
-    let signature = tester.accounts.sign(address, None, t.hash(None)).unwrap();
+    let signature = tester
+        .accounts
+        .sign(address, None, t.signature_hash(None))
+        .unwrap();
     let t = t.with_signature(signature, None);
 
     let response = r#"{"jsonrpc":"2.0","result":""#.to_owned()
@@ -304,7 +307,10 @@ fn sign_and_send_test(method: &str) {
         .accounts
         .unlock_account_temporarily(address, "password123".into())
         .unwrap();
-    let signature = tester.accounts.sign(address, None, t.hash(None)).unwrap();
+    let signature = tester
+        .accounts
+        .sign(address, None, t.signature_hash(None))
+        .unwrap();
     let t = t.with_signature(signature, None);
 
     let response = r#"{"jsonrpc":"2.0","result":""#.to_owned()

@@ -63,7 +63,7 @@ impl HeapSizeOf for PreverifiedBlock {
     }
 }
 
-// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
+/// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
 pub fn verify_block_basic(
     block: &Unverified,
     engine: &dyn EthEngine,
@@ -161,7 +161,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + CallContract + 'a> {
     pub client: &'a C,
 }
 
-// t_nb 6.3 Phase 3 verification. Check block information against parent and uncles.
+/// t_nb 6.3 Phase 3 verification. Check block information against parent and uncles.
 pub fn verify_block_family<C: BlockInfo + CallContract>(
     header: &Header,
     parent: &Header,

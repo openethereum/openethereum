@@ -996,7 +996,7 @@ impl<B: Backend> State<B> {
         Ok(())
     }
 
-    // t_nb 8.5.2 Commits our cached account changes into the trie.
+    /// t_nb 8.5.2 Commits our cached account changes into the trie.
     pub fn commit(&mut self) -> Result<(), Error> {
         assert!(self.checkpoints.borrow().is_empty());
         // first, commit the sub trees.

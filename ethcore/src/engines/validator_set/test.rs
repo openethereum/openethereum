@@ -30,6 +30,7 @@ use super::{SimpleList, ValidatorSet};
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 /// Set used for testing with a single validator.
+#[derive(Clone)]
 pub struct TestSet {
     validator: SimpleList,
     last_malicious: Arc<AtomicUsize>,
@@ -52,6 +53,20 @@ impl TestSet {
             last_malicious,
             last_benign,
         }
+    }
+
+    pub fn from_validators(validators: Vec<Address>) -> Self {
+        let mut ts = TestSet::new(Default::default(), Default::default());
+        ts.validator = SimpleList::new(validators);
+        ts
+    }
+
+    pub fn last_malicious(&self) -> usize {
+        self.last_malicious.load(AtomicOrdering::SeqCst)
+    }
+
+    pub fn last_benign(&self) -> usize {
+        self.last_benign.load(AtomicOrdering::SeqCst)
     }
 }
 

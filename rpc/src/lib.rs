@@ -223,6 +223,7 @@ pub fn start_ws<M, S, H, T, U, V>(
     extractor: T,
     middleware: V,
     stats: U,
+    max_payload: usize,
 ) -> Result<ws::Server, ws::Error>
 where
     M: jsonrpc_core::Metadata,
@@ -237,6 +238,7 @@ where
         .allowed_origins(allowed_origins)
         .allowed_hosts(allowed_hosts)
         .max_connections(max_connections)
+        .max_payload(max_payload * 1024 * 1024)
         .session_stats(stats)
         .start(addr)
 }

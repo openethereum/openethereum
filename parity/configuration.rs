@@ -951,6 +951,7 @@ impl Configuration {
             signer_path: self.directories().signer.into(),
             support_token_api,
             max_connections: self.args.arg_ws_max_connections,
+            max_payload: self.args.arg_ws_max_payload,
         };
 
         Ok(conf)
@@ -1483,6 +1484,7 @@ mod tests {
                     signer_path: expected.into(),
                     support_token_api: true,
                     max_connections: 100,
+                    max_payload: 5,
                 },
                 LogConfig {
                     color: !cfg!(windows),

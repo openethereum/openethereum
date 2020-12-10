@@ -241,7 +241,7 @@ impl BlockDownloader {
         self.last_round_start_hash = start_hash.clone();
         self.imported_this_round = None;
         self.round_parents = VecDeque::new();
-        self.target_hash = None;
+        //self.target_hash = None; // target_hash is only used for old (ancient) block download. And once set should not be reseted in any way.
         self.retract_step = 1;
     }
 
@@ -516,8 +516,24 @@ impl BlockDownloader {
                         self.last_imported_hash
                     );
                 } else {
-                    let best = io.chain().chain_info().best_block_number;
-                    let best_hash = io.chain().chain_info().best_block_hash;
+                    let (best, best_hash) = match self.block_set {
+                        BlockSet::NewBlocks => (
+                            io.chain().chain_info().best_block_number,
+                            io.chain().chain_info().best_block_hash,
+                        ),
+                        BlockSet::OldBlocks => {
+                            if let (Some(best), Some(best_hash)) = (
+                                io.chain().chain_info().ancient_block_number,
+                                io.chain().chain_info().ancient_block_hash,
+                            ) {
+                                (best, best_hash) // best ancient block number and hash.
+                            } else {
+                                // None on ancient block/hash means that all ancient are already downloaded and stored in DB.
+                                self.state = State::Complete;
+                                return;
+                            }
+                        }
+                    };
                     let oldest_reorg = io.chain().pruning_info().earliest_state;
                     if self.block_set == BlockSet::NewBlocks && best > start && start < oldest_reorg
                     {
@@ -531,7 +547,7 @@ impl BlockDownloader {
                     } else {
                         let n = start - cmp::min(self.retract_step, start);
                         if n == 0 {
-                            debug_sync!(self, "Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
+                            info!("Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
                             self.reset_to_block(&best_hash, best);
                         } else {
                             self.retract_step *= 2;
@@ -547,11 +563,9 @@ impl BlockDownloader {
                                     );
                                 }
                                 None => {
-                                    debug_sync!(
-                                        self,
+                                    info!(
                                         "Could not revert to previous block, last: {} ({})",
-                                        start,
-                                        self.last_imported_hash
+                                        start, self.last_imported_hash
                                     );
                                     self.reset_to_block(&best_hash, best);
                                 }
@@ -661,7 +675,10 @@ impl BlockDownloader {
 
             if self.target_hash.as_ref().map_or(false, |t| t == &h) {
                 self.state = State::Complete;
-                trace_sync!(self, "Sync target reached");
+                info!(
+                    "Sync target {:?} for old blocks reached. Syncing ancient blocks finished.",
+                    self.target_hash
+                );
                 return download_action;
             }
 

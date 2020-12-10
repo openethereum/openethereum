@@ -44,6 +44,7 @@ pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
             extractors::WsExtractor::new(Some(&authcodes.path)),
             extractors::WsExtractor::new(Some(&authcodes.path)),
             extractors::WsStats::new(stats),
+            5 * 1024 * 1024,
         )
         .unwrap()
     });

@@ -399,7 +399,8 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		CodeBanned => "Code is banned in local queue.".into(),
 		NotAllowed => "Transaction is not permitted.".into(),
 		TooBig => "Transaction is too big, see chain specification for the limit.".into(),
-		InvalidRlp(ref descr) => format!("Invalid RLP data: {}", descr),
+        InvalidRlp(ref descr) => format!("Invalid RLP data: {}", descr),
+        TransactionTypeNotEnabled => format!("Transaction type is not enabled for current block"),
 	}
 }
 

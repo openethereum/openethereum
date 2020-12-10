@@ -35,7 +35,7 @@ use bytes::Bytes;
 
 use header::Header;
 use rlp::{Decodable, DecoderError, Rlp, RlpStream};
-use transaction::UnverifiedTransaction;
+use transaction::{TypedTransaction, UnverifiedTransaction};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -53,7 +53,7 @@ impl Block {
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(3);
         block_rlp.append(&self.header);
-        block_rlp.append_list(&self.transactions);
+        TypedTransaction::rlp_append_list(&mut block_rlp, &self.transactions);
         block_rlp.append_list(&self.uncles);
         block_rlp.out()
     }
@@ -69,7 +69,7 @@ impl Decodable for Block {
         }
         Ok(Block {
             header: rlp.val_at(0)?,
-            transactions: rlp.list_at(1)?,
+            transactions: TypedTransaction::decode_rlp_list(&rlp.at(1)?)?,
             uncles: rlp.list_at(2)?,
         })
     }

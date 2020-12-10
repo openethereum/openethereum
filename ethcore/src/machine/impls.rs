@@ -23,11 +23,11 @@ use std::{
 };
 
 use ethereum_types::{Address, H256, U256};
-use rlp::Rlp;
 use types::{
     header::Header,
     transaction::{
-        self, SignedTransaction, UnverifiedTransaction, SYSTEM_ADDRESS, UNSIGNED_SENDER,
+        self, SignedTransaction, TypedTransaction, UnverifiedTransaction, SYSTEM_ADDRESS,
+        UNSIGNED_SENDER,
     },
     BlockNumber,
 };
@@ -455,17 +455,27 @@ impl EthereumMachine {
     pub fn decode_transaction(
         &self,
         transaction: &[u8],
+        schedule: &Schedule,
     ) -> Result<UnverifiedTransaction, transaction::Error> {
-        let rlp = Rlp::new(&transaction);
-        if rlp.as_raw().len() > self.params().max_transaction_size {
+        if transaction.len() > self.params().max_transaction_size {
             debug!(
                 "Rejected oversized transaction of {} bytes",
-                rlp.as_raw().len()
+                transaction.len()
             );
             return Err(transaction::Error::TooBig);
         }
-        rlp.as_val()
-            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))
+
+        let tx = TypedTransaction::decode(transaction)
+            .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))?;
+
+        match tx.tx_type() {
+            transaction::TypedTxId::AccessList if schedule.eip2930 => {
+                return Err(transaction::Error::TransactionTypeNotEnabled)
+            }
+            _ => (),
+        };
+
+        Ok(tx)
     }
 }
 
@@ -476,7 +486,7 @@ pub struct AuxiliaryData<'a> {
     /// The full block bytes, including the header.
     pub bytes: Option<&'a [u8]>,
     /// The block receipts.
-    pub receipts: Option<&'a [::types::receipt::Receipt]>,
+    pub receipts: Option<&'a [::types::receipt::TypedReceipt]>,
 }
 
 /// Type alias for a function we can make calls through synchronously.
@@ -550,7 +560,7 @@ mod tests {
     fn should_disallow_unsigned_transactions() {
         let rlp = "ea80843b9aca0083015f90948921ebb5f79e9e3920abe571004d0b1d5119c154865af3107a400080038080";
         let transaction: UnverifiedTransaction =
-            ::rlp::decode(&::rustc_hex::FromHex::from_hex(rlp).unwrap()).unwrap();
+            TypedTransaction::decode(&::rustc_hex::FromHex::from_hex(rlp).unwrap()).unwrap();
         let spec = ::ethereum::new_ropsten_test();
         let ethparams = get_default_ethash_extensions();
 

@@ -21,7 +21,7 @@ use ethereum_types::H256;
 use hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 use triehash::ordered_trie_root;
-use types::{block::Block, header::Header, views::BlockView};
+use types::{block::Block, header::Header, transaction::TypedTransaction, views::BlockView};
 
 const HEADER_FIELDS: usize = 8;
 const BLOCK_FIELDS: usize = 2;
@@ -62,9 +62,9 @@ impl AbridgedBlock {
             .append(&header.extra_data());
 
         // write block values.
-        stream
-            .append_list(&block_view.transactions())
-            .append_list(&block_view.uncles());
+
+        TypedTransaction::rlp_append_list(&mut stream, &block_view.transactions());
+        stream.append_list(&block_view.uncles());
 
         // write seal fields.
         for field in seal_fields {
@@ -97,10 +97,17 @@ impl AbridgedBlock {
         header.set_timestamp(rlp.val_at(6)?);
         header.set_extra_data(rlp.val_at(7)?);
 
-        let transactions = rlp.list_at(8)?;
+        let transactions = TypedTransaction::decode_rlp_list(&rlp.at(8)?)?;
         let uncles: Vec<Header> = rlp.list_at(9)?;
 
-        header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| r.as_raw())));
+        header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| {
+            if r.is_list() {
+                r.as_raw()
+            } else {
+                // We already checked if list is valid with decode_rlp_list above
+                r.data().expect("To raw rlp list to be valid")
+            }
+        })));
         header.set_receipts_root(receipts_root);
 
         let mut uncles_rlp = RlpStream::new();
@@ -131,7 +138,7 @@ mod tests {
     use ethereum_types::{Address, H256, U256};
     use types::{
         block::Block,
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
         view,
         views::BlockView,
     };
@@ -165,24 +172,24 @@ mod tests {
     fn with_transactions() {
         let mut b = Block::default();
 
-        let t1 = Transaction {
+        let t1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
             gas_price: U256::from(3000),
             gas: U256::from(50_000),
             value: U256::from(1),
             data: b"Hello!".to_vec(),
-        }
+        })
         .fake_sign(Address::from(0x69));
 
-        let t2 = Transaction {
+        let t2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(88),
             gas_price: U256::from(12345),
             gas: U256::from(300000),
             value: U256::from(1000000000),
             data: "Eep!".into(),
-        }
+        })
         .fake_sign(Address::from(0x55));
 
         b.transactions.push(t1.into());
@@ -191,7 +198,7 @@ mod tests {
         let receipts_root = b.header.receipts_root().clone();
         b.header
             .set_transactions_root(::triehash::ordered_trie_root(
-                b.transactions.iter().map(::rlp::encode),
+                b.transactions.iter().map(|tx| tx.encode()),
             ));
 
         let encoded = encode_block(&b);

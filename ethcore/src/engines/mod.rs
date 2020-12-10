@@ -507,7 +507,7 @@ pub trait Engine<M: Machine>: Sync + Send {
     }
 }
 
-// t_nb 9.3 Check whether a given block is the best block based on the default total difficulty rule.
+/// t_nb 9.3 Check whether a given block is the best block based on the default total difficulty rule.
 pub fn total_difficulty_fork_choice(new: &ExtendedHeader, best: &ExtendedHeader) -> ForkChoice {
     if new.total_score() > best.total_score() {
         ForkChoice::New
@@ -605,8 +605,10 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     fn decode_transaction(
         &self,
         transaction: &[u8],
+        best_block_number: BlockNumber,
     ) -> Result<UnverifiedTransaction, transaction::Error> {
-        self.machine().decode_transaction(transaction)
+        let schedule = self.schedule(best_block_number);
+        self.machine().decode_transaction(transaction, &schedule)
     }
 }
 

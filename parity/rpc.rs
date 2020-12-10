@@ -97,6 +97,7 @@ pub struct WsConfiguration {
     pub hosts: Option<Vec<String>>,
     pub signer_path: PathBuf,
     pub support_token_api: bool,
+    pub max_payload: usize,
 }
 
 impl Default for WsConfiguration {
@@ -116,6 +117,7 @@ impl Default for WsConfiguration {
             hosts: Some(Vec::new()),
             signer_path: replace_home(&data_dir, "$BASE/signer").into(),
             support_token_api: true,
+            max_payload: 5,
         }
     }
 }
@@ -194,6 +196,7 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
         rpc::WsExtractor::new(path.clone()),
         rpc::WsExtractor::new(path.clone()),
         rpc::WsStats::new(deps.stats.clone()),
+        conf.max_payload,
     );
 
     //	match start_result {

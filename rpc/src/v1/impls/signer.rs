@@ -22,8 +22,7 @@ use ethereum_types::U256;
 use ethkey;
 use parity_runtime::Executor;
 use parking_lot::Mutex;
-use rlp::Rlp;
-use types::transaction::{PendingTransaction, SignedTransaction};
+use types::transaction::{PendingTransaction, SignedTransaction, TypedTransaction};
 
 use jsonrpc_core::{
     futures::{future, future::Either, Future, IntoFuture},
@@ -161,17 +160,17 @@ impl<D: Dispatcher + 'static> SignerClient<D> {
     where
         F: FnOnce(PendingTransaction) -> Result<ConfirmationResponse>,
     {
-        let signed_transaction = Rlp::new(&bytes.0).as_val().map_err(errors::rlp)?;
+        let signed_transaction = TypedTransaction::decode(&bytes.0).map_err(errors::rlp)?;
         let signed_transaction = SignedTransaction::new(signed_transaction)
             .map_err(|e| errors::invalid_params("Invalid signature.", e))?;
         let sender = signed_transaction.sender();
 
         // Verification
         let sender_matches = sender == request.from;
-        let data_matches = signed_transaction.data == request.data;
-        let value_matches = signed_transaction.value == request.value;
+        let data_matches = signed_transaction.tx().data == request.data;
+        let value_matches = signed_transaction.tx().value == request.value;
         let nonce_matches = match request.nonce {
-            Some(nonce) => signed_transaction.nonce == nonce,
+            Some(nonce) => signed_transaction.tx().nonce == nonce,
             None => true,
         };
 

@@ -26,18 +26,18 @@ use ethkey::{KeyPair, Secret};
 use hash::keccak;
 use io::{IoChannel, IoHandler};
 use std::sync::Arc;
-use types::transaction::{Action, PendingTransaction, Transaction};
+use types::transaction::{Action, PendingTransaction, Transaction, TypedTransaction};
 use SyncConfig;
 
 fn new_tx(secret: &Secret, nonce: U256, chain_id: u64) -> PendingTransaction {
-    let signed = Transaction {
+    let signed = TypedTransaction::Legacy(Transaction {
         nonce: nonce.into(),
         gas_price: 0.into(),
         gas: 21000.into(),
         action: Action::Call(Address::default()),
         value: 0.into(),
         data: Vec::new(),
-    }
+    })
     .sign(secret, Some(chain_id));
     PendingTransaction::new(signed, None)
 }

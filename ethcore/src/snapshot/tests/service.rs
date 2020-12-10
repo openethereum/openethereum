@@ -301,7 +301,7 @@ fn recover_aborted_recovery() {
         generate_dummy_client_with_spec_and_data(Spec::new_null, NUM_BLOCKS, 5, &gas_prices);
 
     let spec = Spec::new_null();
-    let tempdir = TempDir::new("").unwrap();
+    let tempdir = TempDir::new("oe_snapshot").unwrap();
     let db_config = DatabaseConfig::with_columns(::db::NUM_COLUMNS);
     let client_db = new_db();
     let client2 = Client::new(

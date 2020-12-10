@@ -192,11 +192,11 @@ impl ScoredTransaction for VerifiedTransaction {
 
     /// Gets transaction gas price.
     fn gas_price(&self) -> &U256 {
-        &self.transaction.gas_price
+        &self.transaction.tx().gas_price
     }
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256 {
-        self.transaction.nonce
+        self.transaction.tx().nonce
     }
 }

@@ -80,7 +80,10 @@ pub mod blocks {
 
     use engines::EthEngine;
     use error::{BlockError, Error, ErrorKind};
-    use types::{header::Header, transaction::UnverifiedTransaction};
+    use types::{
+        header::Header,
+        transaction::{TypedTransaction, UnverifiedTransaction},
+    };
     use verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
 
     use bytes::Bytes;
@@ -151,7 +154,7 @@ pub mod blocks {
             let (header, transactions, uncles) = {
                 let rlp = Rlp::new(&bytes);
                 let header = rlp.val_at(0)?;
-                let transactions = rlp.list_at(1)?;
+                let transactions = TypedTransaction::decode_rlp_list(&rlp.at(1)?)?;
                 let uncles = rlp.list_at(2)?;
                 (header, transactions, uncles)
             };

@@ -23,7 +23,10 @@ use network;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use triehash_ethereum::ordered_trie_root;
-use types::{header::Header as BlockHeader, transaction::UnverifiedTransaction};
+use types::{
+    header::Header as BlockHeader,
+    transaction::{TypedTransaction, UnverifiedTransaction},
+};
 
 known_heap_size!(0, HeaderId);
 
@@ -65,7 +68,7 @@ impl SyncBody {
 
         let result = SyncBody {
             transactions_bytes: transactions_rlp.as_raw().to_vec(),
-            transactions: transactions_rlp.as_list()?,
+            transactions: TypedTransaction::decode_rlp_list(&transactions_rlp)?,
             uncles_bytes: uncles_rlp.as_raw().to_vec(),
             uncles: uncles_rlp.as_list()?,
         };
@@ -454,11 +457,14 @@ impl BlockCollection {
 
     fn insert_body(&mut self, body: SyncBody) -> Result<H256, network::Error> {
         let header_id = {
-            let tx_root = ordered_trie_root(
-                Rlp::new(&body.transactions_bytes)
-                    .iter()
-                    .map(|r| r.as_raw()),
-            );
+            let tx_root = ordered_trie_root(Rlp::new(&body.transactions_bytes).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    // this list is already decoded and passed validation, for this we are okay to expect proper data
+                    r.data().expect("Expect raw transaction list to be valid")
+                }
+            }));
             let uncles = keccak(&body.uncles_bytes);
             HeaderId {
                 transactions_root: tx_root,
@@ -491,7 +497,22 @@ impl BlockCollection {
     fn insert_receipt(&mut self, r: Bytes) -> Result<Vec<H256>, network::Error> {
         let receipt_root = {
             let receipts = Rlp::new(&r);
-            ordered_trie_root(receipts.iter().map(|r| r.as_raw()))
+            //check receipts data before calculating trie root
+            let mut temp_receipts: Vec<&[u8]> = Vec::new();
+            for receipt_byte in receipts.iter() {
+                if receipt_byte.is_list() {
+                    temp_receipts.push(receipt_byte.as_raw())
+                } else {
+                    temp_receipts.push(
+                        receipt_byte
+                            .data()
+                            .map_err(|e| network::ErrorKind::Rlp(e))?,
+                    );
+                }
+            }
+
+            // calculate trie root and use it as hash
+            ordered_trie_root(temp_receipts.iter())
         };
         self.downloading_receipts.remove(&receipt_root);
         match self.receipt_ids.entry(receipt_root) {

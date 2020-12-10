@@ -48,10 +48,10 @@ use verification::PreverifiedBlock;
 use vm::{EnvInfo, LastHashes};
 
 use hash::keccak;
-use rlp::{encode_list, Encodable, RlpStream};
+use rlp::{encode_list, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
-    receipt::{Receipt, TransactionOutcome},
+    receipt::{TransactionOutcome, TypedReceipt},
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
@@ -99,7 +99,7 @@ pub struct ExecutedBlock {
     /// Uncles.
     pub uncles: Vec<Header>,
     /// Transaction receipts.
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TypedReceipt>,
     /// Hashes of already executed transactions.
     pub transactions_set: HashSet<H256>,
     /// Underlaying state.
@@ -253,7 +253,7 @@ impl<'x> OpenBlock<'x> {
         &mut self,
         t: SignedTransaction,
         h: Option<H256>,
-    ) -> Result<&Receipt, Error> {
+    ) -> Result<&TypedReceipt, Error> {
         if self.block.transactions_set.contains(&t.hash()) {
             return Err(TransactionError::AlreadyImported.into());
         }
@@ -360,13 +360,13 @@ impl<'x> OpenBlock<'x> {
 
         // t_nb 8.5.3 fill open block header with all other fields
         s.block.header.set_transactions_root(ordered_trie_root(
-            s.block.transactions.iter().map(|e| e.rlp_bytes()),
+            s.block.transactions.iter().map(|e| e.encode()),
         ));
         let uncle_bytes = encode_list(&s.block.uncles);
         s.block.header.set_uncles_hash(keccak(&uncle_bytes));
         s.block.header.set_state_root(s.block.state.root().clone());
         s.block.header.set_receipts_root(ordered_trie_root(
-            s.block.receipts.iter().map(|r| r.rlp_bytes()),
+            s.block.receipts.iter().map(|r| r.encode()),
         ));
         s.block
             .header
@@ -453,7 +453,7 @@ impl LockedBlock {
             receipt.outcome = TransactionOutcome::Unknown;
         }
         self.block.header.set_receipts_root(ordered_trie_root(
-            self.block.receipts.iter().map(|r| r.rlp_bytes()),
+            self.block.receipts.iter().map(|r| r.encode()),
         ));
     }
 
@@ -503,7 +503,7 @@ impl SealedBlock {
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(3);
         block_rlp.append(&self.block.header);
-        block_rlp.append_list(&self.block.transactions);
+        SignedTransaction::rlp_append_list(&mut block_rlp, &self.block.transactions);
         block_rlp.append_list(&self.block.uncles);
         block_rlp.out()
     }

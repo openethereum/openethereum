@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use rlp;
 use std::{str::FromStr, sync::Arc, thread, time::Duration};
 
 use jsonrpc_core::{futures::Future, IoHandler, Success};
@@ -40,7 +39,7 @@ use ethstore::ethkey::{Generator, Random};
 use parity_runtime::{Executor, Runtime};
 use parking_lot::Mutex;
 use serde_json;
-use types::transaction::{Action, SignedTransaction, Transaction};
+use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 struct SigningTester {
     pub runtime: Runtime,
@@ -379,7 +378,7 @@ fn should_add_sign_transaction_to_the_queue() {
 		"id": 1
 	}"#;
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::one(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -388,15 +387,15 @@ fn should_add_sign_transaction_to_the_queue() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts
-        .sign(address, Some("test".into()), t.hash(None))
+        .sign(address, Some("test".into()), t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
     let t = SignedTransaction::new(t).unwrap();
     let signature = t.signature();
-    let rlp = rlp::encode(&t);
+    let rlp = t.encode();
 
     let response = r#"{"jsonrpc":"2.0","result":{"#.to_owned()
         + r#""raw":"0x"#
@@ -459,7 +458,7 @@ fn should_dispatch_transaction_if_account_is_unlock() {
         .unlock_account_permanently(acc, "test".into())
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -468,8 +467,11 @@ fn should_dispatch_transaction_if_account_is_unlock() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
-    let signature = tester.accounts.sign(acc, None, t.hash(None)).unwrap();
+    });
+    let signature = tester
+        .accounts
+        .sign(acc, None, t.signature_hash(None))
+        .unwrap();
     let t = t.with_signature(signature, None);
 
     // when

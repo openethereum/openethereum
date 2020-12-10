@@ -71,7 +71,7 @@ impl<C: NonceClient> txpool::Ready<VerifiedTransaction> for State<C> {
     fn is_ready(&mut self, tx: &VerifiedTransaction) -> txpool::Readiness {
         // Check max nonce
         match self.max_nonce {
-            Some(nonce) if tx.transaction.nonce > nonce => {
+            Some(nonce) if tx.transaction.tx().nonce > nonce => {
                 return txpool::Readiness::Future;
             }
             _ => {}
@@ -81,7 +81,7 @@ impl<C: NonceClient> txpool::Ready<VerifiedTransaction> for State<C> {
         let state = &self.state;
         let state_nonce = || state.account_nonce(sender);
         let nonce = self.nonces.entry(*sender).or_insert_with(state_nonce);
-        match tx.transaction.nonce.cmp(nonce) {
+        match tx.transaction.tx().nonce.cmp(nonce) {
             // Before marking as future check for stale ids
             cmp::Ordering::Greater => match self.stale_id {
                 Some(id) if tx.insertion_id() < id => txpool::Readiness::Stale,
@@ -150,8 +150,8 @@ impl<C: Fn(&Address) -> Option<U256>> txpool::Ready<VerifiedTransaction> for Opt
         let nonce = self
             .nonces
             .entry(*sender)
-            .or_insert_with(|| state(sender).unwrap_or_else(|| tx.transaction.nonce));
-        match tx.transaction.nonce.cmp(nonce) {
+            .or_insert_with(|| state(sender).unwrap_or_else(|| tx.transaction.tx().nonce));
+        match tx.transaction.tx().nonce.cmp(nonce) {
             cmp::Ordering::Greater => txpool::Readiness::Future,
             cmp::Ordering::Less => txpool::Readiness::Stale,
             cmp::Ordering::Equal => {

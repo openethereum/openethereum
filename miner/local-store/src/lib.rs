@@ -20,9 +20,9 @@ use std::{fmt, sync::Arc, time::Duration};
 
 use io::IoHandler;
 use kvdb::KeyValueDB;
-use rlp::Rlp;
 use types::transaction::{
-    Condition as TransactionCondition, PendingTransaction, SignedTransaction, UnverifiedTransaction,
+    Condition as TransactionCondition, PendingTransaction, SignedTransaction, TypedTransaction,
+    UnverifiedTransaction,
 };
 
 extern crate common_types as types;
@@ -98,7 +98,7 @@ struct TransactionEntry {
 
 impl TransactionEntry {
     fn into_pending(self) -> Option<PendingTransaction> {
-        let tx: UnverifiedTransaction = match Rlp::new(&self.rlp_bytes).as_val() {
+        let tx: UnverifiedTransaction = match TypedTransaction::decode(&self.rlp_bytes) {
             Err(e) => {
                 warn!(target: "local_store", "Invalid persistent transaction stored: {}", e);
                 return None;
@@ -120,7 +120,7 @@ impl TransactionEntry {
 impl From<PendingTransaction> for TransactionEntry {
     fn from(pending: PendingTransaction) -> Self {
         TransactionEntry {
-            rlp_bytes: ::rlp::encode(&pending.transaction),
+            rlp_bytes: pending.transaction.encode(),
             condition: pending.condition.map(Into::into),
         }
     }
@@ -239,7 +239,7 @@ mod tests {
 
     use ethkey::{Brain, Generator};
     use std::sync::Arc;
-    use types::transaction::{Condition, PendingTransaction, Transaction};
+    use types::transaction::{Condition, PendingTransaction, Transaction, TypedTransaction};
 
     // we want to test: round-trip of good transactions.
     // failure to roundtrip bad transactions (but that it doesn't panic)
@@ -271,8 +271,8 @@ mod tests {
         let keypair = Brain::new("abcd".into()).generate().unwrap();
         let transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
-                let mut tx = Transaction::default();
-                tx.nonce = nonce.into();
+                let mut tx = TypedTransaction::Legacy(Transaction::default());
+                tx.tx_mut().nonce = nonce.into();
 
                 let signed = tx.sign(keypair.secret(), None);
                 let condition = match nonce {
@@ -308,8 +308,8 @@ mod tests {
         let keypair = Brain::new("abcd".into()).generate().unwrap();
         let mut transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
-                let mut tx = Transaction::default();
-                tx.nonce = nonce.into();
+                let mut tx = TypedTransaction::Legacy(Transaction::default());
+                tx.tx_mut().nonce = nonce.into();
 
                 let signed = tx.sign(keypair.secret(), None);
 
@@ -318,8 +318,8 @@ mod tests {
             .collect();
 
         transactions.push({
-            let mut tx = Transaction::default();
-            tx.nonce = 10.into();
+            let mut tx = TypedTransaction::Legacy(Transaction::default());
+            tx.tx_mut().nonce = 10.into();
 
             let signed = tx.fake_sign(Default::default());
             PendingTransaction::new(signed, None)

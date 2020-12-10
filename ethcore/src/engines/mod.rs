@@ -89,6 +89,10 @@ pub enum EngineError {
     InsufficientProof(String),
     /// Failed system call.
     FailedSystemCall(String),
+    /// Failed to decode the result of a system call.
+    SystemCallResultDecoding(String),
+    /// The result of a system call is invalid.
+    SystemCallResultInvalid(String),
     /// Malformed consensus message.
     MalformedMessage(String),
     /// Requires client ref, but none registered.
@@ -153,6 +157,12 @@ impl fmt::Display for EngineError {
             BadSealFieldSize(ref oob) => format!("Seal field has an unexpected length: {}", oob),
             InsufficientProof(ref msg) => format!("Insufficient validation proof: {}", msg),
             FailedSystemCall(ref msg) => format!("Failed to make system call: {}", msg),
+            SystemCallResultDecoding(ref msg) => {
+                format!("Failed to decode the result of a system call: {}", msg)
+            }
+            SystemCallResultInvalid(ref msg) => {
+                format!("The result of a system call is invalid: {}", msg)
+            }
             MalformedMessage(ref msg) => format!("Received malformed consensus message: {}", msg),
             RequiresClient => format!("Call requires client but none registered"),
             RequiresSigner => format!("Call requires signer but none registered"),
@@ -513,6 +523,18 @@ pub trait Engine<M: Machine>: Sync + Send {
     /// Returns author should used when executing tx's for this block.
     fn executive_author(&self, header: &Header) -> Result<Address, Error> {
         Ok(*header.author())
+    }
+
+    /// Returns a list of transactions for a new block if we are the author.
+    ///
+    /// This is called when the miner prepares a new block that this node will author and seal. It returns a list of
+    /// transactions that will be added to the block before any other transactions from the queue.
+    /// Added for AuRa needs.
+    fn generate_engine_transactions(
+        &self,
+        _block: &ExecutedBlock,
+    ) -> Result<Vec<SignedTransaction>, Error> {
+        Ok(Vec::new())
     }
 }
 

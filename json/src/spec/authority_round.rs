@@ -96,6 +96,8 @@ pub struct AuthorityRoundParams {
     pub strict_empty_steps_transition: Option<Uint>,
     /// First block for which a 2/3 quorum (instead of 1/2) is required.
     pub two_thirds_majority_transition: Option<Uint>,
+    /// The random number contract's address, or a map of contract transitions.
+    pub randomness_contract_address: Option<BTreeMap<Uint, Address>>,
 }
 
 /// Authority engine deserialization.
@@ -108,13 +110,13 @@ pub struct AuthorityRound {
 
 #[cfg(test)]
 mod tests {
-    //use super::StepDuration;
     use ethereum_types::{H160, U256};
     use hash::Address;
     use serde_json;
     use spec::{
         authority_round::AuthorityRound, step_duration::StepDuration, validator_set::ValidatorSet,
     };
+    use std::str::FromStr;
     use uint::Uint;
 
     #[test]
@@ -129,7 +131,11 @@ mod tests {
 				"validateStepTransition": 150,
 				"blockReward": 5000000,
 				"maximumUncleCountTransition": 10000000,
-				"maximumUncleCount": 5
+				"maximumUncleCount": 5,
+				"randomnessContractAddress": {
+					"10": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"20": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+				}
 			}
 		}"#;
 
@@ -153,6 +159,21 @@ mod tests {
         assert_eq!(
             deserialized.params.maximum_uncle_count,
             Some(Uint(5.into()))
+        );
+        assert_eq!(
+            deserialized.params.randomness_contract_address.unwrap(),
+            vec![
+                (
+                    Uint(10.into()),
+                    Address(H160::from_str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap())
+                ),
+                (
+                    Uint(20.into()),
+                    Address(H160::from_str("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").unwrap())
+                ),
+            ]
+            .into_iter()
+            .collect()
         );
     }
 }

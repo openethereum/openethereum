@@ -51,7 +51,10 @@ use super::{
     validator_set::{new_validator_set, SimpleList, ValidatorSet},
 };
 use block::*;
-use client::{traits::ForceUpdateSealing, EngineClient};
+use client::{
+    traits::{ForceUpdateSealing, TransactionRequest},
+    EngineClient,
+};
 use engines::{
     block_reward,
     block_reward::{BlockRewardContract, RewardKind},
@@ -66,16 +69,21 @@ use io::{IoContext, IoHandler, IoService, TimerToken};
 use itertools::{self, Itertools};
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::{Mutex, RwLock};
+use rand::OsRng;
 use rlp::{encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use time_utils::CheckedSystemTime;
 use types::{
     ancestry_action::AncestryAction,
     header::{ExtendedHeader, Header},
+    ids::BlockId,
+    transaction::SignedTransaction,
     BlockNumber,
 };
 use unexpected::{Mismatch, OutOfBounds};
 
 mod finality;
+mod randomness;
+pub(crate) mod util;
 
 /// `AuthorityRound` params.
 pub struct AuthorityRoundParams {
@@ -112,6 +120,8 @@ pub struct AuthorityRoundParams {
     pub maximum_empty_steps: usize,
     /// Transition block to strict empty steps validation.
     pub strict_empty_steps_transition: u64,
+    /// If set, enables random number contract integration. It maps the transition block to the contract address.
+    pub randomness_contract_address: BTreeMap<u64, Address>,
 }
 
 const U16_MAX: usize = ::std::u16::MAX as usize;
@@ -174,6 +184,14 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
                 BlockRewardContract::new_from_address(address.into()),
             );
         }
+        let randomness_contract_address =
+            p.randomness_contract_address
+                .map_or_else(BTreeMap::new, |transitions| {
+                    transitions
+                        .into_iter()
+                        .map(|(ethjson::uint::Uint(block), addr)| (block.as_u64(), addr.into()))
+                        .collect()
+                });
         AuthorityRoundParams {
             step_durations,
             validators: new_validator_set(p.validators),
@@ -193,6 +211,7 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
                 .two_thirds_majority_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
             strict_empty_steps_transition: p.strict_empty_steps_transition.map_or(0, Into::into),
+            randomness_contract_address,
         }
     }
 }
@@ -587,6 +606,8 @@ pub struct AuthorityRound {
     machine: EthereumMachine,
     /// History of step hashes recently received from peers.
     received_step_hashes: RwLock<BTreeMap<(u64, Address), H256>>,
+    /// If set, enables random number contract integration. It maps the transition block to the contract address.
+    randomness_contract_address: BTreeMap<u64, Address>,
 }
 
 // header-chain validator.
@@ -958,6 +979,7 @@ impl AuthorityRound {
             strict_empty_steps_transition: our_params.strict_empty_steps_transition,
             machine: machine,
             received_step_hashes: RwLock::new(Default::default()),
+            randomness_contract_address: our_params.randomness_contract_address,
         });
 
         // Do not initialize timeouts for tests.
@@ -1193,6 +1215,56 @@ impl AuthorityRound {
             vec![*chain_head.author()],
         );
         finalized.unwrap_or_default()
+    }
+
+    /// Make calls to the randomness contract.
+    fn run_randomness_phase(&self, block: &ExecutedBlock) -> Result<Vec<SignedTransaction>, Error> {
+        let contract_addr = match self
+            .randomness_contract_address
+            .range(..=block.header.number())
+            .last()
+        {
+            Some((_, &contract_addr)) => contract_addr,
+            None => return Ok(Vec::new()), // No randomness contract.
+        };
+
+        let opt_signer = self.signer.read();
+        let signer = match opt_signer.as_ref() {
+            Some(signer) => signer,
+            None => return Ok(Vec::new()), // We are not a validator, so we shouldn't call the contracts.
+        };
+        let our_addr = signer.address();
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .and_then(|weak| weak.upgrade())
+            .ok_or_else(|| {
+                debug!(target: "engine", "Unable to prepare block: missing client ref.");
+                EngineError::RequiresClient
+            })?;
+        let full_client = client.as_full_client().ok_or_else(|| {
+            EngineError::FailedSystemCall("Failed to upgrade to BlockchainClient.".to_string())
+        })?;
+
+        // Random number generation
+        let contract = util::BoundContract::new(&*client, BlockId::Latest, contract_addr);
+        let phase = randomness::RandomnessPhase::load(&contract, our_addr)
+            .map_err(|err| EngineError::Custom(format!("Randomness error in load(): {:?}", err)))?;
+        let data = match phase
+            .advance(&contract, &mut OsRng::new()?, signer.as_ref())
+            .map_err(|err| {
+                EngineError::Custom(format!("Randomness error in advance(): {:?}", err))
+            })? {
+            Some(data) => data,
+            None => return Ok(Vec::new()), // Nothing to commit or reveal at the moment.
+        };
+
+        let nonce = block.state.nonce(&our_addr)?;
+        let tx_request = TransactionRequest::call(contract_addr, data)
+            .gas_price(U256::zero())
+            .nonce(nonce);
+        Ok(vec![full_client.create_transaction(tx_request)?])
     }
 }
 
@@ -1628,6 +1700,13 @@ impl Engine<EthereumMachine> for AuthorityRound {
         block_reward::apply_block_rewards(&rewards, block, &self.machine)
     }
 
+    fn generate_engine_transactions(
+        &self,
+        block: &ExecutedBlock,
+    ) -> Result<Vec<SignedTransaction>, Error> {
+        self.run_randomness_phase(block)
+    }
+
     /// Check the number of seal fields.
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         if header.number() >= self.validate_score_transition
@@ -2024,8 +2103,8 @@ fn next_step_time_duration(info: StepDurationInfo, time: u64) -> Option<(u64, u6
 #[cfg(test)]
 mod tests {
     use super::{
-        calculate_score, next_step_time_duration, AuthorityRound, AuthorityRoundParams, EmptyStep,
-        SealedEmptyStep, StepDurationInfo,
+        calculate_score, next_step_time_duration, util::BoundContract, AuthorityRound,
+        AuthorityRoundParams, EmptyStep, SealedEmptyStep, StepDurationInfo,
     };
     use accounts::AccountProvider;
     use block::*;
@@ -2035,10 +2114,12 @@ mod tests {
         Engine, EngineError, EthEngine, Seal,
     };
     use error::{Error, ErrorKind};
+    use ethabi_contract::use_contract;
     use ethereum_types::{Address, H256, H520, U256};
     use ethjson;
     use ethkey::Signature;
     use hash::keccak;
+    use miner::{Author, MinerService};
     use rlp::encode;
     use spec::Spec;
     use std::{
@@ -2050,9 +2131,13 @@ mod tests {
         },
         time::Duration,
     };
-    use test_helpers::{generate_dummy_client_with_spec, get_temp_state_db, TestNotify};
+    use test_helpers::{
+        generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data,
+        get_temp_state_db, TestNotify,
+    };
     use types::{
         header::Header,
+        ids::BlockId,
         transaction::{Action, Transaction},
     };
 
@@ -2075,6 +2160,7 @@ mod tests {
             block_reward_contract_transitions: Default::default(),
             strict_empty_steps_transition: 0,
             two_thirds_majority_transition: 0,
+            randomness_contract_address: BTreeMap::new(),
         };
 
         // mutate aura params
@@ -3070,6 +3156,68 @@ mod tests {
             b2.state.balance(&addr1).unwrap(),
             addr1_balance + (1000 + 0) + (1000 + 2),
         )
+    }
+
+    #[test]
+    fn randomness_contract() -> Result<(), super::util::CallError> {
+        use_contract!(
+            rand_contract,
+            "res/contracts/test_authority_round_random.json"
+        );
+
+        env_logger::init();
+
+        let contract_addr = Address::from_str("0000000000000000000000000000000000000042").unwrap();
+        let client = generate_dummy_client_with_spec_and_data(
+            Spec::new_test_round_randomness_contract,
+            0,
+            0,
+            &[],
+            true,
+        );
+
+        let tap = Arc::new(AccountProvider::transient_provider());
+
+        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
+        // Unlock account so that the engine can decrypt the secret.
+        tap.unlock_account_permanently(addr1, "1".into())
+            .expect("unlock");
+
+        let signer = Box::new((tap.clone(), addr1, "1".into()));
+        client.miner().set_author(Author::Sealer(signer.clone()));
+        client
+            .miner()
+            .set_gas_range_target((U256::from(1000000), U256::from(1000000)));
+
+        let engine = client.engine();
+        engine.set_signer(Some(signer));
+        engine.register_client(Arc::downgrade(&client) as _);
+        let bc = BoundContract::new(&*client, BlockId::Latest, contract_addr);
+
+        // First the contract is in the commit phase, and we haven't committed yet.
+        assert!(bc.call_const(rand_contract::functions::is_commit_phase::call())?);
+        assert!(!bc.call_const(rand_contract::functions::is_committed::call(0, addr1))?);
+
+        // We produce a block and commit.
+        engine.step();
+        assert!(bc.call_const(rand_contract::functions::is_committed::call(0, addr1))?);
+
+        // After two more blocks we are in the reveal phase...
+        engine.step();
+        engine.step();
+        assert!(bc.call_const(rand_contract::functions::is_reveal_phase::call())?);
+        assert!(!bc.call_const(rand_contract::functions::sent_reveal::call(0, addr1))?);
+        assert!(bc
+            .call_const(rand_contract::functions::get_value::call())?
+            .is_zero());
+
+        // ...so in the next step, we reveal our random value, and the contract's random value is not zero anymore.
+        engine.step();
+        assert!(bc.call_const(rand_contract::functions::sent_reveal::call(0, addr1))?);
+        assert!(!bc
+            .call_const(rand_contract::functions::get_value::call())?
+            .is_zero());
+        Ok(())
     }
 
     #[test]

@@ -24,7 +24,7 @@ use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::RwLock;
 use types::{header::Header, BlockNumber};
 
-use client::EngineClient;
+use client::{traits::TransactionRequest, EngineClient};
 
 use super::{safe_contract::ValidatorSafeContract, SimpleList, SystemCall, ValidatorSet};
 
@@ -58,7 +58,7 @@ impl ValidatorContract {
 
         match client.as_full_client() {
             Some(c) => {
-                c.transact_contract(self.contract_address, data)
+                c.transact(TransactionRequest::call(self.contract_address, data))
                     .map_err(|e| format!("Transaction import error: {}", e))?;
                 Ok(())
             }
@@ -155,7 +155,7 @@ mod tests {
     use accounts::AccountProvider;
     use bytes::ToPretty;
     use call_contract::CallContract;
-    use client::{BlockChainClient, BlockInfo, ChainInfo};
+    use client::{traits::TransactionRequest, BlockChainClient, BlockInfo, ChainInfo};
     use ethereum_types::{Address, H520};
     use hash::keccak;
     use miner::{self, MinerService};
@@ -256,8 +256,12 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 2);
 
         // Check if misbehaving validator was removed.
+
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         client.engine().step();
         client.engine().step();

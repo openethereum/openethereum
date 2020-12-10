@@ -74,6 +74,7 @@ using_queue = { path = "../miner/using-queue" }
 vm = { path = "vm" }
 walkdir = "2.3"
 wasm = { path = "wasm" }
+derive_more = "0.99"
 
 [dev-dependencies]
 blooms-db = { path = "../util/blooms-db" }

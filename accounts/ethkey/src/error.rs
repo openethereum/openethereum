@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::Error as CryptoError;
 use std::{error, fmt};
 
 #[derive(Debug)]
@@ -60,6 +61,12 @@ impl error::Error for Error {
 impl Into<String> for Error {
     fn into(self) -> String {
         format!("{}", self)
+    }
+}
+
+impl From<CryptoError> for Error {
+    fn from(e: CryptoError) -> Error {
+        Error::Custom(e.to_string())
     }
 }
 

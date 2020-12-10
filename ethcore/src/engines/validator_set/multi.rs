@@ -182,7 +182,10 @@ impl ValidatorSet for Multi {
 #[cfg(test)]
 mod tests {
     use accounts::AccountProvider;
-    use client::{traits::ForceUpdateSealing, BlockChainClient, BlockInfo, ChainInfo, ImportBlock};
+    use client::{
+        traits::{ForceUpdateSealing, TransactionRequest},
+        BlockChainClient, BlockInfo, ChainInfo, ImportBlock,
+    };
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
     use ethkey::Secret;
@@ -190,7 +193,7 @@ mod tests {
     use miner::{self, MinerService};
     use spec::Spec;
     use std::{collections::BTreeMap, sync::Arc};
-    use test_helpers::{generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data};
+    use test_helpers::generate_dummy_client_with_spec;
     use types::{header::Header, ids::BlockId};
     use verification::queue::kind::blocks::Unverified;
 
@@ -216,7 +219,10 @@ mod tests {
         let signer = Box::new((tap.clone(), v1, "".into()));
         client.miner().set_author(miner::Author::Sealer(signer));
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 0);
@@ -227,7 +233,10 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 1);
         // This time v0 is wrong.
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 1);
@@ -237,14 +246,16 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 2);
         // v1 is still good.
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 3);
 
         // Check syncing.
-        let sync_client =
-            generate_dummy_client_with_spec_and_data(Spec::new_validator_multi, 0, 0, &[]);
+        let sync_client = generate_dummy_client_with_spec(Spec::new_validator_multi);
         sync_client
             .engine()
             .register_client(Arc::downgrade(&sync_client) as _);

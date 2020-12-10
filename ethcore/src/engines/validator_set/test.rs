@@ -65,6 +65,7 @@ impl TestSet {
         self.last_malicious.load(AtomicOrdering::SeqCst)
     }
 
+    #[allow(dead_code)]
     pub fn last_benign(&self) -> usize {
         self.last_benign.load(AtomicOrdering::SeqCst)
     }

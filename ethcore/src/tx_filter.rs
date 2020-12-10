@@ -198,10 +198,9 @@ mod test {
     use io::IoChannel;
     use miner::Miner;
     use spec::Spec;
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
     use tempdir::TempDir;
     use test_helpers;
-    use std::str::FromStr;
     use types::transaction::{Action, Transaction};
 
     /// Contract code: https://gist.github.com/VladLupashevskyi/84f18eabb1e4afadf572cf92af3e7e7f

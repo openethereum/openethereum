@@ -749,7 +749,7 @@ impl BlockChain {
                     }
 
                     if hash != bc.genesis_hash() {
-                        trace!("First block calculated: {:?}", hash);
+                        info!("First new block calculated: {:?}", hash);
                         let mut batch = db.key_value().transaction();
                         batch.put(db::COL_EXTRA, b"first", &hash);
                         db.key_value().write(batch).expect("Low level database error when writing 'first' block. Some issue with disk?");

@@ -21,7 +21,7 @@ use ethereum_types::H256;
 use fastmap::H256FastSet;
 use network::{client_version::ClientCapabilities, PeerId};
 use rand::Rng;
-use rlp::{Encodable, RlpStream};
+use rlp::RlpStream;
 use sync_io::SyncIo;
 use types::{blockchain_info::BlockChainInfo, transaction::SignedTransaction, BlockNumber};
 
@@ -121,7 +121,7 @@ impl SyncPropagator {
         let (transactions, service_transactions): (Vec<_>, Vec<_>) = transactions
             .iter()
             .map(|tx| tx.signed())
-            .partition(|tx| !tx.gas_price.is_zero());
+            .partition(|tx| !tx.tx().gas_price.is_zero());
 
         // usual transactions could be propagated to all peers
         let mut affected_peers = HashSet::new();
@@ -171,7 +171,7 @@ impl SyncPropagator {
         let all_transactions_rlp = {
             let mut packet = RlpStream::new_list(transactions.len());
             for tx in &transactions {
-                packet.append(&**tx);
+                tx.rlp_append(&mut packet);
             }
             packet.out()
         };
@@ -238,13 +238,8 @@ impl SyncPropagator {
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
-                        let mut transaction = RlpStream::new();
-                        tx.rlp_append(&mut transaction);
-                        let appended = packet.append_raw_checked(
-                            &transaction.drain(),
-                            1,
-                            MAX_TRANSACTION_PACKET_SIZE,
-                        );
+                        let appended =
+                            packet.append_raw_checked(&tx.encode(), 1, MAX_TRANSACTION_PACKET_SIZE);
                         if !appended {
                             // Maximal packet size reached just proceed with sending
                             debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
@@ -373,6 +368,7 @@ mod tests {
     use rlp::Rlp;
     use std::collections::VecDeque;
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
+    use types::transaction::TypedTransaction;
 
     use super::{
         super::{tests::*, *},
@@ -707,7 +703,9 @@ mod tests {
                     return None;
                 }
 
-                rlp.at(0).ok().and_then(|r| r.as_val().ok())
+                rlp.at(0)
+                    .ok()
+                    .and_then(|r| TypedTransaction::decode_rlp(&r).ok())
             })
             .collect();
         assert_eq!(sent_transactions.len(), 2);

@@ -291,8 +291,15 @@ impl Rebuilder for PowRebuilder {
             let pair = rlp.at(idx)?;
             let abridged_rlp = pair.at(0)?.as_raw().to_owned();
             let abridged_block = AbridgedBlock::from_raw(abridged_rlp);
-            let receipts: Vec<::types::receipt::Receipt> = pair.list_at(1)?;
-            let receipts_root = ordered_trie_root(pair.at(1)?.iter().map(|r| r.as_raw()));
+            let receipts = ::types::receipt::TypedReceipt::decode_rlp_list(&pair.at(1)?)?;
+            let receipts_root = ordered_trie_root(pair.at(1)?.iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    // We have allready checked validity by decoding rlp list in line above
+                    r.data().expect("Expect for raw receipts list to be valid.")
+                }
+            }));
 
             let block = abridged_block.to_block(parent_hash, cur_number, receipts_root)?;
             let block_bytes = encoded::Block::new(block.rlp_bytes());

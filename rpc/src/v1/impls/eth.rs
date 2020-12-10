@@ -24,7 +24,6 @@ use std::{
 
 use ethereum_types::{Address, H160, H256, H64, U256, U64};
 use parking_lot::Mutex;
-use rlp::Rlp;
 
 use ethash::{self, SeedHashCompute};
 use ethcore::{
@@ -42,7 +41,7 @@ use types::{
     encoded,
     filter::Filter as EthcoreFilter,
     header::Header,
-    transaction::{LocalizedTransaction, SignedTransaction},
+    transaction::{LocalizedTransaction, SignedTransaction, TypedTransaction},
     BlockNumber as EthBlockNumber,
 };
 
@@ -1065,8 +1064,7 @@ where
     }
 
     fn send_raw_transaction(&self, raw: Bytes) -> Result<H256> {
-        Rlp::new(&raw.into_vec())
-            .as_val()
+        TypedTransaction::decode(&raw.into_vec())
             .map_err(errors::rlp)
             .and_then(|tx| SignedTransaction::new(tx).map_err(errors::transaction))
             .and_then(|signed_transaction| {

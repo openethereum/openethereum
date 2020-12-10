@@ -30,14 +30,13 @@ use ethereum_types::{Address, Bloom, H160, H256, U256};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
-use rlp;
 use rustc_hex::{FromHex, ToHex};
 use sync::SyncState;
 use types::{
     ids::{BlockId, TransactionId},
     log_entry::{LocalizedLogEntry, LogEntry},
     receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome},
-    transaction::{Action, Transaction},
+    transaction::{Action, Transaction, TypedTransaction, TypedTxId},
 };
 
 use jsonrpc_core::IoHandler;
@@ -694,13 +693,12 @@ fn rpc_eth_transaction_count_by_number_pending() {
 #[test]
 fn rpc_eth_pending_transaction_by_hash() {
     use ethereum_types::H256;
-    use rlp;
     use types::transaction::SignedTransaction;
 
     let tester = EthTester::default();
     {
         let bytes = FromHex::from_hex("f85f800182520894095e7baea6a6c7c4c2dfeb977efac326af552d870a801ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804").unwrap();
-        let tx = rlp::decode(&bytes).expect("decoding failure");
+        let tx = TypedTransaction::decode(&bytes).expect("decoding failure");
         let tx = SignedTransaction::new(tx).unwrap();
         tester
             .miner
@@ -1054,6 +1052,23 @@ fn rpc_eth_send_raw_transaction_error() {
 		"jsonrpc": "2.0",
 		"method": "eth_sendRawTransaction",
 		"params": [
+			"0x1123"
+		],
+		"id": 1
+	}"#;
+    let res = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid RLP.","data":"Custom(\"Unknown transaction\")"},"id":1}"#.into();
+
+    assert_eq!(tester.io.handle_request_sync(&req), Some(res));
+}
+
+#[test]
+fn rpc_eth_send_raw_01_transaction_error() {
+    let tester = EthTester::default();
+
+    let req = r#"{
+		"jsonrpc": "2.0",
+		"method": "eth_sendRawTransaction",
+		"params": [
 			"0x0123"
 		],
 		"id": 1
@@ -1075,7 +1090,7 @@ fn rpc_eth_send_raw_transaction() {
         .unlock_account_permanently(address, "abcd".into())
         .unwrap();
 
-    let t = Transaction {
+    let t = TypedTransaction::Legacy(Transaction {
         nonce: U256::zero(),
         gas_price: U256::from(0x9184e72a000u64),
         gas: U256::from(0x76c0),
@@ -1084,14 +1099,14 @@ fn rpc_eth_send_raw_transaction() {
         ),
         value: U256::from(0x9184e72au64),
         data: vec![],
-    };
+    });
     let signature = tester
         .accounts_provider
-        .sign(address, None, t.hash(None))
+        .sign(address, None, t.signature_hash(None))
         .unwrap();
     let t = t.with_signature(signature, None);
 
-    let rlp = rlp::encode(&t).to_hex();
+    let rlp = t.encode().to_hex();
 
     let req = r#"{
 		"jsonrpc": "2.0",
@@ -1118,6 +1133,7 @@ fn rpc_eth_transaction_receipt() {
         to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
         transaction_hash: H256::zero(),
         transaction_index: 0,
+        transaction_type: TypedTxId::Legacy,
         block_hash: H256::from_str(
             "ed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5",
         )
@@ -1204,6 +1220,7 @@ fn rpc_eth_pending_receipt() {
         )
         .unwrap(),
         transaction_index: 0,
+        transaction_type: TypedTxId::Legacy,
         cumulative_gas_used: U256::from(0x20),
         gas_used: U256::from(0x10),
         contract_address: None,

@@ -24,6 +24,10 @@ pub const EIP2929_COLD_ACCOUNT_ACCESS_COST: usize = 2600;
 pub const EIP2929_WARM_STORAGE_READ_COST: usize = 100;
 // Gas per sstore reset
 pub const EIP2929_SSTORE_RESET_GAS: usize = 5000 - EIP2929_COLD_SLOAD_COST;
+/// Gas per received storage key
+pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
+/// Gas per received address
+pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
 
 /// Definition of the cost schedule and other parameterisations for the EVM.
 #[derive(Debug)]
@@ -149,6 +153,8 @@ pub struct Schedule {
     pub wasm: Option<WasmCosts>,
     /// Enable EIP-2929 rules
     pub eip2929: bool,
+    /// Enable EIP-2930 rules for optional access list transactions. it depends on EIP-2929
+    pub eip2930: bool,
 }
 
 /// Wasm cost table
@@ -295,6 +301,7 @@ impl Schedule {
             keep_unsigned_nonce: false,
             wasm: None,
             eip2929: false,
+            eip2930: false,
         }
     }
 
@@ -343,6 +350,7 @@ impl Schedule {
 
         schedule.eip1283 = true;
         schedule.eip2929 = true;
+        schedule.eip2930 = true;
 
         schedule.cold_sload_cost = EIP2929_COLD_SLOAD_COST;
         schedule.cold_account_access_cost = EIP2929_COLD_ACCOUNT_ACCESS_COST;
@@ -421,6 +429,7 @@ impl Schedule {
             keep_unsigned_nonce: false,
             wasm: None,
             eip2929: false,
+            eip2930: false,
         }
     }
 

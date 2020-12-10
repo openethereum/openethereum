@@ -25,7 +25,7 @@ use snapshot::tests::helpers as snapshot_helpers;
 use spec::Spec;
 use tempdir::TempDir;
 use test_helpers::generate_dummy_client_with_spec;
-use types::transaction::{Action, SignedTransaction, Transaction};
+use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 use ethereum_types::Address;
 use test_helpers;
@@ -128,14 +128,14 @@ fn make_chain(
         // and force sealing.
         let make_useless_transactions = || {
             let mut nonce = nonce.borrow_mut();
-            let transaction = Transaction {
+            let transaction = TypedTransaction::Legacy(Transaction {
                 nonce: *nonce,
                 gas_price: 1.into(),
                 gas: 21_000.into(),
                 action: Action::Call(Address::new()),
                 value: 1.into(),
                 data: Vec::new(),
-            }
+            })
             .sign(&*RICH_SECRET, client.signing_chain_id());
 
             *nonce = *nonce + 1;
@@ -171,14 +171,14 @@ fn make_chain(
                 let data =
                     test_validator_set::functions::set_validators::encode_input(new_set.clone());
                 let mut nonce = nonce.borrow_mut();
-                let transaction = Transaction {
+                let transaction = TypedTransaction::Legacy(Transaction {
                     nonce: *nonce,
                     gas_price: 0.into(),
                     gas: 1_000_000.into(),
                     action: Action::Call(*address),
                     value: 0.into(),
                     data,
-                }
+                })
                 .sign(&*RICH_SECRET, client.signing_chain_id());
 
                 *nonce = *nonce + 1;

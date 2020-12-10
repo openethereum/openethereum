@@ -762,7 +762,7 @@ mod tests {
     use triehash_ethereum::ordered_trie_root;
     use types::{
         header::Header as BlockHeader,
-        transaction::{SignedTransaction, Transaction},
+        transaction::{SignedTransaction, Transaction, TypedTransaction},
     };
 
     fn dummy_header(number: u64, parent_hash: H256) -> BlockHeader {
@@ -778,7 +778,7 @@ mod tests {
 
     fn dummy_signed_tx() -> SignedTransaction {
         let keypair = Random.generate().unwrap();
-        Transaction::default().sign(keypair.secret(), None)
+        TypedTransaction::Legacy(Transaction::default()).sign(keypair.secret(), None)
     }
 
     fn import_headers(
@@ -949,8 +949,16 @@ mod tests {
                 ::rlp::EMPTY_LIST_RLP.to_vec()
             };
 
-            let txs = encode_list(&[dummy_signed_tx()]);
-            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| r.as_raw()));
+            let mut rlp_strem = RlpStream::new();
+            SignedTransaction::rlp_append_list(&mut rlp_strem, &[dummy_signed_tx()]);
+            let txs = rlp_strem.drain();
+            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("It is expected that raw rlp list is valid")
+                }
+            }));
 
             let mut rlp = RlpStream::new_list(2);
             rlp.append_raw(&txs, 1);
@@ -1019,14 +1027,20 @@ mod tests {
             // Construct the receipts. Receipt root for the first two blocks is the same.
             //
             // The RLP-encoded integers are clearly not receipts, but the BlockDownloader treats
-            // all receipts as byte blobs, so it does not matter.
+            // all receipts as byte blobs, so it does not matter. It is just important that they are
+            // represended as list (0xc1) so that they passes as legacy list
             let receipts_rlp = if i < 2 {
-                encode_list(&[0u32])
+                vec![0xC1, 0]
             } else {
-                encode_list(&[i as u32])
+                vec![0xC1, i as u8]
             };
-            let receipts_root =
-                ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| r.as_raw()));
+            let receipts_root = ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("expect proper test data")
+                }
+            }));
             receipts.push(receipts_rlp);
 
             // Construct the block header.

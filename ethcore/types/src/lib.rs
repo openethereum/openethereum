@@ -41,6 +41,7 @@ extern crate heapsize;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;
 extern crate rlp;
+extern crate serde_repr;
 extern crate unexpected;
 
 #[macro_use]

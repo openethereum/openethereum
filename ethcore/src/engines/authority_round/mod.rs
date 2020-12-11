@@ -425,21 +425,27 @@ impl EpochManager {
             let (signal_number, set_proof, _) = destructure_proofs(&last_transition.proof)
                 .expect("proof produced by this engine; therefore it is valid; qed");
 
-            trace!(target: "engine", "extracting epoch set for epoch ({}, {}) signalled at #{}",
-				last_transition.block_number, last_transition.block_hash, signal_number);
+            trace!(
+                target: "engine",
+                "extracting epoch validator set for epoch ({}, {}) signalled at #{}",
+                last_transition.block_number, last_transition.block_hash, signal_number
+            );
 
             let first = signal_number == 0;
-            let epoch_set = validators
+            let (list, _) = validators
                 .epoch_set(
                     first,
                     machine,
                     signal_number, // use signal number so multi-set first calculation is correct.
                     set_proof,
                 )
-                .ok()
-                .map(|(list, _)| list.into_inner())
                 .expect("proof produced by this engine; therefore it is valid; qed");
-
+            trace!(
+                target: "engine",
+                "Updating finality checker with new validator set extracted from epoch ({}, {}): {:?}",
+                last_transition.block_number, last_transition.block_hash, &list
+            );
+            let epoch_set = list.into_inner();
             let two_thirds_majority_transition =
                 self.finality_checker.two_thirds_majority_transition();
             self.finality_checker =
@@ -468,10 +474,22 @@ impl EpochManager {
 /// A message broadcast by authorities when it's their turn to seal a block but there are no
 /// transactions. Other authorities accumulate these messages and later include them in the seal as
 /// proof.
+///
+/// An empty step message is created _instead of_ a block if there are no pending transactions.
+/// It cannot itself be a parent, and `parent_hash` always points to the most recent block. E.g.:
+/// * Validator A creates block `bA`.
+/// * Validator B has no pending transactions, so it signs an empty step message `mB`
+///   instead whose hash points to block `bA`.
+/// * Validator C also has no pending transactions, so it also signs an empty step message `mC`
+///   instead whose hash points to block `bA`.
+/// * Validator D creates block `bD`. The parent is block `bA`, and the header includes `mB` and `mC`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct EmptyStep {
+    /// The signature of the other two fields, by the message's author.
     signature: H520,
+    /// This message's step number.
     step: u64,
+    /// The hash of the most recent block.
     parent_hash: H256,
 }
 
@@ -480,6 +498,7 @@ impl PartialOrd for EmptyStep {
         Some(self.cmp(other))
     }
 }
+
 impl Ord for EmptyStep {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.step
@@ -501,6 +520,7 @@ impl EmptyStep {
         }
     }
 
+    /// Returns `true` if the message has a valid signature by the expected proposer in the message's step.
     fn verify(&self, validators: &dyn ValidatorSet) -> Result<bool, Error> {
         let message = keccak(empty_step_rlp(self.step, &self.parent_hash));
         let correct_proposer = step_proposer(validators, &self.parent_hash, self.step);
@@ -870,7 +890,7 @@ fn verify_external(
 }
 
 fn combine_proofs(signal_number: BlockNumber, set_proof: &[u8], finality_proof: &[u8]) -> Vec<u8> {
-    let mut stream = ::rlp::RlpStream::new_list(3);
+    let mut stream = RlpStream::new_list(3);
     stream
         .append(&signal_number)
         .append(&set_proof)
@@ -937,32 +957,21 @@ impl AuthorityRound {
         let initial_step = our_params.start_step.unwrap_or(0);
 
         let mut durations = Vec::new();
-        let mut prev_step = 0u64;
-        let mut prev_time = 0u64;
-        let mut prev_dur = our_params.step_durations[&0];
-        durations.push(StepDurationInfo {
-            transition_step: prev_step,
-            transition_timestamp: prev_time,
-            step_duration: prev_dur,
-        });
-        for (time, dur) in our_params.step_durations.iter().skip(1) {
-            let (step, time) = next_step_time_duration(
-                StepDurationInfo {
-                    transition_step: prev_step,
-                    transition_timestamp: prev_time,
-                    step_duration: prev_dur,
-                },
-                *time,
-            )
-            .ok_or(BlockError::TimestampOverflow)?;
-            durations.push(StepDurationInfo {
-                transition_step: step,
-                transition_timestamp: time,
-                step_duration: *dur,
-            });
-            prev_step = step;
-            prev_time = time;
-            prev_dur = *dur;
+        {
+            let mut dur_info = StepDurationInfo {
+                transition_step: 0u64,
+                transition_timestamp: 0u64,
+                step_duration: our_params.step_durations[&0],
+            };
+            durations.push(dur_info);
+            for (time, dur) in our_params.step_durations.iter().skip(1) {
+                let (step, time) = next_step_time_duration(dur_info, *time)
+                    .ok_or(BlockError::TimestampOverflow)?;
+                dur_info.transition_step = step;
+                dur_info.transition_timestamp = time;
+                dur_info.step_duration = *dur;
+                durations.push(dur_info);
+            }
         }
 
         let step = Step {
@@ -1026,13 +1035,7 @@ impl AuthorityRound {
             (CowLike::Borrowed(&*self.validators), header.number())
         } else {
             let mut epoch_manager = self.epoch_manager.lock();
-            let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
-                Some(client) => client,
-                None => {
-                    debug!(target: "engine", "Unable to verify sig: missing client ref.");
-                    return Err(EngineError::RequiresClient.into());
-                }
-            };
+            let client = self.upgrade_client_or("Unable to verify sig")?;
 
             if !epoch_manager.zoom_to_after(
                 &*client,
@@ -1112,10 +1115,8 @@ impl AuthorityRound {
     }
 
     fn broadcast_message(&self, message: Vec<u8>) {
-        if let Some(ref weak) = *self.client.read() {
-            if let Some(c) = weak.upgrade() {
-                c.broadcast_consensus_message(message);
-            }
+        if let Ok(c) = self.upgrade_client_or(None) {
+            c.broadcast_consensus_message(message);
         }
     }
 
@@ -1147,6 +1148,12 @@ impl AuthorityRound {
                     if !reported.insert(skipped_primary) {
                         break;
                     }
+                    trace!(
+                        target: "engine",
+                        "Reporting benign misbehaviour (cause: skipped step) at block #{}, \
+                        epoch set number {}, step proposer={:#x}. Own address: {}",
+                        header.number(), set_number, skipped_primary, me
+                    );
                     self.validators
                         .report_benign(&skipped_primary, set_number, header.number());
                 }
@@ -1164,12 +1171,9 @@ impl AuthorityRound {
             return Vec::new();
         }
 
-        let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
-            Some(client) => client,
-            None => {
-                warn!(target: "engine", "Unable to apply ancestry actions: missing client ref.");
-                return Vec::new();
-            }
+        let client = match self.upgrade_client_or("Unable to apply ancestry actions") {
+            Ok(client) => client,
+            Err(_) => return Vec::new(),
         };
 
         let mut epoch_manager = self.epoch_manager.lock();
@@ -1238,6 +1242,10 @@ impl AuthorityRound {
         finalized.unwrap_or_default()
     }
 
+    fn address(&self) -> Option<Address> {
+		self.signer.read().as_ref().map(|s| s.address())
+	}
+
     /// Make calls to the randomness contract.
     fn run_randomness_phase(&self, block: &ExecutedBlock) -> Result<Vec<SignedTransaction>, Error> {
         let contract_addr = match self
@@ -1255,15 +1263,7 @@ impl AuthorityRound {
             None => return Ok(Vec::new()), // We are not a validator, so we shouldn't call the contracts.
         };
         let our_addr = signer.address();
-        let client = self
-            .client
-            .read()
-            .as_ref()
-            .and_then(|weak| weak.upgrade())
-            .ok_or_else(|| {
-                debug!(target: "engine", "Unable to prepare block: missing client ref.");
-                EngineError::RequiresClient
-            })?;
+        let client = self.upgrade_client_or("Unable to prepare block")?;
         let full_client = client.as_full_client().ok_or_else(|| {
             EngineError::FailedSystemCall("Failed to upgrade to BlockchainClient.".to_string())
         })?;
@@ -1286,6 +1286,26 @@ impl AuthorityRound {
             .gas_price(U256::zero())
             .nonce(nonce);
         Ok(vec![full_client.create_transaction(tx_request)?])
+    }
+
+    /// Returns the reference to the client, if registered.
+    fn upgrade_client_or<'a, T>(
+        &self,
+        opt_error_msg: T,
+    ) -> Result<Arc<dyn EngineClient>, EngineError>
+    where
+        T: Into<Option<&'a str>>,
+    {
+        self.client
+            .read()
+            .as_ref()
+            .and_then(|weak| weak.upgrade())
+            .ok_or_else(|| {
+                if let Some(error_msg) = opt_error_msg.into() {
+                    debug!(target: "engine", "{}: missing client ref.", error_msg);
+                }
+                EngineError::RequiresClient
+            })
     }
 }
 
@@ -1355,10 +1375,8 @@ impl Engine<EthereumMachine> for AuthorityRound {
     fn step(&self) {
         self.step.inner.increment();
         self.step.can_propose.store(true, AtomicOrdering::SeqCst);
-        if let Some(ref weak) = *self.client.read() {
-            if let Some(c) = weak.upgrade() {
-                c.update_sealing(ForceUpdateSealing::No);
-            }
+        if let Ok(c) = self.upgrade_client_or(None) {
+            c.update_sealing(ForceUpdateSealing::No);
         }
     }
 
@@ -1446,12 +1464,9 @@ impl Engine<EthereumMachine> for AuthorityRound {
             }
         };
 
-        let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
-            Some(client) => client,
-            None => {
-                warn!(target: "engine", "Not preparing block: missing client ref.");
-                return SealingState::NotReady;
-            }
+        let client = match self.upgrade_client_or("Not preparing block") {
+            Ok(client) => client,
+            Err(_) => return SealingState::NotReady,
         };
 
         let parent = match client.as_full_client() {
@@ -1490,7 +1505,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        fn fmt_err<T: ::std::fmt::Debug>(x: T) -> EngineError {
+        fn fmt_err<T: fmt::Debug>(x: T) -> EngineError {
             EngineError::MalformedMessage(format!("{:?}", x))
         }
 
@@ -1882,6 +1897,12 @@ impl Engine<EthereumMachine> for AuthorityRound {
             match validate_empty_steps() {
                 Ok(len) => len,
                 Err(err) => {
+                    trace!(
+                        target: "engine",
+                        "Reporting benign misbehaviour (cause: invalid empty steps) \
+                        at block #{}, epoch set number {}. Own address: {}",
+                        header.number(), set_number, self.address().unwrap_or_default()
+                    );
                     self.validators
                         .report_benign(header.author(), set_number, header.number());
                     return Err(err);
@@ -1897,10 +1918,10 @@ impl Engine<EthereumMachine> for AuthorityRound {
             let expected_difficulty =
                 calculate_score(parent_step.into(), step.into(), empty_steps_len.into());
             if header.difficulty() != &expected_difficulty {
-                return Err(From::from(BlockError::InvalidDifficulty(Mismatch {
-                    expected: expected_difficulty,
-                    found: header.difficulty().clone(),
-                })));
+				return Err(From::from(BlockError::InvalidDifficulty(Mismatch {
+					expected: expected_difficulty,
+					found: header.difficulty().clone()
+				})));
             }
         }
 
@@ -1916,9 +1937,13 @@ impl Engine<EthereumMachine> for AuthorityRound {
         let res = verify_external(header, &*validators, self.empty_steps_transition);
         match res {
             Err(Error(ErrorKind::Engine(EngineError::NotProposer(_)), _)) => {
-                self.validators
-                    .report_benign(header.author(), set_number, header.number());
-            }
+				trace!(
+					target: "engine",
+					"Reporting benign misbehaviour (cause: block from incorrect proposer) \
+					at block #{}, epoch set number {}. Own address: {}",
+					header.number(), set_number, self.address().unwrap_or_default());
+				self.validators.report_benign(header.author(), set_number, header.number());
+			},
             Ok(_) => {
                 // we can drop all accumulated empty step messages that are older than this header's step
                 let header_step = header_step(header, self.empty_steps_transition)?;
@@ -1964,7 +1989,11 @@ impl Engine<EthereumMachine> for AuthorityRound {
 
         // Apply transitions that don't require finality and should be enacted immediately (e.g from chain spec)
         if let Some(change) = self.validators.is_epoch_end(first, chain_head) {
-            info!(target: "engine", "Immediately applying validator set change signalled at block {}", chain_head.number());
+            info!(
+				target: "engine",
+				"Immediately applying validator set change signalled at block {}",
+				chain_head.number()
+			);
             self.epoch_manager.lock().note_new_epoch();
             let change = combine_proofs(chain_head.number(), &change, &[]);
             return Some(change);
@@ -2118,13 +2147,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
             .block_gas_limit_contract_transitions
             .range(..=header.number())
             .last()?;
-        let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
-            Some(client) => client,
-            None => {
-                error!(target: "engine", "Unable to prepare block: missing client ref.");
-                return None;
-            }
-        };
+        let client = self.upgrade_client_or("Unable to prepare block").ok()?;
         let full_client = match client.as_full_client() {
             Some(full_client) => full_client,
             None => {
@@ -2755,7 +2778,7 @@ mod tests {
         ]);
     }
 
-    fn assert_insufficient_proof<T: ::std::fmt::Debug>(result: Result<T, Error>, contains: &str) {
+    fn assert_insufficient_proof<T: std::fmt::Debug>(result: Result<T, Error>, contains: &str) {
         match result {
             Err(Error(ErrorKind::Engine(EngineError::InsufficientProof(ref s)), _)) => {
                 assert!(

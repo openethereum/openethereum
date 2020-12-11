@@ -18,6 +18,7 @@ jobs:
         platform:
           - ubuntu-16.04
           - macos-latest
+          - windows2019 # custom runner
         toolchain:
           - stable
     runs-on:                    ${{ matrix.platform }}
@@ -38,7 +39,7 @@ jobs:
           command:              test
           args:                 --locked --all --release --features "json-tests" --verbose --no-run
       - name:                   Run tests for ${{ matrix.platform }}
-        if:                     matrix.platform != 'windows-latest'
+        if:                     matrix.platform != 'windows2019'
         uses:                   actions-rs/cargo@v1
         with:
           command:              test

@@ -26,7 +26,8 @@ use ethereum_types::{Address, H256};
 use heapsize::HeapSizeOf;
 use types::{header::Header, BlockNumber};
 
-use super::{SimpleList, ValidatorSet};
+use super::{SimpleList, SystemCall, ValidatorSet};
+use error::Error as EthcoreError;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 /// Set used for testing with a single validator.
@@ -80,6 +81,19 @@ impl HeapSizeOf for TestSet {
 impl ValidatorSet for TestSet {
     fn default_caller(&self, _block_id: ::types::ids::BlockId) -> Box<Call> {
         Box::new(|_, _| Err("Test set doesn't require calls.".into()))
+    }
+
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        _header: &Header,
+        _call: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError> {
+        Ok(Vec::new())
+    }
+
+    fn on_close_block(&self, _header: &Header, _address: &Address) -> Result<(), EthcoreError> {
+        Ok(())
     }
 
     fn is_epoch_end(&self, _first: bool, _chain_head: &Header) -> Option<Vec<u8>> {

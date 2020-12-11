@@ -18,7 +18,9 @@ use ethereum_types::{Address, H256};
 /// Preconfigured validator list.
 use heapsize::HeapSizeOf;
 
-use super::ValidatorSet;
+use super::{SystemCall, ValidatorSet};
+use bytes::Bytes;
+use error::Error as EthcoreError;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use types::{header::Header, BlockNumber};
 
@@ -67,6 +69,19 @@ impl HeapSizeOf for SimpleList {
 impl ValidatorSet for SimpleList {
     fn default_caller(&self, _block_id: ::types::ids::BlockId) -> Box<Call> {
         Box::new(|_, _| Err("Simple list doesn't require calls.".into()))
+    }
+
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        _header: &Header,
+        _call: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError> {
+        Ok(Vec::new())
+    }
+
+    fn on_close_block(&self, _header: &Header, _address: &Address) -> Result<(), EthcoreError> {
+        Ok(())
     }
 
     fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {

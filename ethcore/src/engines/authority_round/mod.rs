@@ -48,9 +48,10 @@ use std::{
 use self::finality::RollingFinality;
 use super::{
     signer::EngineSigner,
-    validator_set::{new_validator_set, SimpleList, ValidatorSet},
+    validator_set::{new_validator_set_posdao, SimpleList, ValidatorSet},
 };
 use block::*;
+use bytes::Bytes;
 use client::{
     traits::{ForceUpdateSealing, TransactionRequest},
     EngineClient,
@@ -127,6 +128,9 @@ pub struct AuthorityRoundParams {
     /// The addresses of contracts that determine the block gas limit with their associated block
     /// numbers.
     pub block_gas_limit_contract_transitions: BTreeMap<u64, Address>,
+    /// If set, this is the block number at which the consensus engine switches from AuRa to AuRa
+    /// with POSDAO modifications.
+    pub posdao_transition: Option<BlockNumber>,
 }
 
 const U16_MAX: usize = ::std::u16::MAX as usize;
@@ -208,7 +212,7 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             .collect();
         AuthorityRoundParams {
             step_durations,
-            validators: new_validator_set(p.validators),
+            validators: new_validator_set_posdao(p.validators, p.posdao_transition.map(Into::into)),
             start_step: p.start_step.map(Into::into),
             validate_score_transition: p.validate_score_transition.map_or(0, Into::into),
             validate_step_transition: p.validate_step_transition.map_or(0, Into::into),
@@ -227,6 +231,7 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             strict_empty_steps_transition: p.strict_empty_steps_transition.map_or(0, Into::into),
             randomness_contract_address,
             block_gas_limit_contract_transitions,
+            posdao_transition: p.posdao_transition.map(Into::into),
         }
     }
 }
@@ -647,6 +652,10 @@ pub struct AuthorityRound {
     block_gas_limit_contract_transitions: BTreeMap<u64, Address>,
     /// Memoized gas limit overrides, by block hash.
     gas_limit_override_cache: Mutex<LruCache<H256, Option<U256>>>,
+    /// The block number at which the consensus engine switches from AuRa to AuRa with POSDAO
+    /// modifications. For details about POSDAO, see the whitepaper:
+    /// https://www.xdaichain.com/for-validators/posdao-whitepaper
+    posdao_transition: Option<BlockNumber>,
 }
 
 // header-chain validator.
@@ -1010,6 +1019,7 @@ impl AuthorityRound {
             randomness_contract_address: our_params.randomness_contract_address,
             block_gas_limit_contract_transitions: our_params.block_gas_limit_contract_transitions,
             gas_limit_override_cache: Mutex::new(LruCache::new(GAS_LIMIT_OVERRIDE_CACHE_CAPACITY)),
+            posdao_transition: our_params.posdao_transition,
         });
 
         // Do not initialize timeouts for tests.
@@ -1243,8 +1253,8 @@ impl AuthorityRound {
     }
 
     fn address(&self) -> Option<Address> {
-		self.signer.read().as_ref().map(|s| s.address())
-	}
+        self.signer.read().as_ref().map(|s| s.address())
+    }
 
     /// Make calls to the randomness contract.
     fn run_randomness_phase(&self, block: &ExecutedBlock) -> Result<Vec<SignedTransaction>, Error> {
@@ -1306,6 +1316,67 @@ impl AuthorityRound {
                 }
                 EngineError::RequiresClient
             })
+    }
+
+    fn run_posdao(
+        &self,
+        block: &ExecutedBlock,
+        nonce: Option<U256>,
+    ) -> Result<Vec<SignedTransaction>, Error> {
+        // Skip the rest of the function unless there has been a transition to POSDAO AuRa.
+        if self
+            .posdao_transition
+            .map_or(true, |posdao_block| block.header.number() < posdao_block)
+        {
+            trace!(target: "engine", "Skipping POSDAO calls to validator set contracts");
+            return Ok(Vec::new());
+        }
+
+        let opt_signer = self.signer.read();
+        let signer = match opt_signer.as_ref() {
+            Some(signer) => signer,
+            None => return Ok(Vec::new()), // We are not a validator, so we shouldn't call the contracts.
+        };
+        let our_addr = signer.address();
+        let client = self.upgrade_client_or("Unable to prepare block")?;
+        let full_client = client.as_full_client().ok_or_else(|| {
+            EngineError::FailedSystemCall("Failed to upgrade to BlockchainClient.".to_string())
+        })?;
+
+        // Makes a constant contract call.
+        let mut call = |to: Address, data: Bytes| {
+            full_client
+                .call_contract(BlockId::Latest, to, data)
+                .map_err(|e| format!("{}", e))
+        };
+
+        // Our current account nonce. The transactions must have consecutive nonces, starting with this one.
+        let mut tx_nonce = if let Some(tx_nonce) = nonce {
+            tx_nonce
+        } else {
+            block.state.nonce(&our_addr)?
+        };
+        let mut transactions = Vec::new();
+
+        // Creates and signs a transaction with the given contract call.
+        let mut make_transaction = |to: Address, data: Bytes| -> Result<SignedTransaction, Error> {
+            let tx_request = TransactionRequest::call(to, data)
+                .gas_price(U256::zero())
+                .nonce(tx_nonce);
+            tx_nonce += U256::one(); // Increment the nonce for the next transaction.
+            Ok(full_client.create_transaction(tx_request)?)
+        };
+
+        // Genesis is never a new block, but might as well check.
+        let first = block.header.number() == 0;
+        for (addr, data) in
+            self.validators
+                .generate_engine_transactions(first, &block.header, &mut call)?
+        {
+            transactions.push(make_transaction(addr, data)?);
+        }
+
+        Ok(transactions)
     }
 }
 
@@ -1748,7 +1819,10 @@ impl Engine<EthereumMachine> for AuthorityRound {
         &self,
         block: &ExecutedBlock,
     ) -> Result<Vec<SignedTransaction>, Error> {
-        self.run_randomness_phase(block)
+        let mut transactions = self.run_randomness_phase(block)?;
+        let nonce = transactions.last().map(|tx| tx.nonce + U256::one());
+        transactions.extend(self.run_posdao(block, nonce)?);
+        Ok(transactions)
     }
 
     /// Check the number of seal fields.
@@ -1918,10 +1992,10 @@ impl Engine<EthereumMachine> for AuthorityRound {
             let expected_difficulty =
                 calculate_score(parent_step.into(), step.into(), empty_steps_len.into());
             if header.difficulty() != &expected_difficulty {
-				return Err(From::from(BlockError::InvalidDifficulty(Mismatch {
-					expected: expected_difficulty,
-					found: header.difficulty().clone()
-				})));
+                return Err(From::from(BlockError::InvalidDifficulty(Mismatch {
+                    expected: expected_difficulty,
+                    found: header.difficulty().clone(),
+                })));
             }
         }
 
@@ -1937,13 +2011,14 @@ impl Engine<EthereumMachine> for AuthorityRound {
         let res = verify_external(header, &*validators, self.empty_steps_transition);
         match res {
             Err(Error(ErrorKind::Engine(EngineError::NotProposer(_)), _)) => {
-				trace!(
+                trace!(
 					target: "engine",
 					"Reporting benign misbehaviour (cause: block from incorrect proposer) \
 					at block #{}, epoch set number {}. Own address: {}",
 					header.number(), set_number, self.address().unwrap_or_default());
-				self.validators.report_benign(header.author(), set_number, header.number());
-			},
+                self.validators
+                    .report_benign(header.author(), set_number, header.number());
+            }
             Ok(_) => {
                 // we can drop all accumulated empty step messages that are older than this header's step
                 let header_step = header_step(header, self.empty_steps_transition)?;
@@ -1990,10 +2065,10 @@ impl Engine<EthereumMachine> for AuthorityRound {
         // Apply transitions that don't require finality and should be enacted immediately (e.g from chain spec)
         if let Some(change) = self.validators.is_epoch_end(first, chain_head) {
             info!(
-				target: "engine",
-				"Immediately applying validator set change signalled at block {}",
-				chain_head.number()
-			);
+                target: "engine",
+                "Immediately applying validator set change signalled at block {}",
+                chain_head.number()
+            );
             self.epoch_manager.lock().note_new_epoch();
             let change = combine_proofs(chain_head.number(), &change, &[]);
             return Some(change);
@@ -2243,6 +2318,7 @@ mod tests {
             two_thirds_majority_transition: 0,
             randomness_contract_address: BTreeMap::new(),
             block_gas_limit_contract_transitions: BTreeMap::new(),
+            posdao_transition: Some(0),
         };
 
         // mutate aura params

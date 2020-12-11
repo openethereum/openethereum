@@ -20,10 +20,12 @@
 
 use std::fmt;
 
-use client::traits::EngineClient;
-use ethabi;
-use ethereum_types::Address;
-use types::ids::BlockId;
+use client::{traits::EngineClient, BlockChainClient};
+use ethabi::{self, FunctionOutputDecoder};
+use ethabi_contract::use_contract;
+use ethereum_types::{Address, U256};
+use log::{debug, error};
+use types::{header::Header, ids::BlockId};
 
 /// A contract bound to a client and block number.
 ///
@@ -94,5 +96,24 @@ impl<'a> BoundContract<'a> {
         output_decoder
             .decode(call_return.as_slice())
             .map_err(CallError::DecodeFailed)
+    }
+}
+
+use_contract!(contract, "res/contracts/block_gas_limit.json");
+
+pub fn block_gas_limit(
+    full_client: &dyn BlockChainClient,
+    header: &Header,
+    address: Address,
+) -> Option<U256> {
+    let (data, decoder) = contract::functions::block_gas_limit::call();
+    let value = full_client.call_contract(BlockId::Hash(*header.parent_hash()), address, data).map_err(|err| {
+		error!(target: "block_gas_limit", "Contract call failed. Not changing the block gas limit. {:?}", err);
+	}).ok()?;
+    if value.is_empty() {
+        debug!(target: "block_gas_limit", "Contract call returned nothing. Not changing the block gas limit.");
+        None
+    } else {
+        decoder.decode(&value).ok()
     }
 }

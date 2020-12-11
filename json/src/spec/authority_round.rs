@@ -98,13 +98,16 @@ pub struct AuthorityRoundParams {
     pub two_thirds_majority_transition: Option<Uint>,
     /// The random number contract's address, or a map of contract transitions.
     pub randomness_contract_address: Option<BTreeMap<Uint, Address>>,
+    /// The addresses of contracts that determine the block gas limit starting from the block number
+    /// associated with each of those contracts.
+    pub block_gas_limit_contract_transitions: Option<BTreeMap<Uint, Address>>,
 }
 
 /// Authority engine deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AuthorityRound {
-    /// Ethash params.
+    /// Authority Round parameters.
     pub params: AuthorityRoundParams,
 }
 
@@ -135,7 +138,11 @@ mod tests {
 				"randomnessContractAddress": {
 					"10": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					"20": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-				}
+                },
+				"blockGasLimitContractTransitions": {
+					"10": "0x1000000000000000000000000000000000000001",
+                    "20": "0x2000000000000000000000000000000000000002"
+                }
 			}
 		}"#;
 
@@ -174,6 +181,20 @@ mod tests {
             ]
             .into_iter()
             .collect()
+        );
+        let expected_bglc = [
+            (
+                Uint(10.into()),
+                Address(H160::from_str("1000000000000000000000000000000000000001").unwrap()),
+            ),
+            (
+                Uint(20.into()),
+                Address(H160::from_str("2000000000000000000000000000000000000002").unwrap()),
+            ),
+        ];
+        assert_eq!(
+            deserialized.params.block_gas_limit_contract_transitions,
+            Some(expected_bglc.to_vec().into_iter().collect())
         );
     }
 }

@@ -536,6 +536,12 @@ pub trait Engine<M: Machine>: Sync + Send {
     ) -> Result<Vec<SignedTransaction>, Error> {
         Ok(Vec::new())
     }
+
+    /// Overrides the block gas limit. Whenever this returns `Some` for a header, the next block's gas limit must be
+    /// exactly that value. used by AuRa engine.
+    fn gas_limit_override(&self, _header: &Header) -> Option<U256> {
+        None
+    }
 }
 
 /// Check whether a given block is the best block based on the default total difficulty rule.
@@ -638,6 +644,11 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
         self.machine().decode_transaction(transaction)
+    }
+
+    /// The configured minimum gas limit. Used by AuRa Engine.
+    fn min_gas_limit(&self) -> U256 {
+        self.params().min_gas_limit
     }
 }
 

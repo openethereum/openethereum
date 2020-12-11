@@ -67,6 +67,7 @@ use ethkey::{self, Signature};
 use hash::keccak;
 use io::{IoContext, IoHandler, IoService, TimerToken};
 use itertools::{self, Itertools};
+use lru_cache::LruCache;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::{Mutex, RwLock};
 use rand::OsRng;
@@ -81,6 +82,7 @@ use types::{
 };
 use unexpected::{Mismatch, OutOfBounds};
 
+//mod block_gas_limit as crate_block_gas_limit;
 mod finality;
 mod randomness;
 pub(crate) mod util;
@@ -122,9 +124,15 @@ pub struct AuthorityRoundParams {
     pub strict_empty_steps_transition: u64,
     /// If set, enables random number contract integration. It maps the transition block to the contract address.
     pub randomness_contract_address: BTreeMap<u64, Address>,
+    /// The addresses of contracts that determine the block gas limit with their associated block
+    /// numbers.
+    pub block_gas_limit_contract_transitions: BTreeMap<u64, Address>,
 }
 
 const U16_MAX: usize = ::std::u16::MAX as usize;
+
+/// The number of recent block hashes for which the gas limit override is memoized.
+const GAS_LIMIT_OVERRIDE_CACHE_CAPACITY: usize = 10;
 
 impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
     fn from(p: ethjson::spec::AuthorityRoundParams) -> Self {
@@ -192,6 +200,12 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
                         .map(|(ethjson::uint::Uint(block), addr)| (block.as_u64(), addr.into()))
                         .collect()
                 });
+        let block_gas_limit_contract_transitions: BTreeMap<_, _> = p
+            .block_gas_limit_contract_transitions
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(block_num, address)| (block_num.into(), address.into()))
+            .collect();
         AuthorityRoundParams {
             step_durations,
             validators: new_validator_set(p.validators),
@@ -212,6 +226,7 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             strict_empty_steps_transition: p.strict_empty_steps_transition.map_or(0, Into::into),
             randomness_contract_address,
+            block_gas_limit_contract_transitions,
         }
     }
 }
@@ -608,6 +623,10 @@ pub struct AuthorityRound {
     received_step_hashes: RwLock<BTreeMap<(u64, Address), H256>>,
     /// If set, enables random number contract integration. It maps the transition block to the contract address.
     randomness_contract_address: BTreeMap<u64, Address>,
+    /// The addresses of contracts that determine the block gas limit.
+    block_gas_limit_contract_transitions: BTreeMap<u64, Address>,
+    /// Memoized gas limit overrides, by block hash.
+    gas_limit_override_cache: Mutex<LruCache<H256, Option<U256>>>,
 }
 
 // header-chain validator.
@@ -980,6 +999,8 @@ impl AuthorityRound {
             machine: machine,
             received_step_hashes: RwLock::new(Default::default()),
             randomness_contract_address: our_params.randomness_contract_address,
+            block_gas_limit_contract_transitions: our_params.block_gas_limit_contract_transitions,
+            gas_limit_override_cache: Mutex::new(LruCache::new(GAS_LIMIT_OVERRIDE_CACHE_CAPACITY)),
         });
 
         // Do not initialize timeouts for tests.
@@ -1406,6 +1427,14 @@ impl Engine<EthereumMachine> for AuthorityRound {
 
         let score = calculate_score(parent_step, current_step, current_empty_steps_len);
         header.set_difficulty(score);
+        if let Some(gas_limit) = self.gas_limit_override(header) {
+            trace!(target: "engine", "Setting gas limit to {} for block {}.", gas_limit, header.number());
+            let parent_gas_limit = *parent.gas_limit();
+            header.set_gas_limit(gas_limit);
+            if parent_gas_limit != gas_limit {
+                info!(target: "engine", "Block gas limit was changed from {} to {}.", parent_gas_limit, gas_limit);
+            }
+        }
     }
 
     fn sealing_state(&self) -> SealingState {
@@ -2083,6 +2112,35 @@ impl Engine<EthereumMachine> for AuthorityRound {
             .map(AncestryAction::MarkFinalized)
             .collect()
     }
+
+    fn gas_limit_override(&self, header: &Header) -> Option<U256> {
+        let (_, &address) = self
+            .block_gas_limit_contract_transitions
+            .range(..=header.number())
+            .last()?;
+        let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+            Some(client) => client,
+            None => {
+                error!(target: "engine", "Unable to prepare block: missing client ref.");
+                return None;
+            }
+        };
+        let full_client = match client.as_full_client() {
+            Some(full_client) => full_client,
+            None => {
+                error!(target: "engine", "Failed to upgrade to BlockchainClient.");
+                return None;
+            }
+        };
+        if let Some(limit) = self.gas_limit_override_cache.lock().get_mut(&header.hash()) {
+            return *limit;
+        }
+        let limit = util::block_gas_limit(full_client, header, address);
+        self.gas_limit_override_cache
+            .lock()
+            .insert(header.hash(), limit);
+        limit
+    }
 }
 
 /// A helper accumulator function mapping a step duration and a step duration transition timestamp
@@ -2161,6 +2219,7 @@ mod tests {
             strict_empty_steps_transition: 0,
             two_thirds_majority_transition: 0,
             randomness_contract_address: BTreeMap::new(),
+            block_gas_limit_contract_transitions: BTreeMap::new(),
         };
 
         // mutate aura params

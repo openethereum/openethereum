@@ -92,6 +92,7 @@ impl CacheSizes {
 
 pub struct SyncInfo {
     last_imported_block_number: BlockNumber,
+    last_imported_ancient_number: Option<BlockNumber>,
     num_peers: usize,
     max_peers: u32,
     snapshot_sync: bool,
@@ -159,6 +160,7 @@ impl InformantData for FullNodeInformantData {
                     last_imported_block_number: status
                         .last_imported_block_number
                         .unwrap_or(chain_info.best_block_number),
+                    last_imported_ancient_number: status.last_imported_old_block_number,
                     num_peers: status.num_peers,
                     max_peers: status
                         .current_max_peers(*num_peers_range.start(), *num_peers_range.end()),
@@ -300,7 +302,7 @@ impl<T: InformantData> Informant<T> {
                 false => String::new(),
             },
             match chain_info.ancient_block_number {
-                Some(ancient_number) => format!(" (Ancient:#{})", ancient_number),
+                Some(ancient_number) => format!(" Ancient:#{}", ancient_number),
                 None => String::new(),
             },
             match sync_info.as_ref() {
@@ -313,7 +315,7 @@ impl<T: InformantData> Informant<T> {
                                 String::new()
                             }
                         ),
-                        false => match chain_info.ancient_block_number {
+                        false => match sync_info.last_imported_ancient_number {
                             Some(number) => format!("{}   ", paint(Yellow.bold(), format!("{:>8}", format!("AB:#{}", number)))),
                             None => String::new(),
                         }

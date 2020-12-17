@@ -44,7 +44,10 @@ pub const MAX_PAYLOAD_SIZE: usize = (1 << 24) - 1;
 
 /// Network responses should try not to go over this limit.
 /// This should be lower than MAX_PAYLOAD_SIZE
+#[cfg(not(test))]
 pub const PAYLOAD_SOFT_LIMIT: usize = (1 << 22) - 1;
+#[cfg(test)]
+pub const PAYLOAD_SOFT_LIMIT: usize = 100_000;
 
 pub trait GenericSocket: Read + Write {}
 

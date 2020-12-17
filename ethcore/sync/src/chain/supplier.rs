@@ -15,7 +15,12 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
+
+#[cfg(not(test))]
 use devp2p::PAYLOAD_SOFT_LIMIT;
+#[cfg(test)]
+pub const PAYLOAD_SOFT_LIMIT: usize = 100_000;
+
 use enum_primitive::FromPrimitive;
 use ethereum_types::H256;
 use network::{self, PeerId};

@@ -35,7 +35,6 @@ use std::{
     time::Duration,
 };
 
-use connection::PAYLOAD_SOFT_LIMIT;
 use discovery::{Discovery, NodeEntry, TableUpdates, MAX_DATAGRAM_SIZE};
 use io::*;
 use ip_utils::{map_external_address, select_public_address};
@@ -225,10 +224,6 @@ impl<'s> NetworkContextTrait for NetworkContext<'s> {
             .and_then(|info| info.id)
             .map(|node| self.reserved_peers.contains(&node))
             .unwrap_or(false)
-    }
-
-    fn payload_soft_limit(&self) -> usize {
-        PAYLOAD_SOFT_LIMIT
     }
 }
 

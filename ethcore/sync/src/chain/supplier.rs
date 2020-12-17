@@ -18,6 +18,7 @@ use bytes::Bytes;
 use enum_primitive::FromPrimitive;
 use ethereum_types::H256;
 use network::{self, PeerId};
+use devp2p::PAYLOAD_SOFT_LIMIT;
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use std::cmp;
@@ -187,7 +188,6 @@ impl SyncSupplier {
         if io.chain().is_processing_fork() {
             return Err(PacketProcessError::ClientBusy);
         }
-        let payload_soft_limit = io.payload_soft_limit();
         // Packet layout:
         // [ block: { P , B_32 }, maxHeaders: P, skip: P, reverse: P in { 0 , 1 } ]
         let max_headers: usize = r.val_at(1)?;
@@ -246,7 +246,7 @@ impl SyncSupplier {
                 data.append(&mut hdr.into_inner());
                 count += 1;
                 // Check that the packet won't be oversized
-                if data.len() > payload_soft_limit {
+                if data.len() > PAYLOAD_SOFT_LIMIT {
                     break;
                 }
             } else {
@@ -270,7 +270,6 @@ impl SyncSupplier {
 
     /// Respond to GetBlockBodies request
     fn return_block_bodies(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        let payload_soft_limit = io.payload_soft_limit();
         let mut count = r.item_count().unwrap_or(0);
         if count == 0 {
             debug!(target: "sync", "Empty GetBlockBodies request, ignoring.");
@@ -284,7 +283,7 @@ impl SyncSupplier {
                 data.append(&mut body.into_inner());
                 added += 1;
                 // Check that the packet won't be oversized
-                if data.len() > payload_soft_limit {
+                if data.len() > PAYLOAD_SOFT_LIMIT {
                     break;
                 }
             }
@@ -296,7 +295,6 @@ impl SyncSupplier {
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        let payload_soft_limit = io.payload_soft_limit();
         let mut count = rlp.item_count().unwrap_or(0);
         trace!(target: "sync", "{} -> GetReceipts: {} entries", peer_id, count);
         if count == 0 {
@@ -311,7 +309,7 @@ impl SyncSupplier {
             if let Some(receipts) = io.chain().block_receipts(&rlp.val_at::<H256>(i)?) {
                 let mut receipts_bytes = ::rlp::encode(&receipts);
                 total_bytes += receipts_bytes.len();
-                if total_bytes > payload_soft_limit {
+                if total_bytes > PAYLOAD_SOFT_LIMIT {
                     break;
                 }
                 data.append(&mut receipts_bytes);

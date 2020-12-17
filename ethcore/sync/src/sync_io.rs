@@ -46,8 +46,6 @@ pub trait SyncIo {
     }
     /// Returns information on p2p session
     fn peer_session_info(&self, peer_id: PeerId) -> Option<SessionInfo>;
-    /// Maximum mutually supported ETH protocol version
-    fn eth_protocol_version(&self, peer_id: PeerId) -> u8;
     /// Maximum mutually supported version of a gien protocol.
     fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8;
     /// Returns if the chain block queue empty
@@ -58,8 +56,6 @@ pub trait SyncIo {
     fn is_expired(&self) -> bool;
     /// Return sync overlay
     fn chain_overlay(&self) -> &RwLock<HashMap<BlockNumber, Bytes>>;
-    /// Returns the size the payload shouldn't exceed
-    fn payload_soft_limit(&self) -> usize;
 }
 
 /// Wraps `NetworkContext` and the blockchain client
@@ -125,12 +121,6 @@ impl<'s> SyncIo for NetSyncIo<'s> {
         self.network.is_expired()
     }
 
-    fn eth_protocol_version(&self, peer_id: PeerId) -> u8 {
-        self.network
-            .protocol_version(self.network.subprotocol_name(), peer_id)
-            .unwrap_or(0)
-    }
-
     fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8 {
         self.network
             .protocol_version(*protocol, peer_id)
@@ -139,9 +129,5 @@ impl<'s> SyncIo for NetSyncIo<'s> {
 
     fn peer_version(&self, peer_id: PeerId) -> ClientVersion {
         self.network.peer_client_version(peer_id)
-    }
-
-    fn payload_soft_limit(&self) -> usize {
-        self.network.payload_soft_limit()
     }
 }

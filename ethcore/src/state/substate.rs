@@ -20,6 +20,7 @@ use ethereum_types::Address;
 use evm::{CleanDustMode, Schedule};
 use std::collections::HashSet;
 use types::log_entry::LogEntry;
+use vm::access_list::AccessList;
 
 /// State changes which should be applied in finalize,
 /// after transaction is fully executed.
@@ -39,12 +40,26 @@ pub struct Substate {
 
     /// Created contracts.
     pub contracts_created: Vec<Address>,
+
+    /// List of accesses addresses and slots
+    pub access_list: AccessList,
 }
 
 impl Substate {
     /// Creates new substate.
     pub fn new() -> Self {
         Substate::default()
+    }
+    /// Creates a new substate from an access list
+    pub fn from_access_list(access_list: &AccessList) -> Self {
+        Self {
+            suicides: HashSet::default(),
+            touched: HashSet::default(),
+            logs: Vec::default(),
+            sstore_clears_refund: 0,
+            contracts_created: Vec::default(),
+            access_list: access_list.clone(),
+        }
     }
 
     /// Merge secondary substate `s` into self, accruing each element correspondingly.

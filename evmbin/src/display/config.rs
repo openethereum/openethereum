@@ -14,10 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Ethereum Transactions
+//! Config used by display informants
 
-mod error;
-mod transaction;
-mod transaction_id;
+#[derive(Default, Copy, Clone)]
+pub struct Config {
+    omit_storage_output: bool,
+    omit_memory_output: bool,
+}
 
-pub use self::{error::Error, transaction::*, transaction_id::*};
+impl Config {
+    pub fn new(omit_storage_output: bool, omit_memory_output: bool) -> Config {
+        Config {
+            omit_storage_output,
+            omit_memory_output,
+        }
+    }
+
+    pub fn omit_storage_output(&self) -> bool {
+        self.omit_storage_output
+    }
+
+    pub fn omit_memory_output(&self) -> bool {
+        self.omit_memory_output
+    }
+}

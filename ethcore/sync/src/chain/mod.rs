@@ -969,15 +969,17 @@ impl ChainSync {
             if let (Some(ancient_block_hash), Some(ancient_block_number)) =
                 (chain.ancient_block_hash, chain.ancient_block_number)
             {
-                trace!(target: "sync", "Downloading old blocks from {:?} (#{}) till {:?} (#{:?})", ancient_block_hash, ancient_block_number, chain.first_block_hash, chain.first_block_number);
+                info!(target: "sync", "Downloading old blocks from {:?} (#{}) till {:?} (#{:?})", ancient_block_hash, ancient_block_number, chain.first_block_hash, chain.first_block_number);
                 let mut downloader = BlockDownloader::new(
                     BlockSet::OldBlocks,
                     &ancient_block_hash,
                     ancient_block_number,
                 );
                 if let Some(hash) = chain.first_block_hash {
-                    trace!(target: "sync", "Downloader target set to {:?}", hash);
+                    trace!(target: "sync", "Downloader target for old blocks is set to {:?}", hash);
                     downloader.set_target(&hash);
+                } else {
+                    trace!(target: "sync", "Downloader target could not be found");
                 }
                 self.old_blocks = Some(downloader);
             }
@@ -1114,10 +1116,18 @@ impl ChainSync {
 					let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
 
 					if force || equal_or_higher_difficulty {
-						if let Some(request) = self.old_blocks.as_mut().and_then(|d| d.request_blocks(peer_id, io, num_active_peers)) {
-							SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
-							return;
-						}
+                        let mut is_complete = false;
+						if let Some(old_blocks) = self.old_blocks.as_mut() {
+                            if let Some(request) = old_blocks.request_blocks(peer_id, io, num_active_peers) {
+                                SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
+                                return;
+                            }
+                            is_complete = old_blocks.is_complete();
+
+                        }
+                        if is_complete { // if old_blocks is in complete state, set it to None.
+                            self.old_blocks = None;
+                        }
 					} else {
 						trace!(
 							target: "sync",
@@ -1344,7 +1354,7 @@ impl ChainSync {
             },
             SyncState::SnapshotWaiting => match io.snapshot_service().restoration_status() {
                 RestorationStatus::Inactive => {
-                    trace!(target:"sync", "Snapshot restoration is complete");
+                    info!(target:"sync", "Snapshot restoration is complete");
                     self.restart(io);
                 }
                 RestorationStatus::Initializing { .. } => {
@@ -1421,7 +1431,7 @@ impl ChainSync {
         self.check_resume(io);
     }
 
-    /// called when block is imported to chain - propagates the blocks and updates transactions sent to peers
+    // t_nb 11.4 called when block is imported to chain - propagates the blocks and updates transactions sent to peers
     pub fn chain_new_blocks(
         &mut self,
         io: &mut dyn SyncIo,
@@ -1437,16 +1447,18 @@ impl ChainSync {
 
         if !is_syncing || !sealed.is_empty() || !proposed.is_empty() {
             trace!(target: "sync", "Propagating blocks, state={:?}", self.state);
+            // t_nb 11.4.1 propagate latest blocks
             SyncPropagator::propagate_latest_blocks(self, io, sealed);
+            // t_nb 11.4.4 propagate proposed blocks
             SyncPropagator::propagate_proposed_blocks(self, io, proposed);
         }
         if !invalid.is_empty() {
-            trace!(target: "sync", "Bad blocks in the queue, restarting");
+            info!(target: "sync", "Bad blocks in the queue, restarting sync");
             self.restart(io);
         }
 
         if !is_syncing && !enacted.is_empty() && !self.peers.is_empty() {
-            // Select random peer to re-broadcast transactions to.
+            // t_nb 11.4.5 Select random peer to re-broadcast transactions to.
             let peer = random::new().gen_range(0, self.peers.len());
             trace!(target: "sync", "Re-broadcasting transactions to a random peer.");
             self.peers.values_mut().nth(peer).map(|peer_info| {

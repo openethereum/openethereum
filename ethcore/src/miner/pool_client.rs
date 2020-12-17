@@ -195,7 +195,8 @@ where
         &self,
         transaction: &[u8],
     ) -> Result<UnverifiedTransaction, transaction::Error> {
-        self.engine.decode_transaction(transaction)
+        let number = self.chain.best_block_header().number();
+        self.engine.decode_transaction(transaction, number)
     }
 }
 

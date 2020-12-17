@@ -31,7 +31,6 @@ use std::{
 };
 
 use ethereum_types::{H256, U256};
-use rlp::Encodable;
 use txpool;
 use types::transaction;
 
@@ -97,21 +96,21 @@ impl Transaction {
     /// Return transaction gas price
     pub fn gas_price(&self) -> &U256 {
         match *self {
-            Transaction::Unverified(ref tx) => &tx.gas_price,
-            Transaction::Retracted(ref tx) => &tx.gas_price,
-            Transaction::Local(ref tx) => &tx.gas_price,
+            Transaction::Unverified(ref tx) => &tx.tx().gas_price,
+            Transaction::Retracted(ref tx) => &tx.tx().gas_price,
+            Transaction::Local(ref tx) => &tx.tx().gas_price,
         }
     }
 
     fn gas(&self) -> &U256 {
         match *self {
-            Transaction::Unverified(ref tx) => &tx.gas,
-            Transaction::Retracted(ref tx) => &tx.gas,
-            Transaction::Local(ref tx) => &tx.gas,
+            Transaction::Unverified(ref tx) => &tx.tx().gas,
+            Transaction::Retracted(ref tx) => &tx.tx().gas,
+            Transaction::Local(ref tx) => &tx.tx().gas,
         }
     }
 
-    fn transaction(&self) -> &transaction::Transaction {
+    fn transaction(&self) -> &transaction::TypedTransaction {
         match *self {
             Transaction::Unverified(ref tx) => &*tx,
             Transaction::Retracted(ref tx) => &*tx,
@@ -198,7 +197,7 @@ impl<C: Client> txpool::Verifier<Transaction>
             });
         }
 
-        let minimal_gas = self.client.required_gas(tx.transaction());
+        let minimal_gas = self.client.required_gas(tx.transaction().tx());
         if tx.gas() < &minimal_gas {
             trace!(target: "txqueue",
                 "[{:?}] Rejected transaction with insufficient gas: {} < {}",
@@ -240,10 +239,10 @@ impl<C: Client> txpool::Verifier<Transaction>
                         "[{:?}] Rejected tx early, cause it doesn't have any chance to get to the pool: (gas price: {} < {})",
                         hash,
                         tx.gas_price(),
-                        vtx.transaction.gas_price,
+                        vtx.transaction.tx().gas_price,
                     );
                     return Err(transaction::Error::TooCheapToReplace {
-                        prev: Some(vtx.transaction.gas_price),
+                        prev: Some(vtx.transaction.tx().gas_price),
                         new: Some(*tx.gas_price()),
                     });
                 }
@@ -273,7 +272,7 @@ impl<C: Client> txpool::Verifier<Transaction>
         };
 
         // Verify RLP payload
-        if let Err(err) = self.client.decode_transaction(&transaction.rlp_bytes()) {
+        if let Err(err) = self.client.decode_transaction(&transaction.encode()) {
             debug!(target: "txqueue", "[{:?}] Rejected transaction's rlp payload", err);
             bail!(err)
         }
@@ -281,7 +280,7 @@ impl<C: Client> txpool::Verifier<Transaction>
         let sender = transaction.sender();
         let account_details = self.client.account_details(&sender);
 
-        if transaction.gas_price < self.options.minimal_gas_price {
+        if transaction.tx().gas_price < self.options.minimal_gas_price {
             let transaction_type = self.client.transaction_type(&transaction);
             if let TransactionType::Service = transaction_type {
                 debug!(target: "txqueue", "Service tx {:?} below minimal gas price accepted", hash);
@@ -292,18 +291,21 @@ impl<C: Client> txpool::Verifier<Transaction>
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    transaction.gas_price,
+                    transaction.tx().gas_price,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: transaction.gas_price,
+                    got: transaction.tx().gas_price,
                 });
             }
         }
 
-        let (full_gas_price, overflow_1) = transaction.gas_price.overflowing_mul(transaction.gas);
-        let (cost, overflow_2) = transaction.value.overflowing_add(full_gas_price);
+        let (full_gas_price, overflow_1) = transaction
+            .tx()
+            .gas_price
+            .overflowing_mul(transaction.tx().gas);
+        let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);
         if overflow_1 || overflow_2 {
             trace!(
                 target: "txqueue",
@@ -329,12 +331,12 @@ impl<C: Client> txpool::Verifier<Transaction>
             });
         }
 
-        if transaction.nonce < account_details.nonce {
+        if transaction.tx().nonce < account_details.nonce {
             debug!(
                 target: "txqueue",
                 "[{:?}] Rejected tx with old nonce ({} < {})",
                 hash,
-                transaction.nonce,
+                transaction.tx().nonce,
                 account_details.nonce,
             );
             bail!(transaction::Error::Old);

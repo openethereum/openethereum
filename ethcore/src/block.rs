@@ -48,10 +48,10 @@ use verification::PreverifiedBlock;
 use vm::{EnvInfo, LastHashes};
 
 use hash::keccak;
-use rlp::{encode_list, Encodable, RlpStream};
+use rlp::{encode_list, RlpStream};
 use types::{
     header::{ExtendedHeader, Header},
-    receipt::{Receipt, TransactionOutcome},
+    receipt::{TransactionOutcome, TypedReceipt},
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
@@ -99,7 +99,7 @@ pub struct ExecutedBlock {
     /// Uncles.
     pub uncles: Vec<Header>,
     /// Transaction receipts.
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TypedReceipt>,
     /// Hashes of already executed transactions.
     pub transactions_set: HashSet<H256>,
     /// Underlaying state.
@@ -161,7 +161,7 @@ pub trait Drain {
 }
 
 impl<'x> OpenBlock<'x> {
-    /// Create a new `OpenBlock` ready for transaction pushing.
+    /// t_nb 8.1 Create a new `OpenBlock` ready for transaction pushing.
     pub fn new<'a, I: IntoIterator<Item = ExtendedHeader>>(
         engine: &'x dyn EthEngine,
         factories: Factories,
@@ -176,6 +176,8 @@ impl<'x> OpenBlock<'x> {
         ancestry: I,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
+
+        // t_nb 8.1.1 get parent StateDB.
         let state = State::from_existing(
             db,
             parent.state_root().clone(),
@@ -198,14 +200,17 @@ impl<'x> OpenBlock<'x> {
         let gas_floor_target = cmp::max(gas_range_target.0, engine.params().min_gas_limit);
         let gas_ceil_target = cmp::max(gas_range_target.1, gas_floor_target);
 
+        // t_nb 8.1.2 It calculated child gas limits should be.
         engine.machine().populate_from_parent(
             &mut r.block.header,
             parent,
             gas_floor_target,
             gas_ceil_target,
         );
+        // t_nb 8.1.3 this adds engine specific things
         engine.populate_from_parent(&mut r.block.header, parent);
 
+        // t_nb 8.1.3 updating last hashes and the DAO fork, for ethash.
         engine.machine().on_new_block(&mut r.block)?;
         engine.on_new_block(&mut r.block, is_epoch_begin, &mut ancestry.into_iter())?;
 
@@ -222,7 +227,7 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_gas_limit(U256::max_value());
     }
 
-    /// Add an uncle to the block, if possible.
+    // t_nb 8.4 Add an uncle to the block, if possible.
     ///
     /// NOTE Will check chain constraints and the uncle number but will NOT check
     /// that the header itself is actually valid.
@@ -248,7 +253,7 @@ impl<'x> OpenBlock<'x> {
         &mut self,
         t: SignedTransaction,
         h: Option<H256>,
-    ) -> Result<&Receipt, Error> {
+    ) -> Result<&TypedReceipt, Error> {
         if self.block.transactions_set.contains(&t.hash()) {
             return Err(TransactionError::AlreadyImported.into());
         }
@@ -343,21 +348,25 @@ impl<'x> OpenBlock<'x> {
         })
     }
 
-    /// Turn this into a `LockedBlock`.
+    /// t_nb 8.5 Turn this into a `LockedBlock`.
     pub fn close_and_lock(self) -> Result<LockedBlock, Error> {
         let mut s = self;
 
+        // t_nb 8.5.1 engine applies block rewards (Ethash and AuRa do.Clique is empty)
         s.engine.on_close_block(&mut s.block)?;
+
+        // t_nb 8.5.2 commit account changes from cache to tree
         s.block.state.commit()?;
 
+        // t_nb 8.5.3 fill open block header with all other fields
         s.block.header.set_transactions_root(ordered_trie_root(
-            s.block.transactions.iter().map(|e| e.rlp_bytes()),
+            s.block.transactions.iter().map(|e| e.encode()),
         ));
         let uncle_bytes = encode_list(&s.block.uncles);
         s.block.header.set_uncles_hash(keccak(&uncle_bytes));
         s.block.header.set_state_root(s.block.state.root().clone());
         s.block.header.set_receipts_root(ordered_trie_root(
-            s.block.receipts.iter().map(|r| r.rlp_bytes()),
+            s.block.receipts.iter().map(|r| r.encode()),
         ));
         s.block
             .header
@@ -444,7 +453,7 @@ impl LockedBlock {
             receipt.outcome = TransactionOutcome::Unknown;
         }
         self.block.header.set_receipts_root(ordered_trie_root(
-            self.block.receipts.iter().map(|r| r.rlp_bytes()),
+            self.block.receipts.iter().map(|r| r.encode()),
         ));
     }
 
@@ -494,7 +503,7 @@ impl SealedBlock {
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(3);
         block_rlp.append(&self.block.header);
-        block_rlp.append_list(&self.block.transactions);
+        SignedTransaction::rlp_append_list(&mut block_rlp, &self.block.transactions);
         block_rlp.append_list(&self.block.uncles);
         block_rlp.out()
     }
@@ -506,7 +515,7 @@ impl Drain for SealedBlock {
     }
 }
 
-/// Enact the block given by block header, transactions and uncles
+// t_nb 8.0 Enact the block given by block header, transactions and uncles
 pub(crate) fn enact(
     header: Header,
     transactions: Vec<SignedTransaction>,
@@ -532,6 +541,7 @@ pub(crate) fn enact(
         None
     };
 
+    // t_nb 8.1 Created new OpenBlock
     let mut b = OpenBlock::new(
         engine,
         factories,
@@ -556,17 +566,22 @@ pub(crate) fn enact(
 				b.block.header.number(), root, env.author, author_balance);
     }
 
+    // t_nb 8.2 transfer all field from current header to OpenBlock header that we created
     b.populate_from(&header);
+
+    // t_nb 8.3 execute transactions one by one
     b.push_transactions(transactions)?;
 
+    // t_nb 8.4 Push uncles to OpenBlock and check if we have more then max uncles
     for u in uncles {
         b.push_uncle(u)?;
     }
 
+    // t_nb 8.5 close block
     b.close_and_lock()
 }
 
-/// Enact the block given by `block_bytes` using `engine` on the database `db` with given `parent` block header
+/// t_nb 8.0 Enact the block given by `block_bytes` using `engine` on the database `db` with given `parent` block header
 pub fn enact_verified(
     block: PreverifiedBlock,
     engine: &dyn EthEngine,

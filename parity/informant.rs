@@ -92,7 +92,7 @@ impl CacheSizes {
 
 pub struct SyncInfo {
     last_imported_block_number: BlockNumber,
-    last_imported_old_block_number: Option<BlockNumber>,
+    last_imported_ancient_number: Option<BlockNumber>,
     num_peers: usize,
     max_peers: u32,
     snapshot_sync: bool,
@@ -160,7 +160,7 @@ impl InformantData for FullNodeInformantData {
                     last_imported_block_number: status
                         .last_imported_block_number
                         .unwrap_or(chain_info.best_block_number),
-                    last_imported_old_block_number: status.last_imported_old_block_number,
+                    last_imported_ancient_number: status.last_imported_old_block_number,
                     num_peers: status.num_peers,
                     max_peers: status
                         .current_max_peers(*num_peers_range.start(), *num_peers_range.end()),
@@ -265,7 +265,7 @@ impl<T: InformantData> Informant<T> {
             false => t,
         };
 
-        info!(target: "import", "{}  {}  {}  {}",
+        info!(target: "import", "{}{} {}  {}  {}",
             match importing {
                 true => match snapshot_sync {
                     false => format!("Syncing {} {}  {}  {}+{} Qed",
@@ -301,18 +301,22 @@ impl<T: InformantData> Informant<T> {
                 },
                 false => String::new(),
             },
+            match chain_info.ancient_block_number {
+                Some(ancient_number) => format!(" Ancient:#{}", ancient_number),
+                None => String::new(),
+            },
             match sync_info.as_ref() {
                 Some(ref sync_info) => format!("{}{}/{} peers",
                     match importing {
                         true => format!("{}",
                             if self.target.executes_transactions() {
-                                paint(Green.bold(), format!("{:>8}   ", format!("#{}", sync_info.last_imported_block_number)))
+                                paint(Green.bold(), format!("{:>8}   ", format!("LI:#{}", sync_info.last_imported_block_number)))
                             } else {
                                 String::new()
                             }
                         ),
-                        false => match sync_info.last_imported_old_block_number {
-                            Some(number) => format!("{}   ", paint(Yellow.bold(), format!("{:>8}", format!("#{}", number)))),
+                        false => match sync_info.last_imported_ancient_number {
+                            Some(number) => format!("{}   ", paint(Yellow.bold(), format!("{:>8}", format!("AB:#{}", number)))),
                             None => String::new(),
                         }
                     },
@@ -336,6 +340,7 @@ impl<T: InformantData> Informant<T> {
 }
 
 impl ChainNotify for Informant<FullNodeInformantData> {
+    // t_nb 11.2 Informant. Prints new block inclusiong to console/log.
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if new_blocks.has_more_blocks_to_import {
             return;

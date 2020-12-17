@@ -108,6 +108,7 @@ impl<'a> EvmTestClient<'a> {
                 Some(ethereum::new_byzantium_to_constantinoplefixat5_test())
             }
             ForkSpec::Berlin => Some(ethereum::new_berlin_test()),
+            ForkSpec::Yolo3 => Some(ethereum::new_yolo3_test()),
             ForkSpec::FrontierToHomesteadAt5
             | ForkSpec::HomesteadToDaoAt5
             | ForkSpec::HomesteadToEIP150At5
@@ -280,7 +281,7 @@ impl<'a> EvmTestClient<'a> {
         tracer: T,
         vm_tracer: V,
     ) -> std::result::Result<TransactSuccess<T::Output, V::Output>, TransactErr> {
-        let initial_gas = transaction.gas;
+        let initial_gas = transaction.tx().gas;
         // Verify transaction
         let is_ok = transaction.verify_basic(true, None);
         if let Err(error) = is_ok {
@@ -341,18 +342,18 @@ impl<'a> EvmTestClient<'a> {
             Ok(result) => Ok(TransactSuccess {
                 state_root,
                 gas_left: initial_gas - result.receipt.gas_used,
-                outcome: result.receipt.outcome,
+                outcome: result.receipt.outcome.clone(),
                 output: result.output,
                 trace: result.trace,
                 vm_trace: result.vm_trace,
-                logs: result.receipt.logs,
-                contract_address: if let transaction::Action::Create = transaction.action {
+                logs: result.receipt.logs.clone(),
+                contract_address: if let transaction::Action::Create = transaction.tx().action {
                     Some(
                         executive::contract_address(
                             scheme,
                             &transaction.sender(),
-                            &transaction.nonce,
-                            &transaction.data,
+                            &transaction.tx().nonce,
+                            &transaction.tx().data,
                         )
                         .0,
                     )

@@ -43,7 +43,7 @@ pub trait Backend: Send {
     /// Treat the backend as a writeable hashdb.
     fn as_hash_db_mut(&mut self) -> &mut dyn HashDB<KeccakHasher, DBValue>;
 
-    /// Add an account entry to the cache.
+    /// t_nb 9.4 Add an account entry to the cache.
     fn add_to_account_cache(&mut self, addr: Address, data: Option<Account>, modified: bool);
 
     /// Add a global code cache entry. This doesn't need to worry about canonicality because

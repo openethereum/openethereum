@@ -57,10 +57,10 @@ use info::Informant;
 
 const USAGE: &'static str = r#"
 EVM implementation for Parity.
-  Copyright 2015-2019 Parity Technologies (UK) Ltd.
+  Copyright 2015-2020 Parity Technologies (UK) Ltd.
 
 Usage:
-    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only]
+    openethereum-evm state-test <file> [--json --std-json --std-dump-json --only NAME --chain CHAIN --std-out-only --std-err-only --omit-storage-output --omit-memory-output]
     openethereum-evm stats [options]
     openethereum-evm stats-jsontests-vm <file>
     openethereum-evm [options]
@@ -84,16 +84,19 @@ State test options:
     --chain CHAIN      Run only from specific chain name (i.e. one of EIP150, EIP158,
                        Frontier, Homestead, Byzantium, Constantinople,
                        ConstantinopleFix, Istanbul, EIP158ToByzantiumAt5, FrontierToHomesteadAt5,
-                       HomesteadToDaoAt5, HomesteadToEIP150At5).
+                       HomesteadToDaoAt5, HomesteadToEIP150At5, Berlin, Yolo3).
     --only NAME        Runs only a single test matching the name.
 
 General options:
-    --json             Display verbose results in JSON.
-    --std-json         Display results in standardized JSON format.
-    --std-err-only     With --std-json redirect to err output only.
-    --std-out-only     With --std-json redirect to out output only.
-    --std-dump-json    Display results in standardized JSON format
-                       with additional state dump.
+    --json                    Display verbose results in JSON.
+    --std-json                Display results in standardized JSON format.
+    --std-err-only            With --std-json redirect to err output only.
+    --std-out-only            With --std-json redirect to out output only.
+    --omit-storage-output     With --std-json omit storage output.
+    --omit-memory-output      With --std-json omit memory output.
+    --std-dump-json           Display results in standardized JSON format
+                              with additional state dump.
+
 Display result state dump in standardized JSON format.
     --chain CHAIN      Chain spec file path.
     -h, --help         Display this message and exit.
@@ -107,22 +110,24 @@ fn main() {
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
 
+    let config = args.config();
+
     if args.cmd_state_test {
         run_state_test(args)
     } else if args.cmd_stats_jsontests_vm {
         run_stats_jsontests_vm(args)
     } else if args.flag_json {
-        run_call(args, display::json::Informant::default())
+        run_call(args, display::json::Informant::new(config))
     } else if args.flag_std_dump_json || args.flag_std_json {
         if args.flag_std_err_only {
-            run_call(args, display::std_json::Informant::err_only())
+            run_call(args, display::std_json::Informant::err_only(config))
         } else if args.flag_std_out_only {
-            run_call(args, display::std_json::Informant::out_only())
+            run_call(args, display::std_json::Informant::out_only(config))
         } else {
-            run_call(args, display::std_json::Informant::default())
+            run_call(args, display::std_json::Informant::new_default(config))
         };
     } else {
-        run_call(args, display::simple::Informant::default())
+        run_call(args, display::simple::Informant::new(config))
     }
 }
 
@@ -165,7 +170,7 @@ fn run_stats_jsontests_vm(args: Args) {
 
 fn run_state_test(args: Args) {
     use ethjson::state::test::Test;
-
+    let config = args.config();
     let file = args.arg_file.expect("FILE is required");
     let mut file = match fs::File::open(&file) {
         Err(err) => die(format!("Unable to open: {:?}: {}", file, err)),
@@ -197,7 +202,6 @@ fn run_state_test(args: Args) {
             {
                 continue;
             }
-
             for (idx, state) in states.into_iter().enumerate() {
                 let post_root = state.hash.into();
                 let transaction = multitransaction.select(&state.indexes).into();
@@ -216,7 +220,7 @@ fn run_state_test(args: Args) {
                         post_root,
                         &env_info,
                         transaction,
-                        display::json::Informant::default(),
+                        display::json::Informant::new(config),
                         trie_spec,
                     )
                 } else if args.flag_std_dump_json || args.flag_std_json {
@@ -229,7 +233,7 @@ fn run_state_test(args: Args) {
                             post_root,
                             &env_info,
                             transaction,
-                            display::std_json::Informant::err_only(),
+                            display::std_json::Informant::err_only(config),
                             trie_spec,
                         )
                     } else if args.flag_std_out_only {
@@ -241,7 +245,7 @@ fn run_state_test(args: Args) {
                             post_root,
                             &env_info,
                             transaction,
-                            display::std_json::Informant::out_only(),
+                            display::std_json::Informant::out_only(config),
                             trie_spec,
                         )
                     } else {
@@ -253,7 +257,7 @@ fn run_state_test(args: Args) {
                             post_root,
                             &env_info,
                             transaction,
-                            display::std_json::Informant::default(),
+                            display::std_json::Informant::new_default(config),
                             trie_spec,
                         )
                     }
@@ -266,7 +270,7 @@ fn run_state_test(args: Args) {
                         post_root,
                         &env_info,
                         transaction,
-                        display::simple::Informant::default(),
+                        display::simple::Informant::new(config),
                         trie_spec,
                     )
                 }
@@ -287,8 +291,16 @@ fn run_call<T: Informant>(args: Args, informant: T) {
     if code.is_none() && to == Address::default() {
         die("Either --code or --to is required.");
     }
-
     let mut params = ActionParams::default();
+    if spec.engine.params().eip2929_transition == 0 {
+        params.access_list.enable();
+        params.access_list.insert_address(from);
+        params.access_list.insert_address(to);
+        for (builtin, _) in spec.engine.builtins() {
+            params.access_list.insert_address(*builtin);
+        }
+    }
+
     params.call_type = if code.is_none() {
         CallType::Call
     } else {
@@ -331,6 +343,8 @@ struct Args {
     flag_std_dump_json: bool,
     flag_std_err_only: bool,
     flag_std_out_only: bool,
+    flag_omit_storage_output: bool,
+    flag_omit_memory_output: bool,
 }
 
 impl Args {
@@ -378,12 +392,23 @@ impl Args {
 
     pub fn spec(&self) -> Result<spec::Spec, String> {
         Ok(match self.flag_chain {
-            Some(ref filename) => {
-                let file = fs::File::open(filename).map_err(|e| format!("{}", e))?;
-                spec::Spec::load(&::std::env::temp_dir(), file)?
+            Some(ref spec_name) => {
+                let fork_spec: Result<ethjson::spec::ForkSpec, _> =
+                    serde_json::from_str(&format!("{:?}", spec_name));
+                if let Ok(fork_spec) = fork_spec {
+                    ethcore::client::EvmTestClient::spec_from_json(&fork_spec)
+                        .expect("this forkspec is not defined")
+                } else {
+                    let file = fs::File::open(spec_name).map_err(|e| format!("{}", e))?;
+                    spec::Spec::load(&::std::env::temp_dir(), file)?
+                }
             }
             None => ethcore::ethereum::new_foundation(&::std::env::temp_dir()),
         })
+    }
+
+    pub fn config(&self) -> display::config::Config {
+        display::config::Config::new(self.flag_omit_storage_output, self.flag_omit_memory_output)
     }
 }
 

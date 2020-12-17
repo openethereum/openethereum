@@ -16,7 +16,7 @@
 
 use bytes::Bytes;
 use call_contract::RegistryInfo;
-use common_types::transaction::{Action, SignedTransaction, Transaction};
+use common_types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 use ethcore::{
     client::{BlockChainClient, BlockId, ChainInfo, Client, Nonce},
     miner::{Miner, MinerService},
@@ -89,16 +89,18 @@ impl TrustedClient {
             .upgrade()
             .ok_or_else(|| Error::Internal("cannot submit tx when miner is offline".into()))?;
         let engine = client.engine();
-        let transaction = Transaction {
+        let transaction = TypedTransaction::Legacy(Transaction {
             nonce: client.latest_nonce(&self.self_key_pair.address()),
             action: Action::Call(contract),
             gas: miner.authoring_params().gas_range_target.0,
             gas_price: miner.sensible_gas_price(),
             value: Default::default(),
             data: tx_data,
-        };
+        });
         let chain_id = engine.signing_chain_id(&client.latest_env_info());
-        let signature = self.self_key_pair.sign(&transaction.hash(chain_id))?;
+        let signature = self
+            .self_key_pair
+            .sign(&transaction.signature_hash(chain_id))?;
         let signed = SignedTransaction::new(transaction.with_signature(signature, chain_id))?;
         miner
             .import_own_transaction(&*client, signed.into())

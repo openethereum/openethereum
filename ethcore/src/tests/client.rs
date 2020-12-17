@@ -45,7 +45,7 @@ use types::{
     data_format::DataFormat,
     filter::Filter,
     ids::BlockId,
-    transaction::{Action, Condition, PendingTransaction, Transaction},
+    transaction::{Action, Condition, PendingTransaction, Transaction, TypedTransaction},
     view,
     views::BlockView,
 };
@@ -278,7 +278,7 @@ fn can_handle_long_fork() {
     push_blocks_to_client(&client, 49, 1201, 800);
     push_blocks_to_client(&client, 53, 1201, 600);
 
-    for _ in 0..400 {
+    for _ in 0..2300 {
         client.import_verified_blocks();
     }
     assert_eq!(2000, client.chain_info().best_block_number);
@@ -362,26 +362,26 @@ fn does_not_propagate_delayed_transactions() {
     let key = KeyPair::from_secret(keccak("test").into()).unwrap();
     let secret = key.secret();
     let tx0 = PendingTransaction::new(
-        Transaction {
+        TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
             action: Action::Call(Address::default()),
             value: 0.into(),
             data: Vec::new(),
-        }
+        })
         .sign(secret, None),
         Some(Condition::Number(2)),
     );
     let tx1 = PendingTransaction::new(
-        Transaction {
+        TypedTransaction::Legacy(Transaction {
             nonce: 1.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
             action: Action::Call(Address::default()),
             value: 0.into(),
             data: Vec::new(),
-        }
+        })
         .sign(secret, None),
         None,
     );
@@ -443,14 +443,14 @@ fn transaction_proof() {
         client.import_sealed_block(b).unwrap(); // account change is in the journal overlay
     }
 
-    let transaction = Transaction {
+    let transaction = TypedTransaction::Legacy(Transaction {
         nonce: 0.into(),
         gas_price: 0.into(),
         gas: 21000.into(),
         action: Action::Call(Address::default()),
         value: 5.into(),
         data: Vec::new(),
-    }
+    })
     .fake_sign(address);
 
     let proof = client

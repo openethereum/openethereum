@@ -251,6 +251,7 @@ impl TransactionQueue {
         self.pool.write().listener_mut().0.set_in_chain_checker(f)
     }
 
+    // t_nb 10.2
     /// Import a set of transactions to the pool.
     ///
     /// Given blockchain and state access (Client)
@@ -471,7 +472,7 @@ impl TransactionQueue {
         (pending_readiness, state_readiness)
     }
 
-    /// Culls all stalled transactions from the pool.
+    /// t_nb 10.5.1 Culls all stalled transactions from the pool.
     pub fn cull<C: client::NonceClient + Clone>(&self, client: C) {
         trace_time!("pool::cull");
         // We don't care about future transactions, so nonce_cap is not important.
@@ -518,7 +519,7 @@ impl TransactionQueue {
             .read()
             .pending_from_sender(state_readiness, address)
             .last()
-            .map(|tx| tx.signed().nonce.saturating_add(U256::from(1)))
+            .map(|tx| tx.signed().tx().nonce.saturating_add(U256::from(1)))
     }
 
     /// Retrieve a transaction from the pool.
@@ -572,7 +573,7 @@ impl TransactionQueue {
     /// Returns gas price of currently the worst transaction in the pool.
     pub fn current_worst_gas_price(&self) -> U256 {
         match self.pool.read().worst_transaction() {
-            Some(tx) => tx.signed().gas_price,
+            Some(tx) => tx.signed().tx().gas_price,
             None => self.options.read().minimal_gas_price,
         }
     }
@@ -659,7 +660,7 @@ mod tests {
         );
 
         for tx in pending {
-            assert!(tx.signed().nonce > 0.into());
+            assert!(tx.signed().tx().nonce > 0.into());
         }
     }
 }

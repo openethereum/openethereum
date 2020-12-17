@@ -1307,6 +1307,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         Ok(())
     }
 
+    // t_nb 8.1.5
     fn on_new_block(
         &self,
         block: &mut ExecutedBlock,
@@ -1531,7 +1532,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         Ok(())
     }
 
-    // Check the validators.
+    // t_nb 6.4 Check the validators.
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         let (validators, set_number) = self.epoch_set(header)?;
 
@@ -1764,7 +1765,7 @@ mod tests {
     use test_helpers::{generate_dummy_client_with_spec, get_temp_state_db, TestNotify};
     use types::{
         header::Header,
-        transaction::{Action, Transaction},
+        transaction::{Action, Transaction, TypedTransaction},
     };
 
     fn aura<F>(f: F) -> Arc<AuthorityRound>
@@ -2286,14 +2287,14 @@ mod tests {
         )
         .unwrap();
         b2.push_transaction(
-            Transaction {
+            TypedTransaction::Legacy(Transaction {
                 action: Action::Create,
                 nonce: U256::from(0),
                 gas_price: U256::from(3000),
                 gas: U256::from(53_000),
                 value: U256::from(1),
                 data: vec![],
-            }
+            })
             .fake_sign(addr2),
             None,
         )

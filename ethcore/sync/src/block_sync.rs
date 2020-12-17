@@ -241,7 +241,7 @@ impl BlockDownloader {
         self.last_round_start_hash = start_hash.clone();
         self.imported_this_round = None;
         self.round_parents = VecDeque::new();
-        self.target_hash = None;
+        //self.target_hash = None; // target_hash is only used for old (ancient) block download. And once set should not be reseted in any way.
         self.retract_step = 1;
     }
 
@@ -516,8 +516,24 @@ impl BlockDownloader {
                         self.last_imported_hash
                     );
                 } else {
-                    let best = io.chain().chain_info().best_block_number;
-                    let best_hash = io.chain().chain_info().best_block_hash;
+                    let (best, best_hash) = match self.block_set {
+                        BlockSet::NewBlocks => (
+                            io.chain().chain_info().best_block_number,
+                            io.chain().chain_info().best_block_hash,
+                        ),
+                        BlockSet::OldBlocks => {
+                            if let (Some(best), Some(best_hash)) = (
+                                io.chain().chain_info().ancient_block_number,
+                                io.chain().chain_info().ancient_block_hash,
+                            ) {
+                                (best, best_hash) // best ancient block number and hash.
+                            } else {
+                                // None on ancient block/hash means that all ancient are already downloaded and stored in DB.
+                                self.state = State::Complete;
+                                return;
+                            }
+                        }
+                    };
                     let oldest_reorg = io.chain().pruning_info().earliest_state;
                     if self.block_set == BlockSet::NewBlocks && best > start && start < oldest_reorg
                     {
@@ -531,7 +547,7 @@ impl BlockDownloader {
                     } else {
                         let n = start - cmp::min(self.retract_step, start);
                         if n == 0 {
-                            debug_sync!(self, "Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
+                            info!("Header not found, bottom line reached, resetting, last imported: {}", self.last_imported_hash);
                             self.reset_to_block(&best_hash, best);
                         } else {
                             self.retract_step *= 2;
@@ -547,11 +563,9 @@ impl BlockDownloader {
                                     );
                                 }
                                 None => {
-                                    debug_sync!(
-                                        self,
+                                    info!(
                                         "Could not revert to previous block, last: {} ({})",
-                                        start,
-                                        self.last_imported_hash
+                                        start, self.last_imported_hash
                                     );
                                     self.reset_to_block(&best_hash, best);
                                 }
@@ -661,7 +675,10 @@ impl BlockDownloader {
 
             if self.target_hash.as_ref().map_or(false, |t| t == &h) {
                 self.state = State::Complete;
-                trace_sync!(self, "Sync target reached");
+                info!(
+                    "Sync target {:?} for old blocks reached. Syncing ancient blocks finished.",
+                    self.target_hash
+                );
                 return download_action;
             }
 
@@ -762,7 +779,7 @@ mod tests {
     use triehash_ethereum::ordered_trie_root;
     use types::{
         header::Header as BlockHeader,
-        transaction::{SignedTransaction, Transaction},
+        transaction::{SignedTransaction, Transaction, TypedTransaction},
     };
 
     fn dummy_header(number: u64, parent_hash: H256) -> BlockHeader {
@@ -778,7 +795,7 @@ mod tests {
 
     fn dummy_signed_tx() -> SignedTransaction {
         let keypair = Random.generate().unwrap();
-        Transaction::default().sign(keypair.secret(), None)
+        TypedTransaction::Legacy(Transaction::default()).sign(keypair.secret(), None)
     }
 
     fn import_headers(
@@ -949,8 +966,16 @@ mod tests {
                 ::rlp::EMPTY_LIST_RLP.to_vec()
             };
 
-            let txs = encode_list(&[dummy_signed_tx()]);
-            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| r.as_raw()));
+            let mut rlp_strem = RlpStream::new();
+            SignedTransaction::rlp_append_list(&mut rlp_strem, &[dummy_signed_tx()]);
+            let txs = rlp_strem.drain();
+            let tx_root = ordered_trie_root(Rlp::new(&txs).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("It is expected that raw rlp list is valid")
+                }
+            }));
 
             let mut rlp = RlpStream::new_list(2);
             rlp.append_raw(&txs, 1);
@@ -1019,14 +1044,20 @@ mod tests {
             // Construct the receipts. Receipt root for the first two blocks is the same.
             //
             // The RLP-encoded integers are clearly not receipts, but the BlockDownloader treats
-            // all receipts as byte blobs, so it does not matter.
+            // all receipts as byte blobs, so it does not matter. It is just important that they are
+            // represended as list (0xc1) so that they passes as legacy list
             let receipts_rlp = if i < 2 {
-                encode_list(&[0u32])
+                vec![0xC1, 0]
             } else {
-                encode_list(&[i as u32])
+                vec![0xC1, i as u8]
             };
-            let receipts_root =
-                ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| r.as_raw()));
+            let receipts_root = ordered_trie_root(Rlp::new(&receipts_rlp).iter().map(|r| {
+                if r.is_list() {
+                    r.as_raw()
+                } else {
+                    r.data().expect("expect proper test data")
+                }
+            }));
             receipts.push(receipts_rlp);
 
             // Construct the block header.

@@ -340,14 +340,14 @@ mod tests {
 
     fn new_tx<T: Into<U256>>(nonce: T) -> Arc<Transaction> {
         let keypair = Random.generate().unwrap();
-        let signed = transaction::Transaction {
+        let signed = transaction::TypedTransaction::Legacy(transaction::Transaction {
             action: transaction::Action::Create,
             value: U256::from(100),
             data: Default::default(),
             gas: U256::from(10),
             gas_price: U256::from(1245),
             nonce: nonce.into(),
-        }
+        })
         .sign(keypair.secret(), None);
 
         let mut tx = Transaction::from_pending_block_transaction(signed);

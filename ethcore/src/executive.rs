@@ -16,7 +16,6 @@
 
 //! Transaction Execution environment.
 use bytes::{Bytes, BytesRef};
-use crossbeam_utils::thread;
 use ethereum_types::{Address, H256, U256, U512};
 use evm::{CallType, FinalizationResult, Finalize};
 use executed::ExecutionError;
@@ -29,27 +28,11 @@ use state::{Backend as StateBackend, CleanupMode, State, Substate};
 use std::{cmp, sync::Arc};
 use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
-use types::transaction::{Action, SignedTransaction};
+use types::transaction::{Action, SignedTransaction, TypedTransaction};
 use vm::{
-    self, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo, ResumeCall,
-    ResumeCreate, ReturnData, Schedule, TrapError,
+    self, AccessList, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo,
+    ResumeCall, ResumeCreate, ReturnData, Schedule, TrapError,
 };
-
-#[cfg(debug_assertions)]
-/// Roughly estimate what stack size each level of evm depth will use. (Debug build)
-const STACK_SIZE_PER_DEPTH: usize = 128 * 1024;
-
-#[cfg(not(debug_assertions))]
-/// Roughly estimate what stack size each level of evm depth will use.
-const STACK_SIZE_PER_DEPTH: usize = 24 * 1024;
-
-#[cfg(debug_assertions)]
-/// Entry stack overhead prior to execution. (Debug build)
-const STACK_SIZE_ENTRY_OVERHEAD: usize = 100 * 1024;
-
-#[cfg(not(debug_assertions))]
-/// Entry stack overhead prior to execution.
-const STACK_SIZE_ENTRY_OVERHEAD: usize = 20 * 1024;
 
 #[cfg(any(test, feature = "test-helpers"))]
 /// Precompile that can never be prunned from state trie (0x3, only in tests)
@@ -252,6 +235,18 @@ pub struct CallCreateExecutive<'a> {
 }
 
 impl<'a> CallCreateExecutive<'a> {
+    /// Create new state with access list.
+    pub fn new_substate(params: &ActionParams, schedule: &'a Schedule) -> Substate {
+        if schedule.eip2929 {
+            let mut substate = Substate::from_access_list(&params.access_list);
+            substate.access_list.insert_address(params.address);
+            substate.access_list.insert_address(params.sender);
+            substate
+        } else {
+            Substate::default()
+        }
+    }
+
     /// Create a new call executive using raw data.
     pub fn new_call_raw(
         params: ActionParams,
@@ -287,7 +282,8 @@ impl<'a> CallCreateExecutive<'a> {
             CallCreateExecutiveKind::CallBuiltin(params)
         } else {
             if params.code.is_some() {
-                CallCreateExecutiveKind::ExecCall(params, Substate::new())
+                let substate = Self::new_substate(&params, schedule);
+                CallCreateExecutiveKind::ExecCall(params, substate)
             } else {
                 CallCreateExecutiveKind::Transfer(params)
             }
@@ -327,7 +323,8 @@ impl<'a> CallCreateExecutive<'a> {
 
         let gas = params.gas;
 
-        let kind = CallCreateExecutiveKind::ExecCreate(params, Substate::new());
+        let substate = Self::new_substate(&params, schedule);
+        let kind = CallCreateExecutiveKind::ExecCreate(params, substate);
 
         Self {
             info,
@@ -457,6 +454,7 @@ impl<'a> CallCreateExecutive<'a> {
                     }
                 }
                 state.revert_to_checkpoint();
+                un_substate.access_list.rollback();
             }
             Ok(_) | Err(vm::Error::Internal(_)) => {
                 state.discard_checkpoint();
@@ -1111,7 +1109,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     {
         let sender = t.sender();
         let balance = self.state.balance(&sender)?;
-        let needed_balance = t.value.saturating_add(t.gas.saturating_mul(t.gas_price));
+        let needed_balance = t
+            .tx()
+            .value
+            .saturating_add(t.tx().gas.saturating_mul(t.tx().gas_price));
         if balance < needed_balance {
             // give the sender a sufficient balance
             self.state
@@ -1134,16 +1135,51 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         T: Tracer,
         V: VMTracer,
     {
+        let schedule = self.schedule;
+
+        // check if particualar transaction type is enabled at this block number in schedule
+        match t.as_unsigned() {
+            TypedTransaction::AccessList(_) => {
+                if !schedule.eip2930 {
+                    return Err(ExecutionError::TransactionMalformed(
+                        "OptionalAccessList EIP-2930 or EIP-2929 not enabled".into(),
+                    ));
+                }
+            }
+            TypedTransaction::Legacy(_) => (), //legacy transactions are allways valid
+        };
+
         let sender = t.sender();
         let nonce = self.state.nonce(&sender)?;
 
-        let schedule = self.schedule;
-        let base_gas_required = U256::from(t.gas_required(&schedule));
+        let mut base_gas_required = U256::from(t.tx().gas_required(&schedule));
 
-        if t.gas < base_gas_required {
+        let mut access_list = AccessList::new(schedule.eip2929);
+
+        if schedule.eip2929 {
+            for (address, _) in self.machine.builtins() {
+                access_list.insert_address(*address);
+            }
+            if schedule.eip2930 {
+                // optional access list
+                if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
+                    for item in al_tx.access_list.iter() {
+                        access_list.insert_address(item.0);
+                        base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                        for key in item.1.iter() {
+                            access_list.insert_storage_key(item.0, *key);
+                            base_gas_required +=
+                                vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
+                        }
+                    }
+                }
+            }
+        }
+
+        if t.tx().gas < base_gas_required {
             return Err(ExecutionError::NotEnoughBaseGas {
                 required: base_gas_required,
-                got: t.gas,
+                got: t.tx().gas,
             });
         }
 
@@ -1155,29 +1191,29 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             return Err(ExecutionError::SenderMustExist);
         }
 
-        let init_gas = t.gas - base_gas_required;
+        let init_gas = t.tx().gas - base_gas_required;
 
         // validate transaction nonce
-        if check_nonce && t.nonce != nonce {
+        if check_nonce && t.tx().nonce != nonce {
             return Err(ExecutionError::InvalidNonce {
                 expected: nonce,
-                got: t.nonce,
+                got: t.tx().nonce,
             });
         }
 
         // validate if transaction fits into given block
-        if self.info.gas_used + t.gas > self.info.gas_limit {
+        if self.info.gas_used + t.tx().gas > self.info.gas_limit {
             return Err(ExecutionError::BlockGasLimitReached {
                 gas_limit: self.info.gas_limit,
                 gas_used: self.info.gas_used,
-                gas: t.gas,
+                gas: t.tx().gas,
             });
         }
 
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
-        let gas_cost = t.gas.full_mul(t.gas_price);
-        let total_cost = U512::from(t.value) + gas_cost;
+        let gas_cost = t.tx().gas.full_mul(t.tx().gas_price);
+        let total_cost = U512::from(t.tx().value) + gas_cost;
 
         // avoid unaffordable transactions
         let balance512 = U512::from(balance);
@@ -1188,7 +1224,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
-        let mut substate = Substate::new();
+        let mut substate = Substate::from_access_list(&access_list);
 
         // NOTE: there can be no invalid transactions from this point.
         if !schedule.keep_unsigned_nonce || !t.is_unsigned() {
@@ -1200,13 +1236,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
-        let (result, output) = match t.action {
+        let (result, output) = match t.tx().action {
             Action::Create => {
                 let (new_address, code_hash) = contract_address(
                     self.machine.create_address_scheme(self.info.number),
                     &sender,
                     &nonce,
-                    &t.data,
+                    &t.tx().data,
                 );
                 let params = ActionParams {
                     code_address: new_address.clone(),
@@ -1215,12 +1251,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.gas_price,
-                    value: ActionValue::Transfer(t.value),
-                    code: Some(Arc::new(t.data.clone())),
+                    gas_price: t.tx().gas_price,
+                    value: ActionValue::Transfer(t.tx().value),
+                    code: Some(Arc::new(t.tx().data.clone())),
                     data: None,
                     call_type: CallType::None,
                     params_type: vm::ParamsType::Embedded,
+                    access_list: access_list,
                 };
                 let res = self.create(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1236,13 +1273,14 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.gas_price,
-                    value: ActionValue::Transfer(t.value),
+                    gas_price: t.tx().gas_price,
+                    value: ActionValue::Transfer(t.tx().value),
                     code: self.state.code(address)?,
                     code_hash: self.state.code_hash(address)?,
-                    data: Some(t.data.clone()),
+                    data: Some(t.tx().data.clone()),
                     call_type: CallType::Call,
                     params_type: vm::ParamsType::Separate,
+                    access_list: access_list,
                 };
                 let res = self.call(params, &mut substate, &mut tracer, &mut vm_tracer);
                 let out = match &res {
@@ -1325,48 +1363,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         result
     }
 
-    /// Calls contract function with given contract params, if the stack depth is above a threshold, create a new thread
-    /// to execute it.
-    pub fn call_with_crossbeam<T, V>(
-        &mut self,
-        params: ActionParams,
-        substate: &mut Substate,
-        stack_depth: usize,
-        tracer: &mut T,
-        vm_tracer: &mut V,
-    ) -> vm::Result<FinalizationResult>
-    where
-        T: Tracer,
-        V: VMTracer,
-    {
-        let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
-        let depth_threshold =
-            local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
-
-        if stack_depth != depth_threshold {
-            self.call_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-        } else {
-            thread::scope(|scope| {
-                let stack_size = cmp::max(
-                    self.schedule.max_depth.saturating_sub(depth_threshold) * STACK_SIZE_PER_DEPTH,
-                    local_stack_size,
-                );
-                scope
-                    .builder()
-                    .stack_size(stack_size)
-                    .spawn(|_| {
-                        self.call_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-                    })
-                    .expect(
-                        "Sub-thread creation cannot fail; the host might run out of resources; qed",
-                    )
-                    .join()
-            })
-            .expect("Sub-thread never panics; qed")
-            .expect("Sub-thread never panics; qed")
-        }
-    }
-
     /// Calls contract function with given contract params.
     pub fn call<T, V>(
         &mut self,
@@ -1437,54 +1433,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         result
     }
 
-    /// Creates contract with given contract params, if the stack depth is above a threshold, create a new thread to
-    /// execute it.
-    pub fn create_with_crossbeam<T, V>(
-        &mut self,
-        params: ActionParams,
-        substate: &mut Substate,
-        stack_depth: usize,
-        tracer: &mut T,
-        vm_tracer: &mut V,
-    ) -> vm::Result<FinalizationResult>
-    where
-        T: Tracer,
-        V: VMTracer,
-    {
-        let local_stack_size = ::io::LOCAL_STACK_SIZE.with(|sz| sz.get());
-        let depth_threshold =
-            local_stack_size.saturating_sub(STACK_SIZE_ENTRY_OVERHEAD) / STACK_SIZE_PER_DEPTH;
-
-        if stack_depth != depth_threshold {
-            self.create_with_stack_depth(params, substate, stack_depth, tracer, vm_tracer)
-        } else {
-            thread::scope(|scope| {
-                let stack_size = cmp::max(
-                    self.schedule.max_depth.saturating_sub(depth_threshold) * STACK_SIZE_PER_DEPTH,
-                    local_stack_size,
-                );
-                scope
-                    .builder()
-                    .stack_size(stack_size)
-                    .spawn(|_| {
-                        self.create_with_stack_depth(
-                            params,
-                            substate,
-                            stack_depth,
-                            tracer,
-                            vm_tracer,
-                        )
-                    })
-                    .expect(
-                        "Sub-thread creation cannot fail; the host might run out of resources; qed",
-                    )
-                    .join()
-            })
-            .expect("Sub-thread never panics; qed")
-            .expect("Sub-thread never panics; qed")
-        }
-    }
-
     /// Creates contract with given contract params.
     pub fn create<T, V>(
         &mut self,
@@ -1528,12 +1476,12 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             Ok(FinalizationResult { gas_left, .. }) => gas_left,
             _ => 0.into(),
         };
-        let refunded = cmp::min(refunds_bound, (t.gas - gas_left_prerefund) >> 1);
+        let refunded = cmp::min(refunds_bound, (t.tx().gas - gas_left_prerefund) >> 1);
         let gas_left = gas_left_prerefund + refunded;
 
-        let gas_used = t.gas.saturating_sub(gas_left);
-        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.gas_price);
-        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.gas_price);
+        let gas_used = t.tx().gas.saturating_sub(gas_left);
+        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.tx().gas_price);
+        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.tx().gas_price);
         if overflow_1 || overflow_2 {
             return Err(ExecutionError::TransactionMalformed(
                 "U256 Overflow".to_string(),
@@ -1541,7 +1489,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
-			t.gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
+			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
 
         let sender = t.sender();
         trace!(
@@ -1570,7 +1518,11 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         // perform garbage-collection
         let min_balance = if schedule.kill_dust != CleanDustMode::Off {
-            Some(U256::from(schedule.tx_gas).overflowing_mul(t.gas_price).0)
+            Some(
+                U256::from(schedule.tx_gas)
+                    .overflowing_mul(t.tx().gas_price)
+                    .0,
+            )
         } else {
             None
         };
@@ -1585,10 +1537,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             Err(vm::Error::Internal(msg)) => Err(ExecutionError::Internal(msg)),
             Err(exception) => Ok(Executed {
                 exception: Some(exception),
-                gas: t.gas,
-                gas_used: t.gas,
+                gas: t.tx().gas,
+                gas_used: t.tx().gas,
                 refunded: U256::zero(),
-                cumulative_gas_used: self.info.gas_used + t.gas,
+                cumulative_gas_used: self.info.gas_used + t.tx().gas,
                 logs: vec![],
                 contracts_created: vec![],
                 output: output,
@@ -1602,7 +1554,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 } else {
                     Some(vm::Error::Reverted)
                 },
-                gas: t.gas,
+                gas: t.tx().gas,
                 gas_used: gas_used,
                 refunded: refunded,
                 cumulative_gas_used: self.info.gas_used + gas_used,
@@ -1634,7 +1586,7 @@ mod tests {
         trace, ExecutiveTracer, ExecutiveVMTracer, FlatTrace, MemoryDiff, NoopTracer, NoopVMTracer,
         StorageDiff, Tracer, VMExecutedOperation, VMOperation, VMTrace, VMTracer,
     };
-    use types::transaction::{Action, Transaction};
+    use types::transaction::{Action, Transaction, TypedTransaction};
     use vm::{ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo};
 
     fn make_frontier_machine(max_depth: usize) -> EthereumMachine {
@@ -2528,14 +2480,14 @@ mod tests {
     evm_test_ignore! {test_transact_simple: test_transact_simple_int}
     fn test_transact_simple(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::zero(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
         let contract = contract_address(
@@ -2579,14 +2531,14 @@ mod tests {
     evm_test! {test_transact_invalid_nonce: test_transact_invalid_nonce_int}
     fn test_transact_invalid_nonce(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::zero(),
             nonce: U256::one(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 
@@ -2618,14 +2570,14 @@ mod tests {
     evm_test! {test_transact_gas_limit_reached: test_transact_gas_limit_reached_int}
     fn test_transact_gas_limit_reached(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(80_001),
             gas_price: U256::zero(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 
@@ -2663,14 +2615,14 @@ mod tests {
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}
     fn test_not_enough_cash(factory: Factory) {
         let keypair = Random.generate().unwrap();
-        let t = Transaction {
+        let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(18),
             data: "3331600055".from_hex().unwrap(),
             gas: U256::from(100_000),
             gas_price: U256::one(),
             nonce: U256::zero(),
-        }
+        })
         .sign(keypair.secret(), None);
         let sender = t.sender();
 

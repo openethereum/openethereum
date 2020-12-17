@@ -252,6 +252,11 @@ pub fn new_berlin_test() -> Spec {
     load(None, include_bytes!("../../res/ethereum/berlin_test.json"))
 }
 
+/// Create a new YOLO spec
+pub fn new_yolo3_test() -> Spec {
+    load(None, include_bytes!("../../res/ethereum/yolo3_test.json"))
+}
+
 /// Create a new Musicoin-MCIP3-era spec.
 pub fn new_mcip3_test() -> Spec {
     load(None, include_bytes!("../../res/ethereum/mcip3_test.json"))

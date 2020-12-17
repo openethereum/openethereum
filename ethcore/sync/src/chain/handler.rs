@@ -155,6 +155,7 @@ impl SyncHandler {
             trace!(target: "sync", "Ignoring new block from unconfirmed peer {}", peer_id);
             return Ok(());
         }
+        // t_nb 1.0 decode RLP
         let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec())?;
         let hash = block.header.hash();
         let number = block.header.number();
@@ -166,7 +167,9 @@ impl SyncHandler {
         let difficulty: U256 = r.val_at(1)?;
         // Most probably the sent block is being imported by peer right now
         // Use td and hash, that peer must have for now
+        // t_nb 1.1 check new block diffuculty it can be found as second item in RLP and update peer diffuculty
         let parent_td = difficulty.checked_sub(*block.header.difficulty());
+
         if let Some(ref mut peer) = sync.peers.get_mut(&peer_id) {
             if peer
                 .difficulty
@@ -181,6 +184,7 @@ impl SyncHandler {
             peer.latest_hash = *parent_hash;
         }
 
+        // t_nb 1.2 if block number is to older then 20 dont process it
         let last_imported_number = sync.new_blocks.last_imported_block_number();
         if last_imported_number > number && last_imported_number - number > MAX_NEW_BLOCK_AGE {
             trace!(target: "sync", "Ignored ancient new block {:?}", hash);
@@ -833,9 +837,12 @@ impl SyncHandler {
         let item_count = r.item_count()?;
         trace!(target: "sync", "{:02} -> Transactions ({} entries)", peer_id, item_count);
         let mut transactions = Vec::with_capacity(item_count);
-        for i in 0..item_count {
-            let rlp = r.at(i)?;
-            let tx = rlp.as_raw().to_vec();
+        for i in r.iter() {
+            let tx = if i.is_list() {
+                i.as_raw().to_vec() // legacy transaction. just add it raw
+            } else {
+                i.data()?.to_vec() // typed transaction. remove header from start and send only payload.
+            };
             transactions.push(tx);
         }
         io.chain().queue_transactions(transactions, peer_id);

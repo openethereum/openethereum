@@ -63,26 +63,36 @@ impl HeapSizeOf for PreverifiedBlock {
     }
 }
 
-/// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
+/// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
 pub fn verify_block_basic(
     block: &Unverified,
     engine: &dyn EthEngine,
     check_seal: bool,
 ) -> Result<(), Error> {
+    // t_nb 4.1  verify header params
     verify_header_params(&block.header, engine, true, check_seal)?;
+    // t_nb 4.2 verify header time (addded in new OE version)
+    // t_nb 4.3 verify block integrity
     verify_block_integrity(block)?;
 
     if check_seal {
+        // t_nb 4.4 Check block seal. It calls engine to verify block basic
         engine.verify_block_basic(&block.header)?;
     }
 
+    // t_nb 4.5 for all uncled verify header and call engine to verify block basic
     for uncle in &block.uncles {
+        // t_nb 4.5.1
         verify_header_params(uncle, engine, false, check_seal)?;
         if check_seal {
+            // t_nb 4.5.2
             engine.verify_block_basic(uncle)?;
         }
     }
 
+    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
+
+    // t_nb 4.7 for every transaction call engine.verify_transaction_basic
     for t in &block.transactions {
         engine.verify_transaction_basic(t, &block.header)?;
     }
@@ -90,7 +100,7 @@ pub fn verify_block_basic(
     Ok(())
 }
 
-/// Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
+// t_nb 5.0 Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
 /// Still operates on a individual block
 /// Returns a `PreverifiedBlock` structure populated with transactions
 pub fn verify_block_unordered(
@@ -100,8 +110,10 @@ pub fn verify_block_unordered(
 ) -> Result<PreverifiedBlock, Error> {
     let header = block.header;
     if check_seal {
+        // t_nb 5.1
         engine.verify_block_unordered(&header)?;
         for uncle in &block.uncles {
+            // t_nb 5.2
             engine.verify_block_unordered(uncle)?;
         }
     }
@@ -112,13 +124,16 @@ pub fn verify_block_unordered(
         None
     };
 
+    // t_nb 5.3 iterate over all transactions
     let transactions = block
         .transactions
         .into_iter()
         .map(|t| {
+            // t_nb 5.3.1 call verify_unordered. Check signatures and calculate address
             let t = engine.verify_transaction_unordered(t, &header)?;
+            // t_nb 5.3.2 check if nonce is more then max nonce (EIP-168 and EIP169)
             if let Some(max_nonce) = nonce_cap {
-                if t.nonce >= max_nonce {
+                if t.tx().nonce >= max_nonce {
                     return Err(BlockError::TooManyTransactions(t.sender()).into());
                 }
             }
@@ -146,7 +161,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + CallContract + 'a> {
     pub client: &'a C,
 }
 
-/// Phase 3 verification. Check block information against parent and uncles.
+/// t_nb 6.3 Phase 3 verification. Check block information against parent and uncles.
 pub fn verify_block_family<C: BlockInfo + CallContract>(
     header: &Header,
     parent: &Header,
@@ -154,6 +169,7 @@ pub fn verify_block_family<C: BlockInfo + CallContract>(
     do_full: Option<FullFamilyParams<C>>,
 ) -> Result<(), Error> {
     // TODO: verify timestamp
+    // t_nb 6.3.1 verify parent
     verify_parent(&header, &parent, engine)?;
     engine.verify_block_family(&header, &parent)?;
 
@@ -162,8 +178,10 @@ pub fn verify_block_family<C: BlockInfo + CallContract>(
         None => return Ok(()),
     };
 
+    // t_nb 6.3.2 verify uncles
     verify_uncles(params.block, params.block_provider, engine)?;
 
+    // t_nb 6.3.3 verify all transactions
     for tx in &params.block.transactions {
         // transactions are verified against the parent header since the current
         // state wasn't available when the tx was created
@@ -475,7 +493,16 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
 fn verify_block_integrity(block: &Unverified) -> Result<(), Error> {
     let block_rlp = Rlp::new(&block.bytes);
     let tx = block_rlp.at(1)?;
-    let expected_root = ordered_trie_root(tx.iter().map(|r| r.as_raw()));
+    let expected_root = ordered_trie_root(tx.iter().map(|r| {
+        if r.is_list() {
+            r.as_raw()
+        } else {
+            // This is already checked in Unverified structure and that is why we are okay to asume that data is valid.
+            r.data().expect(
+                "Unverified block should already check if raw list of transactions is valid",
+            )
+        }
+    }));
     if &expected_root != block.header.transactions_root() {
         bail!(BlockError::InvalidTransactionsRoot(Mismatch {
             expected: expected_root,
@@ -513,7 +540,7 @@ mod tests {
     use types::{
         encoded,
         log_entry::{LocalizedLogEntry, LogEntry},
-        transaction::{Action, SignedTransaction, Transaction, UnverifiedTransaction},
+        transaction::{Action, SignedTransaction, Transaction, TypedTransaction},
     };
 
     fn check_ok(result: Result<(), Error>) {
@@ -746,34 +773,34 @@ mod tests {
 
         let keypair = Random.generate().unwrap();
 
-        let tr1 = Transaction {
+        let tr1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(40_000),
             nonce: U256::one(),
-        }
+        })
         .sign(keypair.secret(), None);
 
-        let tr2 = Transaction {
+        let tr2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(40_000),
             nonce: U256::from(2),
-        }
+        })
         .sign(keypair.secret(), None);
 
-        let tr3 = Transaction {
+        let tr3 = TypedTransaction::Legacy(Transaction {
             action: Action::Call(0x0.into()),
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
             gas_price: U256::from(0),
             nonce: U256::zero(),
-        }
+        })
         .null_sign(0);
 
         let good_transactions = [tr1.clone(), tr2.clone()];
@@ -816,16 +843,10 @@ mod tests {
         let mut uncles_rlp = RlpStream::new();
         uncles_rlp.append_list(&good_uncles);
         let good_uncles_hash = keccak(uncles_rlp.as_raw());
-        let good_transactions_root = ordered_trie_root(
-            good_transactions
-                .iter()
-                .map(|t| ::rlp::encode::<UnverifiedTransaction>(t)),
-        );
-        let eip86_transactions_root = ordered_trie_root(
-            eip86_transactions
-                .iter()
-                .map(|t| ::rlp::encode::<UnverifiedTransaction>(t)),
-        );
+        let good_transactions_root =
+            ordered_trie_root(good_transactions.iter().map(|t| t.encode()));
+        let eip86_transactions_root =
+            ordered_trie_root(eip86_transactions.iter().map(|t| t.encode()));
 
         let mut parent = good.clone();
         parent.set_number(9);
@@ -1096,14 +1117,14 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let bad_transactions: Vec<_> = (0..3)
             .map(|i| {
-                Transaction {
+                TypedTransaction::Legacy(Transaction {
                     action: Action::Create,
                     value: U256::zero(),
                     data: Vec::new(),
                     gas: 0.into(),
                     gas_price: U256::zero(),
                     nonce: i.into(),
-                }
+                })
                 .sign(keypair.secret(), None)
             })
             .collect();

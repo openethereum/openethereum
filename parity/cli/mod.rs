@@ -466,6 +466,10 @@ usage! {
             "--ws-max-connections=[CONN]",
             "Maximum number of allowed concurrent WebSockets JSON-RPC connections.",
 
+            ARG arg_ws_max_payload: (usize) = 5usize, or |c: &Config| c.websockets.as_ref()?.max_payload,
+            "--ws-max-payload=[MB]",
+            "Specify maximum size for WS JSON-RPC requests in megabytes.",
+
         ["Metrics"]
             FLAG flag_metrics: (bool) = false, or |c: &Config| c.metrics.as_ref()?.enable.clone(),
             "--metrics",
@@ -706,7 +710,7 @@ usage! {
             "--stratum-secret=[STRING]",
             "Secret for authorizing Stratum server for peers.",
 
-            ARG arg_max_round_blocks_to_import: (usize) = 12usize, or |c: &Config| c.mining.as_ref()?.max_round_blocks_to_import.clone(),
+            ARG arg_max_round_blocks_to_import: (usize) = 1usize, or |c: &Config| c.mining.as_ref()?.max_round_blocks_to_import.clone(),
             "--max-round-blocks-to-import=[S]",
             "Maximal number of blocks to import for each import round.",
 
@@ -903,6 +907,7 @@ struct Ws {
     origins: Option<Vec<String>>,
     hosts: Option<Vec<String>>,
     max_connections: Option<usize>,
+    max_payload: Option<usize>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1323,6 +1328,7 @@ mod tests {
                 arg_ws_origins: "none".into(),
                 arg_ws_hosts: "none".into(),
                 arg_ws_max_connections: 100,
+                arg_ws_max_payload: 5,
 
                 // IPC
                 flag_no_ipc: false,
@@ -1386,7 +1392,7 @@ mod tests {
                 arg_notify_work: Some("http://localhost:3001".into()),
                 flag_refuse_service_transactions: false,
                 flag_infinite_pending_block: false,
-                arg_max_round_blocks_to_import: 12usize,
+                arg_max_round_blocks_to_import: 1usize,
 
                 flag_stratum: false,
                 arg_stratum_interface: "local".to_owned(),
@@ -1512,6 +1518,7 @@ mod tests {
                     origins: Some(vec!["none".into()]),
                     hosts: None,
                     max_connections: None,
+                    max_payload: None,
                 }),
                 rpc: Some(Rpc {
                     disable: Some(true),

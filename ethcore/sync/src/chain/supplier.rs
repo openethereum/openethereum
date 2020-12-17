@@ -15,10 +15,10 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
+use devp2p::PAYLOAD_SOFT_LIMIT;
 use enum_primitive::FromPrimitive;
 use ethereum_types::H256;
 use network::{self, PeerId};
-use devp2p::PAYLOAD_SOFT_LIMIT;
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use std::cmp;

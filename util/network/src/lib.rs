@@ -320,9 +320,6 @@ pub trait NetworkContext {
 
     /// Returns whether the given peer ID is a reserved peer.
     fn is_reserved_peer(&self, peer: PeerId) -> bool;
-
-    /// Returns the size the payload shouldn't exceed
-    fn payload_soft_limit(&self) -> usize;
 }
 
 impl<'a, T> NetworkContext for &'a T
@@ -381,10 +378,6 @@ where
 
     fn is_reserved_peer(&self, peer: PeerId) -> bool {
         (**self).is_reserved_peer(peer)
-    }
-
-    fn payload_soft_limit(&self) -> usize {
-        (**self).payload_soft_limit()
     }
 }
 

@@ -113,6 +113,8 @@ mod session;
 pub use host::NetworkContext;
 pub use service::NetworkService;
 
+pub use connection::PAYLOAD_SOFT_LIMIT;
+
 pub use io::TimerToken;
 pub use node_table::{validate_node_url, NodeId};
 

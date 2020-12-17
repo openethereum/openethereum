@@ -168,24 +168,16 @@ where
         None
     }
 
-    fn eth_protocol_version(&self, _peer: PeerId) -> u8 {
-        ETH_PROTOCOL_VERSION_64.0
-    }
-
     fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8 {
         if protocol == &PAR_PROTOCOL {
             PAR_PROTOCOL_VERSION_2.0
         } else {
-            self.eth_protocol_version(peer_id)
+            ETH_PROTOCOL_VERSION_64.0
         }
     }
 
     fn chain_overlay(&self) -> &RwLock<HashMap<BlockNumber, Bytes>> {
         &self.overlay
-    }
-
-    fn payload_soft_limit(&self) -> usize {
-        100_000
     }
 }
 

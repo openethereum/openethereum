@@ -28,6 +28,7 @@ extern crate rustc_hex;
 extern crate secp256k1;
 extern crate serde;
 extern crate tiny_keccak;
+extern crate crypto as rust_crypto;
 
 #[macro_use]
 extern crate lazy_static;

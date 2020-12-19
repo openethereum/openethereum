@@ -19,12 +19,41 @@ use keccak::Keccak256;
 use rustc_hex::ToHex;
 use secp256k1::key;
 use std::fmt;
+use rust_crypto::digest::Digest;
+use rust_crypto::sha3::Sha3;
 
 pub fn public_to_address(public: &Public) -> Address {
     let hash = public.keccak256();
     let mut result = Address::default();
     result.copy_from_slice(&hash[12..]);
     result
+}
+
+/// Convert address to checksummed address
+pub fn address_to_checksummed(public: &Public) -> String {
+    let address_display = public_to_address(&public).to_hex();
+
+    // There is no method public_to_address(&public).to_bytes().keccak256()
+    // If is implemented, then the next section and the rust_crypto dependencies are not needed
+    let address_hash = {
+        let mut hasher = Sha3::keccak256();
+        hasher.input(address_display.as_bytes());
+        hasher.result_str()
+    };
+
+    // Start checksum calculation
+    let checksum_address = address_display.char_indices()
+        .fold(String::from("0x"), |mut acc, (index, address_char)| {
+            let n = u16::from_str_radix(&address_hash[index..index + 1], 16).unwrap();
+            if n > 7 {
+                // if i pointer character is 9-f, make uppercase
+                acc.push_str(&address_char.to_uppercase().to_string())
+            } else {
+                acc.push(address_char)
+            }
+            acc
+        });
+    checksum_address
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,7 +67,7 @@ impl fmt::Display for KeyPair {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         writeln!(f, "secret:  {}", self.secret.to_hex())?;
         writeln!(f, "public:  {}", self.public.to_hex())?;
-        write!(f, "address: {}", self.address().to_hex())
+        write!(f, "address: {}", address_to_checksummed(&self.public()))
     }
 }
 

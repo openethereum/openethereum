@@ -1439,6 +1439,7 @@ dependencies = [
  "parity-wordlist",
  "quick-error",
  "rand 0.4.6",
+ "rust-crypto",
  "rustc-hex 1.0.0",
  "serde",
  "serde_derive",

@@ -9,16 +9,11 @@ on:
 jobs:
   build-tests:
     name:                       Test and Build
-    env:
-      SCCACHE_CACHE_SIZE:       "1G"
-      SCCACHE_IDLE_TIMEOUT:     0
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     strategy:
       matrix:
         platform:
           - ubuntu-16.04
           - macos-latest
-          - windows2019 # custom runner
         toolchain:
           - stable
     runs-on:                    ${{ matrix.platform }}
@@ -38,9 +33,3 @@ jobs:
         with:
           command:              test
           args:                 --locked --all --release --features "json-tests" --verbose --no-run
-      - name:                   Run tests for ${{ matrix.platform }}
-        if:                     matrix.platform != 'windows2019'
-        uses:                   actions-rs/cargo@v1
-        with:
-          command:              test
-          args:                 --locked --all --release --features "json-tests" --verbose

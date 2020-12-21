@@ -9,6 +9,7 @@ on:
 env:
   AWS_REGION:                   "us-east-1"
   AWS_S3_ARTIFACTS_BUCKET:      "openethereum-releases"
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 jobs:
   build:
@@ -18,7 +19,6 @@ jobs:
         platform:
           - ubuntu-16.04
           - macos-latest
-          - windows2019
         toolchain:
           - stable
     runs-on:                    ${{ matrix.platform }}
@@ -33,32 +33,8 @@ jobs:
           override:             true
 
       # ==============================
-      #       Windows Build
-      # ==============================
-
-      - name:                   Install LLVM for Windows
-        if:                     matrix.platform == 'windows2019'
-        run:                    choco install llvm
-
-      - name:                   Build OpenEthereum for Windows
-        if:                     matrix.platform == 'windows2019'
-        run:                    sh scripts/actions/build-windows.sh ${{matrix.platform}}
-
-      - name:                   Upload Windows build
-        uses:                   actions/upload-artifact@v2
-        if:                     matrix.platform == 'windows2019'
-        with:
-          name:                 windows-artifacts
-          path:                 artifacts
-
-      # ==============================
       #       Linux/Macos Build
       # ==============================
-
-      - name:                   Build OpenEthereum for ${{matrix.platform}}
-        if:                     matrix.platform != 'windows2019'
-        run:                    sh scripts/actions/build-linux.sh ${{matrix.platform}}
-
       - name:                   Upload Linux build
         uses:                   actions/upload-artifact@v2
         if:                     matrix.platform == 'ubuntu-16.04'
@@ -85,11 +61,11 @@ jobs:
       #       Create ZIP files
       # ==============================
 
-      - name:                   Download Windows artifacts
-        uses:                   actions/download-artifact@v2
-        with:
-          name:                 windows-artifacts
-          path:                 windows-artifacts
+      # - name:                   Download Windows artifacts
+      #   uses:                   actions/download-artifact@v2
+      #   with:
+      #     name:                 windows-artifacts
+      #     path:                 windows-artifacts
 
       - name:                   Download Linux artifacts
         uses:                   actions/download-artifact@v2
@@ -132,18 +108,18 @@ jobs:
           echo ::set-output name=MACOS_ARTIFACT::openethereum-macos-${{ env.RELEASE_VERSION }}.zip
           echo ::set-output name=MACOS_SHASUM::$(shasum -a 256 openethereum-macos-${{ env.RELEASE_VERSION }}.zip | awk '{print $1}')
 
-      - name:                   Create zip Windows
-        id:                     create_zip_windows
-        run: |
-          cd windows-artifacts/
-          zip -rT openethereum-windows-${{ env.RELEASE_VERSION }}.zip *
-          ls openethereum-windows-${{ env.RELEASE_VERSION }}.zip
-          cd ..
-          mv windows-artifacts/openethereum-windows-${{ env.RELEASE_VERSION }}.zip .
+      # - name:                   Create zip Windows
+      #   id:                     create_zip_windows
+      #   run: |
+      #     cd windows-artifacts/
+      #     zip -rT openethereum-windows-${{ env.RELEASE_VERSION }}.zip *
+      #     ls openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      #     cd ..
+      #     mv windows-artifacts/openethereum-windows-${{ env.RELEASE_VERSION }}.zip .
 
-          echo "Setting outputs..."
-          echo ::set-output name=WINDOWS_ARTIFACT::openethereum-windows-${{ env.RELEASE_VERSION }}.zip
-          echo ::set-output name=WINDOWS_SHASUM::$(shasum -a 256 openethereum-windows-${{ env.RELEASE_VERSION }}.zip | awk '{print $1}')
+      #     echo "Setting outputs..."
+      #     echo ::set-output name=WINDOWS_ARTIFACT::openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      #     echo ::set-output name=WINDOWS_SHASUM::$(shasum -a 256 openethereum-windows-${{ env.RELEASE_VERSION }}.zip | awk '{print $1}')
 
       # =======================================================================
       # Upload artifacts
@@ -162,11 +138,11 @@ jobs:
           name:                 openethereum-macos-${{ env.RELEASE_VERSION }}.zip
           path:                 openethereum-macos-${{ env.RELEASE_VERSION }}.zip
 
-      - name:                   Upload artifacts
-        uses:                   actions/upload-artifact@v2
-        with:
-          name:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
-          path:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      # - name:                   Upload artifacts
+      #   uses:                   actions/upload-artifact@v2
+      #   with:
+      #     name:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      #     path:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
 
       # =======================================================================
       # Upload artifacts to S3
@@ -191,8 +167,8 @@ jobs:
       linux-shasum:             ${{ steps.create_zip_linux.outputs.LINUX_SHASUM }}
       macos-artifact:           ${{ steps.create_zip_macos.outputs.MACOS_ARTIFACT }}
       macos-shasum:             ${{ steps.create_zip_macos.outputs.MACOS_SHASUM }}
-      windows-artifact:         ${{ steps.create_zip_windows.outputs.WINDOWS_ARTIFACT }}
-      windows-shasum:           ${{ steps.create_zip_windows.outputs.WINDOWS_SHASUM }}
+      # windows-artifact:         ${{ steps.create_zip_windows.outputs.WINDOWS_ARTIFACT }}
+      # windows-shasum:           ${{ steps.create_zip_windows.outputs.WINDOWS_SHASUM }}
 
   draft-release:
     name:                       Draft Release
@@ -216,10 +192,10 @@ jobs:
         with:
           name:                 openethereum-macos-${{ env.RELEASE_VERSION }}.zip
 
-      - name:                   Download artifacts
-        uses:                   actions/download-artifact@v2
-        with:
-          name:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      # - name:                   Download artifacts
+      #   uses:                   actions/download-artifact@v2
+      #   with:
+      #     name:                 openethereum-windows-${{ env.RELEASE_VERSION }}.zip
 
       - name:                   Display structure of downloaded files
         run:                    ls
@@ -273,13 +249,13 @@ jobs:
           asset_name:           openethereum-macos-${{ env.RELEASE_VERSION }}.zip
           asset_content_type:   application/zip
 
-      - name:                   Upload Release Asset - Windows
-        id:                     upload_release_asset_windows
-        uses:                   actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url:           ${{ steps.create_release_draft.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path:           ./openethereum-windows-${{ env.RELEASE_VERSION }}.zip
-          asset_name:           openethereum-windows-${{ env.RELEASE_VERSION }}.zip
-          asset_content_type:   application/zip
+      # - name:                   Upload Release Asset - Windows
+      #   id:                     upload_release_asset_windows
+      #   uses:                   actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url:           ${{ steps.create_release_draft.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+      #     asset_path:           ./openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      #     asset_name:           openethereum-windows-${{ env.RELEASE_VERSION }}.zip
+      #     asset_content_type:   application/zip

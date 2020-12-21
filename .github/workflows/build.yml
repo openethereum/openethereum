@@ -57,7 +57,7 @@ jobs:
     
       - name:                   Build OpenEthereum for ${{matrix.platform}}
         if:                     matrix.platform != 'windows2019'
-        run:                    sh scripts/actions/build-linux.sh ${{matrix.platform}
+        run:                    sh scripts/actions/build-linux.sh ${{matrix.platform}}
 
       - name:                   Upload Linux build
         uses:                   actions/upload-artifact@v2

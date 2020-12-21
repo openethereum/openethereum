@@ -33,8 +33,32 @@ jobs:
           override:             true
 
       # ==============================
+      #       Windows Build
+      # ==============================
+
+      # - name:                   Install LLVM for Windows
+      #   if:                     matrix.platform == 'windows2019'
+      #   run:                    choco install llvm
+
+      # - name:                   Build OpenEthereum for Windows
+      #   if:                     matrix.platform == 'windows2019'
+      #   run:                    sh scripts/actions/build-windows.sh ${{matrix.platform}}
+
+      # - name:                   Upload Windows build
+      #   uses:                   actions/upload-artifact@v2
+      #   if:                     matrix.platform == 'windows2019'
+      #   with:
+      #     name:                 windows-artifacts
+      #     path:                 artifacts
+
+      # ==============================
       #       Linux/Macos Build
       # ==============================
+    
+      - name:                   Build OpenEthereum for ${{matrix.platform}}
+        if:                     matrix.platform != 'windows2019'
+        run:                    sh scripts/actions/build-linux.sh ${{matrix.platform}
+
       - name:                   Upload Linux build
         uses:                   actions/upload-artifact@v2
         if:                     matrix.platform == 'ubuntu-16.04'

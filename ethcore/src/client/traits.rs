@@ -271,6 +271,9 @@ pub trait BlockChainClient:
             .expect("code will return Some if given BlockId::Latest; qed")
     }
 
+    /// Returns true if the given block is known and in the canon chain.
+    fn is_canon(&self, hash: &H256) -> bool;
+
     /// Get address code hash at given block's state.
 
     /// Get value of the storage at given position at the given block's state.

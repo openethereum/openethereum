@@ -551,10 +551,9 @@ where
                 _ => return Err(errors::unknown_block()),
             };
 
-            // TODO Check block hash canonical
-            //if require_canonical && !client.chain().is_canon(&hash) {
-            //    return Err(errors::invalid_input());
-            //}
+            if require_canonical && !client.is_canon(&hash) {
+                return Err(errors::invalid_input());
+            }
 
             return Ok(());
         }

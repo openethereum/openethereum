@@ -22,7 +22,10 @@
 					}
 				},
 				"blockRewardContractAddress": "0x4d0153D434384128D17243409e02fca1B3EE21D6",
-				"blockRewardContractTransition": 5761140
+				"blockRewardContractTransition": 5761140,
+				"randomnessContractAddress": {
+					"14350721": "0x67e90a54AeEA85f21949c645082FE95d77BC1E70"
+				}
 			}
 		}
 	},
@@ -55,12 +58,12 @@
 		"gasLimit": "0x663BE0"
 	},
 	"nodes": [
+		"enode://b39c9c438c533ff7aed6aaefb1c116a350ee3acc3f37c2d6cb85d2a949296238174fe1cb9a04d6a1204b38ca12f63fe4827eaa860fd889a898735fbaba4cca58@178.128.175.244:30303",
+		"enode://24f3bf1307b8e9cd53abaaa339db5653aa3db64d579f7f37788b8a9b938420cc10004dc9af4edbb0f0611a57b741a4912dd081917b3d373e4409d788c422e7e6@134.209.22.144:30303",
+		"enode://b39c9c438c533ff7aed6aaefb1c116a350ee3acc3f37c2d6cb85d2a949296238174fe1cb9a04d6a1204b38ca12f63fe4827eaa860fd889a898735fbaba4cca58@142.93.3.70:30303",
 		"enode://6e3d1b39cbd2a9c4f053a27e68fd90d0bac83691dfdc4a13c59f2555078a71e63c5daaee5a82aa6db500512760a5456f86076bf8bbe8011c27c82ed7d6f5fb26@45.77.140.210:30303",
 		"enode://31dffed97f8fed1f34fe66453280a89cbeeda60cf28f6fbb212ebbefd7c7566a02c1c7d5c00bbbb49b9fa8a49f157e0f786f379ca9bcbf2fea24de70d70a22b6@206.156.242.61:30303",
-		"enode://6bdc7553ab2e4914cb47774c1e6d8c8f47ac7c3981891f85f65d06f208ea1bc4d3bf982b330950e0a0cd127efd7145c4df7113159a1d4a06ed722e6c16d0ac6c@45.32.215.190:30303",
-		"enode://872d82a24144bc007658fb6fac0dcdfb9b63aeb05ef563a06d0186f2d1e5ffbfc5c4f1244891a8a86ef70682b9d24382e654b305224883698862e2df647a4d23@45.76.236.247:30303",
-		"enode://b11fbc6cde81c80be69508aca8ffea8460680a25a9c151b683293f8617282062b8e8e139bf91e88cedf60068a3cf927b0d48832fda5169b58a8f7ce442de6fb4@206.189.76.132:30303",
-		"enode://96678da10ac83769ab3f63114a41b57b700476c5ac02719b878fa89909a936551bb7609aa09b068bf89903206fa03f23e1b5b9117ca278de304c2570b87dcb27@35.175.15.164:30303"
+		"enode://b39c9c438c533ff7aed6aaefb1c116a350ee3acc3f37c2d6cb85d2a949296238174fe1cb9a04d6a1204b38ca12f63fe4827eaa860fd889a898735fbaba4cca58@178.128.175.244:30303"
 	],
 	"accounts": {
 		"0x0000000000000000000000000000000000000005": {
@@ -82,11 +85,19 @@
 				"name": "alt_bn128_add",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_const_operations": { "price": 500 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 500
+							}
+						}
 					},
 					"12598600": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_const_operations": { "price": 150 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 150
+							}
+						}
 					}
 				}
 			}
@@ -96,11 +107,19 @@
 				"name": "alt_bn128_mul",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_const_operations": { "price": 40000 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 40000
+							}
+						}
 					},
 					"12598600": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_const_operations": { "price": 6000 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 6000
+							}
+						}
 					}
 				}
 			}
@@ -110,11 +129,21 @@
 				"name": "alt_bn128_pairing",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_pairing": { "base": 100000, "pair": 80000 }}
+						"price": {
+							"alt_bn128_pairing": {
+								"base": 100000,
+								"pair": 80000
+							}
+						}
 					},
 					"12598600": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_pairing": { "base": 45000, "pair": 34000 }}
+						"price": {
+							"alt_bn128_pairing": {
+								"base": 45000,
+								"pair": 34000
+							}
+						}
 					}
 				}
 			}

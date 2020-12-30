@@ -11,15 +11,27 @@
 				"validators": {
 					"multi": {
 						"0": {
-							"list": ["0xcace5b3c29211740e595850e80478416ee77ca21"]
+							"list": [
+								"0xcace5b3c29211740e595850e80478416ee77ca21"
+							]
 						},
 						"1300": {
 							"safeContract": "0x22e1229a2c5b95a60983b5577f745a603284f535"
+						},
+						"9186425": {
+							"contract": "0xB87BE9f7196F2AE084Ca1DE6af5264292976e013"
 						}
 					}
 				},
 				"blockRewardContractAddress": "0x867305d19606aadba405ce534e303d0e225f9556",
-				"blockRewardContractTransition": 1310
+				"blockRewardContractTransition": 1310,
+				"blockRewardContractTransitions": {
+					"9186425": "0x481c034c6d9441db23Ea48De68BCAe812C5d39bA"
+				},
+				"randomnessContractAddress": {
+					"9186425": "0x5870b0527DeDB1cFBD9534343Feda1a41Ce47766"
+				},
+				"posdaoTransition": 9186425
 			}
 		}
 	},
@@ -42,7 +54,9 @@
 		"eip1706Transition": 7298030,
 		"eip1884Transition": 7298030,
 		"eip2028Transition": 7298030,
-		"registrar": "0x1ec97dc137f5168af053c24460a1200502e1a9d2"
+		"registrar": "0x6B53721D4f2Fb9514B85f5C49b197D857e36Cf03",
+		"transactionPermissionContract": "0x7Dd7032AA75A37ea0b150f57F899119C7379A78b",
+		"transactionPermissionContractTransition": 9186425
 	},
 	"genesis": {
 		"seal": {
@@ -54,6 +68,25 @@
 		"difficulty": "0x20000",
 		"gasLimit": "0x989680"
 	},
+	"nodes": [
+		"enode://4716883567b5317aad93ea28e707fad0631fb4aa5ac7c5fbd485380b01d8801c21a8cbf4d6ee3a2c9b2b070a270a49d4a2a0da9e1d47a1f433dafbaf7b2edd06@157.245.92.222:30303",
+		"enode://ab7f6c633ba2dc54795dfd2c739ba7d964f499541c0b8d8ba9d275bd3df1b789470a21a921a469fa515a3dfccc96a434a3fd016a169d88d0043fc6744f34288e@67.205.180.17:30303",
+		"enode://0caa2d84aef00d0bc5de6cf9db3e736da245d882ec8f91e201b3e1635960e62cbb2f8bfc57e679ff3e1d53da2773e31df624a56b2f457ecb51d09fdf9970c86b@67.205.145.143:30303",
+		"enode://bd75111424c42c349fc255db017ac0be370b37b558627e3bbc41319071ef7642c04cdbd2b674193a99aa35d67a83016ab293b8ab87ed4a4606e69f114ac95535@157.230.185.80:30303",
+		"enode://bd75111424c42c349fc255db017ac0be370b37b558627e3bbc41319071ef7642c04cdbd2b674193a99aa35d67a83016ab293b8ab87ed4a4606e69f114ac95535@161.35.51.60:30303",
+		"enode://ef94ffb10c440dd990c5c4be1c85046f5f7329ba60d23db7a68c8b91b6a721081f8190369f3a32f3c02d213127b2066eb42ee0444998d354ba0923378522acb3@161.35.62.72:30303",
+		"enode://4a0eadf22d6a37c5596fd2df2a53a26a5b59dd863e67246ab94e6a81b31765e08d9f70a4dd9683221e63cc2120c8a808a6a457455bd658bdf49c688c62db2011@51.81.244.170:30303",
+		"enode://e75a1e9f080bd6012b39321c0f2d984567172625280b3e7362e962a42578c5e79c847b3eb83aa7e2a4cdeefbfadf0c36ed2719cad1d5e6377ccd6ebe314cc6bc@64.227.97.130:30303",
+		"enode://6674773f7aac78d5527fa90c847dcbca198de4081306406a8fec5c15f7a2e141362344041291dd10d0aafa7706a3d8f21a08b6f6834a5b1aab9cccd8ca35ccee@143.110.226.15:30303",
+		"enode://0caa2d84aef00d0bc5de6cf9db3e736da245d882ec8f91e201b3e1635960e62cbb2f8bfc57e679ff3e1d53da2773e31df624a56b2f457ecb51d09fdf9970c86b@134.122.24.231:30303",
+		"enode://0caa2d84aef00d0bc5de6cf9db3e736da245d882ec8f91e201b3e1635960e62cbb2f8bfc57e679ff3e1d53da2773e31df624a56b2f457ecb51d09fdf9970c86b@67.205.145.143:30303",
+		"enode://0caa2d84aef00d0bc5de6cf9db3e736da245d882ec8f91e201b3e1635960e62cbb2f8bfc57e679ff3e1d53da2773e31df624a56b2f457ecb51d09fdf9970c86b@162.243.164.98:30303",
+		"enode://0caa2d84aef00d0bc5de6cf9db3e736da245d882ec8f91e201b3e1635960e62cbb2f8bfc57e679ff3e1d53da2773e31df624a56b2f457ecb51d09fdf9970c86b@167.99.4.175:30303",
+		"enode://da2449aaba873c40c6daf764de55f4b9eae24c4738daec893ef95b6ada96463c6b9624f8e376e1073d21dd820c5bb361e14575121b09bbd7735b6b556ee1b768@67.205.176.117:30303",
+		"enode://e8c7a0db430429bb374c981438c0dbd95e565088a483388aa46d8377a3bd62f02cd83d7e2c7e5fc77606141bfef29d23d4285a7c1d9b7e743cf3029314506df7@80.240.16.221:30303",
+		"enode://2cde5ae04ed57bba5bac8311a97be056838d5304bc3bcee698066e5fc532e846f785198f87e8b84b57b03622a22aac5dd2853c5203d1ece2c9f25b48487d145b@149.28.57.8:30303",
+		"enode://90b0a0e74a9a1ad258531b4ceec25587d8b52ff2cfb36206a34bf6ba1a8d21b2abd20da13260102508a2ac67afbeb2d2ab7a5e9d6bea3bce845cd81e655585cc@45.77.110.159:30303"
+	],
 	"accounts": {
 		"0x0000000000000000000000000000000000000005": {
 			"builtin": {
@@ -74,11 +107,19 @@
 				"name": "alt_bn128_add",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_const_operations": { "price": 500 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 500
+							}
+						}
 					},
 					"7298030": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_const_operations": { "price": 150 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 150
+							}
+						}
 					}
 				}
 			}
@@ -88,11 +129,19 @@
 				"name": "alt_bn128_mul",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_const_operations": { "price": 40000 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 40000
+							}
+						}
 					},
 					"7298030": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_const_operations": { "price": 6000 }}
+						"price": {
+							"alt_bn128_const_operations": {
+								"price": 6000
+							}
+						}
 					}
 				}
 			}
@@ -102,11 +151,21 @@
 				"name": "alt_bn128_pairing",
 				"pricing": {
 					"0": {
-						"price": { "alt_bn128_pairing": { "base": 100000, "pair": 80000 }}
+						"price": {
+							"alt_bn128_pairing": {
+								"base": 100000,
+								"pair": 80000
+							}
+						}
 					},
 					"7298030": {
 						"info": "EIP 1108 transition",
-						"price": { "alt_bn128_pairing": { "base": 45000, "pair": 34000 }}
+						"price": {
+							"alt_bn128_pairing": {
+								"base": 45000,
+								"pair": 34000
+							}
+						}
 					}
 				}
 			}
@@ -190,10 +249,6 @@
 				}
 			}
 		}
-	},
-	"nodes": [
-		"enode://1c19ba0a77dd663b843c33beb9020e7eb41fc34b47b98424dbc427f74692115d74c7c27b6c0aa2b59bb1d8f710650cae1090153d10b6909ca7bdcdfb183b1c59@54.39.190.172:30303",
-		"enode://c1c3a604950119f82d78189792b73f5a82a239017c77465e3c32fc51c1d758a9a772ffddd58436d465342f2cfa6d4a442a49e526743f4d8354d7c5ce794c3ee5@95.179.222.48:30303"
-	]
+	}
 }
 

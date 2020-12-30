@@ -1811,6 +1811,11 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 .map(|(author, reward_kind)| (author, reward_kind, self.block_reward))
                 .collect()
         };
+        
+        if let Some(signer) = self.signer.read().as_ref() {
+            let our_addr = signer.address();
+            self.validators.on_close_block(&block.header, &our_addr)?
+        }
 
         block_reward::apply_block_rewards(&rewards, block, &self.machine)
     }

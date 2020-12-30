@@ -1,0 +1,33 @@
+name:                           Build and Test Suite on Windows
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+jobs:
+  build-tests:
+    name:                       Test and Build
+    strategy:
+      matrix:
+        platform:
+          - windows2019 # custom runner
+        toolchain:
+          - stable
+    runs-on:                    ${{ matrix.platform }}
+    steps:
+      - name:                   Checkout sources
+        uses:                   actions/checkout@main
+        with:
+          submodules:           true
+      - name:                   Install toolchain
+        uses:                   actions-rs/toolchain@v1
+        with:
+          toolchain:            ${{ matrix.toolchain }}
+          profile:              minimal
+          override:             true
+      - name:                   Build tests
+        uses:                   actions-rs/cargo@v1
+        with:
+          command:              test
+          args:                 --locked --all --release --features "json-tests" --verbose --no-run

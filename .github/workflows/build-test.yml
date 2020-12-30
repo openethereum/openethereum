@@ -33,8 +33,3 @@ jobs:
         with:
           command:              test
           args:                 --locked --all --release --features "json-tests" --verbose --no-run
-      - name:                   Run tests for ${{ matrix.platform }}
-        uses:                   actions-rs/cargo@v1
-        with:
-          command:              test
-          args:                 --locked --all --release --features "json-tests" --verbose

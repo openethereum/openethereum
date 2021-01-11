@@ -43,7 +43,9 @@
 		"eip1706Transition": "0x0",
 		"eip1884Transition": "0x0",
 		"eip2028Transition": "0x0",
-		"eip2315Transition": "0x0"
+		"eip2315Transition": "0x0",
+		"eip2929Transition": "0x0",
+		"eip2930Transition": "0x0"
 	},
 	"genesis": {
 		"seal": {
@@ -113,8 +115,8 @@
 				"name": "modexp",
 				"activate_at": "0x00",
 				"pricing": {
-					"0": {
-						"price" : { "modexp2565": { } }
+					"modexp": {
+						"divisor": 20
 					}
 				}
 			}

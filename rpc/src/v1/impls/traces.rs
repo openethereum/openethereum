@@ -111,6 +111,7 @@ where
         let signed = fake_sign::sign_call(request)?;
 
         let id = match block {
+            BlockNumber::Hash { hash, .. } => BlockId::Hash(hash),
             BlockNumber::Num(num) => BlockId::Number(num),
             BlockNumber::Earliest => BlockId::Earliest,
             BlockNumber::Latest => BlockId::Latest,
@@ -157,6 +158,7 @@ where
             .collect::<Result<Vec<_>>>()?;
 
         let id = match block {
+            BlockNumber::Hash { hash, .. } => BlockId::Hash(hash),
             BlockNumber::Num(num) => BlockId::Number(num),
             BlockNumber::Earliest => BlockId::Earliest,
             BlockNumber::Latest => BlockId::Latest,
@@ -198,6 +200,7 @@ where
         let signed = SignedTransaction::new(tx).map_err(errors::transaction)?;
 
         let id = match block {
+            BlockNumber::Hash { hash, .. } => BlockId::Hash(hash),
             BlockNumber::Num(num) => BlockId::Number(num),
             BlockNumber::Earliest => BlockId::Earliest,
             BlockNumber::Latest => BlockId::Latest,
@@ -247,6 +250,7 @@ where
         flags: TraceOptions,
     ) -> Result<Vec<TraceResultsWithTransactionHash>> {
         let id = match block_number {
+            BlockNumber::Hash { hash, .. } => BlockId::Hash(hash),
             BlockNumber::Num(num) => BlockId::Number(num),
             BlockNumber::Earliest => BlockId::Earliest,
             BlockNumber::Latest => BlockId::Latest,

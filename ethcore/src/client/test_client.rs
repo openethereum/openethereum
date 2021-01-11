@@ -847,6 +847,10 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
+    fn is_canon(&self, _hash: &H256) -> bool {
+        unimplemented!()
+    }
+
     fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
         match id {
             BlockId::Number(number) => Some(number),

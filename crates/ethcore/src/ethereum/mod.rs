@@ -76,7 +76,10 @@ pub fn new_volta<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
 
 /// Create a new EWC mainnet chain spec.
 pub fn new_ewc<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(params.into(), include_bytes!("../../res/chainspec/ewc.json"))
+    load(
+        params.into(),
+        include_bytes!("../../res/chainspec/ewc.json"),
+    )
 }
 
 /// Create a new Musicoin mainnet chain spec.
@@ -99,7 +102,10 @@ pub fn new_ellaism<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
 
 /// Create a new MIX mainnet chain spec.
 pub fn new_mix<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
-    load(params.into(), include_bytes!("../../res/chainspec/mix.json"))
+    load(
+        params.into(),
+        include_bytes!("../../res/chainspec/mix.json"),
+    )
 }
 
 /// Create a new Callisto chain spec
@@ -183,12 +189,18 @@ pub fn new_homestead_test() -> Spec {
 
 /// Create a new Foundation Homestead-EIP150-era chain spec as though it never changed from Homestead/Frontier.
 pub fn new_eip150_test() -> Spec {
-    load(None, include_bytes!("../../res/chainspec/test/eip150_test.json"))
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/eip150_test.json"),
+    )
 }
 
 /// Create a new Foundation Homestead-EIP161-era chain spec as though it never changed from Homestead/Frontier.
 pub fn new_eip161_test() -> Spec {
-    load(None, include_bytes!("../../res/chainspec/test/eip161_test.json"))
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/eip161_test.json"),
+    )
 }
 
 /// Create a new Foundation Frontier/Homestead/DAO chain spec with transition points at #5 and #8.
@@ -249,29 +261,42 @@ pub fn new_byzantium_to_constantinoplefixat5_test() -> Spec {
 
 /// Create a new Foundation Berlin era spec.
 pub fn new_berlin_test() -> Spec {
-    load(None, include_bytes!("../../res/chainspec/test/berlin_test.json"))
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/berlin_test.json"),
+    )
 }
 
 /// Create a new YOLO spec
 pub fn new_yolo3_test() -> Spec {
-    load(None, include_bytes!("../../res/chainspec/test/yolo3_test.json"))
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/yolo3_test.json"),
+    )
 }
 
 /// Create a new Musicoin-MCIP3-era spec.
 pub fn new_mcip3_test() -> Spec {
-    load(None, include_bytes!("../../res/chainspec/test/mcip3_test.json"))
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/mcip3_test.json"),
+    )
 }
 
 // For tests
 
 /// Create a new Foundation Frontier-era chain spec as though it never changes to Homestead.
 pub fn new_frontier_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/frontier_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/frontier_test.json"
+    ))
 }
 
 /// Create a new Foundation Homestead-era chain spec as though it never changed from Frontier.
 pub fn new_homestead_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/homestead_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/homestead_test.json"
+    ))
 }
 
 /// Create a new Foundation Homestead-EIP210-era chain spec as though it never changed from Homestead/Frontier.
@@ -281,7 +306,9 @@ pub fn new_eip210_test_machine() -> EthereumMachine {
 
 /// Create a new Foundation Byzantium era spec.
 pub fn new_byzantium_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/byzantium_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/byzantium_test.json"
+    ))
 }
 
 /// Create a new Foundation Constantinople era spec.
@@ -293,12 +320,16 @@ pub fn new_constantinople_test_machine() -> EthereumMachine {
 
 /// Create a new Foundation St. Peter's (Contantinople Fix) era spec.
 pub fn new_constantinople_fix_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/st_peters_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/st_peters_test.json"
+    ))
 }
 
 /// Create a new Foundation Istanbul era spec.
 pub fn new_istanbul_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/istanbul_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/istanbul_test.json"
+    ))
 }
 
 /// Create a new Musicoin-MCIP3-era spec.
@@ -308,7 +339,9 @@ pub fn new_mcip3_test_machine() -> EthereumMachine {
 
 /// Create new Kovan spec with wasm activated at certain block
 pub fn new_kovan_wasm_test_machine() -> EthereumMachine {
-    load_machine(include_bytes!("../../res/chainspec/test/kovan_wasm_test.json"))
+    load_machine(include_bytes!(
+        "../../res/chainspec/test/kovan_wasm_test.json"
+    ))
 }
 
 #[cfg(test)]

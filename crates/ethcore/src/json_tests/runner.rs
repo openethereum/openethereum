@@ -232,8 +232,8 @@ impl TestRunner {
 
 #[test]
 fn ethereum_json_tests() {
-    let content = std::fs::read("res/json_tests.json")
-        .expect("cannot open ethereum tests spec file");
+    let content =
+        std::fs::read("res/json_tests.json").expect("cannot open ethereum tests spec file");
     let runner =
         TestRunner::load(content.as_slice()).expect("cannot load ethereum tests spec file");
     println!("----------------------------------------------------");

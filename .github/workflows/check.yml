@@ -30,7 +30,7 @@ jobs:
         uses:                   actions-rs/cargo@v1
         with:
           command:              check
-          args:                 --locked --manifest-path util/io/Cargo.toml --no-default-features --verbose
+          args:                 --locked --manifest-path crates/runtime/io/Cargo.toml --no-default-features --verbose
       - name:                   Run cargo check 3/3
         uses:                   actions-rs/cargo@v1
         with:

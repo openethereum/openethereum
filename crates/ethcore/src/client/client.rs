@@ -1240,10 +1240,7 @@ impl Client {
             return Some(state);
         }
 
-        let block_number = match self.block_number(id) {
-            Some(num) => num,
-            None => return None,
-        };
+        let block_number = self.block_number(id)?;
 
         self.block_header(id).and_then(|header| {
             let db = self.state_db.read().boxed_clone();
@@ -1370,15 +1367,12 @@ impl Client {
                     None => best_block_number.saturating_sub(history),
                 };
 
-                match self.block_hash(BlockId::Number(start_num)) {
-                    Some(h) => h,
-                    None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
-                }
+                self.block_hash(BlockId::Number(start_num))
+                    .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?
             }
-            _ => match self.block_hash(at) {
-                Some(hash) => hash,
-                None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
-            },
+            _ => self
+                .block_hash(at)
+                .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?,
         };
 
         let processing_threads = self.config.snapshot.processing_threads;
@@ -2407,18 +2401,13 @@ impl BlockChainClient for Client {
                 .collect::<Vec<H256>>()
         } else {
             // Otherwise, we use a slower version that finds a link between from_block and to_block.
-            let from_hash = match Self::block_hash(&chain, filter.from_block) {
-                Some(val) => val,
-                None => return Err(filter.from_block.clone()),
-            };
-            let from_number = match chain.block_number(&from_hash) {
-                Some(val) => val,
-                None => return Err(BlockId::Hash(from_hash)),
-            };
-            let to_hash = match Self::block_hash(&chain, filter.to_block) {
-                Some(val) => val,
-                None => return Err(filter.to_block.clone()),
-            };
+            let from_hash = Self::block_hash(&chain, filter.from_block)
+                .ok_or_else(|| filter.from_block.clone())?;
+            let from_number = chain
+                .block_number(&from_hash)
+                .ok_or_else(|| BlockId::Hash(from_hash))?;
+            let to_hash =
+                Self::block_hash(&chain, filter.to_block).ok_or_else(|| filter.to_block.clone())?;
 
             let blooms = filter.bloom_possibilities();
             let bloom_match = |header: &encoded::Header| {
@@ -2432,10 +2421,9 @@ impl BlockChainClient for Client {
                 let mut current_hash = to_hash;
 
                 loop {
-                    let header = match chain.block_header_data(&current_hash) {
-                        Some(val) => val,
-                        None => return Err(BlockId::Hash(current_hash)),
-                    };
+                    let header = chain
+                        .block_header_data(&current_hash)
+                        .ok_or_else(|| BlockId::Hash(current_hash))?;
                     if bloom_match(&header) {
                         blocks.push(current_hash);
                     }

@@ -623,10 +623,7 @@ impl<'a> CallCreateExecutive<'a> {
                         tracer,
                         vm_tracer,
                     );
-                    match exec.exec(&mut ext) {
-                        Ok(val) => Ok(val.finalize(ext)),
-                        Err(err) => Err(err),
-                    }
+                    exec.exec(&mut ext).map(|val| val.finalize(ext))
                 };
 
                 let res = match out {
@@ -694,10 +691,7 @@ impl<'a> CallCreateExecutive<'a> {
                         tracer,
                         vm_tracer,
                     );
-                    match exec.exec(&mut ext) {
-                        Ok(val) => Ok(val.finalize(ext)),
-                        Err(err) => Err(err),
-                    }
+                    exec.exec(&mut ext).map(|val| val.finalize(ext))
                 };
 
                 let res = match out {
@@ -763,10 +757,7 @@ impl<'a> CallCreateExecutive<'a> {
                         tracer,
                         vm_tracer,
                     );
-                    match exec.exec(&mut ext) {
-                        Ok(val) => Ok(val.finalize(ext)),
-                        Err(err) => Err(err),
-                    }
+                    exec.exec(&mut ext).map(|val| val.finalize(ext))
                 };
 
                 let res = match out {
@@ -840,10 +831,7 @@ impl<'a> CallCreateExecutive<'a> {
                         tracer,
                         vm_tracer,
                     );
-                    match exec.exec(&mut ext) {
-                        Ok(val) => Ok(val.finalize(ext)),
-                        Err(err) => Err(err),
-                    }
+                    exec.exec(&mut ext).map(|val| val.finalize(ext))
                 };
 
                 let res = match out {

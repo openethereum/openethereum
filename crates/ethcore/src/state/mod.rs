@@ -246,10 +246,7 @@ pub fn prove_transaction_virtual<H: AsHashDB<KeccakHasher, DBValue> + Send + Syn
         factories,
     );
 
-    let mut state = match res {
-        Ok(state) => state,
-        Err(_) => return None,
-    };
+    let mut state = res.ok()?;
 
     let options = TransactOptions::with_no_tracing()
         .dont_check_nonce()

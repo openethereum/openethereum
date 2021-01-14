@@ -518,10 +518,8 @@ impl Configuration {
     }
 
     fn ip_filter(&self) -> Result<IpFilter, String> {
-        match IpFilter::parse(self.args.arg_allow_ips.as_str()) {
-            Ok(allow_ip) => Ok(allow_ip),
-            Err(_) => Err("Invalid IP filter value".to_owned()),
-        }
+        IpFilter::parse(self.args.arg_allow_ips.as_str())
+            .map_err(|_| "Invalid IP filter value".to_owned())
     }
 
     fn min_peers(&self) -> u32 {

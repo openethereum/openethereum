@@ -159,10 +159,7 @@ impl<'a> Visitor<'a> for CryptoVisitor {
             (Some(_), None) => return Err(V::Error::missing_field("cipherparams")),
         };
 
-        let ciphertext = match ciphertext {
-            Some(ciphertext) => ciphertext,
-            None => return Err(V::Error::missing_field("ciphertext")),
-        };
+        let ciphertext = ciphertext.ok_or_else(|| V::Error::missing_field("ciphertext"))?;
 
         let kdf = match (kdf, kdfparams) {
             (Some(KdfSer::Pbkdf2), Some(KdfSerParams::Pbkdf2(params))) => Kdf::Pbkdf2(params),
@@ -172,10 +169,7 @@ impl<'a> Visitor<'a> for CryptoVisitor {
             (Some(_), None) => return Err(V::Error::missing_field("kdfparams")),
         };
 
-        let mac = match mac {
-            Some(mac) => mac,
-            None => return Err(V::Error::missing_field("mac")),
-        };
+        let mac = mac.ok_or_else(|| V::Error::missing_field("mac"))?;
 
         let result = Crypto {
             cipher: cipher,

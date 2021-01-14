@@ -60,10 +60,10 @@ use signer;
 use sync::{self, SyncConfig};
 use user_defaults::UserDefaults;
 
-// how often to take periodic snapshots.
-const SNAPSHOT_PERIOD: u64 = 5000;
+// How often we attempt to take a snapshot: only snapshot on blocknumbers that are multiples of this.
+const SNAPSHOT_PERIOD: u64 = 20000;
 
-// how many blocks to wait before starting a periodic snapshot.
+// Start snapshots `history` blocks from the tip. Should be smaller than `SNAPSHOT_HISTORY`.
 const SNAPSHOT_HISTORY: u64 = 100;
 
 // Full client number of DNS threads

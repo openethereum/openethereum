@@ -224,7 +224,14 @@ impl<T: InformantData> Informant<T> {
 
     pub fn tick(&self) {
         let now = Instant::now();
-        let elapsed = now.duration_since(*self.last_tick.read());
+        let elapsed;
+        {
+            let last_tick = self.last_tick.read();
+            if now < *last_tick + Duration::from_millis(1500) {
+                return;
+            }
+            elapsed = now - *last_tick;
+        }
 
         let (client_report, full_report) = {
             let last_report = self.last_report.lock();

@@ -1001,7 +1001,7 @@ mod tests {
     fn sends_async_messages() {
         let gas_prices = vec![1.into(), 2.into(), 3.into(), 999.into()];
         let client = generate_dummy_client_with_spec_and_data(Spec::new_null, 400, 5, &gas_prices);
-        let service = IoService::<ClientIoMessage>::start().unwrap();
+        let service = IoService::<ClientIoMessage>::start("Test").unwrap();
         let spec = Spec::new_test();
 
         let tempdir = TempDir::new("").unwrap();

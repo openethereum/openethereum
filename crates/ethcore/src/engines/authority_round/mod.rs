@@ -764,7 +764,7 @@ impl AuthorityRound {
             .start_step
             .unwrap_or_else(|| (unix_now().as_secs() / (our_params.step_duration as u64)));
         let engine = Arc::new(AuthorityRound {
-            transition_service: IoService::<()>::start()?,
+            transition_service: IoService::<()>::start("AuRa")?,
             step: Arc::new(PermissionedStep {
                 inner: Step {
                     inner: AtomicUsize::new(initial_step as usize),

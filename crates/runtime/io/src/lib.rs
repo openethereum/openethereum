@@ -46,7 +46,7 @@
 //! }
 //!
 //! fn main () {
-//! 	let mut service = IoService::<MyMessage>::start().expect("Error creating network service");
+//! 	let mut service = IoService::<MyMessage>::start("name").expect("Error creating network service");
 //! 	service.register_handler(Arc::new(MyHandler)).unwrap();
 //!
 //! 	// Wait for quit condition
@@ -239,7 +239,8 @@ mod tests {
 
         let handler = Arc::new(MyHandler(atomic::AtomicBool::new(false)));
 
-        let service = IoService::<MyMessage>::start().expect("Error creating network service");
+        let service =
+            IoService::<MyMessage>::start("Test").expect("Error creating network service");
         service.register_handler(handler.clone()).unwrap();
 
         service.send_message(MyMessage { data: 5 }).unwrap();
@@ -271,7 +272,8 @@ mod tests {
 
         let handler = Arc::new(MyHandler(atomic::AtomicBool::new(false)));
 
-        let service = IoService::<MyMessage>::start().expect("Error creating network service");
+        let service =
+            IoService::<MyMessage>::start("Test").expect("Error creating network service");
         service.register_handler(handler.clone()).unwrap();
 
         thread::sleep(Duration::from_secs(2));
@@ -300,7 +302,8 @@ mod tests {
 
         let handler = Arc::new(MyHandler(atomic::AtomicUsize::new(0)));
 
-        let service = IoService::<MyMessage>::start().expect("Error creating network service");
+        let service =
+            IoService::<MyMessage>::start("Test").expect("Error creating network service");
         service.register_handler(handler.clone()).unwrap();
 
         thread::sleep(Duration::from_secs(2));

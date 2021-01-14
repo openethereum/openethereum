@@ -59,7 +59,7 @@ pub struct Worker {
 impl Worker {
     /// Creates a new worker instance.
     pub fn new<Message>(
-        index: usize,
+        name: &str,
         stealer: deque::Stealer<Work<Message>>,
         channel: IoChannel<Message>,
         wait: Arc<Condvar>,
@@ -78,7 +78,7 @@ impl Worker {
         worker.thread = Some(
             thread::Builder::new()
                 .stack_size(STACK_SIZE)
-                .name(format!("IO Worker #{}", index))
+                .name(format!("Worker {}", name))
                 .spawn(move || {
                     LOCAL_STACK_SIZE.with(|val| val.set(STACK_SIZE));
                     let ini = (stealer, channel.clone(), wait, wait_mutex.clone(), deleting);

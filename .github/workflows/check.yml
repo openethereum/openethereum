@@ -35,7 +35,7 @@ jobs:
         uses:                   actions-rs/cargo@v1
         with:
           command:              check
-          args:                 --locked --manifest-path util/io/Cargo.toml --features "mio" --verbose
+          args:                 --locked --manifest-path crates/runtime/io/Cargo.toml --features "mio" --verbose
       - name:                   Run cargo check evmbin
         uses:                   actions-rs/cargo@v1
         with:

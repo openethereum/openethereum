@@ -1,7 +1,4 @@
-use ethjson::test::{
-    ChainTests, DifficultyTests, EthereumTestSuite, ExecutiveTests, StateTests, TestChainSpec,
-    TestTrieSpec, TransactionTests, TrieTests,
-};
+use ethjson::test::{ChainTests, DifficultyTests, EthereumTestSuite, ExecutiveTests, LocalTests, StateTests, TestChainSpec, TestTrieSpec, TransactionTests, TrieTests};
 use globset::Glob;
 use log::info;
 use rayon::prelude::*;
@@ -83,6 +80,9 @@ impl TestRunner {
     /// Run the tests
     pub fn run(&self) -> TestResult {
         let mut res = TestResult::zero();
+        for t in &self.0.local {
+            res += Self::run_local_tests(&t);
+        }
         for t in &self.0.chain {
             res += Self::run_chain_tests(&t);
         }
@@ -139,6 +139,16 @@ impl TestRunner {
             }
         }
         false
+    }
+
+    fn run_local_tests(test: &LocalTests) -> TestResult {
+        Self::run1(
+            test,
+            &test.path,
+            |test: &LocalTests, path: &Path, json: &[u8]| {
+                super::local::json_local_test(&test, &path, &json, &mut |_, _| {})
+            },
+        )
     }
 
     fn run_chain_tests(test: &ChainTests) -> TestResult {

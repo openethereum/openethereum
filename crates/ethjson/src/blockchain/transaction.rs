@@ -18,17 +18,30 @@
 
 use bytes::Bytes;
 use uint::Uint;
+use ethereum_types::{H160, H256};
 
 /// Blockchain test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
-    data: Bytes,
-    gas_limit: Uint,
-    gas_price: Uint,
-    nonce: Uint,
-    r: Uint,
-    s: Uint,
-    v: Uint,
-    value: Uint,
+    #[serde(rename = "type")]
+    pub transaction_type: Option<Uint>,
+    pub data: Bytes,
+    pub gas_limit: Uint,
+    pub gas_price: Uint,
+    pub nonce: Uint,
+    pub r: Uint,
+    pub s: Uint,
+    pub v: Uint,
+    pub value: Uint,
+    pub chain_id: Option<Uint>,
+    pub access_list: Option<Vec<AccessList>>,
+    pub hash: Option<H256>,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessList {
+    pub address: H160,
+    pub storage_keys: Vec<H256>,
 }

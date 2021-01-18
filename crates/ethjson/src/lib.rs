@@ -39,3 +39,4 @@ pub mod transaction;
 pub mod trie;
 pub mod uint;
 pub mod vm;
+pub mod local_tests;

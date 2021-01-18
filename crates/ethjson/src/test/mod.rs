@@ -123,6 +123,8 @@ impl SkipStates {
 /// Describes a github.com/ethereum/tests suite
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct EthereumTestSuite {
+    /// local tests
+    pub local: Vec<LocalTests>,
     /// Blockchain tests
     pub chain: Vec<ChainTests>,
     /// State tests
@@ -157,6 +159,13 @@ pub enum TestTrieSpec {
     Generic,
     /// Secure
     Secure,
+}
+
+/// A set of local tests
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct LocalTests {
+    /// Path of the json tests
+    pub path: PathBuf,
 }
 
 /// A set of blockchain tests

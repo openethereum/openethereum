@@ -35,8 +35,8 @@ use sync::SyncState;
 use types::{
     ids::{BlockId, TransactionId},
     log_entry::{LocalizedLogEntry, LogEntry},
-    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome},
-    transaction::{Action, Transaction, TypedTransaction, TypedTxId},
+    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceiptId},
+    transaction::{Action, Transaction, TypedTransaction},
 };
 
 use jsonrpc_core::IoHandler;
@@ -1133,7 +1133,7 @@ fn rpc_eth_transaction_receipt() {
         to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
         transaction_hash: H256::zero(),
         transaction_index: 0,
-        transaction_type: TypedTxId::Legacy,
+        receipt_type: TypedReceiptId::Legacy,
         block_hash: H256::from_str(
             "ed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5",
         )
@@ -1220,7 +1220,7 @@ fn rpc_eth_pending_receipt() {
         )
         .unwrap(),
         transaction_index: 0,
-        transaction_type: TypedTxId::Legacy,
+        receipt_type: TypedReceiptId::Legacy,
         cumulative_gas_used: U256::from(0x20),
         gas_used: U256::from(0x10),
         contract_address: None,

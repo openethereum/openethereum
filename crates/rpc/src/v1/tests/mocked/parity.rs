@@ -21,10 +21,7 @@ use ethstore::ethkey::{Generator, Random};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::sync::Arc;
 use sync::ManageNetwork;
-use types::{
-    receipt::{LocalizedReceipt, TransactionOutcome},
-    transaction::TypedTxId,
-};
+use types::receipt::{LocalizedReceipt, TransactionOutcome, TypedReceiptId};
 
 use super::manage_network::TestManageNetwork;
 use jsonrpc_core::IoHandler;
@@ -470,7 +467,7 @@ fn rpc_parity_block_receipts() {
         TransactionId::Hash(1.into()),
         LocalizedReceipt {
             transaction_hash: 1.into(),
-            transaction_type: TypedTxId::Legacy,
+            receipt_type: TypedReceiptId::Legacy,
             transaction_index: 0,
             block_hash: 3.into(),
             block_number: 0,

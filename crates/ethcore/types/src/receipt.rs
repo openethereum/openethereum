@@ -120,7 +120,7 @@ impl TypedReceipt {
     pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
         //curently we are using same receipt for both legacy and typed transaction
         match type_id {
-            TypedTxId::AccessList => Self::AccessList(legacy_receipt),
+            TypedTxId::AccessList => Self::Legacy(legacy_receipt),
             TypedTxId::Legacy => Self::Legacy(legacy_receipt),
         }
     }
@@ -146,22 +146,22 @@ impl TypedReceipt {
         }
     }
 
-    fn decode(tx: &[u8]) -> Result<Self, DecoderError> {
-        if tx.is_empty() {
+    fn decode(receipt: &[u8]) -> Result<Self, DecoderError> {
+        if receipt.is_empty() {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let id = tx[0].try_into();
+        let id = receipt[0].try_into();
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }
         //other transaction types
         match id.unwrap() {
             TypedTxId::AccessList => {
-                let rlp = Rlp::new(&tx[1..]);
+                let rlp = Rlp::new(&receipt[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
             }
-            TypedTxId::Legacy => Ok(Self::Legacy(LegacyReceipt::decode(&Rlp::new(tx))?)),
+            TypedTxId::Legacy => Ok(Self::Legacy(LegacyReceipt::decode(&Rlp::new(receipt))?)),
         }
     }
 

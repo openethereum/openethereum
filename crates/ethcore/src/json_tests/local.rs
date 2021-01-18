@@ -1,17 +1,9 @@
 use super::HookType;
-use client::{
-    Balance, BlockChainClient, BlockId, ChainInfo, Client, ClientConfig, EvmTestClient,
-    ImportBlock, Nonce, StateOrBlock,
-};
-use ethereum_types::{H256, U256};
+use ethereum_types::U256;
 use ethjson;
 use ethjson::blockchain::Block;
-use io::IoChannel;
 use log::warn;
-use miner::Miner;
-use rustc_hex::ToHex;
-use spec::Genesis;
-use std::{convert::TryInto, path::Path, sync::Arc};
+use std::path::Path;
 use test_helpers;
 use types::transaction::{TypedTransaction, TypedTxId};
 use verification::{queue::kind::blocks::Unverified, VerifierType};
@@ -111,8 +103,7 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
         for (ref_tx, tx) in txs.iter().zip(block.transactions.iter()) {
             // check signatures
             let mut is_ok = test_exp(U256::from(tx.signature().r()) == ref_tx.r.0, "Sig R")
-                && test_exp(U256::from(tx.signature().s()) == ref_tx.s.0, "Sig S")
-                && test_exp(tx.original_v() == ref_tx.v.0.as_u64(), "Sig V");
+                && test_exp(U256::from(tx.signature().s()) == ref_tx.s.0, "Sig S");
             is_ok = is_ok
                 && if let Some(chain_id) = ref_tx.chain_id {
                     test_exp(tx.chain_id() == Some(chain_id.0.as_u64()), "Chain Id")
@@ -122,12 +113,12 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
             // check type
             let ttype = if let Some(ttype) = ref_tx.transaction_type {
                 let ttype = ttype.0.byte(0);
-                let id = ttype.try_into();
-                if id.is_err() {
+                if let Some(id) = TypedTxId::from_u8_id(ttype) {
+                    id 
+                } else {
                     println!("Unknown transaction {}", ttype);
                     continue;
                 }
-                id.unwrap()
             } else {
                 TypedTxId::Legacy
             };
@@ -147,8 +138,11 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
             // check specific tx data
             is_ok = is_ok
                 && match ttype {
-                    TypedTxId::Legacy => true,
+                    TypedTxId::Legacy => {
+                        test_exp(tx.original_v() == ref_tx.v.0.as_u64(), "Original Sig V")
+                    },
                     TypedTxId::AccessList => {
+                        test_exp(tx.standard_v() as u64 == ref_tx.v.0.as_u64(), "Sig V");
                         let al = match tx.as_unsigned() {
                             TypedTransaction::AccessList(tx) => &tx.access_list,
                             _ => {

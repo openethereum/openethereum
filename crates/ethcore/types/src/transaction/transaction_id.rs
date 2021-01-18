@@ -22,8 +22,18 @@ use std::convert::TryFrom;
 #[derive(Serialize_repr, Eq, Hash, Deserialize_repr, Debug, Clone, PartialEq)]
 #[repr(u8)]
 pub enum TypedTxId {
+    Legacy = 0x00,
     AccessList = 0x01,
-    Legacy = 0x80, // With 0x80 we are sure that all other types will not overlap
+}
+
+impl TypedTxId {
+    pub fn from_u8_id(n: u8) -> Option<Self> {
+        match n {
+            0 => Some(Self::Legacy),
+            1 => Some(Self::AccessList),
+            _ => None,
+        }
+    }
 }
 
 impl Default for TypedTxId {

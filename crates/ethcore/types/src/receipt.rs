@@ -120,7 +120,7 @@ impl TypedReceipt {
     pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
         //curently we are using same receipt for both legacy and typed transaction
         match type_id {
-            TypedTxId::AccessList => Self::Legacy(legacy_receipt),
+            TypedTxId::AccessList => Self::Legacy(legacy_receipt), // access list uses legacy receipt
             TypedTxId::Legacy => Self::Legacy(legacy_receipt),
         }
     }

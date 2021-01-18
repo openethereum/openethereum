@@ -1,10 +1,11 @@
-## OpenEthereum v3.1.1-rc.1
+## OpenEthereum v3.1.1
 
 Bug fixes:
 * Ancient target set. InvalidStateRoot bug (#69) (#149)
 * Update linked-hash-map to 0.5.3
 
 Enhancements:
+* Added additional Sg-1,Ca-2,Ca-3 OE bootnodes
 * Add --ws-max-paxload (#155)
 * Add flag to disable storage output in openethereum-evm tool #97 (#115)
 * ethstore - remove unnecessary dir & tiny-keccak dependencies from the lib (#107)

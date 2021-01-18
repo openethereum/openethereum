@@ -4,7 +4,7 @@ use ethjson::{self, blockchain::Block};
 use log::warn;
 use rlp::RlpStream;
 use std::path::Path;
-use types::transaction::{TypedTransaction, TypedTxId,UnverifiedTransaction};
+use types::transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction};
 use verification::queue::kind::blocks::Unverified;
 
 pub fn json_local_test<H: FnMut(&str, HookType)>(
@@ -21,7 +21,6 @@ pub fn json_local_test<H: FnMut(&str, HookType)>(
 
     for (name, ref_block) in tests.into_iter() {
         start_stop_hook(&name, HookType::OnStart);
-        
 
         let block = Unverified::from_rlp(ref_block.rlp());
         let block = match block {
@@ -42,14 +41,13 @@ pub fn json_local_test<H: FnMut(&str, HookType)>(
     failed
 }
 
-
 fn rlp_append_block(block: &Unverified) -> Vec<u8> {
     let mut rlps = RlpStream::new();
     rlps.begin_list(3);
-        rlps.append(&block.header);
-        UnverifiedTransaction::rlp_append_list(&mut rlps, &block.transactions);
-        rlps.append_list(&block.uncles);
-        rlps.out()
+    rlps.append(&block.header);
+    UnverifiedTransaction::rlp_append_list(&mut rlps, &block.transactions);
+    rlps.append_list(&block.uncles);
+    rlps.out()
 }
 
 pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
@@ -197,7 +195,7 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
     };
 
     let encript_ok = {
-        let rlp =  rlp_append_block(&block);
+        let rlp = rlp_append_block(&block);
         rlp == ref_block.rlp()
     };
 

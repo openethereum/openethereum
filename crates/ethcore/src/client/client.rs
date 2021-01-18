@@ -3151,8 +3151,8 @@ fn transaction_receipt(
     let block_hash = tx.block_hash;
     let block_number = tx.block_number;
     let transaction_index = tx.transaction_index;
-    let transaction_type = tx.tx_type();
 
+    let receipt_type = receipt.receipt_type();
     let receipt = receipt.receipt().clone();
 
     LocalizedReceipt {
@@ -3163,7 +3163,7 @@ fn transaction_receipt(
         },
         transaction_hash: transaction_hash,
         transaction_index: transaction_index,
-        transaction_type: transaction_type,
+        receipt_type: receipt_type,
         block_hash: block_hash,
         block_number: block_number,
         cumulative_gas_used: receipt.gas_used,
@@ -3540,6 +3540,7 @@ mod tests {
         });
 
         // when
+        let receipt_type = receipt.receipt_type();
         let receipt = transaction_receipt(&machine, transaction, receipt, 5.into(), 1);
 
         // then
@@ -3553,7 +3554,7 @@ mod tests {
                 },
                 transaction_hash: tx1.hash(),
                 transaction_index: 1,
-                transaction_type: tx1.tx_type(),
+                receipt_type,
                 block_hash: block_hash,
                 block_number: block_number,
                 cumulative_gas_used: gas_used,

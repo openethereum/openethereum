@@ -1200,7 +1200,7 @@ impl miner::MinerService for Miner {
                                 Action::Call(ref address) => Some(*address),
                             },
                             transaction_hash: tx.hash(),
-                            transaction_type: tx.tx_type(),
+                            receipt_type: receipt.receipt_type(),
                             transaction_index: index,
                             cumulative_gas_used: receipt.gas_used,
                             gas_used: receipt.gas_used - prev_gas,

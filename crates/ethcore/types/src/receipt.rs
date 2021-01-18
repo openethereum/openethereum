@@ -21,9 +21,11 @@ use ethereum_types::{Address, Bloom, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     ops::{Deref, DerefMut},
 };
+
+use serde_repr::*;
 
 use log_entry::{LocalizedLogEntry, LogEntry};
 use BlockNumber;
@@ -109,10 +111,32 @@ impl LegacyReceipt {
     }
 }
 
+#[derive(Serialize_repr, Eq, Hash, Deserialize_repr, Debug, Clone, PartialEq)]
+#[repr(u8)]
+pub enum TypedReceiptId {
+    Legacy = 0x00,
+}
+
+impl Default for TypedReceiptId {
+    fn default() -> TypedReceiptId {
+        TypedReceiptId::Legacy
+    }
+}
+
+impl TryFrom<u8> for TypedReceiptId {
+    type Error = ();
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        match v {
+            x if (x & 0x80) != 0x00 => Ok(TypedReceiptId::Legacy),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
-    AccessList(LegacyReceipt),
 }
 
 impl TypedReceipt {
@@ -125,24 +149,21 @@ impl TypedReceipt {
         }
     }
 
-    pub fn tx_type(&self) -> TypedTxId {
+    pub fn receipt_type(&self) -> TypedReceiptId {
         match self {
-            Self::Legacy(_) => TypedTxId::Legacy,
-            Self::AccessList(_) => TypedTxId::AccessList,
+            Self::Legacy(_) => TypedReceiptId::Legacy,
         }
     }
 
     pub fn receipt(&self) -> &LegacyReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
-            Self::AccessList(receipt) => receipt,
         }
     }
 
     pub fn receipt_mut(&mut self) -> &mut LegacyReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
-            Self::AccessList(receipt) => receipt,
         }
     }
 
@@ -153,15 +174,11 @@ impl TypedReceipt {
         }
         let id = receipt[0].try_into();
         if id.is_err() {
-            return Err(DecoderError::Custom("Unknown transaction"));
+            return Err(DecoderError::Custom("Unknown receipt id"));
         }
-        //other transaction types
+        // other transaction types
         match id.unwrap() {
-            TypedTxId::AccessList => {
-                let rlp = Rlp::new(&receipt[1..]);
-                Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
-            }
-            TypedTxId::Legacy => Ok(Self::Legacy(LegacyReceipt::decode(&Rlp::new(receipt))?)),
+            TypedReceiptId::Legacy => Ok(Self::Legacy(LegacyReceipt::decode(&Rlp::new(receipt))?)),
         }
     }
 
@@ -189,11 +206,6 @@ impl TypedReceipt {
     pub fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Self::Legacy(receipt) => receipt.rlp_append(s),
-            Self::AccessList(receipt) => {
-                let mut rlps = RlpStream::new();
-                receipt.rlp_append(&mut rlps);
-                s.append(&[&[TypedTxId::AccessList as u8], rlps.as_raw()].concat());
-            }
         }
     }
 
@@ -210,11 +222,6 @@ impl TypedReceipt {
                 let mut s = RlpStream::new();
                 receipt.rlp_append(&mut s);
                 s.drain()
-            }
-            Self::AccessList(receipt) => {
-                let mut rlps = RlpStream::new();
-                receipt.rlp_append(&mut rlps);
-                [&[TypedTxId::AccessList as u8], rlps.as_raw()].concat()
             }
         }
     }
@@ -244,7 +251,7 @@ impl HeapSizeOf for TypedReceipt {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RichReceipt {
     /// Transaction type
-    pub transaction_type: TypedTxId,
+    pub receipt_type: TypedReceiptId,
     /// Transaction hash.
     pub transaction_hash: H256,
     /// Transaction index.
@@ -273,7 +280,7 @@ pub struct RichReceipt {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalizedReceipt {
     /// Transaction type
-    pub transaction_type: TypedTxId,
+    pub receipt_type: TypedReceiptId,
     /// Transaction hash.
     pub transaction_hash: H256,
     /// Transaction index.

@@ -15,9 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256, U64};
-use types::{
-    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt},
-    transaction::TypedTxId,
+use types::receipt::{
+    LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt, TypedReceiptId,
 };
 use v1::types::Log;
 
@@ -27,7 +26,7 @@ use v1::types::Log;
 pub struct Receipt {
     /// Transaction Type
     #[serde(skip_serializing)]
-    pub transaction_type: TypedTxId,
+    pub receipt_type: TypedReceiptId,
     /// Transaction Hash
     pub transaction_hash: Option<H256>,
     /// Transaction index
@@ -81,7 +80,7 @@ impl From<LocalizedReceipt> for Receipt {
         Receipt {
             to: r.to.map(Into::into),
             from: Some(r.from),
-            transaction_type: r.transaction_type,
+            receipt_type: r.receipt_type,
             transaction_hash: Some(r.transaction_hash),
             transaction_index: Some(r.transaction_index.into()),
             block_hash: Some(r.block_hash),
@@ -102,7 +101,7 @@ impl From<RichReceipt> for Receipt {
         Receipt {
             from: Some(r.from),
             to: r.to.map(Into::into),
-            transaction_type: r.transaction_type,
+            receipt_type: r.receipt_type,
             transaction_hash: Some(r.transaction_hash),
             transaction_index: Some(r.transaction_index.into()),
             block_hash: None,
@@ -120,12 +119,12 @@ impl From<RichReceipt> for Receipt {
 
 impl From<TypedReceipt> for Receipt {
     fn from(r: TypedReceipt) -> Self {
-        let transaction_type = r.tx_type();
+        let receipt_type = r.receipt_type();
         let r = r.receipt().clone();
         Receipt {
             from: None,
             to: None,
-            transaction_type,
+            receipt_type,
             transaction_hash: None,
             transaction_index: None,
             block_hash: None,
@@ -153,7 +152,7 @@ mod tests {
         let receipt = Receipt {
             from: None,
             to: None,
-            transaction_type: Default::default(),
+            receipt_type: Default::default(),
             transaction_hash: Some(0.into()),
             transaction_index: Some(0.into()),
             block_hash: Some(

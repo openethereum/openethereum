@@ -19,11 +19,11 @@
 mod chain;
 mod difficulty;
 mod executive;
+mod local;
 mod state;
 mod test_common;
 mod transaction;
 mod trie;
-mod local;
 
 /// executor of ethereum/json tests
 pub mod runner;

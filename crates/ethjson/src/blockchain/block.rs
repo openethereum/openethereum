@@ -67,7 +67,6 @@ impl Block {
 //     pub from: H160,
 // }
 
-
 #[cfg(test)]
 mod tests {
     use blockchain::block::Block;

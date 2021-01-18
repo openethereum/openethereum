@@ -1,4 +1,7 @@
-use ethjson::test::{ChainTests, DifficultyTests, EthereumTestSuite, ExecutiveTests, LocalTests, StateTests, TestChainSpec, TestTrieSpec, TransactionTests, TrieTests};
+use ethjson::test::{
+    ChainTests, DifficultyTests, EthereumTestSuite, ExecutiveTests, LocalTests, StateTests,
+    TestChainSpec, TestTrieSpec, TransactionTests, TrieTests,
+};
 use globset::Glob;
 use log::info;
 use rayon::prelude::*;

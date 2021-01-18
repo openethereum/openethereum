@@ -1,7 +1,6 @@
 use super::HookType;
 use ethereum_types::U256;
-use ethjson;
-use ethjson::blockchain::Block;
+use ethjson::{self, blockchain::Block};
 use log::warn;
 use std::path::Path;
 use test_helpers;
@@ -114,7 +113,7 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
             let ttype = if let Some(ttype) = ref_tx.transaction_type {
                 let ttype = ttype.0.byte(0);
                 if let Some(id) = TypedTxId::from_u8_id(ttype) {
-                    id 
+                    id
                 } else {
                     println!("Unknown transaction {}", ttype);
                     continue;
@@ -140,7 +139,7 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
                 && match ttype {
                     TypedTxId::Legacy => {
                         test_exp(tx.original_v() == ref_tx.v.0.as_u64(), "Original Sig V")
-                    },
+                    }
                     TypedTxId::AccessList => {
                         test_exp(tx.standard_v() as u64 == ref_tx.v.0.as_u64(), "Sig V");
                         let al = match tx.as_unsigned() {
@@ -157,7 +156,6 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
                             }
                             let mut is_ok = true;
                             for (al, ref_al) in al.iter().zip(ref_al.iter()) {
-                                
                                 is_ok = is_ok && test_exp(al.0 == ref_al.address, "AL address");
                                 if al.1.len() != ref_al.storage_keys.len() {
                                     println!("Access list mismatch");

@@ -406,6 +406,11 @@ impl PrometheusMetrics for EthSync {
 
         let restoration = self.eth_handler.snapshot_service.restoration_status();
         let creation = self.eth_handler.snapshot_service.creation_status();
+        let (manifest_block_num, _) = self
+            .eth_handler
+            .snapshot_service
+            .manifest_block()
+            .unwrap_or((0, H256::zero()));
 
         prometheus_gauge(
             r,
@@ -426,6 +431,12 @@ impl PrometheusMetrics for EthSync {
             } else {
                 0
             },
+        );
+        prometheus_gauge(
+            r,
+            "snapshot_manifest_block",
+            "First block number of the present snapshot",
+            manifest_block_num as i64,
         );
     }
 }

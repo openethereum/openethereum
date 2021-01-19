@@ -245,10 +245,19 @@ impl TestRunner {
 
 #[test]
 fn ethereum_json_tests() {
+    use env_logger;
+
     let content =
         std::fs::read("res/json_tests.json").expect("cannot open ethereum tests spec file");
     let runner =
         TestRunner::load(content.as_slice()).expect("cannot load ethereum tests spec file");
+    // let result = match std::env::var_os("OE_TEST_LOG") {
+    //    Some(_) => {
+    //        env_logger::init();
+    //        println!("TEST");    
+    //    },
+    //     _ => (),
+    // };
     println!("----------------------------------------------------");
     let result = match std::env::var_os("TEST_DEBUG") {
         Some(_) => runner.run_without_par(),

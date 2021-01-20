@@ -7,13 +7,13 @@ use std::path::Path;
 use types::transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction};
 use verification::queue::kind::blocks::Unverified;
 
-pub fn json_local_test<H: FnMut(&str, HookType)>(
+pub fn json_local_block_en_de_test<H: FnMut(&str, HookType)>(
     _test: &ethjson::test::LocalTests,
     path: &Path,
     json_data: &[u8],
     start_stop_hook: &mut H,
 ) -> Vec<String> {
-    let tests = ethjson::local_tests::Test::load(json_data).expect(&format!(
+    let tests = ethjson::local_tests::BlockEnDeTest::load(json_data).expect(&format!(
         "Could not parse JSON chain test data from {}",
         path.display()
     ));

@@ -145,13 +145,16 @@ impl TestRunner {
     }
 
     fn run_local_tests(test: &LocalTests) -> TestResult {
-        Self::run1(
-            test,
-            &test.path,
-            |test: &LocalTests, path: &Path, json: &[u8]| {
-                super::local::json_local_test(&test, &path, &json, &mut |_, _| {})
-            },
-        )
+        match test.test_type.as_str() {
+            "block_en_de" => Self::run1(
+                test,
+                &test.path,
+                |test: &LocalTests, path: &Path, json: &[u8]| {
+                    super::local::json_local_block_en_de_test(test, &path, &json, &mut |_, _| {})
+                },
+            ),
+            _ => TestResult::zero(),
+        }
     }
 
     fn run_chain_tests(test: &ChainTests) -> TestResult {
@@ -245,19 +248,10 @@ impl TestRunner {
 
 #[test]
 fn ethereum_json_tests() {
-    use env_logger;
-
     let content =
         std::fs::read("res/json_tests.json").expect("cannot open ethereum tests spec file");
     let runner =
         TestRunner::load(content.as_slice()).expect("cannot load ethereum tests spec file");
-    // let result = match std::env::var_os("OE_TEST_LOG") {
-    //    Some(_) => {
-    //        env_logger::init();
-    //        println!("TEST");    
-    //    },
-    //     _ => (),
-    // };
     println!("----------------------------------------------------");
     let result = match std::env::var_os("TEST_DEBUG") {
         Some(_) => runner.run_without_par(),

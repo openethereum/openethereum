@@ -28,7 +28,6 @@ pub struct Block {
     pub transactions: Option<Vec<Transaction>>,
     #[serde(rename = "uncleHeaders")]
     pub uncles: Option<Vec<Header>>,
-    pub receipts: Option<Vec<u32>>, //TODO add receipts
 }
 
 impl Block {
@@ -37,35 +36,6 @@ impl Block {
         self.rlp.clone().into()
     }
 }
-
-// #[derive(Debug, PartialEq, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct Receipt {
-//     pub transaction_type: Option<u8>,
-//     pub transaction_hash: H256,
-//     pub transaction_index: usize,
-//     pub block_number: BlockNumber,
-//     /// The total gas used in the block following execution of the transaction.
-//     pub cumulative_gas_used: U256,
-//     /// The gas used in the execution of the transaction. Note the difference of meaning to `Receipt::gas_used`
-//     pub gas_used: U256,
-//     /// Contract address.
-//     /// NOTE: It is an Option because only `Action::Create` transactions has a contract address
-//     pub contract_address: Option<Address>,
-//     /// The OR-wide combination of all logs' blooms for this transaction.
-//     pub log_bloom: Bloom,
-//     /// The logs stemming from this transaction.
-//     pub logs: Option<Vec<LogEntry>>,
-//     /// Transaction outcome:
-//     pub root: Option<H256>,
-//     /// Transaction outcome:
-//     pub status: Option<u8>,
-//     /// Receiver address
-//     /// NOTE: It is an Option because only `Action::Call` transactions has a receiver address
-//     pub to: Option<H160>,
-//     /// Sender
-//     pub from: H160,
-// }
 
 #[cfg(test)]
 mod tests {

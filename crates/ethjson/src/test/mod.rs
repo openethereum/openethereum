@@ -166,6 +166,8 @@ pub enum TestTrieSpec {
 pub struct LocalTests {
     /// Path of the json tests
     pub path: PathBuf,
+    /// Test type
+    pub test_type: String,
 }
 
 /// A set of blockchain tests

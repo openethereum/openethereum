@@ -4,9 +4,9 @@ use std::{collections::BTreeMap, io::Read};
 
 /// Blockchain test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct Test(BTreeMap<String, Block>);
+pub struct BlockEnDeTest(BTreeMap<String, Block>);
 
-impl IntoIterator for Test {
+impl IntoIterator for BlockEnDeTest {
     type Item = <BTreeMap<String, Block> as IntoIterator>::Item;
     type IntoIter = <BTreeMap<String, Block> as IntoIterator>::IntoIter;
 
@@ -15,7 +15,7 @@ impl IntoIterator for Test {
     }
 }
 
-impl Test {
+impl BlockEnDeTest {
     /// Loads test from json.
     pub fn load<R>(reader: R) -> Result<Self, Error>
     where

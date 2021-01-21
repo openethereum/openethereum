@@ -53,7 +53,6 @@ extern crate rand;
 extern crate rayon;
 extern crate rlp;
 extern crate rustc_hex;
-extern crate scopeguard;
 extern crate serde;
 extern crate stats;
 extern crate time_utils;

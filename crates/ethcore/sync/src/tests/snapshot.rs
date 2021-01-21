@@ -89,6 +89,12 @@ impl SnapshotService for TestSnapshotService {
         self.manifest.as_ref().cloned()
     }
 
+    fn manifest_block(&self) -> Option<(u64, H256)> {
+        self.manifest
+            .as_ref()
+            .map(|manifest| (manifest.block_number, manifest.block_hash))
+    }
+
     fn supported_versions(&self) -> Option<(u64, u64)> {
         Some((1, 2))
     }

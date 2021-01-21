@@ -105,10 +105,10 @@ pub fn to_block_id(s: &str) -> Result<BlockId, String> {
 pub fn to_u256(s: &str) -> Result<U256, String> {
     if let Ok(decimal) = U256::from_dec_str(s) {
         Ok(decimal)
-    } else if let Ok(hex) = clean_0x(s).parse() {
-        Ok(hex)
     } else {
-        Err(format!("Invalid numeric value: {}", s))
+        clean_0x(s)
+            .parse()
+            .map_err(|_| format!("Invalid numeric value: {}", s))
     }
 }
 
@@ -171,15 +171,12 @@ pub fn to_price(s: &str) -> Result<f32, String> {
 }
 
 pub fn join_set(set: Option<&HashSet<String>>) -> Option<String> {
-    match set {
-        Some(s) => Some(
-            s.iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<&str>>()
-                .join(","),
-        ),
-        None => None,
-    }
+    set.map(|s| {
+        s.iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<&str>>()
+            .join(",")
+    })
 }
 
 /// Flush output buffer.

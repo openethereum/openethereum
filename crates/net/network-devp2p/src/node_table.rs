@@ -503,10 +503,7 @@ impl Drop for NodeTable {
 
 /// Check if node url is valid
 pub fn validate_node_url(url: &str) -> Option<Error> {
-    match Node::from_str(url) {
-        Ok(_) => None,
-        Err(e) => Some(e),
-    }
+    Node::from_str(url).err()
 }
 
 mod json {

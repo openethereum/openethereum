@@ -157,10 +157,11 @@ pub fn setup_log(config: &Config) -> Result<Arc<RotatingLogger>, String> {
             Ok(logs)
         })
         // couldn't create new logger - try to fall back on previous logger.
-        .or_else(|err| match ROTATING_LOGGER.lock().upgrade() {
-            Some(l) => Ok(l),
-            // no previous logger. fatal.
-            None => Err(format!("{:?}", err)),
+        .or_else(|err| {
+            ROTATING_LOGGER
+                .lock()
+                .upgrade()
+                .ok_or_else(|| format!("{:?}", err))
         })
 }
 

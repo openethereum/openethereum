@@ -23,11 +23,11 @@ use bytes::Bytes;
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Block {
     #[serde(rename = "blockHeader")]
-    header: Option<Header>,
-    rlp: Bytes,
-    transactions: Option<Vec<Transaction>>,
+    pub header: Option<Header>,
+    pub rlp: Bytes,
+    pub transactions: Option<Vec<Transaction>>,
     #[serde(rename = "uncleHeaders")]
-    uncles: Option<Vec<Header>>,
+    pub uncles: Option<Vec<Header>>,
 }
 
 impl Block {

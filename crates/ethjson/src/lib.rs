@@ -31,6 +31,7 @@ extern crate maplit;
 pub mod blockchain;
 pub mod bytes;
 pub mod hash;
+pub mod local_tests;
 pub mod maybe;
 pub mod spec;
 pub mod state;

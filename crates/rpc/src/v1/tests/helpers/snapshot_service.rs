@@ -44,6 +44,9 @@ impl SnapshotService for TestSnapshotService {
     fn manifest(&self) -> Option<ManifestData> {
         None
     }
+    fn manifest_block(&self) -> Option<(u64, H256)> {
+        None
+    }
     fn supported_versions(&self) -> Option<(u64, u64)> {
         None
     }

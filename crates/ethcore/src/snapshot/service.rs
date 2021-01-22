@@ -853,6 +853,13 @@ impl SnapshotService for Service {
         self.reader.read().as_ref().map(|r| r.manifest().clone())
     }
 
+    fn manifest_block(&self) -> Option<(u64, H256)> {
+        self.reader.read().as_ref().map(|reader| {
+            let manifest = reader.manifest();
+            (manifest.block_number, manifest.block_hash)
+        })
+    }
+
     fn supported_versions(&self) -> Option<(u64, u64)> {
         self.engine
             .snapshot_components()

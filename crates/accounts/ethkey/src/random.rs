@@ -25,10 +25,7 @@ impl Generator for Random {
 
     fn generate(&mut self) -> Result<KeyPair, Self::Error> {
         let mut rng = OsRng::new()?;
-        match rng.generate() {
-            Ok(pair) => Ok(pair),
-            Err(void) => match void {}, // LLVM unreachable
-        }
+        rng.generate().or_else(|void| match void {})
     }
 }
 

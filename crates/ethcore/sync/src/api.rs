@@ -294,10 +294,7 @@ impl SyncProvider for EthSync {
                     .into_iter()
                     .zip(peer_info)
                     .filter_map(|(peer_id, peer_info)| {
-                        let session_info = match ctx.session_info(peer_id) {
-                            None => return None,
-                            Some(info) => info,
-                        };
+                        let session_info = ctx.session_info(peer_id)?;
 
                         Some(PeerInfo {
                             id: session_info.id.map(|id| format!("{:x}", id)),
@@ -406,6 +403,11 @@ impl PrometheusMetrics for EthSync {
 
         let restoration = self.eth_handler.snapshot_service.restoration_status();
         let creation = self.eth_handler.snapshot_service.creation_status();
+        let (manifest_block_num, _) = self
+            .eth_handler
+            .snapshot_service
+            .manifest_block()
+            .unwrap_or((0, H256::zero()));
 
         prometheus_gauge(
             r,
@@ -426,6 +428,12 @@ impl PrometheusMetrics for EthSync {
             } else {
                 0
             },
+        );
+        prometheus_gauge(
+            r,
+            "snapshot_manifest_block",
+            "First block number of the present snapshot",
+            manifest_block_num as i64,
         );
     }
 }
@@ -735,14 +743,14 @@ impl NetworkConfiguration {
         Ok(BasicNetworkConfiguration {
             config_path: self.config_path,
             net_config_path: self.net_config_path,
-            listen_address: match self.listen_address {
-                None => None,
-                Some(addr) => Some(SocketAddr::from_str(&addr)?),
-            },
-            public_address: match self.public_address {
-                None => None,
-                Some(addr) => Some(SocketAddr::from_str(&addr)?),
-            },
+            listen_address: self
+                .listen_address
+                .map(|addr| SocketAddr::from_str(&addr))
+                .transpose()?,
+            public_address: self
+                .public_address
+                .map(|addr| SocketAddr::from_str(&addr))
+                .transpose()?,
             udp_port: self.udp_port,
             nat_enabled: self.nat_enabled,
             discovery_enabled: self.discovery_enabled,

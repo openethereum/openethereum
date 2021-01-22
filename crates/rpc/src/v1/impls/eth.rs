@@ -683,10 +683,10 @@ where
         let num = num.unwrap_or_default();
 
         try_bf!(check_known(&*self.client, num.clone()));
-        let res = match self.client.balance(&address, self.get_state(num)) {
-            Some(balance) => Ok(balance),
-            None => Err(errors::state_pruned()),
-        };
+        let res = self
+            .client
+            .balance(&address, self.get_state(num))
+            .ok_or_else(|| errors::state_pruned());
 
         Box::new(future::done(res))
     }
@@ -779,17 +779,13 @@ where
                         self.client.nonce(&address, BlockId::Latest)
                     });
 
-                match nonce {
-                    Some(nonce) => Ok(nonce),
-                    None => Err(errors::database("latest nonce missing")),
-                }
+                nonce.ok_or_else(|| errors::database("latest nonce missing"))
             }
             number => {
                 try_bf!(check_known(&*self.client, number.clone()));
-                match self.client.nonce(&address, block_number_to_id(number)) {
-                    Some(nonce) => Ok(nonce),
-                    None => Err(errors::state_pruned()),
-                }
+                self.client
+                    .nonce(&address, block_number_to_id(number))
+                    .ok_or_else(|| errors::state_pruned())
             }
         };
 

@@ -292,10 +292,9 @@ impl ValidatorSafeContract {
             });
 
         // only last log is taken into account
-        match decoded_events.next() {
-            None => None,
-            Some(matched_event) => Some(SimpleList::new(matched_event.new_set)),
-        }
+        decoded_events
+            .next()
+            .map(|matched_event| SimpleList::new(matched_event.new_set))
     }
 }
 

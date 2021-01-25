@@ -7,6 +7,10 @@
 	],
 	"chain": [
 		{
+			"path": "res/local_tests/chain",
+			"skip": []
+		},
+		{
 			"path": "res/json_tests/BlockchainTests",
 			"skip": []
 		},

@@ -33,12 +33,12 @@ use blockchain::{
 };
 use bytes::{Bytes, ToPretty};
 use call_contract::CallContract;
+use db::{DBTransaction, DBValue, KeyValueDB};
 use error::Error;
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use rand::OsRng;
 use rlp::{PayloadInfo, Rlp};
@@ -3389,6 +3389,9 @@ impl PrometheusMetrics for Client {
             "Number of items being verified",
             queue.verifying_queue_size as i64,
         );
+
+        // database info
+        self.db.read().key_value().prometheus_metrics(r);
     }
 }
 

@@ -41,6 +41,7 @@ use common_types::{
     views::{BlockView, HeaderView},
     BlockNumber,
 };
+use db::{DBTransaction, KeyValueDB};
 use ethcore_db::{
     self as db,
     cache_manager::CacheManager,
@@ -50,13 +51,13 @@ use ethcore_db::{
 use ethereum_types::{Bloom, BloomRef, H256, U256};
 use heapsize::HeapSizeOf;
 use itertools::Itertools;
-use kvdb::{DBTransaction, KeyValueDB};
 use log::{info, trace, warn};
 use parity_bytes::Bytes;
 use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
+use stats::PrometheusMetrics;
 
 use crate::{
     best_block::{BestAncientBlock, BestBlock},
@@ -66,7 +67,7 @@ use crate::{
 };
 
 /// Database backing `BlockChain`.
-pub trait BlockChainDB: Send + Sync {
+pub trait BlockChainDB: Send + Sync + PrometheusMetrics {
     /// Generic key value store.
     fn key_value(&self) -> &Arc<dyn KeyValueDB>;
 
@@ -1950,6 +1951,11 @@ mod tests {
             &self.trace_blooms
         }
     }
+    impl PrometheusMetrics for TestBlockChainDB {
+        fn prometheus_metrics(&self, _: &mut stats::prometheus::Registry) {
+            todo!()
+        }
+    }
 
     /// Creates new test instance of `BlockChainDB`
     pub fn new_db() -> Arc<dyn BlockChainDB> {
@@ -1961,7 +1967,9 @@ mod tests {
             trace_blooms: blooms_db::Database::open(trace_blooms_dir.path()).unwrap(),
             _blooms_dir: blooms_dir,
             _trace_blooms_dir: trace_blooms_dir,
-            key_value: Arc::new(kvdb_memorydb::create(ethcore_db::NUM_COLUMNS.unwrap())),
+            key_value: Arc::new(ethcore_db::InMemoryWithMetrics::create(
+                ethcore_db::NUM_COLUMNS.unwrap(),
+            )),
         };
 
         Arc::new(db)

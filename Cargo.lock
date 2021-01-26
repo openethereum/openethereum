@@ -1073,6 +1073,7 @@ dependencies = [
  "rlp_compress",
  "rlp_derive",
  "rustc-hex 1.0.0",
+ "stats",
  "tempdir",
  "triehash-ethereum",
 ]
@@ -1123,9 +1124,12 @@ dependencies = [
  "ethereum-types 0.4.2",
  "heapsize",
  "kvdb",
+ "kvdb-memorydb",
+ "kvdb-rocksdb",
  "parking_lot 0.7.1",
  "rlp 0.3.0",
  "rlp_derive",
+ "stats",
 ]
 
 [[package]]
@@ -2154,6 +2158,7 @@ name = "journaldb"
 version = "0.2.0"
 dependencies = [
  "env_logger",
+ "ethcore-db",
  "ethereum-types 0.4.2",
  "fastmap",
  "hash-db",
@@ -2986,6 +2991,7 @@ name = "parity-local-store"
 version = "0.1.0"
 dependencies = [
  "common-types",
+ "ethcore-db",
  "ethcore-io",
  "ethkey",
  "kvdb",

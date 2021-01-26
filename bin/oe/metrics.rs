@@ -100,7 +100,7 @@ pub fn start_prometheus_metrics(
             service_fn_ok(move |req: Request<Body>| handle_request(req, state.clone()))
         })
         .map_err(|e| eprintln!("server error: {}", e));
-    println!("Listening on http://{}", addr);
+    info!("Started prometeus metrics at http://{}/metrics", addr);
 
     deps.executor.spawn(server);
 

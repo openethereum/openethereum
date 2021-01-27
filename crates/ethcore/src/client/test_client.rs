@@ -74,7 +74,7 @@ use miner::{self, Miner, MinerService};
 use spec::Spec;
 use state::StateInfo;
 use state_db::StateDB;
-use stats::{prometheus, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use trace::LocalizedTrace;
 use verification::queue::{kind::blocks::Unverified, QueueInfo};
 
@@ -1131,5 +1131,5 @@ impl super::traits::EngineClient for TestBlockChainClient {
 }
 
 impl PrometheusMetrics for TestBlockChainClient {
-    fn prometheus_metrics(&self, _r: &mut prometheus::Registry) {}
+    fn prometheus_metrics(&self, _r: &mut PrometheusRegistry) {}
 }

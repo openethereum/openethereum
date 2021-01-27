@@ -55,7 +55,7 @@ impl BlockChainDB for AppDB {
 }
 
 impl PrometheusMetrics for AppDB {
-    fn prometheus_metrics(&self, _: &mut stats::prometheus::Registry) {}
+    fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
 }
 
 /// Open a secret store DB using the given secret store data path. The DB path is one level beneath the data path.

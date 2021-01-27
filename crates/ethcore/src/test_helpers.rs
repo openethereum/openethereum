@@ -351,7 +351,7 @@ impl BlockChainDB for TestBlockChainDB {
 }
 
 impl stats::PrometheusMetrics for TestBlockChainDB {
-    fn prometheus_metrics(&self, _: &mut stats::prometheus::Registry) {}
+    fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
 }
 
 /// Creates new test instance of `BlockChainDB`
@@ -420,7 +420,7 @@ pub fn restoration_db_handler(
         }
     }
     impl stats::PrometheusMetrics for RestorationDB {
-        fn prometheus_metrics(&self, _: &mut stats::prometheus::Registry) {}
+        fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
     }
 
     impl BlockChainDBHandler for RestorationDBHandler {

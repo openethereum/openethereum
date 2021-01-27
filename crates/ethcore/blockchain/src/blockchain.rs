@@ -1952,9 +1952,7 @@ mod tests {
         }
     }
     impl PrometheusMetrics for TestBlockChainDB {
-        fn prometheus_metrics(&self, _: &mut stats::prometheus::Registry) {
-            todo!()
-        }
+        fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
     }
 
     /// Creates new test instance of `BlockChainDB`

@@ -26,39 +26,64 @@ use std::{
 extern crate log;
 pub extern crate prometheus;
 
+pub struct PrometheusRegistry {
+    prefix: String,
+    registry: prometheus::Registry,
+}
+
+impl PrometheusRegistry {
+    /// Create a new instance with the specified prefix
+    pub fn new(prefix: String) -> Self {
+        Self {
+            prefix,
+            registry: prometheus::Registry::new(),
+        }
+    }
+
+    /// Get internal registry
+    pub fn registry(&self) -> &prometheus::Registry {
+        &self.registry
+    }
+
+    /// Adds a new prometheus counter with the specified value
+    pub fn register_counter(&mut self, name: &str, help: &str, value: i64) {
+        let name = format!("{}{}", self.prefix, name);
+        let c = prometheus::IntCounter::new(name.as_str(), help)
+            .expect("name and help must be non-empty");
+        c.inc_by(value);
+        self.registry
+            .register(Box::new(c))
+            .expect("prometheus identifiers must be unique");
+    }
+
+    /// Adds a new prometheus gauge with the specified gauge
+    pub fn register_gauge(&mut self, name: &str, help: &str, value: i64) {
+        let name = format!("{}{}", self.prefix, name);
+        let g = prometheus::IntGauge::new(name.as_str(), help)
+            .expect("name and help must be non-empty");
+        g.set(value);
+        self.registry
+            .register(Box::new(g))
+            .expect("prometheus identifiers must be are unique");
+    }
+
+    /// Adds a new prometheus counter with the time spent in running the specified function
+    pub fn register_optime<F: Fn() -> T, T>(&mut self, name: &str, f: &F) -> T {
+        let start = Instant::now();
+        let t = f();
+        let elapsed = start.elapsed();
+        self.register_gauge(
+            &format!("optime_{}", name),
+            &format!("Time to perform {}", name),
+            elapsed.as_millis() as i64,
+        );
+        t
+    }
+}
+
 /// Implements a prometheus metrics collector
 pub trait PrometheusMetrics {
-    fn prometheus_metrics(&self, registry: &mut prometheus::Registry);
-}
-
-/// Adds a new prometheus counter with the specified value
-pub fn prometheus_counter(reg: &mut prometheus::Registry, name: &str, help: &str, value: i64) {
-    let c = prometheus::IntCounter::new(name, help).expect("name and help must be non-empty");
-    c.inc_by(value);
-    reg.register(Box::new(c))
-        .expect("prometheus identifiers must be unique");
-}
-
-/// Adds a new prometheus gauge with the specified gauge
-pub fn prometheus_gauge(reg: &mut prometheus::Registry, name: &str, help: &str, value: i64) {
-    let g = prometheus::IntGauge::new(name, help).expect("name and help must be non-empty");
-    g.set(value);
-    reg.register(Box::new(g))
-        .expect("prometheus identifiers must be are unique");
-}
-
-/// Adds a new prometheus counter with the time spent in running the specified function
-pub fn prometheus_optime<F: Fn() -> T, T>(r: &mut prometheus::Registry, name: &str, f: &F) -> T {
-    let start = Instant::now();
-    let t = f();
-    let elapsed = start.elapsed();
-    prometheus_gauge(
-        r,
-        &format!("optime_{}", name),
-        &format!("Time to perform {}", name),
-        elapsed.as_millis() as i64,
-    );
-    t
+    fn prometheus_metrics(&self, registry: &mut PrometheusRegistry);
 }
 
 /// Sorted corpus of data.

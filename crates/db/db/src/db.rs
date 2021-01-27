@@ -6,7 +6,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// OpenEthereum is distributed in t1he hope that it will be useful,
+// OpenEthereum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -19,7 +19,7 @@
 use kvdb::DBTransaction;
 use kvdb_rocksdb::Database;
 use parking_lot::RwLock;
-use stats::{prometheus, prometheus_counter, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use std::{collections::HashMap, hash::Hash, io::Read, ops::Deref};
 
 use rlp;
@@ -426,27 +426,23 @@ impl kvdb::KeyValueDB for DatabaseWithMetrics {
 impl KeyValueDB for DatabaseWithMetrics {}
 
 impl PrometheusMetrics for DatabaseWithMetrics {
-    fn prometheus_metrics(&self, p: &mut prometheus::Registry) {
-        prometheus_counter(
-            p,
+    fn prometheus_metrics(&self, p: &mut PrometheusRegistry) {
+        p.register_counter(
             "kvdb_reads",
             "db reads",
             self.reads.load(std::sync::atomic::Ordering::Relaxed) as i64,
         );
-        prometheus_counter(
-            p,
+        p.register_counter(
             "kvdb_writes",
             "db writes",
             self.reads.load(std::sync::atomic::Ordering::Relaxed) as i64,
         );
-        prometheus_counter(
-            p,
+        p.register_counter(
             "kvdb_bytes_read",
             "db bytes_reads",
             self.bytes_read.load(std::sync::atomic::Ordering::Relaxed) as i64,
         );
-        prometheus_counter(
-            p,
+        p.register_counter(
             "kvdb_bytes_written",
             "db bytes_written",
             self.bytes_written
@@ -498,7 +494,7 @@ impl kvdb::KeyValueDB for InMemoryWithMetrics {
 }
 
 impl PrometheusMetrics for InMemoryWithMetrics {
-    fn prometheus_metrics(&self, _: &mut prometheus::Registry) {}
+    fn prometheus_metrics(&self, _: &mut PrometheusRegistry) {}
 }
 
 impl KeyValueDB for InMemoryWithMetrics {}

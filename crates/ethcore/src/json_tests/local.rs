@@ -131,13 +131,12 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
                 TypedTxId::Legacy
             };
             is_ok = is_ok
-            && test_exp(tx.tx().nonce == ref_tx.nonce.0 , "Tx nonce")
-            && test_exp(tx.tx().gas_price == ref_tx.gas_price.0, "Tx gas price")
-            && test_exp(tx.tx().gas == ref_tx.gas_limit.0, "Tx gas")
-            //&& test_exp(tx.tx().action == ref_tx.)
-            && test_exp(tx.tx().value == ref_tx.value.0, "Tx value")
-            && test_exp(tx.tx().data == ref_tx.data.0, "Tx data");
-            &&test_exp(ref_tx.hash.is_some(), "tx hash is none");
+                && test_exp(tx.tx().nonce == ref_tx.nonce.0, "Tx nonce")
+                && test_exp(tx.tx().gas_price == ref_tx.gas_price.0, "Tx gas price")
+                && test_exp(tx.tx().gas == ref_tx.gas_limit.0, "Tx gas")
+                && test_exp(tx.tx().value == ref_tx.value.0, "Tx value")
+                && test_exp(tx.tx().data == ref_tx.data.0, "Tx data")
+                && test_exp(ref_tx.hash.is_some(), "tx hash is none");
 
             if let Some(hash) = ref_tx.hash {
                 is_ok = is_ok && test_exp(tx.hash() == hash, "Hash mismatch");

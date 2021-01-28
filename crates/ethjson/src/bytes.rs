@@ -25,7 +25,7 @@ use std::{fmt, ops::Deref, str::FromStr};
 
 /// Lenient bytes json deserialization for test json files.
 #[derive(Default, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
-pub struct Bytes(Vec<u8>);
+pub struct Bytes(pub Vec<u8>);
 
 impl Bytes {
     /// Creates bytes struct.

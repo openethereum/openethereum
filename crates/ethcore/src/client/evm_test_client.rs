@@ -67,7 +67,7 @@ impl fmt::Display for EvmTestError {
     }
 }
 
-use ethereum;
+use ethereum::{self};
 use ethjson::spec::ForkSpec;
 
 /// Simplified, single-block EVM test client.
@@ -98,6 +98,7 @@ impl<'a> EvmTestClient<'a> {
             ForkSpec::Homestead => Some(ethereum::new_homestead_test()),
             ForkSpec::EIP150 => Some(ethereum::new_eip150_test()),
             ForkSpec::EIP158 => Some(ethereum::new_eip161_test()),
+            ForkSpec::EIP2930 => Some(ethereum::new_eip2930_test()),
             ForkSpec::Byzantium => Some(ethereum::new_byzantium_test()),
             ForkSpec::Constantinople => Some(ethereum::new_constantinople_test()),
             ForkSpec::ConstantinopleFix => Some(ethereum::new_constantinople_fix_test()),

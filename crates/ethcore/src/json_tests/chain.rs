@@ -208,7 +208,7 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
                     match block {
                         Ok(block) => {
                             let num = block.header.number();
-                            trace!(target: "json-tests", "{} – Importing {} bytes. Block #{}", name, bytes_len, num);
+                            debug!(target: "json-tests", "{} – Importing {} bytes. Block #{}", name, bytes_len, num);
                             let res = client.import_block(block);
                             if let Err(e) = res {
                                 warn!(target: "json-tests", "{} – Error importing block #{}: {:?}", name, num, e);

@@ -267,6 +267,14 @@ pub fn new_berlin_test() -> Spec {
     )
 }
 
+/// Create a new Foundation Berlin era spec.
+pub fn new_eip2930_test() -> Spec {
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/eip2930_test.json"),
+    )
+}
+
 /// Create a new YOLO spec
 pub fn new_yolo3_test() -> Spec {
     load(

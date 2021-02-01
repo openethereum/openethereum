@@ -19,6 +19,7 @@
 mod chain;
 mod difficulty;
 mod executive;
+mod local;
 mod state;
 mod test_common;
 mod transaction;

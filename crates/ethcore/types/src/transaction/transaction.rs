@@ -707,6 +707,13 @@ impl UnverifiedTransaction {
         self.unsigned.rlp_append(s, self.chain_id, &self.signature);
     }
 
+    pub fn rlp_append_list(s: &mut RlpStream, tx_list: &[UnverifiedTransaction]) {
+        s.begin_list(tx_list.len());
+        for tx in tx_list.iter() {
+            tx.unsigned.rlp_append(s, tx.chain_id, &tx.signature);
+        }
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         self.unsigned.encode(self.chain_id, &self.signature)
     }

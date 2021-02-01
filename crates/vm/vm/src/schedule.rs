@@ -335,16 +335,8 @@ impl Schedule {
         schedule
     }
 
-    /// Schedule for the Berlin fork of the Ethereum main net.
-    pub fn new_berlin() -> Schedule {
-        let mut schedule = Self::new_istanbul();
-        schedule.have_subs = true; // EIP 2315
-
-        schedule
-    }
-
     /// Schedule for the Yolov3 testnet of the Ethereum main net.
-    pub fn new_yolo3() -> Schedule {
+    pub fn new_berlin() -> Schedule {
         let mut schedule = Self::new_istanbul();
         schedule.have_subs = true; // EIP 2315
 

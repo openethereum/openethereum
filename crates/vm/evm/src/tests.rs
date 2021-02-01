@@ -1046,7 +1046,7 @@ fn test_subs_simple(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(18);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1064,7 +1064,7 @@ fn test_subs_two_levels(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(36);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1082,7 +1082,7 @@ fn test_subs_invalid_jump(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(24);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let current = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1101,7 +1101,7 @@ fn test_subs_shallow_return_stack(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(24);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let current = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1136,7 +1136,7 @@ fn test_subs_substack_limit(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(1_000_000);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1154,7 +1154,7 @@ fn test_subs_substack_out(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(1_000_000);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let current = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1175,7 +1175,7 @@ fn test_subs_sub_at_end(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(30);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1192,7 +1192,7 @@ fn test_subs_walk_into_subroutine(factory: super::Factory) {
     let mut params = ActionParams::default();
     params.gas = U256::from(100);
     params.code = Some(Arc::new(code));
-    let mut ext = FakeExt::new_berlin(Address::zero(),Address::zero(),&[]);
+    let mut ext = FakeExt::new_berlin(Address::zero(), Address::zero(), &[]);
 
     let current = {
         let vm = factory.create(params, ext.schedule(), ext.depth());

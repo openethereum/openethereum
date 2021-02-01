@@ -22,7 +22,7 @@ use ethereum_types::H256;
 use hash::keccak;
 use header::Header;
 use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TransactionView};
+use views::{HeaderView, TypedTransactionView};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {
@@ -114,10 +114,10 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return List of transactions in given block.
-    pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
+    pub fn transaction_views(&self) -> Vec<TypedTransactionView<'a>> {
         self.transactions_rlp()
             .iter()
-            .map(TransactionView::new)
+            .map(TypedTransactionView::new)
             .collect()
     }
 

@@ -163,6 +163,13 @@ pub fn new_sokol<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
         include_bytes!("../../res/chainspec/poasokol.json"),
     )
 }
+/// Create a new YOLO spec
+pub fn new_yolo3<'a, T: Into<SpecParams<'a>>>(params: T) -> Spec {
+    load(
+        params.into(),
+        include_bytes!("../../res/chainspec/yolo3.json"),
+    )
+}
 
 // For tests
 
@@ -272,14 +279,6 @@ pub fn new_eip2930_test() -> Spec {
     load(
         None,
         include_bytes!("../../res/chainspec/test/eip2930_test.json"),
-    )
-}
-
-/// Create a new YOLO spec
-pub fn new_yolo3_test() -> Spec {
-    load(
-        None,
-        include_bytes!("../../res/chainspec/test/yolo3_test.json"),
     )
 }
 

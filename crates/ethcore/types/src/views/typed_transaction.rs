@@ -23,6 +23,7 @@ use super::ViewRlp;
 use bytes::Bytes;
 use ethereum_types::{H256, U256};
 use hash::keccak;
+use rlp::Rlp;
 
 /// View onto transaction rlp. Assumption is this is part of block.
 /// Typed Transaction View. It handles raw bytes to search for particular field.
@@ -32,6 +33,7 @@ use hash::keccak;
 /// [nonce, gasPrice, gasLimit, to, value, data, senderV, senderR, senderS]
 pub struct TypedTransactionView<'a> {
     rlp: ViewRlp<'a>,
+    transaction_type: TypedTxId,
 }
 impl<'a> TypedTransactionView<'a> {
     /// Creates new view onto valid transaction rlp.
@@ -51,11 +53,15 @@ impl<'a> TypedTransactionView<'a> {
     /// }
     /// ```
     pub fn new(rlp: ViewRlp<'a>) -> TypedTransactionView<'a> {
-        TypedTransactionView { rlp: rlp }
+        let transaction_type = Self::extract_transaction_type(&rlp.rlp);
+        TypedTransactionView {
+            rlp: rlp,
+            transaction_type,
+        }
     }
 
-    pub fn transaction_type(&self) -> TypedTxId {
-        let ref rlp = self.rlp.rlp;
+    /// Extract transaction type from rlp bytes.
+    fn extract_transaction_type(rlp: &Rlp) -> TypedTxId {
         if rlp.is_list() {
             return TypedTxId::Legacy;
         }
@@ -67,14 +73,14 @@ impl<'a> TypedTransactionView<'a> {
         id
     }
 
-    /// Return reference to underlaying rlp.
-    // pub fn rlp(&self) -> &ViewRlp<'a> {
-    //     &self.rlp
-    // }
+    /// Returns reference to transaction type.
+    pub fn transaction_type(&self) -> &TypedTxId {
+        &self.transaction_type
+    }
 
     /// Returns transaction hash.
     pub fn hash(&self) -> H256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => keccak(self.rlp.as_raw()),
             _ => keccak(self.rlp.rlp.data().unwrap()),
         }
@@ -82,7 +88,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get chain Id field of the transaction.
     pub fn chain_id(&self) -> u64 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => {
                 signature::extract_chain_id_from_legacy_v(self.rlp.val_at(6)).unwrap_or(0)
             }
@@ -94,7 +100,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the nonce field of the transaction.
     pub fn nonce(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(0),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -104,7 +110,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the gas_price field of the transaction.
     pub fn gas_price(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(1),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -114,7 +120,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the gas field of the transaction.
     pub fn gas(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(2),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -124,7 +130,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the value field of the transaction.
     pub fn value(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(4),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -134,7 +140,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the data field of the transaction.
     pub fn data(&self) -> Bytes {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(5),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -144,7 +150,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the v field of the transaction.
     pub fn legacy_v(&self) -> u8 {
-        let r = match self.transaction_type() {
+        let r = match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(6),
             TypedTxId::AccessList => {
                 let chain_id = match self.chain_id() {
@@ -163,7 +169,7 @@ impl<'a> TypedTransactionView<'a> {
     }
 
     pub fn standard_v(&self) -> u8 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => signature::extract_standard_v(self.rlp.val_at(6)),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -173,7 +179,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the r field of the transaction.
     pub fn r(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(7),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
@@ -183,7 +189,7 @@ impl<'a> TypedTransactionView<'a> {
 
     /// Get the s field of the transaction.
     pub fn s(&self) -> U256 {
-        match self.transaction_type() {
+        match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(8),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp

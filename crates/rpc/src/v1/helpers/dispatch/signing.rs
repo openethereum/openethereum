@@ -59,7 +59,7 @@ impl super::Accounts for Signer {
             value: filled.value,
             data: filled.data,
         };
-        let t = match filled.tx_type {
+        let t = match filled.transaction_type {
             TypedTxId::Legacy => TypedTransaction::Legacy(legacy_tx),
             TypedTxId::AccessList => {
                 if filled.access_list.is_none() {

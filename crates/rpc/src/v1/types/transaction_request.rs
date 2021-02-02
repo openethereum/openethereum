@@ -33,8 +33,8 @@ use std::fmt;
 pub struct TransactionRequest {
     /// type of transaction. If none we assume it is legacy
     #[serde(default)]
-    #[serde(skip_serializing)]
-    pub tx_type: TypedTxId,
+    #[serde(rename = "type")]
+    pub transaction_type: TypedTxId,
     /// Sender
     pub from: Option<H160>,
     /// Recipient
@@ -52,7 +52,6 @@ pub struct TransactionRequest {
     /// Delay until this block condition.
     pub condition: Option<TransactionCondition>,
     /// Access list
-    #[serde(skip_serializing)]
     pub access_list: Option<AccessList>,
 }
 
@@ -105,7 +104,7 @@ impl fmt::Display for TransactionRequest {
 impl From<helpers::TransactionRequest> for TransactionRequest {
     fn from(r: helpers::TransactionRequest) -> Self {
         TransactionRequest {
-            tx_type: r.tx_type,
+            transaction_type: r.transaction_type,
             from: r.from.map(Into::into),
             to: r.to.map(Into::into),
             gas_price: r.gas_price.map(Into::into),
@@ -122,7 +121,7 @@ impl From<helpers::TransactionRequest> for TransactionRequest {
 impl From<helpers::FilledTransactionRequest> for TransactionRequest {
     fn from(r: helpers::FilledTransactionRequest) -> Self {
         TransactionRequest {
-            tx_type: r.tx_type,
+            transaction_type: r.transaction_type,
             from: Some(r.from),
             to: r.to,
             gas_price: Some(r.gas_price),
@@ -139,7 +138,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
 impl Into<helpers::TransactionRequest> for TransactionRequest {
     fn into(self) -> helpers::TransactionRequest {
         helpers::TransactionRequest {
-            tx_type: self.tx_type,
+            transaction_type: self.transaction_type,
             from: self.from.map(Into::into),
             to: self.to.map(Into::into),
             gas_price: self.gas_price.map(Into::into),
@@ -179,7 +178,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: Some(H160::from(2)),
                 gas_price: Some(U256::from(1)),
@@ -206,7 +205,7 @@ mod tests {
         let deserialized: TransactionRequest = serde_json::from_str(s).unwrap();
 
         assert_eq!(deserialized, TransactionRequest {
-            tx_type: Default::default(),
+            transaction_type: Default::default(),
 			from: Some(H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap()),
 			to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
 			gas_price: Some(U256::from_str("9184e72a000").unwrap()),
@@ -227,7 +226,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Some(H160::from(1).into()),
                 to: None,
                 gas_price: None,
@@ -256,7 +255,7 @@ mod tests {
         assert_eq!(
             deserialized,
             TransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Some(H160::from_str("b5f7502a2807cb23615c7456055e1d65b2508625").unwrap()),
                 to: Some(H160::from_str("895d32f2db7d01ebb50053f9e48aacf26584fe40").unwrap()),
                 gas_price: Some(U256::from_str("0ba43b7400").unwrap()),

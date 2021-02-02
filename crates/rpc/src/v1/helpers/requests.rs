@@ -24,7 +24,7 @@ use v1::types::{Origin, TransactionCondition};
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct TransactionRequest {
     /// type of transaction.
-    pub tx_type: TypedTxId,
+    pub transaction_type: TypedTxId,
     /// Sender
     pub from: Option<Address>,
     /// Recipient
@@ -49,7 +49,7 @@ pub struct TransactionRequest {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct FilledTransactionRequest {
     /// type of transaction.
-    pub tx_type: TypedTxId,
+    pub transaction_type: TypedTxId,
     /// Sender
     pub from: Address,
     /// Indicates if the sender was filled by default value.
@@ -75,7 +75,7 @@ pub struct FilledTransactionRequest {
 impl From<FilledTransactionRequest> for TransactionRequest {
     fn from(r: FilledTransactionRequest) -> Self {
         TransactionRequest {
-            tx_type: r.tx_type,
+            transaction_type: r.transaction_type,
             from: Some(r.from),
             to: r.to,
             gas_price: Some(r.gas_price),
@@ -93,7 +93,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
 #[derive(Debug, Default, PartialEq)]
 pub struct CallRequest {
     /// type of transaction.
-    pub tx_type: TypedTxId,
+    pub transaction_type: TypedTxId,
     /// From
     pub from: Option<Address>,
     /// To

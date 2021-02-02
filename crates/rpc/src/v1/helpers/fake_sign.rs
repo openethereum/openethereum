@@ -35,7 +35,7 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
         value: request.value.unwrap_or_default(),
         data: request.data.unwrap_or_default(),
     };
-    let tx_typed = match request.tx_type {
+    let tx_typed = match request.transaction_type {
         TypedTxId::Legacy => TypedTransaction::Legacy(tx_legacy),
         TypedTxId::AccessList => TypedTransaction::AccessList(AccessListTx::new(
             tx_legacy,

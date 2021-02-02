@@ -91,7 +91,7 @@ fn should_return_list_of_items_to_confirm() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Address::from(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
@@ -138,7 +138,7 @@ fn should_reject_transaction_from_queue_without_dispatching() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Address::from(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
@@ -176,7 +176,7 @@ fn should_not_remove_transaction_if_password_is_invalid() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Address::from(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
@@ -242,7 +242,7 @@ fn should_confirm_transaction_and_dispatch() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
@@ -307,7 +307,7 @@ fn should_alter_the_sender_and_nonce() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: 0.into(),
                 used_default_from: false,
                 to: Some(recipient),
@@ -373,7 +373,7 @@ fn should_confirm_transaction_with_token() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
@@ -441,7 +441,7 @@ fn should_confirm_transaction_with_rlp() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
@@ -507,7 +507,7 @@ fn should_return_error_when_sender_does_not_match() {
         .signer
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Address::default(),
                 used_default_from: false,
                 to: Some(recipient),
@@ -574,7 +574,7 @@ fn should_confirm_sign_transaction_with_rlp() {
         .signer
         .add_request(
             ConfirmationPayload::SignTransaction(FilledTransactionRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),

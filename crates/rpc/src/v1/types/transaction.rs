@@ -30,6 +30,9 @@ use v1::types::{Bytes, TransactionCondition};
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
+    /// transaction type
+    #[serde(rename = "type")]
+    pub transaction_type: u8,
     /// Hash
     pub hash: H256,
     /// Nonce
@@ -70,11 +73,7 @@ pub struct Transaction {
     pub s: U256,
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
-    /// transaction type
-    #[serde(skip_serializing)]
-    pub transaction_type: u8,
     /// optional access list
-    #[serde(skip_serializing)]
     pub access_list: AccessList,
 }
 

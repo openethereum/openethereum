@@ -331,7 +331,7 @@ mod tests {
             id: 15.into(),
             payload: helpers::ConfirmationPayload::SendTransaction(
                 helpers::FilledTransactionRequest {
-                    tx_type: Default::default(),
+                    transaction_type: Default::default(),
                     from: 0.into(),
                     used_default_from: false,
                     to: None,
@@ -362,7 +362,7 @@ mod tests {
             id: 15.into(),
             payload: helpers::ConfirmationPayload::SignTransaction(
                 helpers::FilledTransactionRequest {
-                    tx_type: Default::default(),
+                    transaction_type: Default::default(),
                     from: 0.into(),
                     used_default_from: false,
                     to: None,

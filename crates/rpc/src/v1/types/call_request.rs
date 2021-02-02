@@ -25,7 +25,8 @@ use v1::{helpers::CallRequest as Request, types::Bytes};
 pub struct CallRequest {
     /// transaction type
     #[serde(default)]
-    pub tx_type: TypedTxId,
+    #[serde(rename = "type")]
+    pub transaction_type: TypedTxId,
     /// From
     pub from: Option<H160>,
     /// To
@@ -47,7 +48,7 @@ pub struct CallRequest {
 impl Into<Request> for CallRequest {
     fn into(self) -> Request {
         Request {
-            tx_type: self.tx_type,
+            transaction_type: self.transaction_type,
             from: self.from.map(Into::into),
             to: self.to.map(Into::into),
             gas_price: self.gas_price.map(Into::into),
@@ -84,7 +85,7 @@ mod tests {
         assert_eq!(
             deserialized,
             CallRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: Some(H160::from(2)),
                 gas_price: Some(U256::from(1)),
@@ -110,7 +111,7 @@ mod tests {
         let deserialized: CallRequest = serde_json::from_str(s).unwrap();
 
         assert_eq!(deserialized, CallRequest {
-            tx_type: Default::default(),
+            transaction_type: Default::default(),
 			from: Some(H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap()),
 			to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
 			gas_price: Some(U256::from_str("9184e72a000").unwrap()),
@@ -130,7 +131,7 @@ mod tests {
         assert_eq!(
             deserialized,
             CallRequest {
-                tx_type: Default::default(),
+                transaction_type: Default::default(),
                 from: Some(H160::from(1)),
                 to: None,
                 gas_price: None,

@@ -248,7 +248,7 @@ usage! {
 
             ARG arg_chain: (String) = "foundation", or |c: &Config| c.parity.as_ref()?.chain.clone(),
             "--chain=[CHAIN]",
-            "Specify the blockchain type. CHAIN may be either a JSON chain specification file or ethereum, poacore, xdai, volta, ewc, musicoin, ellaism, mix, callisto, morden, ropsten, kovan, rinkeby, goerli, poasokol, testnet, or dev.",
+            "Specify the blockchain type. CHAIN may be either a JSON chain specification file or ethereum, poacore, xdai, volta, ewc, musicoin, ellaism, mix, callisto, morden, ropsten, kovan, rinkeby, goerli, poasokol, testnet, yolo3 or dev.",
 
             ARG arg_keys_path: (String) = "$BASE/keys", or |c: &Config| c.parity.as_ref()?.keys_path.clone(),
             "--keys-path=[PATH]",

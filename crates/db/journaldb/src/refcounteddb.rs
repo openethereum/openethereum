@@ -26,10 +26,10 @@ use super::{traits::JournalDB, LATEST_ERA_KEY};
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
-use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
 use memory_db::MemoryDB;
 use overlaydb::OverlayDB;
+use parity_util_mem::{MallocSizeOf, allocators::new_malloc_size_ops};
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
 
@@ -121,13 +121,14 @@ impl JournalDB for RefCountedDB {
     }
 
     fn get_sizes(&self, sizes: &mut BTreeMap<String, usize>) {
+        let mut ops = new_malloc_size_ops();
         sizes.insert(
             String::from("db_ref_counted_inserts"),
-            self.inserts.heap_size_of_children(),
+            self.inserts.size_of(&mut ops),
         );
         sizes.insert(
             String::from("db_ref_counted_removes"),
-            self.removes.heap_size_of_children(),
+            self.removes.size_of(&mut ops),
         );
     }
 

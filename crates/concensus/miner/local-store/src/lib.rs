@@ -29,6 +29,7 @@ extern crate common_types as types;
 extern crate ethcore_db;
 extern crate ethcore_io as io;
 extern crate kvdb;
+extern crate parity_crypto as crypto;
 extern crate rlp;
 extern crate serde;
 extern crate serde_json;
@@ -238,7 +239,8 @@ impl<T: NodeInfo> Drop for LocalDataStore<T> {
 mod tests {
     use super::NodeInfo;
 
-    use ethkey::{Brain, Generator};
+    use crypto::publickey::Generator;
+    use ethkey::Brain;
     use std::sync::Arc;
     use types::transaction::{Condition, PendingTransaction, Transaction, TypedTransaction};
 
@@ -269,7 +271,7 @@ mod tests {
 
     #[test]
     fn with_condition() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Brain::new("abcd".into()).generate();
         let transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = TypedTransaction::Legacy(Transaction::default());
@@ -306,7 +308,7 @@ mod tests {
 
     #[test]
     fn skips_bad_transactions() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Brain::new("abcd".into()).generate();
         let mut transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = TypedTransaction::Legacy(Transaction::default());

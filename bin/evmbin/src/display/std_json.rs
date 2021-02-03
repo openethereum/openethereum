@@ -22,7 +22,7 @@ use super::config::Config;
 use bytes::ToPretty;
 use display;
 use ethcore::{pod_state, trace};
-use ethereum_types::{H256, U256};
+use ethereum_types::{BigEndianHash, H256, U256};
 use info as vm;
 
 pub trait Writer: io::Write + Send + Sized {
@@ -237,7 +237,7 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant<Trace, Out>| {
             if let Some((pos, val)) = store_written {
-                informant.storage.insert(pos.into(), val.into());
+                informant.storage.insert(BigEndianHash::from_uint(&pos), BigEndianHash::from_uint(&val));
             }
         });
     }

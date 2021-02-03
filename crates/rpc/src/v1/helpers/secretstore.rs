@@ -15,11 +15,10 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
-use crypto;
+use crypto::publickey::{self, ec_math_utils, Generator, Public, Random, Secret};
 use ethereum_types::{H256, H512};
-use ethkey::{self, math, Generator, Public, Random, Secret};
 use jsonrpc_core::Error;
-use rand::{OsRng, Rng};
+use rand::{RngCore, rngs::OsRng};
 use std::collections::BTreeSet;
 use tiny_keccak::Keccak;
 use v1::{helpers::errors, types::EncryptedDocumentKey};
@@ -33,17 +32,17 @@ pub fn generate_document_key(
     server_key_public: Public,
 ) -> Result<EncryptedDocumentKey, Error> {
     // generate random plain document key
-    let document_key = Random.generate().map_err(errors::encryption)?;
+    let document_key = Random.generate();
 
     // encrypt document key using server key
     let (common_point, encrypted_point) =
         encrypt_secret(document_key.public(), &server_key_public)?;
 
     // ..and now encrypt document key with account public
-    let encrypted_key = ethkey::crypto::ecies::encrypt(
+    let encrypted_key = publickey::ecies::encrypt(
         &account_public,
         &crypto::DEFAULT_MAC,
-        document_key.public(),
+        document_key.public().as_bytes(),
     )
     .map_err(errors::encryption)?;
 
@@ -104,7 +103,7 @@ pub fn decrypt_document_with_shadow(
     encrypted_document: Bytes,
 ) -> Result<Bytes, Error> {
     let key = decrypt_with_shadow_coefficients(decrypted_secret, common_point, shadows)?;
-    decrypt_document(key.to_vec(), encrypted_document)
+    decrypt_document(key.as_bytes().to_vec(), encrypted_document)
 }
 
 /// Calculate Keccak(ordered servers set)
@@ -132,7 +131,7 @@ fn into_document_key(key: Bytes) -> Result<Bytes, Error> {
 
 fn initialization_vector() -> [u8; INIT_VEC_LEN] {
     let mut result = [0u8; INIT_VEC_LEN];
-    let mut rng = OsRng::new().unwrap();
+    let mut rng = OsRng;
     rng.fill_bytes(&mut result);
     result
 }
@@ -149,9 +148,9 @@ fn decrypt_with_shadow_coefficients(
             .map_err(errors::encryption)?;
     }
 
-    math::public_mul_secret(&mut common_shadow_point, &shadow_coefficients_sum)
+    ec_math_utils::public_mul_secret(&mut common_shadow_point, &shadow_coefficients_sum)
         .map_err(errors::encryption)?;
-    math::public_add(&mut decrypted_shadow, &common_shadow_point).map_err(errors::encryption)?;
+    ec_math_utils::public_add(&mut decrypted_shadow, &common_shadow_point).map_err(errors::encryption)?;
     Ok(decrypted_shadow)
 }
 
@@ -159,16 +158,16 @@ fn encrypt_secret(secret: &Public, joint_public: &Public) -> Result<(Public, Pub
     // TODO: it is copypaste of `encrypt_secret` from secret_store/src/key_server_cluster/math.rs
     // use shared version from SS math library, when it'll be available
 
-    let key_pair = Random.generate().map_err(errors::encryption)?;
+    let key_pair = Random.generate();
 
     // k * T
-    let mut common_point = math::generation_point();
-    math::public_mul_secret(&mut common_point, key_pair.secret()).map_err(errors::encryption)?;
+    let mut common_point = ec_math_utils::generation_point();
+    ec_math_utils::public_mul_secret(&mut common_point, key_pair.secret()).map_err(errors::encryption)?;
 
     // M + k * y
     let mut encrypted_point = joint_public.clone();
-    math::public_mul_secret(&mut encrypted_point, key_pair.secret()).map_err(errors::encryption)?;
-    math::public_add(&mut encrypted_point, secret).map_err(errors::encryption)?;
+    ec_math_utils::public_mul_secret(&mut encrypted_point, key_pair.secret()).map_err(errors::encryption)?;
+    ec_math_utils::public_add(&mut encrypted_point, secret).map_err(errors::encryption)?;
 
     Ok((common_point, encrypted_point))
 }

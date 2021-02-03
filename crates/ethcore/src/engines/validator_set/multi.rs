@@ -183,9 +183,9 @@ impl ValidatorSet for Multi {
 mod tests {
     use accounts::AccountProvider;
     use client::{traits::ForceUpdateSealing, BlockChainClient, BlockInfo, ChainInfo, ImportBlock};
+    use crypto::publickey::Secret;
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
-    use ethkey::Secret;
     use hash::keccak;
     use miner::{self, MinerService};
     use spec::Spec;

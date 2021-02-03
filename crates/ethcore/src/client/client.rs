@@ -40,7 +40,7 @@ use ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
 use parking_lot::{Mutex, RwLock};
-use rand::OsRng;
+use rand::rngs::OsRng;
 use rlp::{PayloadInfo, Rlp};
 use rustc_hex::FromHex;
 use trie::{Trie, TrieFactory, TrieSpec};
@@ -541,7 +541,7 @@ impl Importer {
         {
             trace_time!("import_old_block");
             // verify the block, passing the chain for updating the epoch verifier.
-            let mut rng = OsRng::new()?;
+            let mut rng = OsRng;
             self.ancient_verifier
                 .verify(&mut rng, &unverified.header, &chain)?;
 
@@ -1641,8 +1641,8 @@ impl BlockChainReset for Client {
             best_block_hash = current_header.parent_hash();
 
             let (number, hash) = (current_header.number(), current_header.hash());
-            batch.delete(::db::COL_HEADERS, &hash);
-            batch.delete(::db::COL_BODIES, &hash);
+            batch.delete(::db::COL_HEADERS, hash.as_bytes());
+            batch.delete(::db::COL_BODIES, hash.as_bytes());
             Writable::delete::<BlockDetails, H264>(&mut batch, ::db::COL_EXTRA, &hash);
             Writable::delete::<H256, BlockNumberKey>(&mut batch, ::db::COL_EXTRA, &number);
 
@@ -1673,7 +1673,7 @@ impl BlockChainReset for Client {
         best_block_details.children.retain(|h| *h != *last_hash);
         batch.write(::db::COL_EXTRA, &best_block_hash, &best_block_details);
         // update the new best block hash
-        batch.put(::db::COL_EXTRA, b"best", &best_block_hash);
+        batch.put(::db::COL_EXTRA, b"best", best_block_hash.as_bytes());
 
         self.db
             .read()
@@ -2203,7 +2203,7 @@ impl BlockChainClient for Client {
         };
 
         if let Some(after) = after {
-            if let Err(e) = iter.seek(after) {
+            if let Err(e) = iter.seek(after.as_bytes()) {
                 trace!(target: "fatdb", "list_accounts: Couldn't seek the DB: {:?}", e);
             } else {
                 // Position the iterator after the `after` element
@@ -2261,7 +2261,7 @@ impl BlockChainClient for Client {
         };
 
         if let Some(after) = after {
-            if let Err(e) = iter.seek(after) {
+            if let Err(e) = iter.seek(after.as_bytes()) {
                 trace!(target: "fatdb", "list_storage: Couldn't seek the DB: {:?}", e);
             } else {
                 // Position the iterator after the `after` element
@@ -3404,6 +3404,7 @@ impl PrometheusMetrics for Client {
 #[cfg(test)]
 mod tests {
     use blockchain::{BlockProvider, ExtrasInsert};
+    use ethereum_types::{H160, H256};
     use spec::Spec;
     use test_helpers::generate_dummy_client_with_spec_and_data;
 
@@ -3484,7 +3485,7 @@ mod tests {
     #[test]
     fn should_return_correct_log_index() {
         use super::transaction_receipt;
-        use ethkey::KeyPair;
+        use crypto::publickey::KeyPair;
         use hash::keccak;
         use types::{
             log_entry::{LocalizedLogEntry, LogEntry},
@@ -3493,19 +3494,19 @@ mod tests {
         };
 
         // given
-        let key = KeyPair::from_secret_slice(&keccak("test")).unwrap();
+        let key = KeyPair::from_secret_slice(keccak("test").as_bytes()).unwrap();
         let secret = key.secret();
         let machine = ::ethereum::new_frontier_test_machine();
 
         let block_number = 1;
-        let block_hash = 5.into();
-        let state_root = 99.into();
+        let block_hash = H256::from_low_u64_be(5);
+        let state_root = H256::from_low_u64_be(99);
         let gas_used = 10.into();
         let raw_tx = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
-            action: Action::Call(10.into()),
+            action: Action::Call(H160::from_low_u64_be(10)),
             value: 0.into(),
             data: vec![],
         });
@@ -3519,12 +3520,12 @@ mod tests {
         };
         let logs = vec![
             LogEntry {
-                address: 5.into(),
+                address: H160::from_low_u64_be(5),
                 topics: vec![],
                 data: vec![],
             },
             LogEntry {
-                address: 15.into(),
+                address: H160::from_low_u64_be(15),
                 topics: vec![],
                 data: vec![],
             },

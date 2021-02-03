@@ -24,8 +24,8 @@ use blockchain::{
 use blooms_db;
 use bytes::Bytes;
 use db::KeyValueDB;
+use crypto::publickey::KeyPair;
 use ethereum_types::{Address, H256, U256};
-use ethkey::KeyPair;
 use evm::Factory as EvmFactory;
 use hash::keccak;
 use io::IoChannel;
@@ -169,7 +169,7 @@ where
     let mut last_hashes = vec![];
     let mut last_header = genesis_header.clone();
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret_slice(keccak("").as_bytes()).unwrap();
     let author = kp.address();
 
     let mut n = 0;
@@ -605,7 +605,7 @@ pub fn get_bad_state_dummy_block() -> Bytes {
     block_header.set_timestamp(40);
     block_header.set_number(1);
     block_header.set_parent_hash(test_spec.genesis_header().hash());
-    block_header.set_state_root(0xbad.into());
+    block_header.set_state_root(H256::from_low_u64_be(0xbad));
 
     create_test_block(&block_header)
 }

@@ -17,7 +17,7 @@
 //! General test deserialization.
 
 use bytes::Bytes;
-use ethkey::Secret;
+use crypto::publickey::Secret;
 use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use serde_json::{self, Error};
@@ -100,7 +100,7 @@ fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTrans
 impl MultiTransaction {
     /// Build transaction with given indexes.
     pub fn select(&self, indexes: &PostStateIndexes) -> SignedTransaction {
-        let secret = self.secret.clone().map(|s| Secret::from(s.0));
+        let secret = self.secret.clone().map(|s| Secret::import_key(s.0.as_bytes()).expect("Expect signature to be valid"));
         let to: Option<Address> = self.to.clone().into();
         let transaction = Transaction {
             nonce: self.nonce.clone().into(),

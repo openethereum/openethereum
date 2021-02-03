@@ -143,16 +143,18 @@ mod tests {
     use serde_json;
     use types::transaction::TypedTxId;
     use v1::types::{Log, Receipt};
+    use ethereum_types::{Bloom, H256};
 
     #[test]
     fn receipt_serialization() {
+        
         let s = r#"{"type":"0x1","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","from":null,"to":null,"blockNumber":"0x4510c","cumulativeGasUsed":"0x20","gasUsed":"0x10","contractAddress":null,"logs":[{"address":"0x33990122638b9132ca29c723bdf037f1a891a70c","topics":["0xa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc","0x4861736852656700000000000000000000000000000000000000000000000000"],"data":"0x","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","blockNumber":"0x4510c","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","logIndex":"0x1","transactionLogIndex":null,"type":"mined","removed":false}],"root":"0x000000000000000000000000000000000000000000000000000000000000000a","logsBloom":"0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f","status":"0x1"}"#;
 
         let receipt = Receipt {
             from: None,
             to: None,
             transaction_type: TypedTxId::AccessList.to_U64_option_id(),
-            transaction_hash: Some(0.into()),
+            transaction_hash: Some(H256::zero()),
             transaction_index: Some(0.into()),
             block_hash: Some(
                 "ed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5"
@@ -180,15 +182,15 @@ mod tests {
                         .unwrap(),
                 ),
                 block_number: Some(0x4510c.into()),
-                transaction_hash: Some(0.into()),
+                transaction_hash: Some(H256::zero()),
                 transaction_index: Some(0.into()),
                 transaction_log_index: None,
                 log_index: Some(1.into()),
                 log_type: "mined".into(),
                 removed: false,
             }],
-            logs_bloom: 15.into(),
-            state_root: Some(10.into()),
+            logs_bloom: Bloom::from_low_u64_be(15),
+            state_root: Some(H256::from_low_u64_be(10)),
             status_code: Some(1u64.into()),
         };
 

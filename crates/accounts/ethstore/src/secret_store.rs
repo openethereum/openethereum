@@ -15,7 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::H256;
-use ethkey::{Address, Message, Password, Public, Secret, Signature};
+use crypto::publickey::{Address, Message, Public, Secret, Signature};
+use ethkey::Password;
 use json::{OpaqueKeyFile, Uuid};
 use std::{
     cmp::Ordering,
@@ -174,7 +175,7 @@ pub trait SecretStore: SimpleSecretStore {
         secret: &OpaqueSecret,
         message: &Message,
     ) -> Result<Signature, Error> {
-        Ok(::ethkey::sign(&secret.0, message)?)
+        Ok(crypto::publickey::sign(&secret.0, message)?)
     }
 
     /// Imports presale wallet

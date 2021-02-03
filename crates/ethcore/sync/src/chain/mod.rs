@@ -109,7 +109,7 @@ use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
 use parking_lot::Mutex;
-use rand::Rng;
+use rand::{Rng, seq::SliceRandom};
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
@@ -136,7 +136,7 @@ use self::{
 pub(crate) use self::supplier::SyncSupplier;
 use self::{propagator::SyncPropagator, requester::SyncRequester};
 
-known_heap_size!(0, PeerInfo);
+malloc_size_of_is_0!(PeerInfo);
 
 /// Possible errors during packet's processing
 #[derive(Debug, Display)]
@@ -380,17 +380,20 @@ impl PeerInfo {
 #[cfg(not(test))]
 pub mod random {
     use rand;
-    pub fn new() -> rand::ThreadRng {
+    pub fn new() -> rand::rngs::ThreadRng {
         rand::thread_rng()
     }
 }
 #[cfg(test)]
 pub mod random {
-    use rand::{self, SeedableRng};
-    pub fn new() -> rand::XorShiftRng {
-        rand::XorShiftRng::from_seed([0, 1, 2, 3])
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    const RNG_SEED: [u8; 16] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+    pub fn new() -> XorShiftRng {
+        XorShiftRng::from_seed(RNG_SEED)
     }
 }
+
 
 pub type RlpResponseResult = Result<Option<(SyncPacket, RlpStream)>, PacketProcessError>;
 pub type Peers = HashMap<PeerId, PeerInfo>;
@@ -630,7 +633,7 @@ impl ChainSync {
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
-        random::new().shuffle(&mut peers);
+        peers.shuffle(&mut random::new());
         peers.truncate(count);
         peers
     }
@@ -1029,8 +1032,9 @@ impl ChainSync {
                     self.active_peers.len(), peers.len(), self.peers.len()
                 );
 
-                random::new().shuffle(&mut peers); // TODO (#646): sort by rating
-                                                   // prefer peers with higher protocol version
+                peers.shuffle(&mut random::new()); // TODO (#646): sort by rating
+                // prefer peers with higher protocol version
+
                 peers.sort_by(|&(_, ref v1), &(_, ref v2)| v1.cmp(v2));
 
                 for (peer_id, _) in peers {
@@ -1297,7 +1301,7 @@ impl ChainSync {
         };
         trace!(target: "sync", "Sending status to {}, protocol version {}", peer, protocol);
 
-        let mut packet = rlp04::RlpStream::new();
+        let mut packet = RlpStream::new();
         packet.begin_unbounded_list();
         let chain = io.chain().chain_info();
         packet.append(&(protocol as u32));
@@ -1310,7 +1314,7 @@ impl ChainSync {
         if warp_protocol {
             let manifest = io.snapshot_service().manifest();
             let block_number = manifest.as_ref().map_or(0, |m| m.block_number);
-            let manifest_hash = manifest.map_or(H256::new(), |m| keccak(m.into_rlp()));
+            let manifest_hash = manifest.map_or(H256::default(), |m| keccak(m.into_rlp()));
             packet.append(&primitive_types07::H256(manifest_hash.0));
             packet.append(&block_number);
         }
@@ -1521,7 +1525,6 @@ pub mod tests {
         miner::{MinerService, PendingOrdering},
     };
     use ethereum_types::{Address, H256, U256};
-    use ethkey;
     use network::PeerId;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
@@ -1558,7 +1561,7 @@ pub mod tests {
         let mut rlp = RlpStream::new_list(5);
         for _ in 0..5 {
             let mut hash_d_rlp = RlpStream::new_list(2);
-            let hash: H256 = H256::from(0u64);
+            let hash: H256 = H256::from_low_u64_be(0u64);
             let diff: U256 = U256::from(1u64);
             hash_d_rlp.append(&hash);
             hash_d_rlp.append(&diff);
@@ -1720,7 +1723,7 @@ pub mod tests {
     #[test]
     fn should_add_transactions_to_queue() {
         fn sender(tx: &UnverifiedTransaction) -> Address {
-            ethkey::public_to_address(&tx.recover_public().unwrap())
+            crypto::publickey::public_to_address(&tx.recover_public().unwrap())
         }
 
         // given

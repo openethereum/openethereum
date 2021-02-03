@@ -238,7 +238,7 @@ mod tests {
             topics: Some(vec![
                 VariadicValue::Null,
                 VariadicValue::Single(
-                    "000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b".into(),
+                    H256::from_str("000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b").unwrap(),
                 ),
                 VariadicValue::Null,
             ]),
@@ -255,7 +255,7 @@ mod tests {
                 topics: vec![
                     None,
                     Some(vec![
-                        "000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b".into()
+                        H256::from_str("000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b").unwrap()
                     ]),
                     None,
                     None,

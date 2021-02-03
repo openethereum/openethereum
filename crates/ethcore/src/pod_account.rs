@@ -17,7 +17,7 @@
 //! Account system expressed in Plain Old Data.
 
 use bytes::Bytes;
-use ethereum_types::{H256, U256};
+use ethereum_types::{BigEndianHash, H256, U256};
 use ethjson;
 use ethtrie::RlpCodec;
 use hash::keccak;
@@ -85,7 +85,7 @@ impl PodAccount {
         stream.append(&sec_trie_root(
             self.storage
                 .iter()
-                .map(|(k, v)| (k, rlp::encode(&U256::from(&**v)))),
+                .map(|(k, v)| (k, rlp::encode(&v.into_uint()))),
         ));
         stream.append(&keccak(&self.code.as_ref().unwrap_or(&vec![])));
         stream.out()
@@ -103,10 +103,10 @@ impl PodAccount {
             }
             _ => {}
         }
-        let mut r = H256::new();
+        let mut r = H256::default();
         let mut t = factory.create(db, &mut r);
         for (k, v) in &self.storage {
-            if let Err(e) = t.insert(k, &rlp::encode(&U256::from(&**v))) {
+            if let Err(e) = t.insert(k.as_bytes(), &rlp::encode(&v.into_uint())) {
                 warn!("Encountered potential DB corruption: {}", e);
             }
         }
@@ -125,7 +125,7 @@ impl From<ethjson::blockchain::Account> for PodAccount {
                 .map(|(key, value)| {
                     let key: U256 = key.into();
                     let value: U256 = value.into();
-                    (H256::from(key), H256::from(value))
+                    (BigEndianHash::from_uint(&key), BigEndianHash::from_uint(&value))
                 })
                 .collect(),
         }
@@ -143,7 +143,7 @@ impl From<ethjson::spec::Account> for PodAccount {
                     .map(|(key, value)| {
                         let key: U256 = key.into();
                         let value: U256 = value.into();
-                        (H256::from(key), H256::from(value))
+                        (BigEndianHash::from_uint(&key), BigEndianHash::from_uint(&value))
                     })
                     .collect()
             }),
@@ -159,7 +159,7 @@ impl fmt::Display for PodAccount {
             self.balance,
             self.nonce,
             self.code.as_ref().map_or(0, |c| c.len()),
-            self.code.as_ref().map_or_else(H256::new, |c| keccak(c)),
+            self.code.as_ref().map_or_else(H256::default, |c| keccak(c)),
             self.storage.len(),
         )
     }
@@ -183,7 +183,7 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 		}),
 		(Some(pre), Some(post)) => {
 			let storage: Vec<_> = pre.storage.keys().merge(post.storage.keys())
-				.filter(|k| pre.storage.get(k).unwrap_or(&H256::new()) != post.storage.get(k).unwrap_or(&H256::new()))
+				.filter(|k| pre.storage.get(k).unwrap_or(&H256::default()) != post.storage.get(k).unwrap_or(&H256::default()))
 				.collect();
 			let r = AccountDiff {
 				balance: Diff::new(pre.balance, post.balance),
@@ -194,8 +194,8 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 				},
 				storage: storage.into_iter().map(|k|
 					(k.clone(), Diff::new(
-						pre.storage.get(k).cloned().unwrap_or_else(H256::new),
-						post.storage.get(k).cloned().unwrap_or_else(H256::new)
+						pre.storage.get(k).cloned().unwrap_or_else(H256::default),
+						post.storage.get(k).cloned().unwrap_or_else(H256::default)
 					))).collect(),
 			};
 			if r.balance.is_same() && r.nonce.is_same() && r.code.is_same() && r.storage.is_empty() {
@@ -212,6 +212,7 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 mod test {
     use super::{diff_pod, PodAccount};
     use std::collections::BTreeMap;
+    use ethereum_types::H256;
     use types::account_diff::*;
 
     #[test]
@@ -290,13 +291,29 @@ mod test {
             balance: 0.into(),
             nonce: 0.into(),
             code: Some(vec![]),
-            storage: map_into![1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 0, 6 => 0, 7 => 0],
+            storage: map_into![
+                H256::from_low_u64_be(1) => H256::from_low_u64_be(1), 
+                H256::from_low_u64_be(2) => H256::from_low_u64_be(2), 
+                H256::from_low_u64_be(3) => H256::from_low_u64_be(3), 
+                H256::from_low_u64_be(4) => H256::from_low_u64_be(4), 
+                H256::from_low_u64_be(5) => H256::from_low_u64_be(0), 
+                H256::from_low_u64_be(6) => H256::from_low_u64_be(0), 
+                H256::from_low_u64_be(7) => H256::from_low_u64_be(0)
+            ],
         };
         let b = PodAccount {
             balance: 0.into(),
             nonce: 0.into(),
             code: Some(vec![]),
-            storage: map_into![1 => 1, 2 => 3, 3 => 0, 5 => 0, 7 => 7, 8 => 0, 9 => 9],
+            storage: map_into![
+                H256::from_low_u64_be(1) => H256::from_low_u64_be(1),
+                H256::from_low_u64_be(2) => H256::from_low_u64_be(3),
+                H256::from_low_u64_be(3) => H256::from_low_u64_be(0),
+                H256::from_low_u64_be(5) => H256::from_low_u64_be(0),
+                H256::from_low_u64_be(7) => H256::from_low_u64_be(7),
+                H256::from_low_u64_be(8) => H256::from_low_u64_be(0),
+                H256::from_low_u64_be(9) => H256::from_low_u64_be(9)
+            ],
         };
         assert_eq!(
             diff_pod(Some(&a), Some(&b)),
@@ -305,11 +322,11 @@ mod test {
                 nonce: Diff::Same,
                 code: Diff::Same,
                 storage: map![
-                    2.into() => Diff::new(2.into(), 3.into()),
-                    3.into() => Diff::new(3.into(), 0.into()),
-                    4.into() => Diff::new(4.into(), 0.into()),
-                    7.into() => Diff::new(0.into(), 7.into()),
-                    9.into() => Diff::new(0.into(), 9.into())
+                    H256::from_low_u64_be(2) => Diff::new(H256::from_low_u64_be(2), H256::from_low_u64_be(3)),
+                    H256::from_low_u64_be(3) => Diff::new(H256::from_low_u64_be(3), H256::from_low_u64_be(0)),
+                    H256::from_low_u64_be(4) => Diff::new(H256::from_low_u64_be(4), H256::from_low_u64_be(0)),
+                    H256::from_low_u64_be(7) => Diff::new(H256::from_low_u64_be(0), H256::from_low_u64_be(7)),
+                    H256::from_low_u64_be(9) => Diff::new(H256::from_low_u64_be(0), H256::from_low_u64_be(9))
                 ],
             })
         );

@@ -25,7 +25,7 @@ use std::{
 use ethereum_types::H256;
 use hash::keccak;
 use itertools::Itertools;
-use rand::{os::OsRng, Rng};
+use rand::{Rng, rngs::OsRng, distributions::Alphanumeric};
 
 /// Providing current time in seconds
 pub trait TimeProvider {
@@ -184,8 +184,8 @@ impl<T: TimeProvider> AuthCodes<T> {
 
     /// Generates and returns a new code that can be used by `SignerUIs`
     pub fn generate_new(&mut self) -> io::Result<String> {
-        let mut rng = OsRng::new()?;
-        let code = rng.gen_ascii_chars().take(TOKEN_LENGTH).collect::<String>();
+        let rng = OsRng;
+        let code = rng.sample_iter(&Alphanumeric).take(TOKEN_LENGTH).collect::<String>();
         let readable_code = code
             .as_bytes()
             .chunks(4)

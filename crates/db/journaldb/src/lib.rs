@@ -16,7 +16,6 @@
 
 //! `JournalDB` interface and implementation.
 
-extern crate heapsize;
 #[macro_use]
 extern crate log;
 
@@ -28,6 +27,7 @@ extern crate keccak_hasher;
 extern crate kvdb;
 extern crate memory_db;
 extern crate parity_bytes as bytes;
+extern crate parity_util_mem;
 extern crate parking_lot;
 extern crate rlp;
 
@@ -181,6 +181,7 @@ fn error_negatively_reference_hash(hash: &ethereum_types::H256) -> io::Error {
 pub fn new_memory_db() -> memory_db::MemoryDB<keccak_hasher::KeccakHasher, kvdb::DBValue> {
     memory_db::MemoryDB::from_null_node(&rlp::NULL_RLP, rlp::NULL_RLP.as_ref().into())
 }
+
 
 #[cfg(test)]
 mod tests {

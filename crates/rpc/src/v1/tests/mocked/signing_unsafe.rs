@@ -210,6 +210,7 @@ fn rpc_eth_sign_transaction() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -256,7 +257,7 @@ fn rpc_eth_send_transaction_with_bad_to() {
 		"id": 1
 	}"#;
 
-    let response = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params: prefix is missing."},"id":1}"#;
+    let response = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params: 0x prefix is missing."},"id":1}"#;
 
     assert_eq!(
         tester.io.handle_request_sync(&request),

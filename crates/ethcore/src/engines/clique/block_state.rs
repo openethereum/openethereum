@@ -221,7 +221,7 @@ impl CliqueBlockState {
                 }))?
             }
 
-            let nonce: H64 = decoded_seal[1].into();
+            let nonce = H64::from_slice(decoded_seal[1]);
             self.update_signers_on_vote(
                 VoteType::from_nonce(nonce)?,
                 creator,

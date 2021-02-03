@@ -24,7 +24,7 @@ mod shared_cache;
 mod stack;
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
+use ethereum_types::{Address, BigEndianHash, H256, U256};
 use hash::keccak;
 use num_bigint::BigUint;
 use std::{cmp, marker::PhantomData, mem, sync::Arc};
@@ -694,7 +694,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                 let address_scheme = match instruction {
                     instructions::CREATE => CreateContractAddress::FromSenderAndNonce,
                     instructions::CREATE2 => CreateContractAddress::FromSenderSaltAndCodeHash(
-                        self.stack.pop_back().into(),
+                        BigEndianHash::from_uint(&self.stack.pop_back()),
                     ),
                     _ => unreachable!("instruction can only be CREATE/CREATE2 checked above; qed"),
                 };
@@ -940,7 +940,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                     .stack
                     .pop_n(no_of_topics)
                     .iter()
-                    .map(H256::from)
+                    .map(BigEndianHash::from_uint)
                     .collect();
                 ext.log(topics, self.mem.read_slice(offset, size))?;
             }
@@ -1003,23 +1003,23 @@ impl<Cost: CostType> Interpreter<Cost> {
                 let offset = self.stack.pop_back();
                 let size = self.stack.pop_back();
                 let k = keccak(self.mem.read_slice(offset, size));
-                self.stack.push(U256::from(&*k));
+                self.stack.push(k.into_uint());
             }
             instructions::SLOAD => {
-                let key = H256::from(&self.stack.pop_back());
-                let word = U256::from(&*ext.storage_at(&key)?);
+                let key = BigEndianHash::from_uint(&self.stack.pop_back());
+                let word = ext.storage_at(&key)?.into_uint();
                 self.stack.push(word);
 
                 ext.al_insert_storage_key(self.params.address, key);
             }
             instructions::SSTORE => {
-                let key = H256::from(&self.stack.pop_back());
+                let key = BigEndianHash::from_uint(&self.stack.pop_back());
                 let val = self.stack.pop_back();
 
-                let current_val = U256::from(&*ext.storage_at(&key)?);
+                let current_val = ext.storage_at(&key)?.into_uint();
                 // Increase refund for clear
                 if ext.schedule().eip1283 {
-                    let original_val = U256::from(&*ext.initial_storage_at(&key)?);
+                    let original_val = ext.initial_storage_at(&key)?.into_uint();
                     gasometer::handle_eip1283_sstore_clears_refund(
                         ext,
                         &original_val,
@@ -1032,7 +1032,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                         ext.add_sstore_refund(sstore_clears_schedule);
                     }
                 }
-                ext.set_storage(key, H256::from(&val))?;
+                ext.set_storage(key, BigEndianHash::from_uint(&val))?;
                 ext.al_insert_storage_key(self.params.address, key);
             }
             instructions::PC => {
@@ -1099,7 +1099,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                 let hash = ext.extcodehash(&address)?.unwrap_or_else(H256::zero);
 
                 ext.al_insert_address(address);
-                self.stack.push(U256::from(hash));
+                self.stack.push(hash.into_uint());
             }
             instructions::CALLDATACOPY => {
                 Self::copy_data_to_memory(
@@ -1142,7 +1142,7 @@ impl<Cost: CostType> Interpreter<Cost> {
             instructions::BLOCKHASH => {
                 let block_number = self.stack.pop_back();
                 let block_hash = ext.blockhash(&block_number);
-                self.stack.push(U256::from(&*block_hash));
+                self.stack.push(block_hash.into_uint());
             }
             instructions::COINBASE => {
                 self.stack
@@ -1528,16 +1528,18 @@ fn set_sign(value: U256, sign: bool) -> U256 {
 
 #[inline]
 fn u256_to_address(value: &U256) -> Address {
-    Address::from(H256::from(value))
+    let addr: H256 = BigEndianHash::from_uint(value);
+    Address::from(addr)
 }
 
 #[inline]
 fn address_to_u256(value: Address) -> U256 {
-    U256::from(&*H256::from(value))
+    H256::from(value).into_uint()
 }
 
 #[cfg(test)]
 mod tests {
+    use ethereum_types::Address;
     use factory::Factory;
     use rustc_hex::FromHex;
     use std::sync::Arc;
@@ -1557,13 +1559,13 @@ mod tests {
         let code = "7feeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff006000527faaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaa6020526000620f120660406000601773945304eb96065b2a98b57a48a06ae28d285a71b56101f4f1600055".from_hex().unwrap();
 
         let mut params = ActionParams::default();
-        params.address = 5.into();
+        params.address = Address::from_low_u64_be(5);
         params.gas = 300_000.into();
         params.gas_price = 1.into();
         params.value = ActionValue::Transfer(100_000.into());
         params.code = Some(Arc::new(code));
         let mut ext = FakeExt::new();
-        ext.balances.insert(5.into(), 1_000_000_000.into());
+        ext.balances.insert(Address::from_low_u64_be(5), 1_000_000_000.into());
         ext.tracing = true;
 
         let gas_left = {
@@ -1580,12 +1582,12 @@ mod tests {
         let code = "6001600160000360003e00".from_hex().unwrap();
 
         let mut params = ActionParams::default();
-        params.address = 5.into();
+        params.address = Address::from_low_u64_be(5);
         params.gas = 300_000.into();
         params.gas_price = 1.into();
         params.code = Some(Arc::new(code));
         let mut ext = FakeExt::new_byzantium();
-        ext.balances.insert(5.into(), 1_000_000_000.into());
+        ext.balances.insert(Address::from_low_u64_be(5), 1_000_000_000.into());
         ext.tracing = true;
 
         let err = {

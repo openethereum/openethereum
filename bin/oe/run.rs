@@ -16,6 +16,7 @@
 
 use std::{
     any::Any,
+    str::FromStr,
     sync::{atomic, Arc, Weak},
     thread,
     time::{Duration, Instant},
@@ -606,7 +607,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 fn verification_bad_blocks(spec: &SpecType) -> Vec<H256> {
     match *spec {
         SpecType::Ropsten => {
-            vec!["1eac3d16c642411f13c287e29144c6f58fda859407c8f24c38deb168e1040714".into()]
+            vec![H256::from_str("1eac3d16c642411f13c287e29144c6f58fda859407c8f24c38deb168e1040714").expect("Valid hex string")]
         }
         _ => vec![],
     }

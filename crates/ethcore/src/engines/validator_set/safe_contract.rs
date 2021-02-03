@@ -34,7 +34,7 @@ use types::{
     ids::BlockId,
     log_entry::LogEntry,
     receipt::TypedReceipt,
-    transaction::{self, Action, Transaction, TypedTransaction},
+    transaction::self,
     BlockNumber,
 };
 use unexpected::Mismatch;

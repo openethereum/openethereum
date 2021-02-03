@@ -1826,7 +1826,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         block: &ExecutedBlock,
     ) -> Result<Vec<SignedTransaction>, Error> {
         let mut transactions = self.run_randomness_phase(block)?;
-        let nonce = transactions.last().map(|tx| tx.nonce + U256::one());
+        let nonce = transactions.last().map(|tx| tx.tx().nonce + U256::one());
         transactions.extend(self.run_posdao(block, nonce)?);
         Ok(transactions)
     }

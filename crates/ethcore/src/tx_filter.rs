@@ -101,7 +101,7 @@ impl TransactionFilter {
             }
         };
 
-        let sender = transaction.tx().sender();
+        let sender = transaction.sender();
         let value = transaction.tx().value;
         let gas_price = transaction.tx().gas_price;
         let key = (*parent_hash, sender);
@@ -151,7 +151,7 @@ impl TransactionFilter {
                                 to,
                                 value,
                                 gas_price,
-                                transaction.data.clone(),
+                                transaction.tx().data.clone(),
                             );
                         client.call_contract(BlockId::Hash(*parent_hash), contract_address, data)
 							.and_then(|value| decoder.decode(&value).map_err(|e| e.to_string()))

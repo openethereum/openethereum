@@ -24,7 +24,7 @@ use ethcore::{
     verification::queue::VerifierSettings,
 };
 use ethereum_types::{Address, H256, U256};
-use ethkey::{Public, Secret};
+use ethkey::Secret;
 use hash::keccak;
 use metrics::MetricsConfiguration;
 use miner::pool;
@@ -32,7 +32,7 @@ use num_cpus;
 use parity_version::{version, version_data};
 use std::{
     cmp,
-    collections::{BTreeMap, HashSet},
+    collections::HashSet,
     io::Read,
     iter::FromIterator,
     net::{SocketAddr, ToSocketAddrs},
@@ -63,10 +63,6 @@ use parity_rpc::NetworkSettings;
 use presale::ImportWallet;
 use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
 use run::RunCmd;
-use secretstore::{
-    Configuration as SecretStoreConfiguration, ContractAddress as SecretStoreContractAddress,
-    NodeSecretKey,
-};
 use snapshot::{self, SnapshotCommand};
 use types::data_format::DataFormat;
 
@@ -157,7 +153,6 @@ impl Configuration {
         let compaction = self.args.arg_db_compaction.parse()?;
         let warp_sync = !self.args.flag_no_warp;
         let experimental_rpcs = self.args.flag_jsonrpc_experimental;
-        let secretstore_conf = self.secretstore_config()?;
         let format = self.format()?;
         let metrics_conf = self.metrics_config()?;
         let keys_iterations = NonZeroU32::new(self.args.arg_keys_iterations)
@@ -416,7 +411,6 @@ impl Configuration {
                 warp_barrier: self.args.arg_warp_barrier,
                 experimental_rpcs,
                 net_settings: self.network_settings()?,
-                secretstore_conf: secretstore_conf,
                 name: self.args.arg_identity,
                 custom_bootnodes: self.args.arg_bootnodes.is_some(),
                 check_seal: !self.args.flag_no_seal_check,
@@ -641,33 +635,6 @@ impl Configuration {
                 None => U256::max_value(),
             },
             no_early_reject: self.args.flag_tx_queue_no_early_reject,
-        })
-    }
-
-    fn secretstore_config(&self) -> Result<SecretStoreConfiguration, String> {
-        Ok(SecretStoreConfiguration {
-            enabled: self.secretstore_enabled(),
-            http_enabled: self.secretstore_http_enabled(),
-            auto_migrate_enabled: self.secretstore_auto_migrate_enabled(),
-            acl_check_contract_address: self.secretstore_acl_check_contract_address()?,
-            service_contract_address: self.secretstore_service_contract_address()?,
-            service_contract_srv_gen_address: self
-                .secretstore_service_contract_srv_gen_address()?,
-            service_contract_srv_retr_address: self
-                .secretstore_service_contract_srv_retr_address()?,
-            service_contract_doc_store_address: self
-                .secretstore_service_contract_doc_store_address()?,
-            service_contract_doc_sretr_address: self
-                .secretstore_service_contract_doc_sretr_address()?,
-            self_secret: self.secretstore_self_secret()?,
-            nodes: self.secretstore_nodes()?,
-            key_server_set_contract_address: self.secretstore_key_server_set_contract_address()?,
-            interface: self.secretstore_interface(),
-            port: self.args.arg_ports_shift + self.args.arg_secretstore_port,
-            http_interface: self.secretstore_http_interface(),
-            http_port: self.args.arg_ports_shift + self.args.arg_secretstore_http_port,
-            data_path: self.directories().secretstore,
-            admin_public: self.secretstore_admin_public()?,
         })
     }
 
@@ -1017,7 +984,6 @@ impl Configuration {
         let db_path = replace_home_and_local(&data_path, &local_path, &base_db_path);
         let cache_path = replace_home_and_local(&data_path, &local_path, cache_path);
         let keys_path = replace_home(&data_path, &self.args.arg_keys_path);
-        let secretstore_path = replace_home(&data_path, &self.args.arg_secretstore_path);
         let ui_path = replace_home(&data_path, &self.args.arg_ui_path);
 
         Directories {
@@ -1026,7 +992,6 @@ impl Configuration {
             cache: cache_path,
             db: db_path,
             signer: ui_path,
-            secretstore: secretstore_path,
         }
     }
 
@@ -1063,74 +1028,6 @@ impl Configuration {
         self.interface(&self.args.arg_metrics_interface)
     }
 
-    fn secretstore_interface(&self) -> String {
-        self.interface(&self.args.arg_secretstore_interface)
-    }
-
-    fn secretstore_http_interface(&self) -> String {
-        self.interface(&self.args.arg_secretstore_http_interface)
-    }
-
-    fn secretstore_self_secret(&self) -> Result<Option<NodeSecretKey>, String> {
-        match self.args.arg_secretstore_secret {
-			Some(ref s) if s.len() == 64 => Ok(Some(NodeSecretKey::Plain(s.parse()
-				.map_err(|e| format!("Invalid secret store secret: {}. Error: {:?}", s, e))?))),
-			#[cfg(feature = "accounts")]
-			Some(ref s) if s.len() == 40 => Ok(Some(NodeSecretKey::KeyStore(s.parse()
-				.map_err(|e| format!("Invalid secret store secret address: {}. Error: {:?}", s, e))?))),
-			Some(_) => Err(format!("Invalid secret store secret. Must be either existing account address, or hex-encoded private key")),
-			None => Ok(None),
-		}
-    }
-
-    fn secretstore_admin_public(&self) -> Result<Option<Public>, String> {
-        match self.args.arg_secretstore_admin_public.as_ref() {
-            Some(admin_public) => {
-                Ok(Some(admin_public.parse().map_err(|e| {
-                    format!("Invalid secret store admin public: {}", e)
-                })?))
-            }
-            None => Ok(None),
-        }
-    }
-
-    fn secretstore_nodes(&self) -> Result<BTreeMap<Public, (String, u16)>, String> {
-        let mut nodes = BTreeMap::new();
-        for node in self
-            .args
-            .arg_secretstore_nodes
-            .split(',')
-            .filter(|n| n != &"")
-        {
-            let public_and_addr: Vec<_> = node.split('@').collect();
-            if public_and_addr.len() != 2 {
-                return Err(format!("Invalid secret store node: {}", node));
-            }
-
-            let ip_and_port: Vec<_> = public_and_addr[1].split(':').collect();
-            if ip_and_port.len() != 2 {
-                return Err(format!("Invalid secret store node: {}", node));
-            }
-
-            let public = public_and_addr[0].parse().map_err(|e| {
-                format!(
-                    "Invalid public key in secret store node: {}. Error: {:?}",
-                    public_and_addr[0], e
-                )
-            })?;
-            let port = ip_and_port[1].parse().map_err(|e| {
-                format!(
-                    "Invalid port in secret store node: {}. Error: {:?}",
-                    ip_and_port[1], e
-                )
-            })?;
-
-            nodes.insert(public, (ip_and_port[0].into(), port));
-        }
-
-        Ok(nodes)
-    }
-
     fn stratum_interface(&self) -> String {
         self.interface(&self.args.arg_stratum_interface)
     }
@@ -1147,70 +1044,6 @@ impl Configuration {
         self.args.flag_metrics
     }
 
-    fn secretstore_enabled(&self) -> bool {
-        !self.args.flag_no_secretstore && cfg!(feature = "secretstore")
-    }
-
-    fn secretstore_http_enabled(&self) -> bool {
-        !self.args.flag_no_secretstore_http && cfg!(feature = "secretstore")
-    }
-
-    fn secretstore_auto_migrate_enabled(&self) -> bool {
-        !self.args.flag_no_secretstore_auto_migrate
-    }
-
-    fn secretstore_acl_check_contract_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(self.args.arg_secretstore_acl_contract.as_ref())
-    }
-
-    fn secretstore_service_contract_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(self.args.arg_secretstore_contract.as_ref())
-    }
-
-    fn secretstore_service_contract_srv_gen_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(
-            self.args.arg_secretstore_srv_gen_contract.as_ref(),
-        )
-    }
-
-    fn secretstore_service_contract_srv_retr_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(
-            self.args.arg_secretstore_srv_retr_contract.as_ref(),
-        )
-    }
-
-    fn secretstore_service_contract_doc_store_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(
-            self.args.arg_secretstore_doc_store_contract.as_ref(),
-        )
-    }
-
-    fn secretstore_service_contract_doc_sretr_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(
-            self.args.arg_secretstore_doc_sretr_contract.as_ref(),
-        )
-    }
-
-    fn secretstore_key_server_set_contract_address(
-        &self,
-    ) -> Result<Option<SecretStoreContractAddress>, String> {
-        into_secretstore_service_contract_address(
-            self.args.arg_secretstore_server_set_contract.as_ref(),
-        )
-    }
-
     fn verifier_settings(&self) -> VerifierSettings {
         let mut settings = VerifierSettings::default();
         settings.scale_verifiers = self.args.flag_scale_verifiers;
@@ -1219,18 +1052,6 @@ impl Configuration {
         }
 
         settings
-    }
-}
-
-fn into_secretstore_service_contract_address(
-    s: Option<&String>,
-) -> Result<Option<SecretStoreContractAddress>, String> {
-    match s.map(String::as_str) {
-        None | Some("none") => Ok(None),
-        Some("registry") => Ok(Some(SecretStoreContractAddress::Registry)),
-        Some(a) => Ok(Some(SecretStoreContractAddress::Address(
-            a.parse().map_err(|e| format!("{}", e))?,
-        ))),
     }
 }
 
@@ -1540,7 +1361,6 @@ mod tests {
             vm_type: Default::default(),
             experimental_rpcs: false,
             net_settings: Default::default(),
-            secretstore_conf: Default::default(),
             name: "".into(),
             custom_bootnodes: false,
             fat_db: Default::default(),
@@ -1553,8 +1373,6 @@ mod tests {
             max_round_blocks_to_import: 1,
             metrics_conf: MetricsConfiguration::default(),
         };
-        expected.secretstore_conf.enabled = cfg!(feature = "secretstore");
-        expected.secretstore_conf.http_enabled = cfg!(feature = "secretstore");
         assert_eq!(conf.into_command().unwrap().cmd, Cmd::Run(expected));
     }
 
@@ -1817,8 +1635,6 @@ mod tests {
         assert_eq!(conf0.network_settings().unwrap().rpc_port, 8546);
         assert_eq!(conf0.http_config().unwrap().port, 8546);
         assert_eq!(conf0.ws_config().unwrap().port, 8547);
-        assert_eq!(conf0.secretstore_config().unwrap().port, 8084);
-        assert_eq!(conf0.secretstore_config().unwrap().http_port, 8083);
         assert_eq!(conf0.stratum_options().unwrap().unwrap().port, 8009);
 
         assert_eq!(conf1.net_addresses().unwrap().0.port(), 30304);
@@ -1826,8 +1642,6 @@ mod tests {
         assert_eq!(conf1.network_settings().unwrap().rpc_port, 8545);
         assert_eq!(conf1.http_config().unwrap().port, 8545);
         assert_eq!(conf1.ws_config().unwrap().port, 8547);
-        assert_eq!(conf1.secretstore_config().unwrap().port, 8084);
-        assert_eq!(conf1.secretstore_config().unwrap().http_port, 8083);
     }
 
     #[test]
@@ -1881,11 +1695,6 @@ mod tests {
         assert_eq!(&conf0.ws_config().unwrap().interface, "0.0.0.0");
         assert_eq!(conf0.ws_config().unwrap().hosts, None);
         assert_eq!(conf0.ws_config().unwrap().origins, None);
-        assert_eq!(&conf0.secretstore_config().unwrap().interface, "0.0.0.0");
-        assert_eq!(
-            &conf0.secretstore_config().unwrap().http_interface,
-            "0.0.0.0"
-        );
     }
 
     #[test]

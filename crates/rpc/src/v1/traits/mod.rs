@@ -27,7 +27,6 @@ pub mod parity_set;
 pub mod parity_signing;
 pub mod personal;
 pub mod pubsub;
-pub mod secretstore;
 pub mod signer;
 pub mod traces;
 pub mod web3;
@@ -44,7 +43,6 @@ pub use self::{
     parity_signing::ParitySigning,
     personal::Personal,
     pubsub::PubSub,
-    secretstore::SecretStore,
     signer::Signer,
     traces::Traces,
     web3::Web3,

@@ -28,8 +28,6 @@ mod parity_set;
 #[cfg(any(test, feature = "accounts"))]
 mod personal;
 mod pubsub;
-#[cfg(any(test, feature = "accounts"))]
-mod secretstore;
 mod signer;
 mod signing;
 mod signing_unsafe;
@@ -42,8 +40,6 @@ pub use self::parity_accounts::ParityAccountsClient;
 pub use self::parity_set::accounts::ParitySetAccountsClient;
 #[cfg(any(test, feature = "accounts"))]
 pub use self::personal::PersonalClient;
-#[cfg(any(test, feature = "accounts"))]
-pub use self::secretstore::SecretStoreClient;
 pub use self::{
     debug::DebugClient,
     eth::{EthClient, EthClientOptions},

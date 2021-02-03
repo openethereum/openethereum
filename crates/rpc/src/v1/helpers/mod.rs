@@ -27,8 +27,6 @@ pub mod engine_signer;
 pub mod external_signer;
 pub mod fake_sign;
 pub mod nonce;
-#[cfg(any(test, feature = "accounts"))]
-pub mod secretstore;
 
 mod network_settings;
 mod poll_filter;

@@ -269,7 +269,7 @@ usage! {
         ["Convenience Options"]
             FLAG flag_unsafe_expose: (bool) = false, or |c: &Config| c.misc.as_ref()?.unsafe_expose,
             "--unsafe-expose",
-            "All servers will listen on external interfaces and will be remotely accessible. It's equivalent with setting the following: --[ws,jsonrpc,secretstore,stratum,secretstore-http]-interface=all --*-hosts=all    This option is UNSAFE and should be used with great care!",
+            "All servers will listen on external interfaces and will be remotely accessible. It's equivalent with setting the following: --[ws,jsonrpc,stratum]-interface=all --*-hosts=all    This option is UNSAFE and should be used with great care!",
 
             ARG arg_config: (String) = "$BASE/config.toml", or |_| None,
             "-c, --config=[CONFIG]",
@@ -411,7 +411,7 @@ usage! {
 
             ARG arg_jsonrpc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-apis=[APIS]",
-            "Specify the APIs available through the HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
+            "Specify the APIs available through the HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
             ARG arg_jsonrpc_hosts: (String) = "none", or |c: &Config| c.rpc.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-hosts=[HOSTS]",
@@ -452,7 +452,7 @@ usage! {
 
             ARG arg_ws_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,traces", or |c: &Config| c.websockets.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ws-apis=[APIS]",
-            "Specify the JSON-RPC APIs available through the WebSockets interface using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
+            "Specify the JSON-RPC APIs available through the WebSockets interface using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
             ARG arg_ws_origins: (String) = "parity://*,chrome-extension://*,moz-extension://*", or |c: &Config| c.websockets.as_ref()?.origins.as_ref().map(|vec| vec.join(",")),
             "--ws-origins=[URL]",
@@ -494,80 +494,7 @@ usage! {
 
             ARG arg_ipc_apis: (String) = "web3,eth,pubsub,net,parity,parity_pubsub,parity_accounts,traces", or |c: &Config| c.ipc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--ipc-apis=[APIS]",
-            "Specify custom API set available via JSON-RPC over IPC using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, secretstore. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
-
-        ["Secret Store Options"]
-            FLAG flag_no_secretstore: (bool) = false, or |c: &Config| c.secretstore.as_ref()?.disable.clone(),
-            "--no-secretstore",
-            "Disable Secret Store functionality.",
-
-            FLAG flag_no_secretstore_http: (bool) = false, or |c: &Config| c.secretstore.as_ref()?.disable_http.clone(),
-            "--no-secretstore-http",
-            "Disable Secret Store HTTP API.",
-
-            FLAG flag_no_secretstore_auto_migrate: (bool) = false, or |c: &Config| c.secretstore.as_ref()?.disable_auto_migrate.clone(),
-            "--no-secretstore-auto-migrate",
-            "Do not run servers set change session automatically when servers set changes. This option has no effect when servers set is read from configuration file.",
-
-            ARG arg_secretstore_acl_contract: (Option<String>) = Some("registry".into()), or |c: &Config| c.secretstore.as_ref()?.acl_contract.clone(),
-            "--secretstore-acl-contract=[SOURCE]",
-            "Secret Store permissioning contract address source: none, registry (contract address is read from 'secretstore_acl_checker' entry in registry) or address.",
-
-            ARG arg_secretstore_contract: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.service_contract.clone(),
-            "--secretstore-contract=[SOURCE]",
-            "Secret Store Service contract address source: none, registry (contract address is read from 'secretstore_service' entry in registry) or address.",
-
-            ARG arg_secretstore_srv_gen_contract: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.service_contract_srv_gen.clone(),
-            "--secretstore-srv-gen-contract=[SOURCE]",
-            "Secret Store Service server key generation contract address source: none, registry (contract address is read from 'secretstore_service_srv_gen' entry in registry) or address.",
-
-            ARG arg_secretstore_srv_retr_contract: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.service_contract_srv_retr.clone(),
-            "--secretstore-srv-retr-contract=[SOURCE]",
-            "Secret Store Service server key retrieval contract address source: none, registry (contract address is read from 'secretstore_service_srv_retr' entry in registry) or address.",
-
-            ARG arg_secretstore_doc_store_contract: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.service_contract_doc_store.clone(),
-            "--secretstore-doc-store-contract=[SOURCE]",
-            "Secret Store Service document key store contract address source: none, registry (contract address is read from 'secretstore_service_doc_store' entry in registry) or address.",
-
-            ARG arg_secretstore_doc_sretr_contract: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.service_contract_doc_sretr.clone(),
-            "--secretstore-doc-sretr-contract=[SOURCE]",
-            "Secret Store Service document key shadow retrieval contract address source: none, registry (contract address is read from 'secretstore_service_doc_sretr' entry in registry) or address.",
-
-            ARG arg_secretstore_nodes: (String) = "", or |c: &Config| c.secretstore.as_ref()?.nodes.as_ref().map(|vec| vec.join(",")),
-            "--secretstore-nodes=[NODES]",
-            "Comma-separated list of other secret store cluster nodes in form NODE_PUBLIC_KEY_IN_HEX@NODE_IP_ADDR:NODE_PORT.",
-
-            ARG arg_secretstore_server_set_contract: (Option<String>) = Some("registry".into()), or |c: &Config| c.secretstore.as_ref()?.server_set_contract.clone(),
-            "--secretstore-server-set-contract=[SOURCE]",
-            "Secret Store server set contract address source: none, registry (contract address is read from 'secretstore_server_set' entry in registry) or address.",
-
-            ARG arg_secretstore_interface: (String) = "local", or |c: &Config| c.secretstore.as_ref()?.interface.clone(),
-            "--secretstore-interface=[IP]",
-            "Specify the hostname portion for listening to Secret Store Key Server internal requests, IP should be an interface's IP address, or local.",
-
-            ARG arg_secretstore_port: (u16) = 8083u16, or |c: &Config| c.secretstore.as_ref()?.port.clone(),
-            "--secretstore-port=[PORT]",
-            "Specify the port portion for listening to Secret Store Key Server internal requests.",
-
-            ARG arg_secretstore_http_interface: (String) = "local", or |c: &Config| c.secretstore.as_ref()?.http_interface.clone(),
-            "--secretstore-http-interface=[IP]",
-            "Specify the hostname portion for listening to Secret Store Key Server HTTP requests, IP should be an interface's IP address, or local.",
-
-            ARG arg_secretstore_http_port: (u16) = 8082u16, or |c: &Config| c.secretstore.as_ref()?.http_port.clone(),
-            "--secretstore-http-port=[PORT]",
-            "Specify the port portion for listening to Secret Store Key Server HTTP requests.",
-
-            ARG arg_secretstore_path: (String) = "$BASE/secretstore", or |c: &Config| c.secretstore.as_ref()?.path.clone(),
-            "--secretstore-path=[PATH]",
-            "Specify directory where Secret Store should save its data.",
-
-            ARG arg_secretstore_secret: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.self_secret.clone(),
-            "--secretstore-secret=[SECRET]",
-            "Hex-encoded secret key of this node.",
-
-            ARG arg_secretstore_admin_public: (Option<String>) = None, or |c: &Config| c.secretstore.as_ref()?.admin_public.clone(),
-            "--secretstore-admin=[PUBLIC]",
-            "Hex-encoded public key of secret store administrator.",
+            "Specify custom API set available via JSON-RPC over IPC using a comma-delimited list of API names. Possible names are: all, safe, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces. You can also disable a specific API by putting '-' in the front, example: all,-personal. 'safe' enables the following APIs: web3, net, eth, pubsub, parity, parity_pubsub, traces",
 
         ["Sealing/Mining Options"]
             FLAG flag_force_sealing: (bool) = false, or |c: &Config| c.mining.as_ref()?.force_sealing.clone(),
@@ -819,7 +746,6 @@ struct Config {
     rpc: Option<Rpc>,
     websockets: Option<Ws>,
     ipc: Option<Ipc>,
-    secretstore: Option<SecretStore>,
     mining: Option<Mining>,
     footprint: Option<Footprint>,
     snapshots: Option<Snapshots>,
@@ -1126,17 +1052,6 @@ mod tests {
 
         let args = Args::parse(&[
             "openethereum",
-            "--secretstore-nodes",
-            "abc@127.0.0.1:3333,cde@10.10.10.10:4444",
-        ])
-        .unwrap();
-        assert_eq!(
-            args.arg_secretstore_nodes,
-            "abc@127.0.0.1:3333,cde@10.10.10.10:4444"
-        );
-
-        let args = Args::parse(&[
-            "openethereum",
             "--password",
             "~/.safe/1",
             "--password",
@@ -1312,7 +1227,7 @@ mod tests {
                 arg_jsonrpc_port: 8545u16,
                 arg_jsonrpc_interface: "local".into(),
                 arg_jsonrpc_cors: "null".into(),
-                arg_jsonrpc_apis: "web3,eth,net,parity,traces,secretstore".into(),
+                arg_jsonrpc_apis: "web3,eth,net,parity,traces".into(),
                 arg_jsonrpc_hosts: "none".into(),
                 arg_jsonrpc_server_threads: None,
                 arg_jsonrpc_threads: 4,
@@ -1324,7 +1239,7 @@ mod tests {
                 flag_no_ws: false,
                 arg_ws_port: 8546u16,
                 arg_ws_interface: "local".into(),
-                arg_ws_apis: "web3,eth,net,parity,traces,secretstore".into(),
+                arg_ws_apis: "web3,eth,net,parity,traces".into(),
                 arg_ws_origins: "none".into(),
                 arg_ws_hosts: "none".into(),
                 arg_ws_max_connections: 100,
@@ -1333,33 +1248,12 @@ mod tests {
                 // IPC
                 flag_no_ipc: false,
                 arg_ipc_path: "$HOME/.parity/jsonrpc.ipc".into(),
-                arg_ipc_apis: "web3,eth,net,parity,parity_accounts,personal,traces,secretstore"
-                    .into(),
+                arg_ipc_apis: "web3,eth,net,parity,parity_accounts,personal,traces".into(),
 
                 // METRICS
                 flag_metrics: false,
                 arg_metrics_port: 3000u16,
                 arg_metrics_interface: "local".into(),
-
-                // SECRETSTORE
-                flag_no_secretstore: false,
-                flag_no_secretstore_http: false,
-                flag_no_secretstore_auto_migrate: false,
-                arg_secretstore_acl_contract: Some("registry".into()),
-                arg_secretstore_contract: Some("none".into()),
-                arg_secretstore_srv_gen_contract: Some("none".into()),
-                arg_secretstore_srv_retr_contract: Some("none".into()),
-                arg_secretstore_doc_store_contract: Some("none".into()),
-                arg_secretstore_doc_sretr_contract: Some("none".into()),
-                arg_secretstore_secret: None,
-                arg_secretstore_admin_public: None,
-                arg_secretstore_nodes: "".into(),
-                arg_secretstore_server_set_contract: Some("registry".into()),
-                arg_secretstore_interface: "local".into(),
-                arg_secretstore_port: 8083u16,
-                arg_secretstore_http_interface: "local".into(),
-                arg_secretstore_http_port: 8082u16,
-                arg_secretstore_path: "$HOME/.parity/secretstore".into(),
 
                 // -- Sealing/Mining Options
                 arg_author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),
@@ -1544,26 +1438,6 @@ mod tests {
                     enable: Some(true),
                     interface: Some("local".to_string()),
                     port: Some(4000),
-                }),
-                secretstore: Some(SecretStore {
-                    disable: None,
-                    disable_http: None,
-                    disable_auto_migrate: None,
-                    acl_contract: None,
-                    service_contract: None,
-                    service_contract_srv_gen: None,
-                    service_contract_srv_retr: None,
-                    service_contract_doc_store: None,
-                    service_contract_doc_sretr: None,
-                    self_secret: None,
-                    admin_public: None,
-                    nodes: None,
-                    server_set_contract: None,
-                    interface: None,
-                    port: Some(8083),
-                    http_interface: None,
-                    http_port: Some(8082),
-                    path: None,
                 }),
                 mining: Some(Mining {
                     author: Some("0xdeadbeefcafe0000000000000000000000000001".into()),

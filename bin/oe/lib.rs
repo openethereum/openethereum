@@ -75,9 +75,6 @@ extern crate log as rlog;
 #[cfg(feature = "ethcore-accounts")]
 extern crate ethcore_accounts as accounts;
 
-#[cfg(feature = "secretstore")]
-extern crate ethcore_secretstore;
-
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
@@ -105,7 +102,6 @@ mod presale;
 mod rpc;
 mod rpc_apis;
 mod run;
-mod secretstore;
 mod signer;
 mod snapshot;
 mod upgrade;

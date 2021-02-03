@@ -55,7 +55,6 @@ use parity_runtime::Runtime;
 use parity_version::version;
 use rpc;
 use rpc_apis;
-use secretstore;
 use signer;
 use sync::{self, SyncConfig};
 use user_defaults::UserDefaults;
@@ -100,7 +99,6 @@ pub struct RunCmd {
     pub vm_type: VMType,
     pub experimental_rpcs: bool,
     pub net_settings: NetworkSettings,
-    pub secretstore_conf: secretstore::Configuration,
     pub name: String,
     pub custom_bootnodes: bool,
     pub stratum: Option<stratum::Options>,
@@ -185,12 +183,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     // execute upgrades
     execute_upgrades(&cmd.dirs.base, &db_dirs, algorithm, &cmd.compaction)?;
-
-    // create dirs used by parity
-    cmd.dirs.create_dirs(
-        cmd.acc_conf.unlocked_accounts.len() == 0,
-        cmd.secretstore_conf.enabled,
-    )?;
 
     //print out running parity environment
     print_running_environment(&spec.data_dir, &cmd.dirs, &db_dirs);
@@ -513,20 +505,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         &dependencies,
     )?;
 
-    // secret store key server
-    let secretstore_deps = secretstore::Dependencies {
-        client: client.clone(),
-        sync: sync_provider.clone(),
-        miner: miner.clone(),
-        account_provider,
-        accounts_passwords: &passwords,
-    };
-    let secretstore_key_server = secretstore::start(
-        cmd.secretstore_conf.clone(),
-        secretstore_deps,
-        runtime.executor(),
-    )?;
-
     // the informant
     let informant = Arc::new(Informant::new(
         FullNodeInformantData {
@@ -584,14 +562,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             informant,
             client,
             client_service: Arc::new(service),
-            keep_alive: Box::new((
-                watcher,
-                ws_server,
-                http_server,
-                ipc_server,
-                secretstore_key_server,
-                runtime,
-            )),
+            keep_alive: Box::new((watcher, ws_server, http_server, ipc_server, runtime)),
         },
     })
 }

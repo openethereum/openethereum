@@ -48,8 +48,8 @@ pub use self::{
     metadata::Metadata,
     traits::{
         Debug, Eth, EthFilter, EthPubSub, EthSigning, Net, Parity, ParityAccounts,
-        ParityAccountsInfo, ParitySet, ParitySetAccounts, ParitySigning, Personal, PubSub,
-        SecretStore, Signer, Traces, Web3,
+        ParityAccountsInfo, ParitySet, ParitySetAccounts, ParitySigning, Personal, PubSub, Signer,
+        Traces, Web3,
     },
     types::Origin,
 };

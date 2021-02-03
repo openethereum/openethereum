@@ -57,8 +57,6 @@ pub enum Api {
     ParityAccounts,
     /// Parity - Set methods (UNSAFE: Side Effects affecting node operation)
     ParitySet,
-    /// SecretStore (UNSAFE: arbitrary hash signing)
-    SecretStore,
     /// Geth-compatible (best-effort) debug API (Potentially UNSAFE)
     /// NOTE We don't aim to support all methods, only the ones that are useful.
     Debug,
@@ -80,7 +78,6 @@ impl FromStr for Api {
             "parity_set" => Ok(ParitySet),
             "personal" => Ok(Personal),
             "pubsub" => Ok(EthPubSub),
-            "secretstore" => Ok(SecretStore),
             "signer" => Ok(Signer),
             "traces" => Ok(Traces),
             "web3" => Ok(Web3),
@@ -376,10 +373,6 @@ impl FullDependencies {
                     );
                 }
                 Api::Traces => handler.extend_with(TracesClient::new(&self.client).to_delegate()),
-                Api::SecretStore => {
-                    #[cfg(feature = "accounts")]
-                    handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
-                }
             }
         }
     }
@@ -436,7 +429,6 @@ impl ApiSet {
                 public_list.insert(Api::ParitySet);
                 public_list.insert(Api::Signer);
                 public_list.insert(Api::Personal);
-                public_list.insert(Api::SecretStore);
                 public_list
             }
             ApiSet::PubSub => [
@@ -470,7 +462,6 @@ mod test {
         assert_eq!(Api::ParityAccounts, "parity_accounts".parse().unwrap());
         assert_eq!(Api::ParitySet, "parity_set".parse().unwrap());
         assert_eq!(Api::Traces, "traces".parse().unwrap());
-        assert_eq!(Api::SecretStore, "secretstore".parse().unwrap());
         assert!("rp".parse::<Api>().is_err());
     }
 
@@ -536,7 +527,6 @@ mod test {
                     Api::Parity,
                     Api::ParityPubSub,
                     Api::Traces,
-                    Api::SecretStore,
                     Api::ParityAccounts,
                     Api::ParitySet,
                     Api::Signer,
@@ -562,7 +552,6 @@ mod test {
                     Api::Parity,
                     Api::ParityPubSub,
                     Api::Traces,
-                    Api::SecretStore,
                     Api::ParityAccounts,
                     Api::ParitySet,
                     Api::Signer,

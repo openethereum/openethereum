@@ -82,9 +82,6 @@ extern crate vm;
 #[cfg(any(test, feature = "ethcore-accounts"))]
 extern crate ethcore_accounts as accounts;
 
-#[cfg(any(test, feature = "ethcore-accounts"))]
-extern crate tiny_keccak;
-
 #[macro_use]
 extern crate log;
 #[macro_use]

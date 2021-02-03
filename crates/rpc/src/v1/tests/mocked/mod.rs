@@ -29,8 +29,6 @@ mod parity_set;
 #[cfg(any(test, feature = "accounts"))]
 mod personal;
 mod pubsub;
-#[cfg(any(test, feature = "accounts"))]
-mod secretstore;
 mod signer;
 #[cfg(any(test, feature = "accounts"))]
 mod signing;

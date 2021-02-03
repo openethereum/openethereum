@@ -38,9 +38,9 @@ use machine::EthereumMachine;
 
 /// Number of blocks in an ethash snapshot.
 // make dependent on difficulty incrment divisor?
-const SNAPSHOT_BLOCKS: u64 = 5000;
+const SNAPSHOT_BLOCKS: u64 = 1000;
 /// Maximum number of blocks allowed in an ethash snapshot.
-const MAX_SNAPSHOT_BLOCKS: u64 = 30000;
+const MAX_SNAPSHOT_BLOCKS: u64 = 10000;
 
 /// Ethash specific seal
 #[derive(Debug, PartialEq)]

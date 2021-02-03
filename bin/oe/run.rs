@@ -63,8 +63,8 @@ use user_defaults::UserDefaults;
 // How often we attempt to take a snapshot: only snapshot on blocknumbers that are multiples of this.
 const SNAPSHOT_PERIOD: u64 = 20000;
 
-// Start snapshots `history` blocks from the tip. Should be smaller than `SNAPSHOT_HISTORY`.
-const SNAPSHOT_HISTORY: u64 = 100;
+// Start snapshoting from `tip`-`history, with this we want to bypass reorgs. Should be smaller than prunning history.
+const SNAPSHOT_HISTORY: u64 = 50;
 
 // Full client number of DNS threads
 const FETCH_FULL_NUM_DNS_THREADS: usize = 4;

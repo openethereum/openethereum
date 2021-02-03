@@ -2854,7 +2854,6 @@ dependencies = [
  "pretty_assertions",
  "prometheus",
  "regex 1.3.9",
- "registrar",
  "rlp",
  "rpassword",
  "rustc-hex 1.0.0",

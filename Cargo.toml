@@ -2,7 +2,7 @@
 description = "OpenEthereum"
 name = "openethereum"
 # NOTE Make sure to update util/version/Cargo.toml as well
-version = "3.1.0-rc1"
+version = "3.1.1"
 license = "GPL-3.0"
 authors = [
 	"OpenEthereum developers",
@@ -10,7 +10,7 @@ authors = [
 ]
 
 [dependencies]
-blooms-db = { path = "util/blooms-db" }
+blooms-db = { path = "crates/db/blooms-db" }
 log = "0.4"
 rustc-hex = "1.0"
 docopt = "1.0"
@@ -35,44 +35,42 @@ fdlimit = "0.1"
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 jsonrpc-core = "15.0.0"
 parity-bytes = "0.1"
-common-types = { path = "ethcore/types" }
-ethcore = { path = "ethcore", features = ["parity"] }
-ethcore-accounts = { path = "accounts", optional = true }
-ethcore-blockchain = { path = "ethcore/blockchain" }
-ethcore-call-contract = { path = "ethcore/call-contract"}
-ethcore-db = { path = "ethcore/db" }
-ethcore-io = { path = "util/io" }
-ethcore-logger = { path = "parity/logger" }
-ethcore-miner = { path = "miner" }
-ethcore-network = { path = "util/network" }
-ethcore-service = { path = "ethcore/service" }
-ethcore-sync = { path = "ethcore/sync" }
+common-types = { path = "crates/ethcore/types" }
+ethcore = { path = "crates/ethcore", features = ["parity"] }
+ethcore-accounts = { path = "crates/accounts", optional = true }
+ethcore-blockchain = { path = "crates/ethcore/blockchain" }
+ethcore-call-contract = { path = "crates/vm/call-contract"}
+ethcore-db = { path = "crates/db/db" }
+ethcore-io = { path = "crates/runtime/io" }
+ethcore-logger = { path = "bin/oe/logger" }
+ethcore-miner = { path = "crates/concensus/miner" }
+ethcore-network = { path = "crates/net/network" }
+ethcore-service = { path = "crates/ethcore/service" }
+ethcore-sync = { path = "crates/ethcore/sync" }
 ethereum-types = "0.4"
-ethkey = { path = "accounts/ethkey" }
-ethstore = { path = "accounts/ethstore" }
-fetch = { path = "util/fetch" }
-node-filter = { path = "ethcore/node-filter" }
+ethkey = { path = "crates/accounts/ethkey" }
+ethstore = { path = "crates/accounts/ethstore" }
+fetch = { path = "crates/net/fetch" }
+node-filter = { path = "crates/net/node-filter" }
 rlp = { version = "0.3.0", features = ["ethereum"] }
-cli-signer= { path = "cli-signer" }
+cli-signer= { path = "crates/util/cli-signer" }
 parity-daemonize = "0.3"
-parity-local-store = { path = "miner/local-store" }
-parity-runtime = { path = "util/runtime" }
-parity-rpc = { path = "rpc" }
-parity-version = { path = "util/version" }
+parity-local-store = { path = "crates/concensus/miner/local-store" }
+parity-runtime = { path = "crates/runtime/runtime" }
+parity-rpc = { path = "crates/rpc" }
+parity-version = { path = "crates/util/version" }
 parity-path = "0.1"
-dir = { path = "util/dir" }
-panic_hook = { path = "util/panic-hook" }
+dir = { path = "crates/util/dir" }
+panic_hook = { path = "crates/util/panic-hook" }
 keccak-hash = "0.1"
-migration-rocksdb = { path = "util/migration-rocksdb" }
+migration-rocksdb = { path = "crates/db/migration-rocksdb" }
 kvdb = "0.1"
 kvdb-rocksdb = "0.1.3"
-journaldb = { path = "util/journaldb" }
-stats = { path = "util/stats" }
+journaldb = { path = "crates/db/journaldb" }
+stats = { path = "crates/util/stats" }
 prometheus = "0.9.0"
 
-ethcore-secretstore = { path = "secret-store", optional = true }
-
-registrar = { path = "util/registrar" }
+# ethcore-secretstore = { path = "crates/util/secret-store", optional = true }
 
 [build-dependencies]
 rustc_version = "0.2"
@@ -81,7 +79,7 @@ rustc_version = "0.2"
 pretty_assertions = "0.1"
 ipnetwork = "0.12.6"
 tempdir = "0.3"
-fake-fetch = { path = "util/fake-fetch" }
+fake-fetch = { path = "crates/net/fake-fetch" }
 lazy_static = "1.2.0"
 
 [target.'cfg(windows)'.dependencies]
@@ -97,7 +95,6 @@ test-heavy = ["ethcore/test-heavy"]
 evm-debug = ["ethcore/evm-debug"]
 evm-debug-tests = ["ethcore/evm-debug-tests"]
 slow-blocks = ["ethcore/slow-blocks"]
-secretstore = ["ethcore-secretstore", "ethcore-secretstore/accounts"]
 final = ["parity-version/final"]
 deadlock_detection = ["parking_lot/deadlock_detection"]
 # to create a memory profile (requires nightly rust), use e.g.
@@ -109,10 +106,10 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 memory_profiling = []
 
 [lib]
-path = "parity/lib.rs"
+path = "bin/oe/lib.rs"
 
 [[bin]]
-path = "parity/main.rs"
+path = "bin/oe/main.rs"
 name = "openethereum"
 
 [profile.test]
@@ -128,16 +125,10 @@ lto = true
 # in the dependency tree in any other way
 # (i.e. pretty much only standalone CLI tools)
 members = [
-	"accounts/ethkey/cli",
-	"accounts/ethstore/cli",
-	"chainspec",
-	"ethcore/wasm/run",
-	"evmbin",
-	"util/triehash-ethereum",
-	"util/keccak-hasher",
-	"util/patricia-trie-ethereum",
-	"util/fastmap",
-	"util/time-utils"
+	"bin/ethkey",
+	"bin/ethstore",
+	"bin/evmbin",
+	"bin/chainspec"
 ]
 
 [patch.crates-io]

@@ -19,7 +19,6 @@
 #![allow(deprecated)]
 
 use crypto;
-use ethkey;
 use io::IoError;
 use libc::{EMFILE, ENFILE};
 use rlp;
@@ -179,14 +178,14 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<ethkey::Error> for Error {
-    fn from(_err: ethkey::Error) -> Self {
+impl From<crypto::Error> for Error {
+    fn from(_err: crypto::Error) -> Self {
         ErrorKind::Auth.into()
     }
 }
 
-impl From<ethkey::crypto::Error> for Error {
-    fn from(_err: ethkey::crypto::Error) -> Self {
+impl From<crypto::publickey::Error> for Error {
+    fn from(_err: crypto::publickey::Error) -> Self {
         ErrorKind::Auth.into()
     }
 }
@@ -217,7 +216,7 @@ fn test_errors() {
         _ => panic!("Unexpected error"),
     }
 
-    match *<Error as From<ethkey::crypto::Error>>::from(ethkey::crypto::Error::InvalidMessage)
+    match *<Error as From<crypto::publickey::Error>>::from(crypto::publickey::Error::InvalidMessage)
         .kind()
     {
         ErrorKind::Auth => {}

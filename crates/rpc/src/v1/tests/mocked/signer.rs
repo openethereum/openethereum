@@ -92,7 +92,7 @@ fn should_return_list_of_items_to_confirm() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
                 gas_price: U256::from(10_000),
@@ -109,7 +109,7 @@ fn should_return_list_of_items_to_confirm() {
     let _sign_future = tester
         .signer
         .add_request(
-            ConfirmationPayload::EthSignMessage(1.into(), vec![5].into()),
+            ConfirmationPayload::EthSignMessage(Address::from_low_u64_be(1), vec![5].into()),
             Origin::Unknown,
         )
         .unwrap();
@@ -139,7 +139,7 @@ fn should_reject_transaction_from_queue_without_dispatching() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
                 gas_price: U256::from(10_000),
@@ -177,7 +177,7 @@ fn should_not_remove_transaction_if_password_is_invalid() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
                 gas_price: U256::from(10_000),
@@ -213,7 +213,7 @@ fn should_not_remove_sign_if_password_is_invalid() {
     let _confirmation_future = tester
         .signer
         .add_request(
-            ConfirmationPayload::EthSignMessage(0.into(), vec![5].into()),
+            ConfirmationPayload::EthSignMessage(Address::from_low_u64_be(0), vec![5].into()),
             Origin::Unknown,
         )
         .unwrap();
@@ -308,7 +308,7 @@ fn should_alter_the_sender_and_nonce() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: 0.into(),
+                from: Address::from_low_u64_be(0),
                 used_default_from: false,
                 to: Some(recipient),
                 gas_price: U256::from(10_000),

@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+
 #![warn(missing_docs)]
 
 //! Account management.
+
+extern crate parity_crypto as crypto;
 
 mod account_data;
 mod error;
@@ -32,7 +35,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ethkey::{Address, Generator, Message, Password, Public, Random, Secret};
+use crypto::publickey::{Address, Generator, Message, Public, Random, Secret};
+use ethkey::Password;
 use ethstore::{
     accounts_dir::MemoryDirectory, random_string, EthMultiStore, EthStore, OpaqueSecret,
     SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
@@ -40,7 +44,7 @@ use ethstore::{
 use log::*;
 use parking_lot::RwLock;
 
-pub use ethkey::Signature;
+pub use crypto::publickey::Signature;
 pub use ethstore::{Derivation, Error, IndexDerivation, KeyFile};
 
 pub use self::{account_data::AccountMeta, error::SignError};
@@ -134,9 +138,7 @@ impl AccountProvider {
 
     /// Creates new random account and returns address and public key
     pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), Error> {
-        let acc = Random
-            .generate()
-            .expect("secp context has generation capabilities; qed");
+        let acc = Random.generate();
         let public = acc.public().clone();
         let secret = acc.secret().clone();
         let account = self
@@ -632,14 +634,14 @@ impl AccountProvider {
 #[cfg(test)]
 mod tests {
     use super::{AccountProvider, Unlock};
+    use crypto::publickey::{Address, Generator, Random};
     use ethereum_types::H256;
-    use ethkey::{Address, Generator, Random};
     use ethstore::{Derivation, StoreAccountRef};
     use std::time::{Duration, Instant};
 
     #[test]
     fn unlock_account_temp() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
@@ -656,7 +658,7 @@ mod tests {
 
     #[test]
     fn derived_account_nosave() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
@@ -669,7 +671,7 @@ mod tests {
             .derive_account(
                 &kp.address(),
                 None,
-                Derivation::SoftHash(H256::from(999)),
+                Derivation::SoftHash(H256::from_low_u64_be(999)),
                 false,
             )
             .expect("Derivation should not fail");
@@ -683,7 +685,7 @@ mod tests {
 
     #[test]
     fn derived_account_save() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
@@ -696,7 +698,7 @@ mod tests {
             .derive_account(
                 &kp.address(),
                 None,
-                Derivation::SoftHash(H256::from(999)),
+                Derivation::SoftHash(H256::from_low_u64_be(999)),
                 true,
             )
             .expect("Derivation should not fail");
@@ -716,7 +718,7 @@ mod tests {
 
     #[test]
     fn derived_account_sign() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"base".into())
@@ -729,7 +731,7 @@ mod tests {
             .derive_account(
                 &kp.address(),
                 None,
-                Derivation::SoftHash(H256::from(1999)),
+                Derivation::SoftHash(H256::from_low_u64_be(1999)),
                 true,
             )
             .expect("Derivation should not fail");
@@ -744,7 +746,7 @@ mod tests {
             .sign_derived(
                 &kp.address(),
                 None,
-                Derivation::SoftHash(H256::from(1999)),
+                Derivation::SoftHash(H256::from_low_u64_be(1999)),
                 msg,
             )
             .expect("Derived signing with existing unlocked account should not fail");
@@ -754,7 +756,7 @@ mod tests {
 
     #[test]
     fn unlock_account_perm() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
@@ -776,7 +778,7 @@ mod tests {
 
     #[test]
     fn unlock_account_timer() {
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
@@ -799,7 +801,7 @@ mod tests {
     #[test]
     fn should_sign_and_return_token() {
         // given
-        let kp = Random.generate().unwrap();
+        let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())

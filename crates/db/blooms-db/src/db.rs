@@ -346,59 +346,59 @@ mod tests {
             .insert_blooms(
                 0,
                 vec![
-                    Bloom::from(0),
-                    Bloom::from(0x01),
-                    Bloom::from(0x10),
-                    Bloom::from(0x11),
+                    Bloom::from_low_u64_be(0),
+                    Bloom::from_low_u64_be(0x01),
+                    Bloom::from_low_u64_be(0x10),
+                    Bloom::from_low_u64_be(0x11),
                 ]
                 .iter(),
             )
             .unwrap();
 
         let matches = database
-            .iterate_matching(0, 3, Some(&Bloom::from(0)))
+            .iterate_matching(0, 3, Some(&Bloom::from_low_u64_be(0)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![0, 1, 2, 3]);
 
         let matches = database
-            .iterate_matching(0, 4, Some(&Bloom::from(0)))
+            .iterate_matching(0, 4, Some(&Bloom::from_low_u64_be(0)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![0, 1, 2, 3]);
 
         let matches = database
-            .iterate_matching(1, 3, Some(&Bloom::from(0)))
+            .iterate_matching(1, 3, Some(&Bloom::from_low_u64_be(0)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![1, 2, 3]);
 
         let matches = database
-            .iterate_matching(1, 2, Some(&Bloom::from(0)))
+            .iterate_matching(1, 2, Some(&Bloom::from_low_u64_be(0)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![1, 2]);
 
         let matches = database
-            .iterate_matching(0, 3, Some(&Bloom::from(0x01)))
+            .iterate_matching(0, 3, Some(&Bloom::from_low_u64_be(0x01)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![1, 3]);
 
         let matches = database
-            .iterate_matching(0, 3, Some(&Bloom::from(0x10)))
+            .iterate_matching(0, 3, Some(&Bloom::from_low_u64_be(0x10)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![2, 3]);
 
         let matches = database
-            .iterate_matching(2, 2, Some(&Bloom::from(0x10)))
+            .iterate_matching(2, 2, Some(&Bloom::from_low_u64_be(0x10)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
@@ -413,52 +413,52 @@ mod tests {
             .insert_blooms(
                 254,
                 vec![
-                    Bloom::from(0x100),
-                    Bloom::from(0x01),
-                    Bloom::from(0x10),
-                    Bloom::from(0x11),
+                    Bloom::from_low_u64_be(0x100),
+                    Bloom::from_low_u64_be(0x01),
+                    Bloom::from_low_u64_be(0x10),
+                    Bloom::from_low_u64_be(0x11),
                 ]
                 .iter(),
             )
             .unwrap();
 
         let matches = database
-            .iterate_matching(0, 257, Some(&Bloom::from(0x01)))
+            .iterate_matching(0, 257, Some(&Bloom::from_low_u64_be(0x01)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![255, 257]);
 
         let matches = database
-            .iterate_matching(0, 258, Some(&Bloom::from(0x100)))
+            .iterate_matching(0, 258, Some(&Bloom::from_low_u64_be(0x100)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![254]);
 
         let matches = database
-            .iterate_matching(0, 256, Some(&Bloom::from(0x01)))
+            .iterate_matching(0, 256, Some(&Bloom::from_low_u64_be(0x01)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![255]);
 
         let matches = database
-            .iterate_matching(255, 255, Some(&Bloom::from(0x01)))
+            .iterate_matching(255, 255, Some(&Bloom::from_low_u64_be(0x01)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![255]);
 
         let matches = database
-            .iterate_matching(256, 256, Some(&Bloom::from(0x10)))
+            .iterate_matching(256, 256, Some(&Bloom::from_low_u64_be(0x10)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![256]);
 
         let matches = database
-            .iterate_matching(256, 257, Some(&Bloom::from(0x10)))
+            .iterate_matching(256, 257, Some(&Bloom::from_low_u64_be(0x10)))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
@@ -469,10 +469,10 @@ mod tests {
     fn test_db_close() {
         let tempdir = TempDir::new("").unwrap();
         let blooms = vec![
-            Bloom::from(0x100),
-            Bloom::from(0x01),
-            Bloom::from(0x10),
-            Bloom::from(0x11),
+            Bloom::from_low_u64_be(0x100),
+            Bloom::from_low_u64_be(0x01),
+            Bloom::from_low_u64_be(0x10),
+            Bloom::from_low_u64_be(0x11),
         ];
         let mut database = Database::open(tempdir.path()).unwrap();
 

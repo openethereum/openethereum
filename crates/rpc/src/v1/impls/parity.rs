@@ -17,7 +17,7 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crypto::DEFAULT_MAC;
+use crypto::{DEFAULT_MAC, publickey::{ecies, Generator}};
 use ethcore::{
     client::{BlockChainClient, Call, StateClient},
     miner::{self, MinerService},
@@ -26,7 +26,7 @@ use ethcore::{
 };
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
-use ethkey::{crypto::ecies, Brain, Generator};
+use ethkey::Brain;
 use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use stats::PrometheusMetrics;
@@ -215,7 +215,6 @@ where
     fn phrase_to_address(&self, phrase: String) -> Result<H160> {
         Ok(Brain::new(phrase)
             .generate()
-            .expect("Brain::generate always returns Ok; qed")
             .address())
     }
 

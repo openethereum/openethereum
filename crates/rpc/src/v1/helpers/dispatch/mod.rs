@@ -86,9 +86,10 @@ pub use v1::helpers::nonce::Reservations;
 use std::{fmt::Debug, ops::Deref, sync::Arc};
 
 use bytes::Bytes;
+use crypto::publickey::Signature;
 use ethcore::{client::BlockChainClient, miner::MinerService};
 use ethereum_types::{Address, H256, H520, U256};
-use ethkey::{Password, Signature};
+use ethkey::Password;
 use hash::keccak;
 use types::transaction::{PendingTransaction, SignedTransaction};
 

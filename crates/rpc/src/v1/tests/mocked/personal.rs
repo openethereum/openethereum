@@ -18,6 +18,7 @@ use std::{str::FromStr, sync::Arc};
 
 use accounts::AccountProvider;
 use bytes::ToPretty;
+use crypto::publickey::Secret;
 use ethcore::client::TestBlockChainClient;
 use ethereum_types::{Address, H520, U256};
 use hash::keccak;
@@ -26,7 +27,6 @@ use parity_runtime::Runtime;
 use parking_lot::Mutex;
 use types::transaction::{Action, Transaction, TypedTransaction};
 
-use ethkey::Secret;
 use serde_json::to_value;
 use v1::{
     helpers::{
@@ -446,7 +446,7 @@ fn sign_eip191_with_validator() {
 	}"#;
     let with_validator = to_value(PresignedTransaction {
         validator: address.into(),
-        data: keccak("hello world").to_vec().into(),
+        data: keccak("hello world").as_bytes().to_vec().into(),
     })
     .unwrap();
     let result = eip191::hash_message(EIP191Version::PresignedTransaction, with_validator).unwrap();

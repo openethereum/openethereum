@@ -51,8 +51,8 @@ pub use io::TimerToken;
 
 use client_version::ClientVersion;
 use ethereum_types::H512;
-use ethkey::Secret;
 use ipnetwork::{IpNetwork, IpNetworkError};
+use crypto::publickey::Secret;
 use rlp::{Decodable, DecoderError, Rlp};
 use std::{
     cmp::Ordering,

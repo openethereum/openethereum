@@ -16,8 +16,9 @@
 
 use std::sync::Arc;
 
+use crypto::publickey;
 use dir::Directories;
-use ethereum_types::Address;
+use ethereum_types::{Address, H160};
 use ethkey::Password;
 
 use params::{AccountsConfig, SpecType};
@@ -71,6 +72,7 @@ mod accounts {
 mod accounts {
     use super::*;
     use upgrade::upgrade_key_location;
+    use std::str::FromStr;
 
     pub use accounts::AccountProvider;
 
@@ -103,7 +105,9 @@ mod accounts {
                 | SpecType::Goerli
                 | SpecType::Sokol
                 | SpecType::Dev => vec![],
-                _ => vec!["00a329c0648769a73afac7f9381e08fb43dbea72".into()],
+                _ => vec![
+                    H160::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").expect("the string is valid hex; qed"),
+                ],
             },
         };
 
@@ -216,9 +220,9 @@ mod accounts {
     }
 
     fn insert_dev_account(account_provider: &AccountProvider) {
-        let secret: ethkey::Secret =
-            "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7".into();
-        let dev_account = ethkey::KeyPair::from_secret(secret.clone())
+        let secret = publickey::Secret::from_str("4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7")
+            .expect("Valid account;qed");
+        let dev_account = publickey::KeyPair::from_secret(secret.clone())
             .expect("Valid secret produces valid key;qed");
         if !account_provider.has_account(dev_account.address()) {
             match account_provider.insert_account(secret, &Password::from(String::new())) {

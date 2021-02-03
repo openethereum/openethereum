@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
-ethereum-types = "0.4"
+ethereum-types = "0.9.2"
 rustc-hex = "1.0"
 serde = "1.0"
 serde_json = "1.0"

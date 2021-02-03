@@ -18,14 +18,14 @@
 
 use bytes::Bytes;
 use ethereum_types::{Address, Bloom, BloomInput, H256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use std::ops::Deref;
 
 use ethjson;
 use BlockNumber;
 
 /// A record of execution for a `LOG` operation.
-#[derive(Default, Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable, MallocSizeOf)]
 pub struct LogEntry {
     /// The address of the contract executing at the point of the `LOG` operation.
     pub address: Address,
@@ -35,19 +35,13 @@ pub struct LogEntry {
     pub data: Bytes,
 }
 
-impl HeapSizeOf for LogEntry {
-    fn heap_size_of_children(&self) -> usize {
-        self.topics.heap_size_of_children() + self.data.heap_size_of_children()
-    }
-}
-
 impl LogEntry {
     /// Calculates the bloom of this log entry.
     pub fn bloom(&self) -> Bloom {
         self.topics
             .iter()
-            .fold(Bloom::from(BloomInput::Raw(&self.address)), |mut b, t| {
-                b.accrue(BloomInput::Raw(t));
+            .fold(Bloom::from(BloomInput::Raw(self.address.as_bytes())), |mut b, t| {
+                b.accrue(BloomInput::Raw(t.as_bytes()));
                 b
             })
     }

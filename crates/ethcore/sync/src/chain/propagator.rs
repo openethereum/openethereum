@@ -20,7 +20,7 @@ use bytes::Bytes;
 use ethereum_types::H256;
 use fastmap::H256FastSet;
 use network::{client_version::ClientCapabilities, PeerId};
-use rand::Rng;
+use rand::RngCore;
 use rlp::RlpStream;
 use sync_io::SyncIo;
 use types::{blockchain_info::BlockChainInfo, transaction::SignedTransaction, BlockNumber};
@@ -249,7 +249,7 @@ impl SyncPropagator {
                         pushed += 1;
                     }
                 }
-                packet.complete_unbounded_list();
+                packet.finalize_unbounded_list();
                 (packet, to_send)
             };
 

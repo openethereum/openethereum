@@ -304,6 +304,7 @@ impl LocalTransactionStatus {
 mod tests {
     use super::{LocalTransactionStatus, Transaction};
     use serde_json;
+    use ethereum_types::H256;
 
     #[test]
     fn test_transaction_serialize() {
@@ -325,7 +326,7 @@ mod tests {
         let status5 = LocalTransactionStatus::Invalid(Transaction::default());
         let status6 =
             LocalTransactionStatus::Rejected(Transaction::default(), "Just because".into());
-        let status7 = LocalTransactionStatus::Replaced(Transaction::default(), 5.into(), 10.into());
+        let status7 = LocalTransactionStatus::Replaced(Transaction::default(), 5.into(), H256::from_low_u64_be(10));
 
         assert_eq!(
             serde_json::to_string(&status1).unwrap(),

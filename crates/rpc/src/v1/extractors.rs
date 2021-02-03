@@ -53,7 +53,7 @@ impl HttpMetaExtractor for RpcExtractor {
 impl ipc::MetaExtractor<Metadata> for RpcExtractor {
     fn extract(&self, req: &ipc::RequestContext) -> Metadata {
         Metadata {
-            origin: Origin::Ipc(req.session_id.into()),
+            origin: Origin::Ipc(H256::from_low_u64_be(req.session_id)),
             session: Some(Arc::new(Session::new(req.sender.clone()))),
         }
     }
@@ -85,10 +85,10 @@ impl ws::MetaExtractor<Metadata> for WsExtractor {
                     .and_then(|p| auth_token_hash(&path, p, true));
                 match authorization {
                     Some(id) => Origin::Signer { session: id },
-                    None => Origin::Ws { session: id.into() },
+                    None => Origin::Ws { session: H256::from_low_u64_be(id) },
                 }
             }
-            None => Origin::Ws { session: id.into() },
+            None => Origin::Ws { session: H256::from_low_u64_be(id) },
         };
         let session = Some(Arc::new(Session::new(req.sender())));
         Metadata { origin, session }

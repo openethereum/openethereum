@@ -353,7 +353,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
         let difficulty = ethash::boundary_to_difficulty(&H256(quick_get_difficulty(
             &header.bare_hash().0,
-            seal.nonce.low_u64(),
+            seal.nonce.to_low_u64_be(),
             &seal.mix_hash.0,
             header.number() >= self.ethash_params.progpow_transition,
         )));
@@ -375,7 +375,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
         let result = self.pow.compute_light(
             header.number() as u64,
             &header.bare_hash().0,
-            seal.nonce.low_u64(),
+            seal.nonce.to_low_u64_be(),
         );
         let mix = H256(result.mix_hash);
         let difficulty = ethash::boundary_to_difficulty(&H256(result.value));
@@ -383,7 +383,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 			   num = header.number() as u64,
 			   seed = H256(slow_hash_block_number(header.number() as u64)),
 			   h = header.bare_hash(),
-			   non = seal.nonce.low_u64(),
+			   non = seal.nonce.to_low_u64_be(),
 			   mix = H256(result.mix_hash),
 			   res = H256(result.value));
         if mix != seal.mix_hash {
@@ -683,7 +683,7 @@ mod tests {
         )
         .unwrap();
         let mut uncle = Header::new();
-        let uncle_author: Address = "ef2d6d194084c2de36e0dabfce45d046b37d1106".into();
+        let uncle_author = Address::from_str("ef2d6d194084c2de36e0dabfce45d046b37d1106").unwrap();
         uncle.set_author(uncle_author);
         b.push_uncle(uncle).unwrap();
 
@@ -723,8 +723,8 @@ mod tests {
         .unwrap();
         let b = b.close().unwrap();
 
-        let ubi_contract: Address = "00efdd5883ec628983e9063c7d969fe268bbf310".into();
-        let dev_contract: Address = "00756cf8159095948496617f5fb17ed95059f536".into();
+        let ubi_contract = Address::from_str("00efdd5883ec628983e9063c7d969fe268bbf310").unwrap();
+        let dev_contract = Address::from_str("00756cf8159095948496617f5fb17ed95059f536").unwrap();
         assert_eq!(
             b.state.balance(&Address::zero()).unwrap(),
             U256::from_str("d8d726b7177a80000").unwrap()
@@ -879,9 +879,9 @@ mod tests {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![
-            rlp::encode(&H256::from(
+            rlp::encode(&H256::from_str(
                 "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-            )),
+            ).unwrap()),
             rlp::encode(&H64::zero()),
         ]);
         header.set_difficulty(
@@ -1016,9 +1016,9 @@ mod tests {
         let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
         let mut header = Header::default();
         header.set_seal(vec![
-            rlp::encode(&H256::from(
+            rlp::encode(&H256::from_str(
                 "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-            )),
+            ).unwrap()),
             rlp::encode(&H64::zero()),
         ]);
         let info = ethash.extra_info(&header);

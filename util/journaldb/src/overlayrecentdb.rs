@@ -26,11 +26,11 @@ use super::{error_negatively_reference_hash, JournalDB, DB_PREFIX_LEN, LATEST_ER
 use ethereum_types::H256;
 use fastmap::H256FastMap;
 use hash_db::HashDB;
-use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use parking_lot::RwLock;
+use parity_util_mem::MallocSizeOf;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use util::DatabaseKey;
 
@@ -132,17 +132,11 @@ struct JournalOverlay {
     cumulative_size: usize, // cumulative size of all entries.
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, MallocSizeOf)]
 struct JournalEntry {
     id: H256,
     insertions: Vec<H256>,
     deletions: Vec<H256>,
-}
-
-impl HeapSizeOf for JournalEntry {
-    fn heap_size_of_children(&self) -> usize {
-        self.insertions.heap_size_of_children() + self.deletions.heap_size_of_children()
-    }
 }
 
 impl Clone for OverlayRecentDB {
@@ -181,7 +175,7 @@ impl OverlayRecentDB {
 
     fn payload(&self, key: &H256) -> Option<DBValue> {
         self.backing
-            .get(self.column, key)
+            .get(self.column, key.as_bytes())
             .expect("Low-level database error. Some issue with your hard disk?")
     }
 
@@ -256,7 +250,7 @@ impl OverlayRecentDB {
 
 #[inline]
 fn to_short_key(key: &H256) -> H256 {
-    let mut k = H256::new();
+    let mut k = H256::zero();
     k[0..DB_PREFIX_LEN].copy_from_slice(&key[0..DB_PREFIX_LEN]);
     k
 }
@@ -453,7 +447,7 @@ impl JournalDB for OverlayRecentDB {
 
             // apply canon inserts first
             for (k, v) in canon_insertions {
-                batch.put(self.column, &k, &v);
+                batch.put(self.column, k.as_bytes(), &v);
                 journal_overlay.pending_overlay.insert(to_short_key(&k), v);
             }
             // update the overlay
@@ -468,7 +462,7 @@ impl JournalDB for OverlayRecentDB {
             // apply canon deletions
             for k in canon_deletions {
                 if !journal_overlay.backing_overlay.contains(&to_short_key(&k)) {
-                    batch.delete(self.column, &k);
+                    batch.delete(self.column, k.as_bytes());
                 }
             }
         }
@@ -496,12 +490,12 @@ impl JournalDB for OverlayRecentDB {
 
             match rc {
                 0 => {}
-                _ if rc > 0 => batch.put(self.column, &key, &value),
+                _ if rc > 0 => batch.put(self.column, key.as_bytes(), &value),
                 -1 => {
-                    if cfg!(debug_assertions) && self.backing.get(self.column, &key)?.is_none() {
+                    if cfg!(debug_assertions) && self.backing.get(self.column, key.as_bytes())?.is_none() {
                         return Err(error_negatively_reference_hash(&key));
                     }
-                    batch.delete(self.column, &key)
+                    batch.delete(self.column, key.as_bytes())
                 }
                 _ => panic!("Attempted to inject invalid state ({})", rc),
             }

@@ -19,9 +19,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use accounts::AccountProvider;
-use crypto::DEFAULT_MAC;
+use crypto::{DEFAULT_MAC, publickey::Secret};
 use ethereum_types::{H160, H256, H512};
-use ethkey::Secret;
 
 use ethkey::Password;
 use jsonrpc_core::Result;
@@ -60,7 +59,7 @@ impl SecretStoreClient {
     /// Decrypt secret key using account' private key
     fn decrypt_secret(&self, address: H160, password: Password, key: Bytes) -> Result<Secret> {
         self.decrypt_key(address, password, key).and_then(|s| {
-            Secret::from_unsafe_slice(&s).map_err(|e| errors::account("invalid secret", e))
+            Secret::import_key(&s).map_err(|e| errors::account("invalid secret", e))
         })
     }
 }

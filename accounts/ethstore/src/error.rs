@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use crypto::{self, Error as EthCryptoError};
-use ethkey::{self, DerivationError, Error as EthKeyError};
+use crypto::publickey::DerivationError;
 use std::{fmt, io::Error as IoError};
 
 /// Account-related errors.
@@ -45,12 +44,10 @@ pub enum Error {
     VaultNotFound,
     /// Account creation failed.
     CreationFailed,
-    /// `EthKey` error
-    EthKey(EthKeyError),
-    /// `ethkey::crypto::Error`
-    EthKeyCrypto(ethkey::crypto::Error),
+    /// `crypto::publickey::Error`
+    EthCrypto(crypto::Error),
     /// `EthCrypto` error
-    EthCrypto(EthCryptoError),
+    EthCryptoPublicKey(crypto::publickey::Error),
     /// Derivation error
     Derivation(DerivationError),
     /// Custom error
@@ -72,9 +69,8 @@ impl fmt::Display for Error {
             Error::InvalidVaultName => "Invalid vault name".into(),
             Error::VaultNotFound => "Vault not found".into(),
             Error::CreationFailed => "Account creation failed".into(),
-            Error::EthKey(ref err) => err.to_string(),
-            Error::EthKeyCrypto(ref err) => err.to_string(),
             Error::EthCrypto(ref err) => err.to_string(),
+            Error::EthCryptoPublicKey(ref err) => err.to_string(),
             Error::Derivation(ref err) => format!("Derivation error: {:?}", err),
             Error::Custom(ref s) => s.clone(),
         };
@@ -89,20 +85,14 @@ impl From<IoError> for Error {
     }
 }
 
-impl From<EthKeyError> for Error {
-    fn from(err: EthKeyError) -> Self {
-        Error::EthKey(err)
+impl From<crypto::publickey::Error> for Error {
+    fn from(err: crypto::publickey::Error) -> Self {
+        Error::EthCryptoPublicKey(err)
     }
 }
 
-impl From<ethkey::crypto::Error> for Error {
-    fn from(err: ethkey::crypto::Error) -> Self {
-        Error::EthKeyCrypto(err)
-    }
-}
-
-impl From<EthCryptoError> for Error {
-    fn from(err: EthCryptoError) -> Self {
+impl From<crypto::Error> for Error {
+    fn from(err: crypto::Error) -> Self {
         Error::EthCrypto(err)
     }
 }

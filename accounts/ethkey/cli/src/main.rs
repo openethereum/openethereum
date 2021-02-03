@@ -18,6 +18,7 @@ extern crate docopt;
 extern crate env_logger;
 extern crate ethkey;
 extern crate panic_hook;
+extern crate parity_crypto as crypto;
 extern crate parity_wordlist;
 extern crate rustc_hex;
 extern crate serde;
@@ -28,11 +29,12 @@ extern crate serde_derive;
 
 use std::{env, fmt, io, num::ParseIntError, process, sync};
 
-use docopt::Docopt;
-use ethkey::{
-    brain_recover, sign, verify_address, verify_public, Brain, BrainPrefix, Error as EthkeyError,
-    Generator, KeyPair, Prefix, Random,
+use crypto::publickey::{
+    sign, verify_address, verify_public, Error as EthkeyError,
+    Generator, KeyPair, Random,
 };
+use docopt::Docopt;
+use ethkey::{brain_recover, Brain, BrainPrefix, Prefix};
 use rustc_hex::{FromHex, FromHexError};
 
 const USAGE: &'static str = r#"
@@ -202,15 +204,13 @@ where
         let result = if args.flag_brain {
             let phrase = args.arg_secret_or_phrase;
             let phrase_info = validate_phrase(&phrase);
-            let keypair = Brain::new(phrase)
-                .generate()
-                .expect("Brain wallet generator is infallible; qed");
+            let keypair = Brain::new(phrase).generate();
             (keypair, Some(phrase_info))
         } else {
             let secret = args
                 .arg_secret_or_phrase
                 .parse()
-                .map_err(|_| EthkeyError::InvalidSecret)?;
+                .map_err(|_| EthkeyError::InvalidSecretKey)?;
             (KeyPair::from_secret(secret)?, None)
         };
         Ok(display(result, display_mode))
@@ -223,7 +223,7 @@ where
                 let phrase = format!("recovery phrase: {}", brain.phrase());
                 (keypair, Some(phrase))
             } else {
-                (Random.generate()?, None)
+                (Random.generate(), None)
             }
         } else if args.cmd_prefix {
             let prefix = args.arg_prefix.from_hex()?;
@@ -254,7 +254,7 @@ where
         let secret = args
             .arg_secret
             .parse()
-            .map_err(|_| EthkeyError::InvalidSecret)?;
+            .map_err(|_| EthkeyError::InvalidSecretKey)?;
         let message = args
             .arg_message
             .parse()
@@ -274,7 +274,7 @@ where
             let public = args
                 .arg_public
                 .parse()
-                .map_err(|_| EthkeyError::InvalidPublic)?;
+                .map_err(|_| EthkeyError::InvalidPublicKey)?;
             verify_public(&public, &signature, &message)?
         } else if args.cmd_address {
             let address = args
@@ -301,7 +301,7 @@ where
                 while let Some(phrase) = it.next() {
                     i += 1;
 
-                    let keypair = Brain::new(phrase.clone()).generate().unwrap();
+                    let keypair = Brain::new(phrase.clone()).generate();
                     if keypair.address() == address {
                         return Ok(Some((phrase, keypair)));
                     }

@@ -28,24 +28,18 @@ use super::{
 use bytes::Bytes;
 use ethereum_types::H256;
 use hash_db::HashDB;
-use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use parking_lot::RwLock;
+use parity_util_mem::MallocSizeOf;
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 struct RefInfo {
     queue_refs: usize,
     in_archive: bool,
-}
-
-impl HeapSizeOf for RefInfo {
-    fn heap_size_of_children(&self) -> usize {
-        0
-    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -133,7 +127,7 @@ impl EarlyMergeDB {
     }
 
     fn morph_key(key: &H256, index: u8) -> Bytes {
-        let mut ret = (&**key).to_owned();
+        let mut ret = key.as_bytes().to_owned();
         ret.push(index);
         ret
     }
@@ -170,7 +164,7 @@ impl EarlyMergeDB {
                 Entry::Vacant(entry) => {
                     // this is the first entry for this node in the journal.
                     let in_archive = backing
-                        .get(col, h)
+                        .get(col, h.as_bytes())
                         .expect("Low-level database error. Some issue with your hard disk?")
                         .is_some();
                     if in_archive {
@@ -182,7 +176,7 @@ impl EarlyMergeDB {
                         //Self::reset_already_in(&h);
                         assert!(!Self::is_already_in(backing, col, h));
                         trace!(target: "jdb.fine", "    insert({}): New to queue, not in DB: Inserting into queue and DB", h);
-                        batch.put(col, h, d);
+                        batch.put(col, h.as_bytes(), d);
                     }
                     entry.insert(RefInfo {
                         queue_refs: 1,
@@ -258,7 +252,7 @@ impl EarlyMergeDB {
                         }
                         (1, false) => {
                             entry.remove();
-                            batch.delete(col, h);
+                            batch.delete(col, h.as_bytes());
                             trace!(target: "jdb.fine", "    remove({}): Not in archive, only 1 ref in queue: Removing from queue and DB", h);
                         }
                         _ => panic!("Invalid value in refs: {:?}", entry.get()),
@@ -267,7 +261,7 @@ impl EarlyMergeDB {
                 Entry::Vacant(_entry) => {
                     // Gets removed when moving from 1 to 0 additional refs. Should never be here at 0 additional refs.
                     //assert!(!Self::is_already_in(db, &h));
-                    batch.delete(col, h);
+                    batch.delete(col, h.as_bytes());
                     trace!(target: "jdb.fine", "    remove({}): Not in queue - MUST BE IN ARCHIVE: Removing from DB", h);
                 }
             }
@@ -308,7 +302,7 @@ impl EarlyMergeDB {
 
     fn payload(&self, key: &H256) -> Option<DBValue> {
         self.backing
-            .get(self.column, key)
+            .get(self.column, key.as_bytes())
             .expect("Low-level database error. Some issue with your hard disk?")
     }
 
@@ -593,16 +587,16 @@ impl JournalDB for EarlyMergeDB {
             match rc {
                 0 => {}
                 1 => {
-                    if self.backing.get(self.column, &key)?.is_some() {
+                    if self.backing.get(self.column, key.as_bytes())?.is_some() {
                         return Err(error_key_already_exists(&key));
                     }
-                    batch.put(self.column, &key, &value)
+                    batch.put(self.column, key.as_bytes(), &value)
                 }
                 -1 => {
-                    if self.backing.get(self.column, &key)?.is_none() {
+                    if self.backing.get(self.column, key.as_bytes())?.is_none() {
                         return Err(error_negatively_reference_hash(&key));
                     }
-                    batch.delete(self.column, &key)
+                    batch.delete(self.column, key.as_bytes())
                 }
                 _ => panic!("Attempted to inject invalid state."),
             }

@@ -242,7 +242,7 @@ impl SigningQueue for ConfirmationsQueue {
 
 #[cfg(test)]
 mod test {
-    use ethereum_types::{Address, U256};
+    use ethereum_types::{Address, U256, H256};
     use jsonrpc_core::futures::Future;
     use parking_lot::Mutex;
     use std::sync::Arc;
@@ -257,9 +257,9 @@ mod test {
     fn request() -> ConfirmationPayload {
         ConfirmationPayload::SendTransaction(FilledTransactionRequest {
             tx_type: Default::default(),
-            from: Address::from(1),
+            from: Address::from_low_u64_be(1),
             used_default_from: false,
-            to: Some(Address::from(2)),
+            to: Some(Address::from_low_u64_be(2)),
             gas_price: 0.into(),
             gas: 10_000.into(),
             value: 10_000_000.into(),
@@ -279,13 +279,13 @@ mod test {
         // when
         let (id, future) = queue.add_request(request, Default::default()).unwrap();
         let sender = queue.take(&id).unwrap();
-        queue.request_confirmed(sender, Ok(ConfirmationResponse::SendTransaction(1.into())));
+        queue.request_confirmed(sender, Ok(ConfirmationResponse::SendTransaction(H256::from_low_u64_be(1))));
 
         // then
         let confirmation = future.wait().unwrap();
         assert_eq!(
             confirmation,
-            Ok(ConfirmationResponse::SendTransaction(1.into()))
+            Ok(ConfirmationResponse::SendTransaction(H256::from_low_u64_be(1)))
         );
     }
 

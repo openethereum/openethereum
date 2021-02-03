@@ -18,9 +18,8 @@ use std::sync::Arc;
 
 use accounts::AccountProvider;
 use bytes::Bytes;
-use crypto::DEFAULT_MAC;
+use crypto::{DEFAULT_MAC, publickey::Signature};
 use ethereum_types::{Address, H256, U256};
-use ethkey::Signature;
 use jsonrpc_core::{Error, ErrorCode};
 use types::transaction::{
     AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,

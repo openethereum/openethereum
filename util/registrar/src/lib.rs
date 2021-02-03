@@ -18,7 +18,6 @@ extern crate ethabi;
 extern crate futures;
 extern crate keccak_hash;
 
-#[macro_use]
 extern crate ethabi_derive;
 #[macro_use]
 extern crate ethabi_contract;

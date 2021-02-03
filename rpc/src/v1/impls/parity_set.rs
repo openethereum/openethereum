@@ -23,7 +23,6 @@ use ethcore::{
     miner::{self, MinerService},
 };
 use ethereum_types::{H160, H256, U256};
-use ethkey;
 use fetch::{self, Fetch};
 use hash::keccak_buffer;
 use sync::ManageNetwork;
@@ -151,7 +150,7 @@ where
     }
 
     fn set_engine_signer_secret(&self, secret: H256) -> Result<bool> {
-        let keypair = ethkey::KeyPair::from_secret(secret.into())
+        let keypair = crypto::publickey::KeyPair::from_secret(secret.into())
             .map_err(|e| errors::account("Invalid secret", e))?;
         self.miner.set_author(miner::Author::Sealer(
             ethcore::engines::signer::from_keypair(keypair),

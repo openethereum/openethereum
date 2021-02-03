@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey;
 use ethkey::Password;
 use ethstore::PresaleWallet;
 use helpers::{password_from_file, password_prompt};
@@ -44,7 +45,7 @@ pub fn execute(cmd: ImportWallet) -> Result<String, String> {
 }
 
 #[cfg(feature = "accounts")]
-pub fn import_account(cmd: &ImportWallet, kp: ethkey::KeyPair, password: Password) {
+pub fn import_account(cmd: &ImportWallet, kp: publickey::KeyPair, password: Password) {
     use accounts::{AccountProvider, AccountProviderSettings};
     use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 
@@ -57,4 +58,4 @@ pub fn import_account(cmd: &ImportWallet, kp: ethkey::KeyPair, password: Passwor
 }
 
 #[cfg(not(feature = "accounts"))]
-pub fn import_account(_cmd: &ImportWallet, _kp: ethkey::KeyPair, _password: Password) {}
+pub fn import_account(_cmd: &ImportWallet, _kp: publickey::KeyPair, _password: Password) {}

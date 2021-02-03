@@ -177,6 +177,7 @@ mod tests {
     use super::{ChainStatus, Peers, SyncInfo, SyncStatus, TransactionStats};
     use serde_json;
     use std::collections::BTreeMap;
+    use ethereum_types::H512;
 
     #[test]
     fn test_serialize_sync_info() {
@@ -229,7 +230,7 @@ mod tests {
         let stats = TransactionStats {
             first_seen: 100,
             propagated_to: map![
-                10.into() => 50
+                H512::from_low_u64_be(10) => 50
             ],
         };
 

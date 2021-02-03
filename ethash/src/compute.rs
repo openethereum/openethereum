@@ -26,7 +26,7 @@ use seed_compute::SeedHashCompute;
 use shared::*;
 use std::io;
 
-use std::{mem, path::Path, ptr};
+use std::{mem, path::Path};
 
 const MIX_WORDS: usize = ETHASH_MIX_BYTES / 4;
 const MIX_NODES: usize = MIX_WORDS / NODE_WORDS;
@@ -146,23 +146,18 @@ pub fn quick_get_difficulty(
             let seed = keccak_f800_short(*header_hash, nonce, [0u32; 8]);
             keccak_f800_long(*header_hash, seed, mem::transmute(*mix_hash))
         } else {
-            // This is safe - the `keccak_512` call below reads the first 40 bytes (which we explicitly set
-            // with two `copy_nonoverlapping` calls) but writes the first 64, and then we explicitly write
-            // the next 32 bytes before we read the whole thing with `keccak_256`.
-            //
-            // This cannot be elided by the compiler as it doesn't know the implementation of
-            // `keccak_512`.
-            let mut buf: [u8; 64 + 32] = ::mem::MaybeUninit::uninit().assume_init();
+            let mut buf = [0u8; 64 + 32];
 
-            ptr::copy_nonoverlapping(header_hash.as_ptr(), buf.as_mut_ptr(), 32);
-            ptr::copy_nonoverlapping(&nonce as *const u64 as *const u8, buf[32..].as_mut_ptr(), 8);
+            let hash_len = header_hash.len();
+            buf[..hash_len].copy_from_slice(header_hash);
+            let end = hash_len + mem::size_of::<u64>();
+            buf[hash_len..end].copy_from_slice(&nonce.to_ne_bytes());
 
-            keccak_512::unchecked(buf.as_mut_ptr(), 64, buf.as_ptr(), 40);
-            ptr::copy_nonoverlapping(mix_hash.as_ptr(), buf[64..].as_mut_ptr(), 32);
+            keccak_512::inplace_range(&mut buf, 0..end);
+            buf[64..].copy_from_slice(mix_hash);
 
-            // This is initialized in `keccak_256`
-            let mut hash: [u8; 32] = ::mem::MaybeUninit::uninit().assume_init();
-            keccak_256::unchecked(hash.as_mut_ptr(), hash.len(), buf.as_ptr(), buf.len());
+            let mut hash = [0u8; 32];
+            keccak_256::write(&buf, &mut hash);
 
             hash
         }
@@ -184,14 +179,14 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
             // We use explicit lifetimes to ensure that val's borrow is invalidated until the
             // transmuted val dies.
             unsafe fn make_const_array<T, U>(val: &mut [T]) -> &mut [U; $n] {
-                use std::mem;
+                use ::std::mem;
 
                 debug_assert_eq!(val.len() * mem::size_of::<T>(), $n * mem::size_of::<U>());
                 &mut *(val.as_mut_ptr() as *mut [U; $n])
             }
 
             make_const_array($value)
-        }};
+        }}
     }
 
     #[repr(C)]
@@ -214,32 +209,21 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
     // improvements, since I can't imagine that 3-5% of our runtime is taken up by catting two
     // arrays together.
     let mut buf: MixBuf = MixBuf {
-        half_mix: unsafe {
+        half_mix: {
             // Pack `header_hash` and `nonce` together
-            // We explicitly write the first 40 bytes, leaving the last 24 as uninitialized. Then
-            // `keccak_512` reads the first 40 bytes (4th parameter) and overwrites the entire array,
-            // leaving it fully initialized.
-            let mut out: [u8; NODE_BYTES] = ::mem::MaybeUninit::uninit().assume_init();
+            let mut out = [0u8; NODE_BYTES];
 
-            ptr::copy_nonoverlapping(header_hash.as_ptr(), out.as_mut_ptr(), header_hash.len());
-            ptr::copy_nonoverlapping(
-                &nonce as *const u64 as *const u8,
-                out[header_hash.len()..].as_mut_ptr(),
-                mem::size_of::<u64>(),
-            );
+            let hash_len = header_hash.len();
+            out[..hash_len].copy_from_slice(header_hash);
+            let end = hash_len + mem::size_of::<u64>();
+            out[hash_len..end].copy_from_slice(&nonce.to_ne_bytes());
 
             // compute keccak-512 hash and replicate across mix
-            keccak_512::unchecked(
-                out.as_mut_ptr(),
-                NODE_BYTES,
-                out.as_ptr(),
-                header_hash.len() + mem::size_of::<u64>(),
-            );
+            keccak_512::inplace_range(&mut out, 0..end);
 
             Node { bytes: out }
         },
-        // This is fully initialized before being read, see `let mut compress = ...` below
-        compress_bytes: unsafe { ::mem::MaybeUninit::uninit().assume_init() },
+        compress_bytes: [0u8; MIX_WORDS],
     };
 
     let mut mix: [_; MIX_NODES] = [buf.half_mix.clone(), buf.half_mix.clone()];
@@ -263,24 +247,16 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
             fnv_hash(first_val ^ i, mix_words[i as usize % MIX_WORDS]) % num_full_pages
         };
 
-        unroll! {
-            // MIX_NODES
-            for n in 0..2 {
-                let tmp_node = calculate_dag_item(
-                    index * MIX_NODES as u32 + n as u32,
-                    cache,
-                );
+        // MIX_NODES
+        for n in 0..2 {
+            let tmp_node = calculate_dag_item(
+                index * MIX_NODES as u32 + n as u32,
+                cache,
+            );
 
-                unroll! {
-                    // NODE_WORDS
-                    for w in 0..16 {
-                        mix[n].as_words_mut()[w] =
-                            fnv_hash(
-                                mix[n].as_words()[w],
-                                tmp_node.as_words()[w],
-                            );
-                    }
-                }
+            // NODE_WORDS
+            for (a, b) in mix[n].as_words_mut().iter_mut().zip(tmp_node.as_words()) {
+                *a = fnv_hash(*a, *b);
             }
         }
     }
@@ -288,25 +264,27 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
     let mix_words: [u32; MIX_WORDS] = unsafe { mem::transmute(mix) };
 
     {
-        // This is an uninitialized buffer to begin with, but we iterate precisely `compress.len()`
-        // times and set each index, leaving the array fully initialized. THIS ONLY WORKS ON LITTLE-
-        // ENDIAN MACHINES. See a future PR to make this and the rest of the code work correctly on
+        // We iterate precisely `compress.len()` times and set each index,
+        // leaving the array fully initialized. THIS ONLY WORKS ON LITTLE-ENDIAN MACHINES.
+        // See a future PR to make this and the rest of the code work correctly on
         // big-endian arches like mips.
         let compress: &mut [u32; MIX_WORDS / 4] =
             unsafe { make_const_array!(MIX_WORDS / 4, &mut buf.compress_bytes) };
+        #[cfg(target_endian = "big")]
+        {
+            compile_error!("OpenEthereum currently only supports little-endian targets");
+        }
 
         // Compress mix
         debug_assert_eq!(MIX_WORDS / 4, 8);
-        unroll! {
-            for i in 0..8 {
-                let w = i * 4;
+        for i in 0..8 {
+            let w = i * 4;
 
-                let mut reduction = mix_words[w + 0];
-                reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 1];
-                reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 2];
-                reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 3];
-                compress[i] = reduction;
-            }
+            let mut reduction = mix_words[w + 0];
+            reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 1];
+            reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 2];
+            reduction = reduction.wrapping_mul(FNV_PRIME) ^ mix_words[w + 3];
+            compress[i] = reduction;
         }
     }
 
@@ -315,24 +293,20 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
     let value: H256 = {
         // We can interpret the buffer as an array of `u8`s, since it's `repr(C)`.
         let read_ptr: *const u8 = &buf as *const MixBuf as *const u8;
-        // We overwrite the second half since `keccak_256` has an internal buffer and so allows
-        // overlapping arrays as input.
-        let write_ptr: *mut u8 = &mut buf.compress_bytes as *mut [u8; 32] as *mut u8;
-        unsafe {
-            keccak_256::unchecked(
-                write_ptr,
-                buf.compress_bytes.len(),
+        let buffer = unsafe {
+            core::slice::from_raw_parts(
                 read_ptr,
                 buf.half_mix.bytes.len() + buf.compress_bytes.len(),
-            );
-        }
+            )
+        };
+        // We overwrite the buf.compress_bytes since `keccak_256` has an internal buffer and so allows
+        // overlapping arrays as input.
+        keccak_256::write(buffer, &mut buf.compress_bytes);
+
         buf.compress_bytes
     };
 
-    ProofOfWork {
-        mix_hash: mix_hash,
-        value: value,
-    }
+    ProofOfWork { mix_hash, value }
 }
 
 // TODO: Use the `simd` crate

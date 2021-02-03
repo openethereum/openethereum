@@ -85,8 +85,8 @@ mod tests {
             deserialized,
             CallRequest {
                 tx_type: Default::default(),
-                from: Some(H160::from(1)),
-                to: Some(H160::from(2)),
+                from: Some(H160::from_low_u64_be(1)),
+                to: Some(H160::from_low_u64_be(2)),
                 gas_price: Some(U256::from(1)),
                 gas: Some(U256::from(2)),
                 value: Some(U256::from(3)),
@@ -131,7 +131,7 @@ mod tests {
             deserialized,
             CallRequest {
                 tx_type: Default::default(),
-                from: Some(H160::from(1)),
+                from: Some(H160::from_low_u64_be(1)),
                 to: None,
                 gas_price: None,
                 gas: None,

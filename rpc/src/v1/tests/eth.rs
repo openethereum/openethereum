@@ -571,7 +571,7 @@ fn starting_nonce_test() {
     let tester = EthTester::from_spec(
         Spec::load(&env::temp_dir(), POSITIVE_NONCE_SPEC).expect("invalid chain spec"),
     );
-    let address = Address::from(10);
+    let address = Address::from_low_u64_be(10);
 
     let sample = tester
         .handler

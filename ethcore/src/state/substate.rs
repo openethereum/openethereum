@@ -89,6 +89,7 @@ impl Substate {
 mod tests {
     use super::Substate;
     use types::log_entry::LogEntry;
+    use ethereum_types::Address;
 
     #[test]
     fn created() {
@@ -99,19 +100,19 @@ mod tests {
     #[test]
     fn accrue() {
         let mut sub_state = Substate::new();
-        sub_state.contracts_created.push(1u64.into());
+        sub_state.contracts_created.push(Address::from_low_u64_be(1u64));
         sub_state.logs.push(LogEntry {
-            address: 1u64.into(),
+            address: Address::from_low_u64_be(1u64),
             topics: vec![],
             data: vec![],
         });
         sub_state.sstore_clears_refund = (15000 * 5).into();
-        sub_state.suicides.insert(10u64.into());
+        sub_state.suicides.insert(Address::from_low_u64_be(10u64));
 
         let mut sub_state_2 = Substate::new();
-        sub_state_2.contracts_created.push(2u64.into());
+        sub_state_2.contracts_created.push(Address::from_low_u64_be(2u64));
         sub_state_2.logs.push(LogEntry {
-            address: 1u64.into(),
+            address: Address::from_low_u64_be(1u64),
             topics: vec![],
             data: vec![],
         });

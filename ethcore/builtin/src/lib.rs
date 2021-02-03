@@ -33,9 +33,9 @@ use eth_pairings::public_interface::eip2537::{
     EIP2537Executor, SCALAR_BYTE_LENGTH, SERIALIZED_G1_POINT_BYTE_LENGTH,
     SERIALIZED_G2_POINT_BYTE_LENGTH,
 };
-use ethereum_types::{H256, U256};
+use ethereum_types::{BigEndianHash, H256, U256};
 use ethjson;
-use ethkey::{recover as ec_recover, Signature};
+use parity_crypto::publickey::{recover as ec_recover, Signature};
 use keccak_hash::keccak;
 use log::{trace, warn};
 use num::{BigUint, One, Zero};
@@ -192,7 +192,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            H256::from_slice(&buf[..]).into_uint()
         };
         let base_len_u256 = read_len();
         let exp_len_u256 = read_len();
@@ -210,7 +210,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[(32 - len)..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            H256::from_slice(&buf[..]).into_uint()
         };
 
         (base_len_u256, exp_len_u256, exp_low, mod_len_u256)
@@ -828,7 +828,7 @@ impl Implementation for EcRecover {
             if let Ok(p) = ec_recover(&s, &hash) {
                 let r = keccak(p);
                 output.write(0, &[0; 12]);
-                output.write(12, &r[12..r.len()]);
+                output.write(12, &r.as_bytes()[12..]);
             }
         }
 

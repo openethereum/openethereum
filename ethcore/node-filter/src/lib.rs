@@ -24,7 +24,6 @@ extern crate ethereum_types;
 extern crate lru_cache;
 extern crate parking_lot;
 
-#[macro_use]
 extern crate ethabi_derive;
 #[macro_use]
 extern crate ethabi_contract;
@@ -98,6 +97,7 @@ impl ConnectionFilter for NodeFilter {
 #[cfg(test)]
 mod test {
     use super::NodeFilter;
+    use ethereum_types::Address;
     use ethcore::{
         client::{BlockChainClient, Client, ClientConfig},
         miner::Miner,
@@ -106,13 +106,13 @@ mod test {
     };
     use io::IoChannel;
     use network::{ConnectionDirection, ConnectionFilter, NodeId};
-    use std::sync::{Arc, Weak};
+    use std::{str::FromStr, sync::{Arc, Weak}};
     use tempdir::TempDir;
 
     /// Contract code: https://gist.github.com/arkpar/467dbcc73cbb85b0997a7a10ffa0695f
     #[test]
     fn node_filter() {
-        let contract_addr = "0000000000000000000000000000000000000005".into();
+        let contract_addr = Address::from_str("0000000000000000000000000000000000000005").unwrap();
         let data = include_bytes!("../res/node_filter.json");
         let tempdir = TempDir::new("").unwrap();
         let spec = Spec::load(&tempdir.path(), &data[..]).unwrap();
@@ -130,11 +130,11 @@ mod test {
             Arc::downgrade(&client) as Weak<dyn BlockChainClient>,
             contract_addr,
         );
-        let self1: NodeId = "00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002".into();
-        let self2: NodeId = "00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003".into();
-        let node1: NodeId = "00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000012".into();
-        let node2: NodeId = "00000000000000000000000000000000000000000000000000000000000000210000000000000000000000000000000000000000000000000000000000000022".into();
-        let nodex: NodeId = "77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000".into();
+        let self1 = NodeId::from_str("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002").unwrap();
+        let self2 = NodeId::from_str("00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003").unwrap();
+        let node1 = NodeId::from_str("00000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000000012").unwrap();
+        let node2 = NodeId::from_str("00000000000000000000000000000000000000000000000000000000000000210000000000000000000000000000000000000000000000000000000000000022").unwrap();
+        let nodex = NodeId::from_str("77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").unwrap();
 
         assert!(filter.connection_allowed(&self1, &node1, ConnectionDirection::Inbound));
         assert!(filter.connection_allowed(&self1, &nodex, ConnectionDirection::Inbound));

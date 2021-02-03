@@ -29,7 +29,7 @@ use ethcore_miner::work_notify::NotifyWork;
 #[cfg(feature = "work-notify")]
 use ethcore_stratum::PushWorkHandler;
 use ethcore_stratum::{Error as StratumServiceError, JobDispatcher, Stratum as StratumService};
-use ethereum_types::{clean_0x, H256, H64, U256};
+use ethereum_types::{H256, H64, U256};
 use miner::{Miner, MinerService};
 use parking_lot::Mutex;
 use rlp::encode;
@@ -46,6 +46,15 @@ pub struct Options {
     /// Secret for peers
     pub secret: Option<H256>,
 }
+
+fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
+}
+
 
 struct SubmitPayload {
     nonce: H64,

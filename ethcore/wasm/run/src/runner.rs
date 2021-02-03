@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{H160, H256, U256};
+use ethereum_types::{BigEndianHash, H160, H256, U256};
 use fixture::{Assert, CallLocator, Fixture, Source};
 use rustc_hex::ToHex;
 use std::{
@@ -112,9 +112,9 @@ impl fmt::Display for Fail {
             } => write!(
                 f,
                 "Storage key {} value mismatch, expected {}, got: {}",
-                key.to_vec().to_hex(),
-                expected.to_vec().to_hex(),
-                actual.to_vec().to_hex(),
+                key.as_bytes().to_vec().to_hex(),
+                expected.as_bytes().to_vec().to_hex(),
+                actual.as_bytes().to_vec().to_hex(),
             ),
 
             StorageMismatch {
@@ -124,8 +124,8 @@ impl fmt::Display for Fail {
             } => write!(
                 f,
                 "No expected storage value for key {} found, expected {}",
-                key.to_vec().to_hex(),
-                expected.to_vec().to_hex(),
+                key.as_bytes().to_vec().to_hex(),
+                expected.as_bytes().to_vec().to_hex(),
             ),
 
             Nonconformity(SpecNonconformity::Address) => {
@@ -228,7 +228,7 @@ pub fn run_fixture(fixture: &Fixture) -> Vec<Fail> {
         for storage_entry in storage.iter() {
             let key: U256 = storage_entry.key.into();
             let val: U256 = storage_entry.value.into();
-            ext.store.insert(key.into(), val.into());
+            ext.store.insert(BigEndianHash::from_uint(&key), BigEndianHash::from_uint(&val));
         }
     }
 

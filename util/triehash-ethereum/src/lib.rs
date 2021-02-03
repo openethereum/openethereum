@@ -55,7 +55,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::{ordered_trie_root, sec_trie_root, trie_root};
+    use ethereum_types::H256;
     use keccak_hasher::KeccakHasher;
+    use std::str::FromStr;
     use triehash;
 
     #[test]
@@ -65,7 +67,7 @@ mod tests {
                 b"A",
                 b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as &[u8]
             )]),
-            "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab".into()
+            H256::from_str("d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab").unwrap()
         );
     }
 

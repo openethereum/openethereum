@@ -84,7 +84,7 @@ impl TransactionFilter {
         let mut contract_version_cache = self.contract_version_cache.lock();
 
         let (tx_type, to) = match transaction.tx().action {
-            Action::Create => (tx_permissions::CREATE, Address::new()),
+            Action::Create => (tx_permissions::CREATE, Address::default()),
             Action::Call(address) => {
                 if client
                     .code_hash(&address, BlockId::Hash(*parent_hash))
@@ -172,9 +172,9 @@ impl TransactionFilter {
 #[cfg(test)]
 mod test {
     use super::TransactionFilter;
+    use crypto::publickey::{KeyPair, Secret};
     use client::{BlockChainClient, BlockId, Client, ClientConfig};
     use ethereum_types::{Address, U256};
-    use ethkey::{KeyPair, Secret};
     use io::IoChannel;
     use miner::Miner;
     use spec::Spec;
@@ -182,6 +182,7 @@ mod test {
     use tempdir::TempDir;
     use test_helpers;
     use types::transaction::{Action, Transaction, TypedTransaction};
+    use std::str::FromStr;
 
     /// Contract code: https://gist.github.com/VladLupashevskyi/84f18eabb1e4afadf572cf92af3e7e7f
     #[test]
@@ -200,59 +201,59 @@ mod test {
             IoChannel::disconnected(),
         )
         .unwrap();
-        let key1 = KeyPair::from_secret(Secret::from(
+        let key1 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000001",
-        ))
+        ).unwrap())
         .unwrap();
-        let key2 = KeyPair::from_secret(Secret::from(
+        let key2 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000002",
-        ))
+        ).unwrap())
         .unwrap();
-        let key3 = KeyPair::from_secret(Secret::from(
+        let key3 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000003",
-        ))
+        ).unwrap())
         .unwrap();
-        let key4 = KeyPair::from_secret(Secret::from(
+        let key4 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000004",
-        ))
+        ).unwrap())
         .unwrap();
-        let key5 = KeyPair::from_secret(Secret::from(
+        let key5 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000005",
-        ))
+        ).unwrap())
         .unwrap();
-        let key6 = KeyPair::from_secret(Secret::from(
+        let key6 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000006",
-        ))
+        ).unwrap())
         .unwrap();
-        let key7 = KeyPair::from_secret(Secret::from(
+        let key7 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000007",
-        ))
+        ).unwrap())
         .unwrap();
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
         let mut basic_tx = TypedTransaction::Legacy(Transaction::default());
         basic_tx.tx_mut().action =
-            Action::Call(Address::from("d41c057fd1c78805aac12b0a94a405c0461a6fbb"));
+            Action::Call(Address::from_str("d41c057fd1c78805aac12b0a94a405c0461a6fbb").unwrap());
         let create_tx = TypedTransaction::Legacy(Transaction::default());
         let mut call_tx = TypedTransaction::Legacy(Transaction::default());
         call_tx.tx_mut().action =
-            Action::Call(Address::from("0000000000000000000000000000000000000005"));
+            Action::Call(Address::from_str("0000000000000000000000000000000000000005").unwrap());
 
         let mut basic_tx_with_ether_and_to_key7 = TypedTransaction::Legacy(Transaction::default());
         basic_tx_with_ether_and_to_key7.tx_mut().action =
-            Action::Call(Address::from("d41c057fd1c78805aac12b0a94a405c0461a6fbb"));
+            Action::Call(Address::from_str("d41c057fd1c78805aac12b0a94a405c0461a6fbb").unwrap());
         basic_tx_with_ether_and_to_key7.tx_mut().value = U256::from(123123);
         let mut call_tx_with_ether = TypedTransaction::Legacy(Transaction::default());
         call_tx_with_ether.tx_mut().action =
-            Action::Call(Address::from("0000000000000000000000000000000000000005"));
+            Action::Call(Address::from_str("0000000000000000000000000000000000000005").unwrap());
         call_tx_with_ether.tx_mut().value = U256::from(123123);
 
         let mut basic_tx_to_key6 = TypedTransaction::Legacy(Transaction::default());
         basic_tx_to_key6.tx_mut().action =
-            Action::Call(Address::from("e57bfe9f44b819898f47bf37e5af72a0783e1141"));
+            Action::Call(Address::from_str("e57bfe9f44b819898f47bf37e5af72a0783e1141").unwrap());
         let mut basic_tx_with_ether_and_to_key6 = TypedTransaction::Legacy(Transaction::default());
         basic_tx_with_ether_and_to_key6.tx_mut().action =
-            Action::Call(Address::from("e57bfe9f44b819898f47bf37e5af72a0783e1141"));
+            Action::Call(Address::from_str("e57bfe9f44b819898f47bf37e5af72a0783e1141").unwrap());
         basic_tx_with_ether_and_to_key6.tx_mut().value = U256::from(123123);
 
         let genesis = client.block_hash(BlockId::Latest).unwrap();
@@ -428,31 +429,31 @@ mod test {
             IoChannel::disconnected(),
         )
         .unwrap();
-        let key1 = KeyPair::from_secret(Secret::from(
+        let key1 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000001",
-        ))
+        ).unwrap())
         .unwrap();
-        let key2 = KeyPair::from_secret(Secret::from(
+        let key2 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000002",
-        ))
+        ).unwrap())
         .unwrap();
-        let key3 = KeyPair::from_secret(Secret::from(
+        let key3 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000003",
-        ))
+        ).unwrap())
         .unwrap();
-        let key4 = KeyPair::from_secret(Secret::from(
+        let key4 = KeyPair::from_secret(Secret::from_str(
             "0000000000000000000000000000000000000000000000000000000000000004",
-        ))
+        ).unwrap())
         .unwrap();
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
         let mut basic_tx = TypedTransaction::Legacy(Transaction::default());
         basic_tx.tx_mut().action =
-            Action::Call(Address::from("000000000000000000000000000000000000032"));
+            Action::Call(Address::from_str("0000000000000000000000000000000000000032").unwrap());
         let create_tx = TypedTransaction::Legacy(Transaction::default());
         let mut call_tx = TypedTransaction::Legacy(Transaction::default());
         call_tx.tx_mut().action =
-            Action::Call(Address::from("0000000000000000000000000000000000000005"));
+            Action::Call(Address::from_str("0000000000000000000000000000000000000005").unwrap());
 
         let genesis = client.block_hash(BlockId::Latest).unwrap();
         let block_number = 1;

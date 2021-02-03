@@ -22,7 +22,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ethkey::Address;
+use crypto::publickey::Address;
 use log::{trace, warn};
 
 use crate::AccountMeta;
@@ -171,6 +171,7 @@ impl<K: hash::Hash + Eq, V> DiskMap<K, V> {
 #[cfg(test)]
 mod tests {
     use super::AddressBook;
+    use ethereum_types::H160;
     use crate::account_data::AccountMeta;
     use std::collections::HashMap;
     use tempdir::TempDir;
@@ -179,8 +180,8 @@ mod tests {
     fn should_save_and_reload_address_book() {
         let tempdir = TempDir::new("").unwrap();
         let mut b = AddressBook::new(tempdir.path());
-        b.set_name(1.into(), "One".to_owned());
-        b.set_meta(1.into(), "{1:1}".to_owned());
+        b.set_name(H160::from_low_u64_be(1), "One".to_owned());
+        b.set_meta(H160::from_low_u64_be(1), "{1:1}".to_owned());
         let b = AddressBook::new(tempdir.path());
         assert_eq!(
             b.get(),
@@ -193,7 +194,7 @@ mod tests {
                 }
             )]
             .into_iter()
-            .map(|(a, b)| (a.into(), b))
+            .map(|(a, b)| (H160::from_low_u64_be(a), b))
             .collect::<HashMap<_, _>>()
         );
     }
@@ -203,10 +204,10 @@ mod tests {
         let tempdir = TempDir::new("").unwrap();
         let mut b = AddressBook::new(tempdir.path());
 
-        b.set_name(1.into(), "One".to_owned());
-        b.set_name(2.into(), "Two".to_owned());
-        b.set_name(3.into(), "Three".to_owned());
-        b.remove(2.into());
+        b.set_name(H160::from_low_u64_be(1), "One".to_owned());
+        b.set_name(H160::from_low_u64_be(2), "Two".to_owned());
+        b.set_name(H160::from_low_u64_be(3), "Three".to_owned());
+        b.remove(H160::from_low_u64_be(2));
 
         let b = AddressBook::new(tempdir.path());
         assert_eq!(
@@ -230,7 +231,7 @@ mod tests {
                 ),
             ]
             .into_iter()
-            .map(|(a, b)| (a.into(), b))
+            .map(|(a, b)| (H160::from_low_u64_be(a), b))
             .collect::<HashMap<_, _>>()
         );
     }

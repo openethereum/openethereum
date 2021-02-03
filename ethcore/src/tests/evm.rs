@@ -43,7 +43,7 @@ fn test_blockhash_eip210(factory: Factory) {
 
     // populate state with 256 last hashes
     let mut state = get_temp_state_with_factory(factory);
-    let contract_address: Address = 0xf0.into();
+    let contract_address = Address::from_low_u64_be(0xf0);
     state
         .init_code(&contract_address, (*blockhash_contract_code).clone())
         .unwrap();
@@ -59,7 +59,7 @@ fn test_blockhash_eip210(factory: Factory) {
             value: ActionValue::Transfer(0.into()),
             code: Some(blockhash_contract_code.clone()),
             code_hash: Some(blockhash_contract_code_hash),
-            data: Some(H256::from(i - 1).to_vec()),
+            data: Some(H256::from_low_u64_be(i - 1).as_bytes().to_vec()),
             call_type: CallType::Call,
             params_type: ParamsType::Separate,
             access_list: AccessList::default(),
@@ -74,10 +74,10 @@ fn test_blockhash_eip210(factory: Factory) {
 
     env_info.number = 256;
     let params = ActionParams {
-        code_address: Address::new(),
-        address: Address::new(),
-        sender: Address::new(),
-        origin: Address::new(),
+        code_address: Address::default(),
+        address: Address::default(),
+        sender: Address::default(),
+        origin: Address::default(),
         gas: 100000.into(),
         gas_price: 0.into(),
         value: ActionValue::Transfer(0.into()),
@@ -93,10 +93,10 @@ fn test_blockhash_eip210(factory: Factory) {
     let mut substate = Substate::new();
     let res = ex.call(params, &mut substate, &mut NoopTracer, &mut NoopVMTracer);
     let output = match res {
-        Ok(res) => H256::from(&res.return_data[..32]),
+        Ok(res) => H256::from_slice(&res.return_data[..32]),
         Err(e) => {
             panic!("Encountered error on getting last hash: {}", e);
         }
     };
-    assert_eq!(output, 255.into());
+    assert_eq!(output, H256::from_low_u64_be(255));
 }

@@ -18,8 +18,8 @@
 
 use std::sync::Arc;
 
-use ethereum_types::U256;
-use ethkey;
+use crypto::publickey;
+use ethereum_types::{H520, U256};
 use parity_runtime::Executor;
 use parking_lot::Mutex;
 use types::transaction::{PendingTransaction, SignedTransaction, TypedTransaction};
@@ -289,10 +289,10 @@ impl<D: Dispatcher + 'static> Signer for SignerClient<D> {
                     }
                     ConfirmationPayload::EthSignMessage(address, data) => {
                         let expected_hash = eth_data_hash(data);
-                        let signature = ethkey::Signature::from_electrum(&bytes.0);
-                        match ethkey::verify_address(&address, &signature, &expected_hash) {
+                        let signature = publickey::Signature::from_electrum(&bytes.0);
+                        match publickey::verify_address(&address, &signature, &expected_hash) {
                             Ok(true) => {
-                                Ok(ConfirmationResponse::Signature(bytes.0.as_slice().into()))
+                                Ok(ConfirmationResponse::Signature(H520::from_slice(bytes.0.as_slice())))
                             }
                             Ok(false) => Err(errors::invalid_params(
                                 "Sender address does not match the signature.",
@@ -304,10 +304,10 @@ impl<D: Dispatcher + 'static> Signer for SignerClient<D> {
                         }
                     }
                     ConfirmationPayload::SignMessage(address, hash) => {
-                        let signature = ethkey::Signature::from_electrum(&bytes.0);
-                        match ethkey::verify_address(&address, &signature, &hash) {
+                        let signature = publickey::Signature::from_electrum(&bytes.0);
+                        match publickey::verify_address(&address, &signature, &hash) {
                             Ok(true) => {
-                                Ok(ConfirmationResponse::Signature(bytes.0.as_slice().into()))
+                                Ok(ConfirmationResponse::Signature(H520::from_slice(bytes.0.as_slice())))
                             }
                             Ok(false) => Err(errors::invalid_params(
                                 "Sender address does not match the signature.",

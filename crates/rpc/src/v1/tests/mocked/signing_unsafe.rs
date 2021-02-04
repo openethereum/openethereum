@@ -210,6 +210,7 @@ fn rpc_eth_sign_transaction() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -226,7 +227,7 @@ fn rpc_eth_sign_transaction() {
         + &format!("\"raw\":\"0x{}\",", rlp.to_hex())
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
-        + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"type":0,"#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.original_v()))
         + r#""value":"0x9184e72a""#
         + r#"}},"id":1}"#;

@@ -786,8 +786,7 @@ impl SyncHandler {
             || (warp_protocol
                 && (peer.protocol_version < PAR_PROTOCOL_VERSION_1.0
                     || peer.protocol_version > PAR_PROTOCOL_VERSION_2.0))
-            || (!warp_protocol
-                && peer.protocol_version != ETH_PROTOCOL_VERSION_64.0 )
+            || (!warp_protocol && peer.protocol_version != ETH_PROTOCOL_VERSION_64.0)
         {
             trace!(target: "sync", "Peer {} unsupported eth protocol ({})", peer_id, peer.protocol_version);
             return Err(DownloaderImportError::Invalid);

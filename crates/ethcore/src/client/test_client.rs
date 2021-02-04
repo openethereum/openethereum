@@ -1056,7 +1056,11 @@ impl BlockChainClient for TestBlockChainClient {
             data: data,
         });
         let chain_id = Some(self.spec.chain_id());
-        let sig = self.spec.engine.sign(transaction.hash(chain_id)).unwrap();
+        let sig = self
+            .spec
+            .engine
+            .sign(transaction.signature_hash(chain_id))
+            .unwrap();
         Ok(SignedTransaction::new(transaction.with_signature(sig, chain_id)).unwrap())
     }
 

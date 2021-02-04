@@ -30,11 +30,7 @@ use memory_cache::MemoryLruCache;
 use parking_lot::{Mutex, RwLock};
 use rlp::{Rlp, RlpStream};
 use types::{
-    header::Header,
-    ids::BlockId,
-    log_entry::LogEntry,
-    receipt::TypedReceipt,
-    transaction::self,
+    header::Header, ids::BlockId, log_entry::LogEntry, receipt::TypedReceipt, transaction,
     BlockNumber,
 };
 use unexpected::Mismatch;

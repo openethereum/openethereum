@@ -1064,7 +1064,7 @@ impl Spec {
     /// Create a new Spec with Autority Round randomness contract
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_test_round_randomness_contract() -> Spec {
-        load_bundled!("authority_round_randomness_contract")
+        load_bundled!("test/authority_round_randomness_contract")
     }
 
     /// Create a new Spec with AuthorityRound consensus which does internal sealing (not

@@ -434,7 +434,7 @@ mod test {
     /// Contract code: res/tx_permission_tests/contract_ver_3.sol
     #[test]
     fn transaction_filter_ver_3() {
-        let spec_data = include_str!("../res/tx_permission_tests/contract_ver_3_genesis.json");
+        let spec_data = include_str!("../res/chainspec/test/contract_ver_3_genesis.json");
 
         let db = test_helpers::new_db();
         let tempdir = TempDir::new("").unwrap();
@@ -457,11 +457,11 @@ mod test {
         // So we only test those: The contract allows only transactions with either nonzero gas price or short data.
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
-        let mut tx = Transaction::default();
-        tx.action =
+        let mut tx = TypedTransaction::Legacy(Transaction::default());
+        tx.tx_mut().action =
             Action::Call(Address::from_str("0000000000000000000000000000000000000042").unwrap());
-        tx.data = b"01234567".to_vec();
-        tx.gas_price = 0.into();
+        tx.tx_mut().data = b"01234567".to_vec();
+        tx.tx_mut().gas_price = 0.into();
 
         let genesis = client.block_hash(BlockId::Latest).unwrap();
         let block_number = 1;
@@ -475,21 +475,21 @@ mod test {
         ));
 
         // But if we either set a nonzero gas price or short data or both, it is allowed.
-        tx.gas_price = 1.into();
+        tx.tx_mut().gas_price = 1.into();
         assert!(filter.transaction_allowed(
             &genesis,
             block_number,
             &tx.clone().sign(key1.secret(), None),
             &*client
         ));
-        tx.data = b"01".to_vec();
+        tx.tx_mut().data = b"01".to_vec();
         assert!(filter.transaction_allowed(
             &genesis,
             block_number,
             &tx.clone().sign(key1.secret(), None),
             &*client
         ));
-        tx.gas_price = 0.into();
+        tx.tx_mut().gas_price = 0.into();
         assert!(filter.transaction_allowed(
             &genesis,
             block_number,

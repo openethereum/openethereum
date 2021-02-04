@@ -30,7 +30,6 @@ pub struct BlockView<'a> {
 }
 
 impl<'a> BlockView<'a> {
-    
     /// Creates new view onto block from rlp.
     /// Use the `view!` macro to create this view in order to capture debugging info.
     pub fn new(rlp: ViewRlp<'a>) -> BlockView<'a> {

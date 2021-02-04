@@ -621,7 +621,7 @@ fn should_confirm_sign_transaction_with_rlp() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
-        + r#""accessList":[],"blockHash":null,"blockNumber":null,"#
+        + r#""accessList":null,"blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
             t.chain_id().map_or("null".to_owned(), |n| format!("{}", n))

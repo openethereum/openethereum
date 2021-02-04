@@ -402,7 +402,7 @@ fn should_add_sign_transaction_to_the_queue() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
-        + r#""accessList":[],"#
+        + r#""accessList":null,"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",

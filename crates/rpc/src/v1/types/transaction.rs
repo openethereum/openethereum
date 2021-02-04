@@ -74,7 +74,7 @@ pub struct Transaction {
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
     /// optional access list
-    pub access_list: AccessList,
+    pub access_list: Option<AccessList>,
 }
 
 /// Local Transaction Status
@@ -186,9 +186,9 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            al.access_list.clone()
+            Some(al.access_list.clone())
         } else {
-            Vec::new()
+            None
         };
 
         Transaction {
@@ -230,9 +230,9 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            al.access_list.clone()
+            Some(al.access_list.clone())
         } else {
-            Vec::new()
+            None
         };
         Transaction {
             hash: t.hash(),
@@ -311,7 +311,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":0,"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[]}"#
+            r#"{"type":0,"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":null}"#
         );
     }
 

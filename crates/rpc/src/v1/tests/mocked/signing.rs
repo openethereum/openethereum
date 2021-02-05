@@ -401,6 +401,7 @@ fn should_add_sign_transaction_to_the_queue() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
+        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",
@@ -418,6 +419,7 @@ fn should_add_sign_transaction_to_the_queue() {
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
         + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""type":0,"#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.original_v()))
         + r#""value":"0x9184e72a""#
         + r#"}},"id":1}"#;
@@ -606,10 +608,10 @@ fn should_compose_transaction() {
 		"id": 1
 	}"#;
 
-    let response = r#"{"jsonrpc":"2.0","result":{"condition":null,"data":"0x","from":"0x"#
+    let response = r#"{"jsonrpc":"2.0","result":{"accessList":null,"condition":null,"data":"0x","from":"0x"#
         .to_owned()
         + &from
-        + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"value":"0x5"},"id":1}"#;
+        + r#"","gas":"0x5208","gasPrice":"0x4a817c800","nonce":"0x0","to":null,"type":0,"value":"0x5"},"id":1}"#;
 
     // then
     let res = tester.io.handle_request(&request).wait().unwrap();

@@ -392,6 +392,7 @@ fn ec_recover_invalid_signature() {
 fn should_unlock_account_permanently() {
     let tester = setup();
     let address = tester.accounts.new_account(&"password123".into()).unwrap();
+    let message = [1u8; 32].into();
 
     let request = r#"{
 		"jsonrpc": "2.0",
@@ -414,7 +415,7 @@ fn should_unlock_account_permanently() {
     assert!(
         tester
             .accounts
-            .sign(address, None, Default::default())
+            .sign(address, None, message)
             .is_ok(),
         "Should unlock account."
     );

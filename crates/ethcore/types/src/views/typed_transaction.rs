@@ -36,22 +36,9 @@ pub struct TypedTransactionView<'a> {
     transaction_type: TypedTxId,
 }
 impl<'a> TypedTransactionView<'a> {
+    
     /// Creates new view onto valid transaction rlp.
     /// Use the `view!` macro to create this view in order to capture debugging info.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #[macro_use]
-    /// extern crate common_types as types;
-    ///
-    /// use types::views::{TransactionView};
-    ///
-    /// fn main() {
-    /// let bytes : &[u8] = &[];
-    /// let tx_view = view!(TransactionView, bytes);
-    /// }
-    /// ```
     pub fn new(rlp: ViewRlp<'a>) -> TypedTransactionView<'a> {
         let transaction_type = Self::extract_transaction_type(&rlp.rlp);
         TypedTransactionView {

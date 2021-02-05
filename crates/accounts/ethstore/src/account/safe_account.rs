@@ -240,7 +240,7 @@ impl SafeAccount {
 #[cfg(test)]
 mod tests {
     use super::{NonZeroU32, SafeAccount};
-    use crypto::publickey::{verify_public, Generator, Message, Random};
+    use crypto::publickey::{verify_public, Generator, Random};
 
     lazy_static! {
         static ref ITERATIONS: NonZeroU32 = NonZeroU32::new(10240).expect("10240 > 0; qed");
@@ -250,7 +250,7 @@ mod tests {
     fn sign_and_verify_public() {
         let keypair = Random.generate();
         let password = "hello world".into();
-        let message = Message::default();
+        let message = [1u8; 32].into();
         let account = SafeAccount::create(
             &keypair,
             [0u8; 16],
@@ -268,7 +268,7 @@ mod tests {
         let keypair = Random.generate();
         let first_password = "hello world".into();
         let sec_password = "this is sparta".into();
-        let message = Message::default();
+        let message = [1u8; 32].into();
         let account = SafeAccount::create(
             &keypair,
             [0u8; 16],

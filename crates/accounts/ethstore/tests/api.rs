@@ -71,12 +71,13 @@ fn secret_store_sign() {
         .insert_account(SecretVaultRef::Root, random_secret(), &"".into())
         .is_ok());
     let accounts = store.accounts().unwrap();
+    let message = [1u8; 32].into();
     assert_eq!(accounts.len(), 1);
     assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
+        .sign(&accounts[0], &"".into(), &message)
         .is_ok());
     assert!(store
-        .sign(&accounts[0], &"1".into(), &Default::default())
+        .sign(&accounts[0], &"1".into(), &message)
         .is_err());
 }
 
@@ -88,18 +89,19 @@ fn secret_store_change_password() {
         .insert_account(SecretVaultRef::Root, random_secret(), &"".into())
         .is_ok());
     let accounts = store.accounts().unwrap();
+    let message = [1u8; 32].into();
     assert_eq!(accounts.len(), 1);
     assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
+        .sign(&accounts[0], &"".into(), &message)
         .is_ok());
     assert!(store
         .change_password(&accounts[0], &"".into(), &"1".into())
         .is_ok());
     assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
+        .sign(&accounts[0], &"".into(), &message)
         .is_err());
     assert!(store
-        .sign(&accounts[0], &"1".into(), &Default::default())
+        .sign(&accounts[0], &"1".into(), &message)
         .is_ok());
 }
 
@@ -192,7 +194,7 @@ fn test_decrypting_files_with_short_ciphertext() {
         ]
     );
 
-    let message = Default::default();
+    let message = [1u8; 32].into();
 
     let s1 = store.sign(&accounts[0], &"foo".into(), &message).unwrap();
     let s2 = store.sign(&accounts[1], &"foo".into(), &message).unwrap();

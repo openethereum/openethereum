@@ -39,7 +39,12 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
         TypedTxId::Legacy => TypedTransaction::Legacy(tx_legacy),
         TypedTxId::AccessList => TypedTransaction::AccessList(AccessListTx::new(
             tx_legacy,
-            request.access_list.unwrap_or_default(),
+            request
+                .access_list
+                .unwrap_or_default()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
         )),
     };
     Ok(tx_typed.fake_sign(from))

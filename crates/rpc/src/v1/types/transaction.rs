@@ -21,10 +21,9 @@ use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::transaction::{
-    AccessList, Action, LocalizedTransaction, PendingTransaction, SignedTransaction,
-    TypedTransaction,
+    Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
 };
-use v1::types::{Bytes, TransactionCondition};
+use v1::types::{AccessListItem, Bytes, TransactionCondition};
 
 /// Transaction
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
@@ -74,7 +73,8 @@ pub struct Transaction {
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
     /// optional access list
-    pub access_list: Option<AccessList>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 /// Local Transaction Status
@@ -186,7 +186,7 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone())
+            Some(al.access_list.clone().into_iter().map(Into::into).collect())
         } else {
             None
         };
@@ -230,7 +230,7 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone())
+            Some(al.access_list.clone().into_iter().map(Into::into).collect())
         } else {
             None
         };
@@ -302,16 +302,19 @@ impl LocalTransactionStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::{LocalTransactionStatus, Transaction};
+    use super::{AccessListItem, LocalTransactionStatus, Transaction};
     use serde_json;
+    use types::transaction::TypedTxId;
 
     #[test]
     fn test_transaction_serialize() {
-        let t = Transaction::default();
+        let mut t = Transaction::default();
+        t.transaction_type = TypedTxId::AccessList as u8;
+        t.access_list = Some(vec![AccessListItem::default()]);
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":0,"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":null}"#
+            r#"{"type":1,"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
         );
     }
 

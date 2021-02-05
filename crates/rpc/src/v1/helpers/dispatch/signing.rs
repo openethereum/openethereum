@@ -67,7 +67,12 @@ impl super::Accounts for Signer {
                 }
                 TypedTransaction::AccessList(AccessListTx::new(
                     legacy_tx,
-                    filled.access_list.unwrap(),
+                    filled
+                        .access_list
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
                 ))
             }
         };

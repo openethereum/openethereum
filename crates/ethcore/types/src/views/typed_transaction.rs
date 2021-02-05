@@ -36,7 +36,6 @@ pub struct TypedTransactionView<'a> {
     transaction_type: TypedTxId,
 }
 impl<'a> TypedTransactionView<'a> {
-    
     /// Creates new view onto valid transaction rlp.
     /// Use the `view!` macro to create this view in order to capture debugging info.
     pub fn new(rlp: ViewRlp<'a>) -> TypedTransactionView<'a> {

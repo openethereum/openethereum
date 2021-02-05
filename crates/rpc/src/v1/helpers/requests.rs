@@ -16,9 +16,9 @@
 
 use bytes::Bytes;
 use ethereum_types::{Address, H256, U256};
-use types::transaction::{AccessList, TypedTxId};
+use types::transaction::TypedTxId;
 
-use v1::types::{Origin, TransactionCondition};
+use v1::types::{AccessListItem, Origin, TransactionCondition};
 
 /// Transaction request coming from RPC
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
@@ -42,7 +42,7 @@ pub struct TransactionRequest {
     /// Delay until this condition is met.
     pub condition: Option<TransactionCondition>,
     /// Access list
-    pub access_list: Option<AccessList>,
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 /// Transaction request coming from RPC with default values filled in.
@@ -69,7 +69,7 @@ pub struct FilledTransactionRequest {
     /// Delay until this condition is met.
     pub condition: Option<TransactionCondition>,
     /// Access list
-    pub access_list: Option<AccessList>,
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 impl From<FilledTransactionRequest> for TransactionRequest {
@@ -84,7 +84,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data),
             nonce: r.nonce,
             condition: r.condition,
-            access_list: r.access_list,
+            access_list: r.access_list.map(Into::into),
         }
     }
 }
@@ -109,7 +109,7 @@ pub struct CallRequest {
     /// Nonce
     pub nonce: Option<U256>,
     /// Access list
-    pub access_list: Option<AccessList>,
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 /// Confirmation object

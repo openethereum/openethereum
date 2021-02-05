@@ -18,10 +18,10 @@
 
 use ansi_term::Colour;
 use ethereum_types::{H160, U256};
-use types::transaction::{AccessList, TypedTxId};
+use types::transaction::TypedTxId;
 use v1::{
     helpers,
-    types::{Bytes, TransactionCondition},
+    types::{AccessListItem, Bytes, TransactionCondition},
 };
 
 use std::fmt;
@@ -52,7 +52,8 @@ pub struct TransactionRequest {
     /// Delay until this block condition.
     pub condition: Option<TransactionCondition>,
     /// Access list
-    pub access_list: Option<AccessList>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 pub fn format_ether(i: U256) -> String {
@@ -130,7 +131,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data.into()),
             nonce: r.nonce,
             condition: r.condition,
-            access_list: r.access_list,
+            access_list: r.access_list.map(Into::into),
         }
     }
 }

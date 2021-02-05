@@ -15,8 +15,11 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{H160, U256};
-use types::transaction::{AccessList, TypedTxId};
-use v1::{helpers::CallRequest as Request, types::Bytes};
+use types::transaction::TypedTxId;
+use v1::{
+    helpers::CallRequest as Request,
+    types::{AccessListItem, Bytes},
+};
 
 /// Call request
 #[derive(Debug, Default, PartialEq, Deserialize)]
@@ -42,7 +45,8 @@ pub struct CallRequest {
     /// Nonce
     pub nonce: Option<U256>,
     /// Access list
-    pub access_list: Option<AccessList>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_list: Option<Vec<AccessListItem>>,
 }
 
 impl Into<Request> for CallRequest {

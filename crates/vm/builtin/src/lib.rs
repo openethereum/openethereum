@@ -33,7 +33,7 @@ use eth_pairings::public_interface::eip2537::{
     EIP2537Executor, SCALAR_BYTE_LENGTH, SERIALIZED_G1_POINT_BYTE_LENGTH,
     SERIALIZED_G2_POINT_BYTE_LENGTH,
 };
-use ethereum_types::{BigEndianHash, H256, U256};
+use ethereum_types::{H256, U256};
 use ethjson;
 use parity_crypto::publickey::{recover as ec_recover, Signature};
 use keccak_hash::keccak;
@@ -192,7 +192,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            H256::from_slice(&buf[..]).into_uint()
+            U256::from_big_endian(&buf[..])
         };
         let base_len_u256 = read_len();
         let exp_len_u256 = read_len();
@@ -210,7 +210,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[(32 - len)..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            H256::from_slice(&buf[..]).into_uint()
+            U256::from_big_endian(&buf[..])
         };
 
         (base_len_u256, exp_len_u256, exp_low, mod_len_u256)

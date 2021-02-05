@@ -357,7 +357,8 @@ impl AccountProvider {
         } else {
             // verify password by signing dump message
             // result may be discarded
-            let _ = self.sstore.sign(&account, &password, &Default::default())?;
+            let dummy_msg = [1u8; 32].into();
+            let _ = self.sstore.sign(&account, &password, &dummy_msg)?;
         }
 
         let data = AccountData {
@@ -643,6 +644,7 @@ mod tests {
     fn unlock_account_temp() {
         let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
+        let dummy_msg = [1u8; 32].into();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
             .is_ok());
@@ -652,8 +654,8 @@ mod tests {
         assert!(ap
             .unlock_account_temporarily(kp.address(), "test".into())
             .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_err());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_err());
     }
 
     #[test]
@@ -738,7 +740,7 @@ mod tests {
         ap.unlock_account_permanently(derived_addr, "base".into())
             .expect("Should be ok because account is saved and password is valid");
 
-        let msg = Default::default();
+        let msg = [2u8; 32].into();
         let signed_msg1 = ap
             .sign(derived_addr, None, msg)
             .expect("Signing with existing unlocked account should not fail");
@@ -758,6 +760,7 @@ mod tests {
     fn unlock_account_perm() {
         let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
+        let dummy_msg = [1u8; 32].into();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
             .is_ok());
@@ -767,19 +770,20 @@ mod tests {
         assert!(ap
             .unlock_account_permanently(kp.address(), "test".into())
             .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
         assert!(ap
             .unlock_account_temporarily(kp.address(), "test".into())
             .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
     }
 
     #[test]
     fn unlock_account_timer() {
         let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
+        let dummy_msg = [1u8; 32].into();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
             .is_ok());
@@ -789,13 +793,13 @@ mod tests {
         assert!(ap
             .unlock_account_timed(kp.address(), "test".into(), Duration::from_secs(60))
             .is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_ok());
         ap.unlocked
             .write()
             .get_mut(&StoreAccountRef::root(kp.address()))
             .unwrap()
             .unlock = Unlock::Timed(Instant::now());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_err());
+        assert!(ap.sign(kp.address(), None, dummy_msg).is_err());
     }
 
     #[test]
@@ -803,20 +807,21 @@ mod tests {
         // given
         let kp = Random.generate();
         let ap = AccountProvider::transient_provider();
+        let dummy_msg = [1u8; 32].into();
         assert!(ap
             .insert_account(kp.secret().clone(), &"test".into())
             .is_ok());
 
         // when
         let (_signature, token) = ap
-            .sign_with_token(kp.address(), "test".into(), Default::default())
+            .sign_with_token(kp.address(), "test".into(), dummy_msg)
             .unwrap();
 
         // then
-        ap.sign_with_token(kp.address(), token.clone(), Default::default())
+        ap.sign_with_token(kp.address(), token.clone(), dummy_msg)
             .expect("First usage of token should be correct.");
         assert!(
-            ap.sign_with_token(kp.address(), token, Default::default())
+            ap.sign_with_token(kp.address(), token, dummy_msg)
                 .is_err(),
             "Second usage of the same token should fail."
         );

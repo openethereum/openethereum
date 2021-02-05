@@ -35,7 +35,7 @@ use eth_pairings::public_interface::eip2537::{
 };
 use ethereum_types::{H256, U256};
 use ethjson;
-use parity_crypto::publickey::{recover as ec_recover, Signature};
+use parity_crypto::publickey::{recover_allowing_all_zero_message, Signature, ZeroesAllowedMessage};
 use keccak_hash::keccak;
 use log::{trace, warn};
 use num::{BigUint, One, Zero};
@@ -825,7 +825,13 @@ impl Implementation for EcRecover {
 
         let s = Signature::from_rsv(&r, &s, bit);
         if s.is_valid() {
-            if let Ok(p) = ec_recover(&s, &hash) {
+            // The builtin allows/requires all-zero messages to be valid to
+            // recover the public key. Use of such messages is disallowed in
+            // `rust-secp256k1` and this is a workaround for that. It is not an
+            // openethereum-level error to fail here; instead we return all
+            // zeroes and let the caller interpret that outcome.
+            let recovery_message = ZeroesAllowedMessage(hash);
+            if let Ok(p) = recover_allowing_all_zero_message(&s, recovery_message) {
                 let r = keccak(p);
                 output.write(0, &[0; 12]);
                 output.write(12, &r.as_bytes()[12..]);

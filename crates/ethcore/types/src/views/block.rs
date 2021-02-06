@@ -32,6 +32,20 @@ pub struct BlockView<'a> {
 impl<'a> BlockView<'a> {
     /// Creates new view onto block from rlp.
     /// Use the `view!` macro to create this view in order to capture debugging info.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #[macro_use]
+    /// extern crate common_types as types;
+    ///
+    /// use types::views::{BlockView};
+    ///
+    /// fn main() {
+    /// let bytes : &[u8] = &[];
+    /// let block_view = view!(BlockView, bytes);
+    /// }
+    /// ```
     pub fn new(rlp: ViewRlp<'a>) -> BlockView<'a> {
         BlockView { rlp: rlp }
     }

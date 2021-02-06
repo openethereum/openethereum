@@ -76,7 +76,7 @@ pub use self::{
     trace::{LocalizedTrace, TraceResults, TraceResultsWithTransactionHash},
     trace_filter::TraceFilter,
     transaction::{LocalTransactionStatus, RichRawTransaction, Transaction},
-    transaction_access_list::AccessListItem,
+    transaction_access_list::{AccessList, AccessListItem},
     transaction_condition::TransactionCondition,
     transaction_request::TransactionRequest,
     work::Work,

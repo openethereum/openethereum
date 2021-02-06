@@ -59,9 +59,9 @@ impl super::Accounts for Signer {
             value: filled.value,
             data: filled.data,
         };
-        let t = match filled.transaction_type {
-            TypedTxId::Legacy => TypedTransaction::Legacy(legacy_tx),
-            TypedTxId::AccessList => {
+        let t = match TypedTxId::from_U64_id(&filled.transaction_type) {
+            Some(TypedTxId::Legacy) => TypedTransaction::Legacy(legacy_tx),
+            Some(TypedTxId::AccessList) => {
                 if filled.access_list.is_none() {
                     return Err(Error::new(ErrorCode::InvalidParams));
                 }
@@ -75,6 +75,7 @@ impl super::Accounts for Signer {
                         .collect(),
                 ))
             }
+            None => return Err(Error::new(ErrorCode::InvalidParams)),
         };
 
         let hash = t.signature_hash(chain_id);

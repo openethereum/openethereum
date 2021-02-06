@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{H160, U256};
-use types::transaction::TypedTxId;
+use ethereum_types::{H160, U256, U64};
 use v1::{
     helpers::CallRequest as Request,
-    types::{AccessListItem, Bytes},
+    types::{AccessList, Bytes},
 };
 
 /// Call request
@@ -26,10 +25,10 @@ use v1::{
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct CallRequest {
-    /// transaction type
+    /// transaction type. Defaults to legacy type.
     #[serde(default)]
     #[serde(rename = "type")]
-    pub transaction_type: TypedTxId,
+    pub transaction_type: U64,
     /// From
     pub from: Option<H160>,
     /// To
@@ -46,7 +45,7 @@ pub struct CallRequest {
     pub nonce: Option<U256>,
     /// Access list
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_list: Option<Vec<AccessListItem>>,
+    pub access_list: Option<AccessList>,
 }
 
 impl Into<Request> for CallRequest {

@@ -40,6 +40,7 @@ mod sync;
 mod trace;
 mod trace_filter;
 mod transaction;
+mod transaction_access_list;
 mod transaction_condition;
 mod transaction_request;
 mod work;
@@ -75,6 +76,7 @@ pub use self::{
     trace::{LocalizedTrace, TraceResults, TraceResultsWithTransactionHash},
     trace_filter::TraceFilter,
     transaction::{LocalTransactionStatus, RichRawTransaction, Transaction},
+    transaction_access_list::{AccessList, AccessListItem},
     transaction_condition::TransactionCondition,
     transaction_request::TransactionRequest,
     work::Work,

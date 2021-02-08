@@ -15,16 +15,15 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
-use types::transaction::{AccessList, TypedTxId};
+use ethereum_types::{Address, H256, U256, U64};
 
-use v1::types::{Origin, TransactionCondition};
+use v1::types::{AccessList, Origin, TransactionCondition};
 
 /// Transaction request coming from RPC
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct TransactionRequest {
     /// type of transaction.
-    pub transaction_type: TypedTxId,
+    pub transaction_type: U64,
     /// Sender
     pub from: Option<Address>,
     /// Recipient
@@ -49,7 +48,7 @@ pub struct TransactionRequest {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]
 pub struct FilledTransactionRequest {
     /// type of transaction.
-    pub transaction_type: TypedTxId,
+    pub transaction_type: U64,
     /// Sender
     pub from: Address,
     /// Indicates if the sender was filled by default value.
@@ -84,7 +83,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data),
             nonce: r.nonce,
             condition: r.condition,
-            access_list: r.access_list,
+            access_list: r.access_list.map(Into::into),
         }
     }
 }
@@ -93,7 +92,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
 #[derive(Debug, Default, PartialEq)]
 pub struct CallRequest {
     /// type of transaction.
-    pub transaction_type: TypedTxId,
+    pub transaction_type: U64,
     /// From
     pub from: Option<Address>,
     /// To

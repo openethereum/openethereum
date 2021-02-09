@@ -615,6 +615,7 @@ mod tests {
     use error::Error;
     use ethereum_types::Address;
     use factory::Factories;
+    use hash_db::EMPTY_PREFIX;
     use state_db::StateDB;
     use std::sync::Arc;
     use test_helpers::get_temp_state_db;
@@ -784,7 +785,8 @@ mod tests {
                 .journal_db()
                 .keys()
                 .iter()
-                .filter(|k| orig_db.journal_db().get(k.0) != db.journal_db().get(k.0))
+                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX)
+                    != db.journal_db().get(k.0, EMPTY_PREFIX))
                 .next()
                 == None
         );
@@ -856,7 +858,8 @@ mod tests {
                 .journal_db()
                 .keys()
                 .iter()
-                .filter(|k| orig_db.journal_db().get(k.0) != db.journal_db().get(k.0))
+                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX)
+                    != db.journal_db().get(k.0, EMPTY_PREFIX))
                 .next()
                 == None
         );

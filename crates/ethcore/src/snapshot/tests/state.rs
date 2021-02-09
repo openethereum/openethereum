@@ -19,6 +19,7 @@
 extern crate rand_xorshift;
 
 use hash::{keccak, KECCAK_NULL_RLP};
+use hash_db::EMPTY_PREFIX;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use super::helpers::StateProducer;
@@ -112,8 +113,8 @@ fn snap_and_restore() {
 
     for key in keys.keys() {
         assert_eq!(
-            old_db.get(&key).unwrap(),
-            new_db.as_hash_db().get(&key).unwrap()
+            old_db.get(&key, EMPTY_PREFIX).unwrap(),
+            new_db.as_hash_db().get(&key, EMPTY_PREFIX).unwrap()
         );
     }
 }
@@ -146,7 +147,7 @@ fn get_code_from_prev_chunk() {
 
     let mut make_chunk = |acc, hash| {
         let mut db = journaldb::new_memory_db();
-        AccountDBMut::from_hash(&mut db, hash).insert(&code[..]);
+        AccountDBMut::from_hash(&mut db, hash).insert(EMPTY_PREFIX, &code[..]);
         let p = Progress::default();
         let fat_rlp = account::to_fat_rlps(
             &hash,

@@ -16,7 +16,7 @@
 
 use ethereum_types::H256;
 use ethjson;
-use ethtrie::RlpCodec;
+use ethtrie::Layout;
 use std::path::Path;
 use trie::{TrieFactory, TrieSpec};
 
@@ -32,7 +32,7 @@ pub fn json_trie_test<H: FnMut(&str, HookType)>(
         "Could not parse JSON trie test data from {}",
         path.display()
     ));
-    let factory = TrieFactory::<_, RlpCodec>::new(trie);
+    let factory = TrieFactory::new(trie, Layout);
     let mut failed = vec![];
 
     for (name, test) in tests.into_iter() {

@@ -57,6 +57,7 @@ impl Brain {
 
 #[cfg(test)]
 mod tests {
+    use parity_crypto::publickey::Generator;
     use Brain;
 
     #[test]

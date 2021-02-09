@@ -28,6 +28,7 @@ use bytes::Bytes;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_NULL_RLP};
+use hash_db::EMPTY_PREFIX;
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use rustc_hex::FromHex;
@@ -935,7 +936,7 @@ impl Spec {
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
     pub fn ensure_db_good<T: Backend>(&self, db: T, factories: &Factories) -> Result<T, Error> {
-        if db.as_hash_db().contains(&self.state_root()) {
+        if db.as_hash_db().contains(&self.state_root(), EMPTY_PREFIX) {
             return Ok(db);
         }
 
@@ -972,9 +973,9 @@ impl Spec {
 
         let factories = Default::default();
         let mut db = journaldb::new(
-            Arc::new(kvdb_memorydb::create(0)),
+            Arc::new(kvdb_memorydb::create(1)),
             journaldb::Algorithm::Archive,
-            None,
+            0,
         );
 
         self.ensure_db_good(BasicBackend(db.as_hash_db_mut()), &factories)
@@ -1003,17 +1004,15 @@ impl Spec {
             })
             .fake_sign(from);
 
-            let res = ::state::prove_transaction_virtual(
+            ::state::prove_transaction_virtual(
                 db.as_hash_db_mut(),
                 *genesis.state_root(),
                 &tx,
                 self.engine.machine(),
                 &env_info,
                 factories.clone(),
-            );
-
-            res.map(|(out, proof)| (out, proof.into_iter().map(|x| x.into_vec()).collect()))
-                .ok_or_else(|| "Failed to prove call: insufficient state".into())
+            )
+            .ok_or_else(|| "Failed to prove call: insufficient state".into())
         };
 
         self.engine.genesis_epoch_data(&genesis, &call)

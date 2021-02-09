@@ -31,6 +31,7 @@ use error::Error;
 use executed::{Executed, ExecutionError};
 use executive::{Executive, TransactOptions};
 use factory::{Factories, VmFactory};
+use hash_db::EMPTY_PREFIX;
 use machine::EthereumMachine as Machine;
 use pod_account::*;
 use pod_state::{self, PodState};
@@ -394,7 +395,7 @@ impl<B: Backend> State<B> {
         account_start_nonce: U256,
         factories: Factories,
     ) -> TrieResult<State<B>> {
-        if !db.as_hash_db().contains(&root) {
+        if !db.as_hash_db().contains(&root, EMPTY_PREFIX) {
             return Err(Box::new(TrieError::InvalidStateRoot(root)));
         }
 
@@ -3469,7 +3470,7 @@ mod tests {
 
         let factories = Factories {
             vm: Default::default(),
-            trie: TrieFactory::new(TrieSpec::Fat),
+            trie: TrieFactory::new(TrieSpec::Fat, ethtrie::Layout),
             accountdb: Default::default(),
         };
 

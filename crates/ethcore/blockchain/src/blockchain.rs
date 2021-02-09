@@ -722,14 +722,9 @@ impl BlockChain {
         {
             let best_block_number = bc.best_block.read().header.number();
             // Fetch first and best ancient block details
-            let raw_first = bc
-                .db
-                .key_value()
-                .get(db::COL_EXTRA, b"first")
-                .expect(
-                    "Low level database error when fetching 'first' block. Some issue with disk?",
-                )
-                .map(|v| v.into_vec());
+            let raw_first = bc.db.key_value().get(db::COL_EXTRA, b"first").expect(
+                "Low level database error when fetching 'first' block. Some issue with disk?",
+            );
             let mut best_ancient = bc.db.key_value().get(db::COL_EXTRA, b"ancient")
 				.expect("Low level database error when fetching 'best ancient' block. Some issue with disk?")
 				.map(|h| H256::from_slice(&h));
@@ -1174,7 +1169,7 @@ impl BlockChain {
         let iter = self
             .db
             .key_value()
-            .iter_from_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
+            .iter_with_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
         EpochTransitionIter {
             chain: self,
             prefix_iter: iter,
@@ -1979,7 +1974,7 @@ mod tests {
             trace_blooms: blooms_db::Database::open(trace_blooms_dir.path()).unwrap(),
             _blooms_dir: blooms_dir,
             _trace_blooms_dir: trace_blooms_dir,
-            key_value: Arc::new(kvdb_memorydb::create(ethcore_db::NUM_COLUMNS.unwrap())),
+            key_value: Arc::new(kvdb_memorydb::create(ethcore_db::NUM_COLUMNS)),
         };
 
         Arc::new(db)

@@ -15,9 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use account_db::Factory as AccountFactory;
-use ethtrie::RlpCodec;
+use ethtrie::Layout;
 use evm::{Factory as EvmFactory, VMType};
-use keccak_hasher::KeccakHasher;
 use trie::TrieFactory;
 use vm::{ActionParams, Exec, Schedule};
 use wasm::WasmInterpreter;
@@ -62,7 +61,7 @@ pub struct Factories {
     /// factory for evm.
     pub vm: VmFactory,
     /// factory for tries.
-    pub trie: TrieFactory<KeccakHasher, RlpCodec>,
+    pub trie: TrieFactory<Layout>,
     /// factory for account databases.
     pub accountdb: AccountFactory,
 }

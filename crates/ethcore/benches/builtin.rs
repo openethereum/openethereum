@@ -31,8 +31,9 @@ use bytes::BytesRef;
 use criterion::{Bencher, Criterion};
 use ethcore::{ethereum::new_byzantium_test_machine, machine::EthereumMachine};
 use ethcore_builtin::Builtin;
-use ethereum_types::H160;
+use ethereum_types::Address;
 use rustc_hex::FromHex;
+use std::str::FromStr;
 
 lazy_static! {
     static ref BYZANTIUM_MACHINE: EthereumMachine = new_byzantium_test_machine();
@@ -48,10 +49,7 @@ impl<'a> BuiltinBenchmark<'a> {
     fn new(builtin_address: &'static str, input: &str, expected: &str) -> BuiltinBenchmark<'a> {
         let builtins = BYZANTIUM_MACHINE.builtins();
 
-        let builtin = builtins
-            .get(&H160::from_str(builtin_address).unwrap())
-            .unwrap()
-            .clone();
+        let builtin = builtins.get(&Address::from_str(builtin_address).unwrap()).unwrap().clone();
         let input = FromHex::from_hex(input).unwrap();
         let expected = FromHex::from_hex(expected).unwrap();
 

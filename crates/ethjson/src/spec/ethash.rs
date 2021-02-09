@@ -115,6 +115,7 @@ mod tests {
     use ethereum_types::{H160, U256};
     use serde_json;
     use std::str::FromStr;
+    use uint::Uint;
 
     #[test]
     fn ethash_deserialization() {

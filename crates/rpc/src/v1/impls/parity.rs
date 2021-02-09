@@ -17,7 +17,10 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crypto::{publickey::ecies, DEFAULT_MAC};
+use crypto::{
+    publickey::ecies,
+    DEFAULT_MAC,
+};
 use ethcore::{
     client::{BlockChainClient, Call, StateClient},
     miner::{self, MinerService, TransactionFilter},

@@ -30,7 +30,7 @@ macros = { path = "../../util/macros" }
 parity-bytes = "0.1"
 parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
 parity-util-mem = "0.7"
-parking_lot = "0.7"
+parking_lot = "0.11.1"
 rand = "0.7.3"
 rand_xorshift = "0.2.0"
 rlp = { version = "0.4.6" }

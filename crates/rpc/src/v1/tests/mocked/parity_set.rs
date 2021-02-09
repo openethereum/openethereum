@@ -202,7 +202,7 @@ fn rpc_parity_remove_transaction() {
         .to_owned()
         + &format!("0x{:x}", hash)
         + r#""], "id": 1}"#;
-    let response = r#"{"jsonrpc":"2.0","result":{"blockHash":null,"blockNumber":null,"chainId":null,"condition":null,"creates":null,"from":"0x0000000000000000000000000000000000000002","gas":"0x76c0","gasPrice":"0x9184e72a000","hash":"0x49569012bc8523519642c337fded3f20ba987beab31e14c67223b3d31359956f","input":"0x","nonce":"0x1","publicKey":null,"r":"0x1","raw":"0xe9018609184e72a0008276c0940000000000000000000000000000000000000005849184e72a801f0101","s":"0x1","standardV":"0x4","to":"0x0000000000000000000000000000000000000005","transactionIndex":null,"v":"0x1f","value":"0x9184e72a"},"id":1}"#;
+    let response = r#"{"jsonrpc":"2.0","result":{"blockHash":null,"blockNumber":null,"chainId":null,"condition":null,"creates":null,"from":"0x0000000000000000000000000000000000000002","gas":"0x76c0","gasPrice":"0x9184e72a000","hash":"0x49569012bc8523519642c337fded3f20ba987beab31e14c67223b3d31359956f","input":"0x","nonce":"0x1","publicKey":null,"r":"0x1","raw":"0xe9018609184e72a0008276c0940000000000000000000000000000000000000005849184e72a801f0101","s":"0x1","standardV":"0x4","to":"0x0000000000000000000000000000000000000005","transactionIndex":null,"type":"0x0","v":"0x1f","value":"0x9184e72a"},"id":1}"#;
 
     miner.pending_transactions.lock().insert(hash, signed);
     assert_eq!(io.handle_request_sync(&request), Some(response.to_owned()));

@@ -21,10 +21,9 @@ use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::transaction::{
-    AccessList, Action, LocalizedTransaction, PendingTransaction, SignedTransaction,
-    TypedTransaction,
+    Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
 };
-use v1::types::{Bytes, TransactionCondition};
+use v1::types::{AccessList, Bytes, TransactionCondition};
 
 /// Transaction
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
@@ -32,7 +31,7 @@ use v1::types::{Bytes, TransactionCondition};
 pub struct Transaction {
     /// transaction type
     #[serde(rename = "type")]
-    pub transaction_type: u8,
+    pub transaction_type: U64,
     /// Hash
     pub hash: H256,
     /// Nonce
@@ -74,7 +73,8 @@ pub struct Transaction {
     /// Transaction activates at specified block.
     pub condition: Option<TransactionCondition>,
     /// optional access list
-    pub access_list: AccessList,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_list: Option<AccessList>,
 }
 
 /// Local Transaction Status
@@ -186,9 +186,9 @@ impl Transaction {
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            al.access_list.clone()
+            Some(al.access_list.clone().into_iter().map(Into::into).collect())
         } else {
-            Vec::new()
+            None
         };
 
         Transaction {
@@ -220,7 +220,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            transaction_type: t.signed.tx_type() as u8,
+            transaction_type: U64::from(t.signed.tx_type() as u8),
             access_list,
         }
     }
@@ -230,9 +230,9 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
         let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            al.access_list.clone()
+            Some(al.access_list.clone().into_iter().map(Into::into).collect())
         } else {
-            Vec::new()
+            None
         };
         Transaction {
             hash: t.hash(),
@@ -263,7 +263,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            transaction_type: t.tx_type() as u8,
+            transaction_type: U64::from(t.tx_type() as u8),
             access_list,
         }
     }
@@ -303,15 +303,20 @@ impl LocalTransactionStatus {
 #[cfg(test)]
 mod tests {
     use super::{LocalTransactionStatus, Transaction};
+    use ethereum_types::U64;
     use serde_json;
+    use types::transaction::TypedTxId;
+    use v1::types::AccessListItem;
 
     #[test]
     fn test_transaction_serialize() {
-        let t = Transaction::default();
+        let mut t = Transaction::default();
+        t.transaction_type = U64::from(TypedTxId::AccessList as u8);
+        t.access_list = Some(vec![AccessListItem::default()]);
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null}"#
+            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
         );
     }
 

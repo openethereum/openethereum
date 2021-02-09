@@ -35,13 +35,15 @@ pub struct Transaction {
     pub v: Uint,
     pub value: Uint,
     pub chain_id: Option<Uint>,
-    pub access_list: Option<Vec<AccessList>>,
+    pub access_list: Option<AccessList>,
     pub hash: Option<H256>,
 }
 
+pub type AccessList = Vec<AccessListItem>;
+
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AccessList {
+pub struct AccessListItem {
     pub address: H160,
     pub storage_keys: Vec<H256>,
 }

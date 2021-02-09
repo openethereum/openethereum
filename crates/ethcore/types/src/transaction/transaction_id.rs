@@ -16,6 +16,7 @@
 
 //! Transaction Id.
 
+use ethereum_types::U64;
 use serde_repr::*;
 use std::convert::TryFrom;
 
@@ -31,6 +32,15 @@ impl TypedTxId {
         match n {
             0 => Some(Self::Legacy),
             1 => Some(Self::AccessList),
+            _ => None,
+        }
+    }
+
+    #[allow(non_snake_case)]
+    pub fn from_U64_id(n: &U64) -> Option<Self> {
+        match n.0[0] {
+            0x0 => Some(Self::Legacy),
+            0x1 => Some(Self::AccessList),
             _ => None,
         }
     }

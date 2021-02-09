@@ -24,7 +24,8 @@ use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
 use std::{convert::TryInto, ops::Deref};
 
-pub type AccessList = Vec<(H160, Vec<H256>)>;
+pub type AccessListItem = (H160, Vec<H256>);
+pub type AccessList = Vec<AccessListItem>;
 
 use super::TypedTxId;
 

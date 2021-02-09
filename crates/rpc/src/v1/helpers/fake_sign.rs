@@ -20,7 +20,7 @@ use types::transaction::{
 };
 
 use ethereum_types::U256;
-use jsonrpc_core::Error;
+use jsonrpc_core::{Error, ErrorCode};
 use v1::helpers::CallRequest;
 
 pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
@@ -35,12 +35,23 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
         value: request.value.unwrap_or_default(),
         data: request.data.unwrap_or_default(),
     };
-    let tx_typed = match request.transaction_type {
-        TypedTxId::Legacy => TypedTransaction::Legacy(tx_legacy),
-        TypedTxId::AccessList => TypedTransaction::AccessList(AccessListTx::new(
-            tx_legacy,
-            request.access_list.unwrap_or_default(),
-        )),
+    let tx_typed = match TypedTxId::from_U64_id(&request.transaction_type) {
+        Some(TypedTxId::Legacy) => TypedTransaction::Legacy(tx_legacy),
+        Some(TypedTxId::AccessList) => {
+            if request.access_list.is_none() {
+                return Err(Error::new(ErrorCode::InvalidParams));
+            }
+            TypedTransaction::AccessList(AccessListTx::new(
+                tx_legacy,
+                request
+                    .access_list
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ))
+        }
+        _ => return Err(Error::new(ErrorCode::InvalidParams)),
     };
     Ok(tx_typed.fake_sign(from))
 }

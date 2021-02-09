@@ -17,11 +17,10 @@
 //! `TransactionRequest` type
 
 use ansi_term::Colour;
-use ethereum_types::{H160, U256};
-use types::transaction::{AccessList, TypedTxId};
+use ethereum_types::{H160, U256, U64};
 use v1::{
     helpers,
-    types::{Bytes, TransactionCondition},
+    types::{AccessList, Bytes, TransactionCondition},
 };
 
 use std::fmt;
@@ -31,10 +30,10 @@ use std::fmt;
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionRequest {
-    /// type of transaction. If none we assume it is legacy
+    /// type of transaction. Defaults to legacy type.
     #[serde(default)]
     #[serde(rename = "type")]
-    pub transaction_type: TypedTxId,
+    pub transaction_type: U64,
     /// Sender
     pub from: Option<H160>,
     /// Recipient
@@ -52,6 +51,7 @@ pub struct TransactionRequest {
     /// Delay until this block condition.
     pub condition: Option<TransactionCondition>,
     /// Access list
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub access_list: Option<AccessList>,
 }
 
@@ -130,7 +130,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
             data: Some(r.data.into()),
             nonce: r.nonce,
             condition: r.condition,
-            access_list: r.access_list,
+            access_list: r.access_list.map(Into::into),
         }
     }
 }

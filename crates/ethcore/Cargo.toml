@@ -36,9 +36,9 @@ itertools = "0.5"
 journaldb = { path = "../db/journaldb" }
 keccak-hash = "0.5.0"
 keccak-hasher = { path = "../util/keccak-hasher" }
-kvdb = "0.1"
-kvdb-memorydb = "0.1"
-kvdb-rocksdb = { version = "0.1.3", optional = true }
+kvdb = "0.1.1"
+kvdb-memorydb = "0.1.2"
+kvdb-rocksdb = { version = "0.1.6", optional = true }
 lazy_static = "1.2.0"
 len-caching-lock = { path = "../util/len-caching-lock" }
 log = "0.4"
@@ -84,7 +84,7 @@ env_logger = "0.5"
 ethcore-accounts = { path = "../accounts" }
 fetch = { path = "../net/fetch" }
 hex-literal = "0.2.1"
-kvdb-rocksdb = "0.1.3"
+kvdb-rocksdb = "0.1.6"
 parity-runtime = { path = "../runtime/runtime" }
 rlp_compress = { path = "../util/rlp-compress" }
 tempdir = "0.3"

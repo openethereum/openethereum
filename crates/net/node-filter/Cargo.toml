@@ -20,6 +20,6 @@ lru-cache = "0.1"
 
 [dev-dependencies]
 ethcore = { path = "../../ethcore", features = ["test-helpers"] }
-kvdb-memorydb = "0.1"
+kvdb-memorydb = "0.1.2"
 ethcore-io = { path = "../../runtime/io" }
 tempdir = "0.3"

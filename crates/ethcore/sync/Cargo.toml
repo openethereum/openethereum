@@ -24,7 +24,7 @@ fastmap = { path = "../../util/fastmap" }
 hash-db = "0.11.0"
 keccak-hash = "0.5.0"
 keccak-hasher = { path = "../../util/keccak-hasher" }
-kvdb = "0.1"
+kvdb = "0.1.1"
 log = "0.4"
 macros = { path = "../../util/macros" }
 parity-bytes = "0.1"
@@ -43,5 +43,5 @@ stats = { path = "../../util/stats" }
 env_logger = "0.5"
 ethcore = { path = "..", features = ["test-helpers"] }
 ethcore-io = { path = "../../runtime/io", features = ["mio"] }
-kvdb-memorydb = "0.1"
+kvdb-memorydb = "0.1.2"
 rustc-hex = "1.0"

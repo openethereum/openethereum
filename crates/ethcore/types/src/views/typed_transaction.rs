@@ -15,7 +15,6 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! View onto transaction rlp
-use std::convert::TryInto;
 
 use crate::transaction::{signature, TypedTxId};
 
@@ -52,7 +51,7 @@ impl<'a> TypedTransactionView<'a> {
             return TypedTxId::Legacy;
         }
         let tx = rlp.data().expect("unable to decode tx rlp");
-        let id = tx[0].try_into().expect("unable to decode tx type");
+        let id =  TypedTxId::try_from_wire_byte(tx[0]).expect("unable to decode tx type");
         if id == TypedTxId::Legacy {
             panic!("Transaction RLP View should be valid. Legacy byte found");
         }

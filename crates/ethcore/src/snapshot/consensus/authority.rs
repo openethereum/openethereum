@@ -340,7 +340,7 @@ impl Rebuilder for ChunkRebuilder {
                 verified.header.number(),
                 verified.epoch_transition,
             );
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
 
             trace!(target: "snapshot", "Verified epoch transition for epoch at block {}", verified.header.number());
         }
@@ -378,7 +378,7 @@ impl Rebuilder for ChunkRebuilder {
                 true,
                 false,
             );
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
 
             self.warp_target = Some(block.header);
         }

@@ -234,7 +234,7 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, thread, time};
+    use std::{collections::HashMap, sync::Arc, thread, time};
 
     use tempdir::TempDir;
 
@@ -249,10 +249,9 @@ mod tests {
         let client_path = tempdir.path().join("client");
         let snapshot_path = tempdir.path().join("snapshot");
 
-        let client_config = ClientConfig::default();
         let mut client_db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 
-        client_db_config.memory_budget = client_config.db_cache_size;
+        client_db_config.memory_budget = HashMap::new();
         client_db_config.compaction = CompactionProfile::auto(&client_path);
 
         let client_db_handler = test_helpers::restoration_db_handler(client_db_config.clone());

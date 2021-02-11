@@ -27,11 +27,11 @@ use std::{
 };
 
 use ethereum_types::{Address, H256};
-use hash_db::{AsHashDB, HashDB};
+use hash_db::{AsHashDB, HashDB, Prefix, EMPTY_PREFIX};
 use journaldb::AsKeyedHashDB;
 use keccak_hasher::KeccakHasher;
 use kvdb::DBValue;
-use memory_db::MemoryDB;
+use memory_db::{MemoryDB, HashKey};
 use parking_lot::Mutex;
 use state::Account;
 
@@ -74,14 +74,14 @@ pub trait Backend: Send {
 // TODO: when account lookup moved into backends, this won't rely as tenuously on intended
 // usage.
 #[derive(Clone, PartialEq)]
-pub struct ProofCheck(MemoryDB<KeccakHasher, DBValue>);
+pub struct ProofCheck(MemoryDB<KeccakHasher, HashKey<KeccakHasher>, DBValue>);
 
 impl ProofCheck {
     /// Create a new `ProofCheck` backend from the given state items.
     pub fn new(proof: &[DBValue]) -> Self {
         let mut db = journaldb::new_memory_db();
         for item in proof {
-            db.insert(item);
+            db.insert(EMPTY_PREFIX, item);
         }
         ProofCheck(db)
     }
@@ -94,23 +94,23 @@ impl journaldb::KeyedHashDB for ProofCheck {
 }
 
 impl HashDB<KeccakHasher, DBValue> for ProofCheck {
-    fn get(&self, key: &H256) -> Option<DBValue> {
-        self.0.get(key)
+    fn get(&self, key: &H256, prefix: Prefix) -> Option<DBValue> {
+        self.0.get(key, prefix)
     }
 
-    fn contains(&self, key: &H256) -> bool {
-        self.0.contains(key)
+    fn contains(&self, key: &H256, prefix: Prefix) -> bool {
+        self.0.contains(key, prefix)
     }
 
-    fn insert(&mut self, value: &[u8]) -> H256 {
-        self.0.insert(value)
+    fn insert(&mut self, prefix: Prefix, value: &[u8]) -> H256 {
+        self.0.insert(prefix, value)
     }
 
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        self.0.emplace(key, value)
+    fn emplace(&mut self, key: H256, prefix: Prefix, value: DBValue) {
+        self.0.emplace(key, prefix, value)
     }
 
-    fn remove(&mut self, _key: &H256) {}
+    fn remove(&mut self, _key: &H256, _prefix: Prefix) {}
 }
 
 impl AsHashDB<KeccakHasher, DBValue> for ProofCheck {
@@ -152,7 +152,7 @@ impl Backend for ProofCheck {
 /// This doesn't cache anything or rely on the canonical state caches.
 pub struct Proving<H> {
     base: H,                                  // state we're proving values from.
-    changed: MemoryDB<KeccakHasher, DBValue>, // changed state via insertions.
+    changed: MemoryDB<KeccakHasher, HashKey<KeccakHasher>, DBValue>, // changed state via insertions.
     proof: Mutex<HashSet<DBValue>>,
 }
 
@@ -184,32 +184,32 @@ impl<H: AsKeyedHashDB + Send + Sync> journaldb::KeyedHashDB for Proving<H> {
 impl<H: AsHashDB<KeccakHasher, DBValue> + Send + Sync> HashDB<KeccakHasher, DBValue>
     for Proving<H>
 {
-    fn get(&self, key: &H256) -> Option<DBValue> {
-        match self.base.as_hash_db().get(key) {
+    fn get(&self, key: &H256, prefix: Prefix) -> Option<DBValue> {
+        match self.base.as_hash_db().get(key, prefix) {
             Some(val) => {
                 self.proof.lock().insert(val.clone());
                 Some(val)
             }
-            None => self.changed.get(key),
+            None => self.changed.get(key, prefix),
         }
     }
 
-    fn contains(&self, key: &H256) -> bool {
-        self.get(key).is_some()
+    fn contains(&self, key: &H256, prefix: Prefix) -> bool {
+        self.get(key, prefix).is_some()
     }
 
-    fn insert(&mut self, value: &[u8]) -> H256 {
-        self.changed.insert(value)
+    fn insert(&mut self, prefix: Prefix, value: &[u8]) -> H256 {
+        self.changed.insert(prefix, value)
     }
 
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        self.changed.emplace(key, value)
+    fn emplace(&mut self, key: H256, prefix: Prefix, value: DBValue) {
+        self.changed.emplace(key, prefix, value)
     }
 
-    fn remove(&mut self, key: &H256) {
+    fn remove(&mut self, key: &H256, prefix: Prefix) {
         // only remove from `changed`
-        if self.changed.contains(key) {
-            self.changed.remove(key)
+        if self.changed.contains(key, prefix) {
+            self.changed.remove(key, prefix)
         }
     }
 }

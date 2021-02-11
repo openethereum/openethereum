@@ -348,7 +348,7 @@ impl Rebuilder for PowRebuilder {
                     false,
                 );
             }
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
             self.chain.commit();
 
             parent_hash = block.header.hash();
@@ -387,7 +387,7 @@ impl Rebuilder for PowRebuilder {
             },
         );
 
-        self.db.write_buffered(batch);
+        self.db.write(batch)?;
         Ok(())
     }
 }

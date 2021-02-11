@@ -63,12 +63,12 @@ impl Default for Config {
 pub struct Batch {
     inner: BTreeMap<Vec<u8>, Vec<u8>>,
     batch_size: usize,
-    column: Option<u32>,
+    column: u32,
 }
 
 impl Batch {
     /// Make a new batch with the given config.
-    pub fn new(config: &Config, col: Option<u32>) -> Self {
+    pub fn new(config: &Config, col: u32) -> Self {
         Batch {
             inner: BTreeMap::new(),
             batch_size: config.batch_size,
@@ -105,11 +105,11 @@ impl Batch {
 /// A generalized migration from the given db to a destination db.
 pub trait Migration: 'static {
     /// Number of columns in the database before the migration.
-    fn pre_columns(&self) -> Option<u32> {
+    fn pre_columns(&self) -> u32 {
         self.columns()
     }
     /// Number of columns in database after the migration.
-    fn columns(&self) -> Option<u32>;
+    fn columns(&self) -> u32;
     /// Whether this migration alters any existing columns.
     /// if not, then column families will simply be added and `migrate` will never be called.
     fn alters_existing(&self) -> bool {
@@ -123,25 +123,25 @@ pub trait Migration: 'static {
         source: Arc<Database>,
         config: &Config,
         destination: &mut Database,
-        col: Option<u32>,
+        col: u32,
     ) -> io::Result<()>;
 }
 
 /// A simple migration over key-value pairs of a single column.
 pub trait SimpleMigration: 'static {
     /// Number of columns in database after the migration.
-    fn columns(&self) -> Option<u32>;
+    fn columns(&self) -> u32;
     /// Version of database after the migration.
     fn version(&self) -> u32;
     /// Index of column which should be migrated.
-    fn migrated_column_index(&self) -> Option<u32>;
+    fn migrated_column_index(&self) -> u32;
     /// Should migrate existing object to new database.
     /// Returns `None` if the object does not exist in new version of database.
     fn simple_migrate(&mut self, key: Vec<u8>, value: Vec<u8>) -> Option<(Vec<u8>, Vec<u8>)>;
 }
 
 impl<T: SimpleMigration> Migration for T {
-    fn columns(&self) -> Option<u32> {
+    fn columns(&self) -> u32 {
         SimpleMigration::columns(self)
     }
 
@@ -158,17 +158,12 @@ impl<T: SimpleMigration> Migration for T {
         source: Arc<Database>,
         config: &Config,
         dest: &mut Database,
-        col: Option<u32>,
+        col: u32,
     ) -> io::Result<()> {
         let migration_needed = col == SimpleMigration::migrated_column_index(self);
         let mut batch = Batch::new(config, col);
 
-        let iter = match source.iter(col) {
-            Some(iter) => iter,
-            None => return Ok(()),
-        };
-
-        for (key, value) in iter {
+        for (key, value) in source.iter(col) {
             if migration_needed {
                 if let Some((key, value)) = self.simple_migrate(key.into_vec(), value.into_vec()) {
                     batch.insert(key, value, dest)?;
@@ -185,18 +180,18 @@ impl<T: SimpleMigration> Migration for T {
 /// An even simpler migration which just changes the number of columns.
 pub struct ChangeColumns {
     /// The amount of columns before this migration.
-    pub pre_columns: Option<u32>,
+    pub pre_columns: u32,
     /// The amount of columns after this migration.
-    pub post_columns: Option<u32>,
+    pub post_columns: u32,
     /// The version after this migration.
     pub version: u32,
 }
 
 impl Migration for ChangeColumns {
-    fn pre_columns(&self) -> Option<u32> {
+    fn pre_columns(&self) -> u32 {
         self.pre_columns
     }
-    fn columns(&self) -> Option<u32> {
+    fn columns(&self) -> u32 {
         self.post_columns
     }
     fn version(&self) -> u32 {
@@ -210,7 +205,7 @@ impl Migration for ChangeColumns {
         _: Arc<Database>,
         _: &Config,
         _: &mut Database,
-        _: Option<u32>,
+        _: u32,
     ) -> io::Result<()> {
         Ok(())
     }
@@ -290,14 +285,14 @@ impl Manager {
             return Err(other_io_err("Migration impossible"));
         };
 
-        let columns = migrations.get(0).and_then(|m| m.pre_columns());
-
-        trace!(target: "migration", "Expecting database to contain {:?} columns", columns);
+        let columns = migrations.first().expect("checked empty above; qed").pre_columns();
+        trace!(target: "migration", "Expecting database to contain {} columns", columns);
+        
         let mut db_config = DatabaseConfig {
             max_open_files: 64,
-            memory_budget: None,
             compaction: config.compaction_profile,
-            columns: columns,
+            columns,
+            ..Default::default()
         };
 
         let db_root = database_path(old_path);
@@ -326,15 +321,8 @@ impl Manager {
                     .ok_or_else(|| other_io_err("Migration impossible."))?;
                 let mut new_db = Database::open(&db_config, temp_path_str)?;
 
-                match current_columns {
-                    // migrate only default column
-                    None => migration.migrate(cur_db.clone(), &config, &mut new_db, None)?,
-                    Some(v) => {
-                        // Migrate all columns in previous DB
-                        for col in 0..v {
-                            migration.migrate(cur_db.clone(), &config, &mut new_db, Some(col))?
-                        }
-                    }
+                for col in 0..current_columns {
+                    migration.migrate(cur_db.clone(), &config, &mut new_db, col)?
                 }
                 // next iteration, we will migrate from this db into the other temp.
                 cur_db = Arc::new(new_db);
@@ -345,13 +333,13 @@ impl Manager {
             } else {
                 // migrations which simply add or remove column families.
                 // we can do this in-place.
-                let goal_columns = migration.columns().unwrap_or(0);
+                let goal_columns = migration.columns();
                 while cur_db.num_columns() < goal_columns {
                     cur_db.add_column().map_err(other_io_err)?;
                 }
 
                 while cur_db.num_columns() > goal_columns {
-                    cur_db.drop_column().map_err(other_io_err)?;
+                    cur_db.remove_last_column().map_err(other_io_err)?;
                 }
             }
         }

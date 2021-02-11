@@ -28,7 +28,7 @@ linked-hash-map = "0.5"
 log = "0.4"
 parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
 parity-runtime = { path = "../../runtime/runtime" }
-parity-util-mem = "0.7"
+parity-util-mem = "0.7.0"
 parking_lot = "0.11.1"
 price-info = { path = "./price-info", optional = true }
 rlp = { version = "0.4.6" }

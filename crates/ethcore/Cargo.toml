@@ -31,14 +31,14 @@ ethjson = { path = "../ethjson" }
 ethkey = { path = "../accounts/ethkey" }
 evm = { path = "../vm/evm" }
 globset = "0.4"
-hash-db = "0.11.0"
+hash-db = "0.15.2"
 itertools = "0.5"
 journaldb = { path = "../db/journaldb" }
 keccak-hash = "0.5.0"
 keccak-hasher = { path = "../util/keccak-hasher" }
-kvdb = "0.1.1"
-kvdb-memorydb = "0.1.2"
-kvdb-rocksdb = { version = "0.1.6", optional = true }
+kvdb = "0.7.0"
+kvdb-memorydb = "0.7.0"
+kvdb-rocksdb = { version = "0.9.0", optional = true }
 lazy_static = "1.2.0"
 len-caching-lock = { path = "../util/len-caching-lock" }
 log = "0.4"
@@ -46,14 +46,14 @@ lru-cache = "0.1"
 macros = { path = "../util/macros" }
 maplit = "1"
 memory-cache = { path = "../util/memory-cache" }
-memory-db = { path = "../db/memory-db" }
+memory-db = "0.24.1"
 num_cpus = "1.2"
 parity-bytes = "0.1"
 parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
 parity-snappy = "0.1"
-parity-util-mem = "0.7"
+parity-util-mem = "0.7.0"
 parking_lot = "0.11.1"
-trie-db = "0.11.0"
+trie-db = "0.21.0"
 patricia-trie-ethereum = { path = "../db/patricia-trie-ethereum" }
 rand = "0.7.3"
 rand_xorshift = "0.2.0"
@@ -84,7 +84,7 @@ env_logger = "0.5"
 ethcore-accounts = { path = "../accounts" }
 fetch = { path = "../net/fetch" }
 hex-literal = "0.2.1"
-kvdb-rocksdb = "0.1.6"
+kvdb-rocksdb = "0.9.0"
 parity-runtime = { path = "../runtime/runtime" }
 rlp_compress = { path = "../util/rlp-compress" }
 tempdir = "0.3"

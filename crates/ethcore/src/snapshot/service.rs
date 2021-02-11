@@ -462,9 +462,8 @@ impl Service {
 
             // Writing changes to DB and logging every now and then
             if block_number % 1_000 == 0 {
-                next_db.key_value().write_buffered(batch);
+                next_db.key_value().write(batch)?;
                 next_chain.commit();
-                next_db.key_value().flush().expect("DB flush failed.");
                 batch = DBTransaction::new();
             }
 
@@ -474,9 +473,8 @@ impl Service {
         }
 
         // Final commit to the DB
-        next_db.key_value().write_buffered(batch);
+        next_db.key_value().write(batch)?;
         next_chain.commit();
-        next_db.key_value().flush().expect("DB flush failed.");
 
         // We couldn't reach the targeted hash
         if parent_hash != target_hash {
@@ -781,7 +779,7 @@ impl Service {
         chunk: &[u8],
         is_state: bool,
     ) -> Result<(), Error> {
-        let (result, db) = {
+        let (result, _db) = {
             match self.restoration_status() {
                 RestorationStatus::Inactive | RestorationStatus::Failed => {
                     trace!(target: "snapshot", "Tried to restore chunk {:x} while inactive or failed", hash);
@@ -818,7 +816,6 @@ impl Service {
 
                             match is_done {
                                 true => {
-                                    db.key_value().flush()?;
                                     drop(db);
                                     return self.finalize_restoration(&mut *restoration);
                                 }
@@ -833,7 +830,6 @@ impl Service {
         };
 
         result?;
-        db.key_value().flush()?;
         Ok(())
     }
 

@@ -1364,7 +1364,6 @@ impl Client {
         p: &snapshot::Progress,
     ) -> Result<(), EthcoreError> {
         let db = self.state_db.read().journal_db().boxed_clone();
-        let best_block_number = self.chain_info().best_block_number;
         let block_number = self
             .block_number(at)
             .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?;
@@ -1377,6 +1376,7 @@ impl Client {
 
         let (snapshot_block_number, start_hash) = match at {
             BlockId::Latest => {
+                let best_block_number = self.chain_info().best_block_number;
                 let start_num = match db.earliest_era() {
                     Some(era) => ::std::cmp::max(era, best_block_number.saturating_sub(history)),
                     None => best_block_number.saturating_sub(history),
@@ -1388,7 +1388,7 @@ impl Client {
                 }
             }
             _ => match self.block_hash(at) {
-                Some(hash) => (best_block_number, hash),
+                Some(hash) => (block_number, hash),
                 None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
             },
         };

@@ -232,7 +232,10 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant<Trace, Out>| {
             if let Some((pos, val)) = store_written {
-                informant.storage.insert(BigEndianHash::from_uint(&pos), BigEndianHash::from_uint(&val));
+                informant.storage.insert(
+                    BigEndianHash::from_uint(&pos),
+                    BigEndianHash::from_uint(&val),
+                );
             }
         });
     }

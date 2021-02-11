@@ -285,9 +285,12 @@ impl Manager {
             return Err(other_io_err("Migration impossible"));
         };
 
-        let columns = migrations.first().expect("checked empty above; qed").pre_columns();
+        let columns = migrations
+            .first()
+            .expect("checked empty above; qed")
+            .pre_columns();
         trace!(target: "migration", "Expecting database to contain {} columns", columns);
-        
+
         let mut db_config = DatabaseConfig {
             max_open_files: 64,
             compaction: config.compaction_profile,

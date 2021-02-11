@@ -97,16 +97,19 @@ impl ConnectionFilter for NodeFilter {
 #[cfg(test)]
 mod test {
     use super::NodeFilter;
-    use ethereum_types::Address;
     use ethcore::{
         client::{BlockChainClient, Client, ClientConfig},
         miner::Miner,
         spec::Spec,
         test_helpers,
     };
+    use ethereum_types::Address;
     use io::IoChannel;
     use network::{ConnectionDirection, ConnectionFilter, NodeId};
-    use std::{str::FromStr, sync::{Arc, Weak}};
+    use std::{
+        str::FromStr,
+        sync::{Arc, Weak},
+    };
     use tempdir::TempDir;
 
     /// Contract code: https://gist.github.com/arkpar/467dbcc73cbb85b0997a7a10ffa0695f

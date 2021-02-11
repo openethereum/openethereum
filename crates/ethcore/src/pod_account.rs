@@ -125,7 +125,10 @@ impl From<ethjson::blockchain::Account> for PodAccount {
                 .map(|(key, value)| {
                     let key: U256 = key.into();
                     let value: U256 = value.into();
-                    (BigEndianHash::from_uint(&key), BigEndianHash::from_uint(&value))
+                    (
+                        BigEndianHash::from_uint(&key),
+                        BigEndianHash::from_uint(&value),
+                    )
                 })
                 .collect(),
         }
@@ -143,7 +146,10 @@ impl From<ethjson::spec::Account> for PodAccount {
                     .map(|(key, value)| {
                         let key: U256 = key.into();
                         let value: U256 = value.into();
-                        (BigEndianHash::from_uint(&key), BigEndianHash::from_uint(&value))
+                        (
+                            BigEndianHash::from_uint(&key),
+                            BigEndianHash::from_uint(&value),
+                        )
                     })
                     .collect()
             }),
@@ -211,8 +217,8 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 #[cfg(test)]
 mod test {
     use super::{diff_pod, PodAccount};
-    use std::collections::BTreeMap;
     use ethereum_types::H256;
+    use std::collections::BTreeMap;
     use types::account_diff::*;
 
     #[test]
@@ -292,12 +298,12 @@ mod test {
             nonce: 0.into(),
             code: Some(vec![]),
             storage: map_into![
-                H256::from_low_u64_be(1) => H256::from_low_u64_be(1), 
-                H256::from_low_u64_be(2) => H256::from_low_u64_be(2), 
-                H256::from_low_u64_be(3) => H256::from_low_u64_be(3), 
-                H256::from_low_u64_be(4) => H256::from_low_u64_be(4), 
-                H256::from_low_u64_be(5) => H256::from_low_u64_be(0), 
-                H256::from_low_u64_be(6) => H256::from_low_u64_be(0), 
+                H256::from_low_u64_be(1) => H256::from_low_u64_be(1),
+                H256::from_low_u64_be(2) => H256::from_low_u64_be(2),
+                H256::from_low_u64_be(3) => H256::from_low_u64_be(3),
+                H256::from_low_u64_be(4) => H256::from_low_u64_be(4),
+                H256::from_low_u64_be(5) => H256::from_low_u64_be(0),
+                H256::from_low_u64_be(6) => H256::from_low_u64_be(0),
                 H256::from_low_u64_be(7) => H256::from_low_u64_be(0)
             ],
         };

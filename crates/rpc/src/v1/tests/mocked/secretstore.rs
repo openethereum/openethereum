@@ -17,7 +17,10 @@
 use std::sync::Arc;
 
 use accounts::AccountProvider;
-use crypto::{DEFAULT_MAC, publickey::{verify_public, KeyPair, Signature}};
+use crypto::{
+    publickey::{verify_public, KeyPair, Signature},
+    DEFAULT_MAC,
+};
 use ethereum_types::H256;
 
 use jsonrpc_core::{IoHandler, Success};

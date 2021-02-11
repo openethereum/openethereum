@@ -146,11 +146,15 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec![H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
                 None,
                 None,
@@ -167,14 +171,19 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec![H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                ]),
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
                 None,
             ],
@@ -196,16 +205,29 @@ mod tests {
             ]),
             topics: vec![
                 Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
                 ]),
                 Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
                 ]),
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
             ],
             limit: None,
@@ -222,14 +244,19 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec![H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                ]),
-                Some(vec![
-                    H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa").unwrap(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa",
+                )
+                .unwrap()]),
                 None,
                 None,
             ],
@@ -239,9 +266,12 @@ mod tests {
         let entry0 = LogEntry {
             address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
             topics: vec![
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa").unwrap(),
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
             ],
             data: vec![],
         };
@@ -249,16 +279,22 @@ mod tests {
         let entry1 = LogEntry {
             address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5e").unwrap(),
             topics: vec![
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa").unwrap(),
-                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
             ],
             data: vec![],
         };
 
         let entry2 = LogEntry {
             address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
-            topics: vec![H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9").unwrap()],
+            topics: vec![H256::from_str(
+                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+            )
+            .unwrap()],
             data: vec![],
         };
 

@@ -1565,7 +1565,8 @@ mod tests {
         params.value = ActionValue::Transfer(100_000.into());
         params.code = Some(Arc::new(code));
         let mut ext = FakeExt::new();
-        ext.balances.insert(Address::from_low_u64_be(5), 1_000_000_000.into());
+        ext.balances
+            .insert(Address::from_low_u64_be(5), 1_000_000_000.into());
         ext.tracing = true;
 
         let gas_left = {
@@ -1587,7 +1588,8 @@ mod tests {
         params.gas_price = 1.into();
         params.code = Some(Arc::new(code));
         let mut ext = FakeExt::new_byzantium();
-        ext.balances.insert(Address::from_low_u64_be(5), 1_000_000_000.into());
+        ext.balances
+            .insert(Address::from_low_u64_be(5), 1_000_000_000.into());
         ext.tracing = true;
 
         let err = {

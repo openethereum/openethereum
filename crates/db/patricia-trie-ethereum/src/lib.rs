@@ -16,13 +16,13 @@
 
 //! Façade crate for `patricia_trie` for Ethereum specific impls
 
-pub extern crate trie_db as trie; // `pub` because we need to import this crate for the tests in `patricia_trie` and there were issues: https://gist.github.com/dvdplm/869251ee557a1b4bd53adc7c971979aa
 extern crate elastic_array;
-extern crate parity_bytes;
 extern crate ethereum_types;
 extern crate hash_db;
 extern crate keccak_hasher;
+extern crate parity_bytes;
 extern crate rlp;
+pub extern crate trie_db as trie; // `pub` because we need to import this crate for the tests in `patricia_trie` and there were issues: https://gist.github.com/dvdplm/869251ee557a1b4bd53adc7c971979aa
 
 mod rlp_node_codec;
 
@@ -151,7 +151,7 @@ mod tests {
     use ethereum_types::H256;
     use trie::Trie;
 
-    use crate::{TrieDB, TrieDBMut, trie::TrieMut};
+    use crate::{trie::TrieMut, TrieDB, TrieDBMut};
 
     #[test]
     fn test_inline_encoding_branch() {
@@ -161,14 +161,14 @@ mod tests {
             let mut triedbmut = TrieDBMut::new(&mut memdb, &mut root);
             triedbmut.insert(b"foo", b"bar").unwrap();
             triedbmut.insert(b"fog", b"b").unwrap();
-            triedbmut.insert(b"fot", &vec![0u8;33][..]).unwrap();
+            triedbmut.insert(b"fot", &vec![0u8; 33][..]).unwrap();
         }
         let t = TrieDB::new(&memdb, &root).unwrap();
         assert!(t.contains(b"foo").unwrap());
         assert!(t.contains(b"fog").unwrap());
         assert_eq!(t.get(b"foo").unwrap().unwrap(), b"bar".to_vec());
         assert_eq!(t.get(b"fog").unwrap().unwrap(), b"b".to_vec());
-        assert_eq!(t.get(b"fot").unwrap().unwrap(), vec![0u8;33]);
+        assert_eq!(t.get(b"fot").unwrap().unwrap(), vec![0u8; 33]);
     }
 
     #[test]
@@ -186,5 +186,4 @@ mod tests {
         assert_eq!(t.get(b"foo").unwrap().unwrap(), b"b".to_vec());
         assert_eq!(t.get(b"fog").unwrap().unwrap(), b"a".to_vec());
     }
-
 }

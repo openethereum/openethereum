@@ -31,8 +31,8 @@ use hash_db::{HashDB, Prefix};
 use keccak_hasher::KeccakHasher;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
-use parking_lot::RwLock;
 use parity_util_mem::{MallocSizeOf, MallocSizeOfExt};
+use parking_lot::RwLock;
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
 
@@ -416,7 +416,10 @@ impl JournalDB for EarlyMergeDB {
             None => 0,
         };
 
-        sizes.insert(String::from("db_archive_overlay"), self.overlay.malloc_size_of());
+        sizes.insert(
+            String::from("db_archive_overlay"),
+            self.overlay.malloc_size_of(),
+        );
         sizes.insert(String::from("db_early_merge_refs-size"), refs_size);
     }
 

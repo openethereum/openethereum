@@ -29,8 +29,8 @@ use hash_db::{HashDB, Prefix, EMPTY_PREFIX};
 use keccak_hasher::KeccakHasher;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
-use parking_lot::RwLock;
 use parity_util_mem::{MallocSizeOf, MallocSizeOfExt};
+use parking_lot::RwLock;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use util::DatabaseKey;
 
@@ -363,11 +363,16 @@ impl JournalDB for OverlayRecentDB {
 
         for (k, v) in insertions {
             let short_key = to_short_key(&k);
-            if !journal_overlay.backing_overlay.contains(&short_key, EMPTY_PREFIX) {
+            if !journal_overlay
+                .backing_overlay
+                .contains(&short_key, EMPTY_PREFIX)
+            {
                 journal_overlay.cumulative_size += v.len();
             }
 
-            journal_overlay.backing_overlay.emplace(short_key, EMPTY_PREFIX, v);
+            journal_overlay
+                .backing_overlay
+                .emplace(short_key, EMPTY_PREFIX, v);
         }
 
         let index = journal_overlay.journal.get(&now).map_or(0, |j| j.len());
@@ -426,8 +431,9 @@ impl JournalDB for OverlayRecentDB {
                 {
                     if *canon_id == journal.id {
                         for h in &journal.insertions {
-                            if let Some((d, rc)) =
-                                journal_overlay.backing_overlay.raw(&to_short_key(h), EMPTY_PREFIX)
+                            if let Some((d, rc)) = journal_overlay
+                                .backing_overlay
+                                .raw(&to_short_key(h), EMPTY_PREFIX)
                             {
                                 if rc > 0 {
                                     canon_insertions.push((h.clone(), d.clone()));
@@ -461,7 +467,10 @@ impl JournalDB for OverlayRecentDB {
             }
             // apply canon deletions
             for k in canon_deletions {
-                if !journal_overlay.backing_overlay.contains(&to_short_key(&k), EMPTY_PREFIX) {
+                if !journal_overlay
+                    .backing_overlay
+                    .contains(&to_short_key(&k), EMPTY_PREFIX)
+                {
                     batch.delete(self.column, k.as_bytes());
                 }
             }
@@ -492,7 +501,9 @@ impl JournalDB for OverlayRecentDB {
                 0 => {}
                 _ if rc > 0 => batch.put(self.column, key.as_bytes(), &value),
                 -1 => {
-                    if cfg!(debug_assertions) && self.backing.get(self.column, key.as_bytes())?.is_none() {
+                    if cfg!(debug_assertions)
+                        && self.backing.get(self.column, key.as_bytes())?.is_none()
+                    {
                         return Err(error_negatively_reference_hash(&key));
                     }
                     batch.delete(self.column, key.as_bytes())

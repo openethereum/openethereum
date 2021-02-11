@@ -55,7 +55,6 @@ fn clean_0x(s: &str) -> &str {
     }
 }
 
-
 struct SubmitPayload {
     nonce: H64,
     pow_hash: H256,

@@ -35,12 +35,14 @@ use eth_pairings::public_interface::eip2537::{
 };
 use ethereum_types::{H256, U256};
 use ethjson;
-use parity_crypto::publickey::{recover_allowing_all_zero_message, Signature, ZeroesAllowedMessage};
 use keccak_hash::keccak;
 use log::{trace, warn};
 use num::{BigUint, One, Zero};
 use parity_bytes::BytesRef;
 use parity_crypto::digest;
+use parity_crypto::publickey::{
+    recover_allowing_all_zero_message, Signature, ZeroesAllowedMessage,
+};
 
 /// Native implementation of a built-in contract.
 pub trait Implementation: Send + Sync {

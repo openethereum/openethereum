@@ -755,10 +755,11 @@ where
         let num = num.unwrap_or_default();
 
         try_bf!(check_known(&*self.client, num.clone()));
-        let res = match self
-            .client
-            .storage_at(&address, &BigEndianHash::from_uint(&position), self.get_state(num))
-        {
+        let res = match self.client.storage_at(
+            &address,
+            &BigEndianHash::from_uint(&position),
+            self.get_state(num),
+        ) {
             Some(s) => Ok(s),
             None => Err(errors::state_pruned()),
         };

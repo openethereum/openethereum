@@ -179,14 +179,14 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
             // We use explicit lifetimes to ensure that val's borrow is invalidated until the
             // transmuted val dies.
             unsafe fn make_const_array<T, U>(val: &mut [T]) -> &mut [U; $n] {
-                use ::std::mem;
+                use std::mem;
 
                 debug_assert_eq!(val.len() * mem::size_of::<T>(), $n * mem::size_of::<U>());
                 &mut *(val.as_mut_ptr() as *mut [U; $n])
             }
 
             make_const_array($value)
-        }}
+        }};
     }
 
     #[repr(C)]
@@ -249,10 +249,7 @@ fn hash_compute(light: &Light, full_size: usize, header_hash: &H256, nonce: u64)
 
         // MIX_NODES
         for n in 0..2 {
-            let tmp_node = calculate_dag_item(
-                index * MIX_NODES as u32 + n as u32,
-                cache,
-            );
+            let tmp_node = calculate_dag_item(index * MIX_NODES as u32 + n as u32, cache);
 
             // NODE_WORDS
             for (a, b) in mix[n].as_words_mut().iter_mut().zip(tmp_node.as_words()) {

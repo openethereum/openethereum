@@ -177,10 +177,13 @@ fn error_negatively_reference_hash(hash: &ethereum_types::H256) -> io::Error {
     )
 }
 
-pub fn new_memory_db() -> memory_db::MemoryDB<keccak_hasher::KeccakHasher, memory_db::HashKey<keccak_hasher::KeccakHasher>, kvdb::DBValue> {
+pub fn new_memory_db() -> memory_db::MemoryDB<
+    keccak_hasher::KeccakHasher,
+    memory_db::HashKey<keccak_hasher::KeccakHasher>,
+    kvdb::DBValue,
+> {
     memory_db::MemoryDB::from_null_node(&rlp::NULL_RLP, rlp::NULL_RLP.as_ref().into())
 }
-
 
 #[cfg(test)]
 mod tests {

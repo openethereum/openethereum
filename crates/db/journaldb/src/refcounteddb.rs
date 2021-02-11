@@ -27,9 +27,9 @@ use ethereum_types::H256;
 use hash_db::{HashDB, Prefix, EMPTY_PREFIX};
 use keccak_hasher::KeccakHasher;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
-use memory_db::{MemoryDB, HashKey};
+use memory_db::{HashKey, MemoryDB};
 use overlaydb::OverlayDB;
-use parity_util_mem::{MallocSizeOf, allocators::new_malloc_size_ops};
+use parity_util_mem::{allocators::new_malloc_size_ops, MallocSizeOf};
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
 

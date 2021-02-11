@@ -37,8 +37,8 @@ use error::Error;
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, H264, U256};
 use ethtrie::Layout;
-use hash_db::EMPTY_PREFIX;
 use hash::keccak;
+use hash_db::EMPTY_PREFIX;
 use itertools::Itertools;
 use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -696,7 +696,12 @@ impl Importer {
         state.sync_cache(&route.enacted, &route.retracted, is_canon);
         // Final commit to the DB
         // t_nb 9.11 Write Transaction to database (cached)
-        client.db.read().key_value().write(batch).expect("Low level database error writing a transaction. Some issue with the disk?");
+        client
+            .db
+            .read()
+            .key_value()
+            .write(batch)
+            .expect("Low level database error writing a transaction. Some issue with the disk?");
         // t_nb 9.12 commit changed to become current greatest by applying pending insertion updates (Sync point)
         chain.commit();
 
@@ -905,7 +910,11 @@ impl Client {
 
         if !chain
             .block_header_data(&chain.best_block_hash())
-            .map_or(true, |h| state_db.journal_db().contains(&h.state_root(), EMPTY_PREFIX))
+            .map_or(true, |h| {
+                state_db
+                    .journal_db()
+                    .contains(&h.state_root(), EMPTY_PREFIX)
+            })
         {
             warn!(
                 "State root not found for block #{} ({:x})",

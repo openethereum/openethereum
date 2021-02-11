@@ -208,7 +208,10 @@ impl trace::VMTracer for Informant {
             }
 
             if let Some((pos, val)) = store_diff {
-                informant.storage.insert(BigEndianHash::from_uint(&pos), BigEndianHash::from_uint(&val));
+                informant.storage.insert(
+                    BigEndianHash::from_uint(&pos),
+                    BigEndianHash::from_uint(&val),
+                );
             }
 
             if !informant.subtraces.is_empty() {

@@ -785,7 +785,8 @@ mod tests {
                 .journal_db()
                 .keys()
                 .iter()
-                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX) != db.journal_db().get(k.0, EMPTY_PREFIX))
+                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX)
+                    != db.journal_db().get(k.0, EMPTY_PREFIX))
                 .next()
                 == None
         );
@@ -857,7 +858,8 @@ mod tests {
                 .journal_db()
                 .keys()
                 .iter()
-                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX) != db.journal_db().get(k.0, EMPTY_PREFIX))
+                .filter(|k| orig_db.journal_db().get(k.0, EMPTY_PREFIX)
+                    != db.journal_db().get(k.0, EMPTY_PREFIX))
                 .next()
                 == None
         );

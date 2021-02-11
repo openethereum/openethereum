@@ -182,9 +182,7 @@ impl<'a> EvmTestClient<'a> {
         spec: &'a spec::Spec,
         factories: &Factories,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
-            db::NUM_COLUMNS
-        ));
+        let db = Arc::new(kvdb_memorydb::create(db::NUM_COLUMNS));
         let journal_db =
             journaldb::new(db.clone(), journaldb::Algorithm::EarlyMerge, db::COL_STATE);
         let mut state_db = state_db::StateDB::new(journal_db, 5 * 1024 * 1024);
@@ -212,9 +210,7 @@ impl<'a> EvmTestClient<'a> {
         factories: &Factories,
         pod_state: pod_state::PodState,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
-            db::NUM_COLUMNS
-        ));
+        let db = Arc::new(kvdb_memorydb::create(db::NUM_COLUMNS));
         let journal_db =
             journaldb::new(db.clone(), journaldb::Algorithm::EarlyMerge, db::COL_STATE);
         let state_db = state_db::StateDB::new(journal_db, 5 * 1024 * 1024);

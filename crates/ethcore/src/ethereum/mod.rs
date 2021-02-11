@@ -354,11 +354,11 @@ pub fn new_kovan_wasm_test_machine() -> EthereumMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{H160, U256, H256};
+    use ethereum_types::{H160, H256, U256};
     use state::*;
+    use std::str::FromStr;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
-    use std::str::FromStr;
 
     #[test]
     fn ensure_db_good() {
@@ -413,12 +413,14 @@ mod tests {
 
         assert_eq!(
             morden.state_root(),
-            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9").unwrap()
+            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9")
+                .unwrap()
         );
         let genesis = morden.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303").unwrap()
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
+                .unwrap()
         );
 
         let _ = morden.engine;
@@ -430,12 +432,14 @@ mod tests {
 
         assert_eq!(
             frontier.state_root(),
-            H256::from_str("d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544").unwrap()
+            H256::from_str("d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544")
+                .unwrap()
         );
         let genesis = frontier.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            H256::from_str("d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3").unwrap()
+            H256::from_str("d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+                .unwrap()
         );
 
         let _ = frontier.engine;

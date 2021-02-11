@@ -172,17 +172,17 @@ impl TransactionFilter {
 #[cfg(test)]
 mod test {
     use super::TransactionFilter;
-    use crypto::publickey::{KeyPair, Secret};
     use client::{BlockChainClient, BlockId, Client, ClientConfig};
+    use crypto::publickey::{KeyPair, Secret};
     use ethereum_types::{Address, U256};
     use io::IoChannel;
     use miner::Miner;
     use spec::Spec;
+    use std::str::FromStr;
     use std::sync::Arc;
     use tempdir::TempDir;
     use test_helpers;
     use types::transaction::{Action, Transaction, TypedTransaction};
-    use std::str::FromStr;
 
     /// Contract code: https://gist.github.com/VladLupashevskyi/84f18eabb1e4afadf572cf92af3e7e7f
     #[test]
@@ -201,33 +201,40 @@ mod test {
             IoChannel::disconnected(),
         )
         .unwrap();
-        let key1 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000001",
-        ).unwrap())
+        let key1 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+        )
         .unwrap();
-        let key2 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000002",
-        ).unwrap())
+        let key2 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000002")
+                .unwrap(),
+        )
         .unwrap();
-        let key3 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000003",
-        ).unwrap())
+        let key3 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000003")
+                .unwrap(),
+        )
         .unwrap();
-        let key4 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000004",
-        ).unwrap())
+        let key4 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000004")
+                .unwrap(),
+        )
         .unwrap();
-        let key5 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000005",
-        ).unwrap())
+        let key5 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000005")
+                .unwrap(),
+        )
         .unwrap();
-        let key6 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000006",
-        ).unwrap())
+        let key6 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000006")
+                .unwrap(),
+        )
         .unwrap();
-        let key7 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000007",
-        ).unwrap())
+        let key7 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000007")
+                .unwrap(),
+        )
         .unwrap();
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
@@ -429,21 +436,25 @@ mod test {
             IoChannel::disconnected(),
         )
         .unwrap();
-        let key1 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000001",
-        ).unwrap())
+        let key1 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+        )
         .unwrap();
-        let key2 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000002",
-        ).unwrap())
+        let key2 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000002")
+                .unwrap(),
+        )
         .unwrap();
-        let key3 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000003",
-        ).unwrap())
+        let key3 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000003")
+                .unwrap(),
+        )
         .unwrap();
-        let key4 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000004",
-        ).unwrap())
+        let key4 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000004")
+                .unwrap(),
+        )
         .unwrap();
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();

@@ -16,8 +16,8 @@
 
 //! A signer used by Engines which need to sign messages.
 
-use ethereum_types::{Address, H256};
 use crypto::publickey::{self, Signature};
+use ethereum_types::{Address, H256};
 
 /// Everything that an Engine needs to sign messages.
 pub trait EngineSigner: Send + Sync {
@@ -52,8 +52,8 @@ mod test_signer {
 
     use std::sync::Arc;
 
-    use accounts::{self, AccountProvider, SignError};
     use self::ethkey::Password;
+    use accounts::{self, AccountProvider, SignError};
 
     use super::*;
 

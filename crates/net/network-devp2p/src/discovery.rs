@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{H256, H520};
 use crypto::publickey::{recover, sign, KeyPair, Secret};
+use ethereum_types::{H256, H520};
 use hash::keccak;
 use lru_cache::LruCache;
 use network::{Error, ErrorKind, IpFilter};

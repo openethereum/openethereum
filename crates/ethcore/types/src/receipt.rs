@@ -328,7 +328,10 @@ mod tests {
             TypedTxId::Legacy,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
-                    H256::from_str("2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee").unwrap(),
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
                 ),
                 0x40cae.into(),
                 vec![LogEntry {
@@ -351,7 +354,10 @@ mod tests {
             TypedTxId::AccessList,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
-                    H256::from_str("2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee").unwrap(),
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
                 ),
                 0x40cae.into(),
                 vec![LogEntry {

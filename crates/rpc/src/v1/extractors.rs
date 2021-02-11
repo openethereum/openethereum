@@ -85,10 +85,14 @@ impl ws::MetaExtractor<Metadata> for WsExtractor {
                     .and_then(|p| auth_token_hash(&path, p, true));
                 match authorization {
                     Some(id) => Origin::Signer { session: id },
-                    None => Origin::Ws { session: H256::from_low_u64_be(id) },
+                    None => Origin::Ws {
+                        session: H256::from_low_u64_be(id),
+                    },
                 }
             }
-            None => Origin::Ws { session: H256::from_low_u64_be(id) },
+            None => Origin::Ws {
+                session: H256::from_low_u64_be(id),
+            },
         };
         let session = Some(Arc::new(Session::new(req.sender())));
         Metadata { origin, session }

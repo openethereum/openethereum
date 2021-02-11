@@ -135,11 +135,7 @@ pub trait NodeInfo: Send + Sync {
 
 /// Create a new local data store, given a database, a column to write to, and a node.
 /// Attempts to read data out of the store, and move it into the node.
-pub fn create<T: NodeInfo>(
-    db: Arc<dyn KeyValueDB>,
-    col: u32,
-    node: T,
-) -> LocalDataStore<T> {
+pub fn create<T: NodeInfo>(db: Arc<dyn KeyValueDB>, col: u32, node: T) -> LocalDataStore<T> {
     LocalDataStore {
         db: db,
         col: col,

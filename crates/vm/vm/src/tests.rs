@@ -174,7 +174,10 @@ impl Ext for FakeExt {
     }
 
     fn blockhash(&mut self, number: &U256) -> H256 {
-        self.blockhashes.get(number).unwrap_or(&H256::default()).clone()
+        self.blockhashes
+            .get(number)
+            .unwrap_or(&H256::default())
+            .clone()
     }
 
     fn create(

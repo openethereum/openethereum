@@ -242,7 +242,7 @@ impl SigningQueue for ConfirmationsQueue {
 
 #[cfg(test)]
 mod test {
-    use ethereum_types::{Address, U256, H256};
+    use ethereum_types::{Address, H256, U256};
     use jsonrpc_core::futures::Future;
     use parking_lot::Mutex;
     use std::sync::Arc;
@@ -279,13 +279,20 @@ mod test {
         // when
         let (id, future) = queue.add_request(request, Default::default()).unwrap();
         let sender = queue.take(&id).unwrap();
-        queue.request_confirmed(sender, Ok(ConfirmationResponse::SendTransaction(H256::from_low_u64_be(1))));
+        queue.request_confirmed(
+            sender,
+            Ok(ConfirmationResponse::SendTransaction(
+                H256::from_low_u64_be(1),
+            )),
+        );
 
         // then
         let confirmation = future.wait().unwrap();
         assert_eq!(
             confirmation,
-            Ok(ConfirmationResponse::SendTransaction(H256::from_low_u64_be(1)))
+            Ok(ConfirmationResponse::SendTransaction(
+                H256::from_low_u64_be(1)
+            ))
         );
     }
 

@@ -15,10 +15,9 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crypto::{
-    self, 
-    pbkdf2, 
-    Keccak256,
+    self, pbkdf2,
     publickey::{Address, KeyPair, Secret},
+    Keccak256,
 };
 use ethkey::Password;
 use json;

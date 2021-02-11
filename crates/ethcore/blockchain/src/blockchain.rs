@@ -52,7 +52,7 @@ use itertools::Itertools;
 use kvdb::{DBTransaction, KeyValueDB};
 use log::{info, trace, warn};
 use parity_bytes::Bytes;
-use parity_util_mem::{MallocSizeOf, allocators::new_malloc_size_ops};
+use parity_util_mem::{allocators::new_malloc_size_ops, MallocSizeOf};
 use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
 use rlp::RlpStream;
@@ -323,9 +323,13 @@ impl BlockProvider for BlockChain {
         }
 
         // Read from DB and populate cache
-        let b = self.db.key_value().get(db::COL_HEADERS, hash.as_bytes()).expect(
-            "Low level database error when fetching block header data. Some issue with disk?",
-        )?;
+        let b = self
+            .db
+            .key_value()
+            .get(db::COL_HEADERS, hash.as_bytes())
+            .expect(
+                "Low level database error when fetching block header data. Some issue with disk?",
+            )?;
 
         let header = encoded::Header::new(decompress(&b, blocks_swapper()).into_vec());
         let mut write = self.block_headers.write();
@@ -356,9 +360,13 @@ impl BlockProvider for BlockChain {
         }
 
         // Read from DB and populate cache
-        let b = self.db.key_value().get(db::COL_BODIES, hash.as_bytes()).expect(
-            "Low level database error when fetching block body data. Some issue with disk?",
-        )?;
+        let b = self
+            .db
+            .key_value()
+            .get(db::COL_BODIES, hash.as_bytes())
+            .expect(
+                "Low level database error when fetching block body data. Some issue with disk?",
+            )?;
 
         let body = encoded::Body::new(decompress(&b, blocks_swapper()).into_vec());
         let mut write = self.block_bodies.write();
@@ -671,8 +679,16 @@ impl BlockChain {
                     };
 
                     let mut batch = DBTransaction::new();
-                    batch.put(db::COL_HEADERS, hash.as_bytes(), block.header_rlp().as_raw());
-                    batch.put(db::COL_BODIES, hash.as_bytes(), &Self::block_to_body(genesis));
+                    batch.put(
+                        db::COL_HEADERS,
+                        hash.as_bytes(),
+                        block.header_rlp().as_raw(),
+                    );
+                    batch.put(
+                        db::COL_BODIES,
+                        hash.as_bytes(),
+                        &Self::block_to_body(genesis),
+                    );
 
                     batch.write(db::COL_EXTRA, &hash, &details);
                     batch.write(db::COL_EXTRA, &header.number(), &hash);
@@ -706,13 +722,9 @@ impl BlockChain {
         {
             let best_block_number = bc.best_block.read().header.number();
             // Fetch first and best ancient block details
-            let raw_first = bc
-                .db
-                .key_value()
-                .get(db::COL_EXTRA, b"first")
-                .expect(
-                    "Low level database error when fetching 'first' block. Some issue with disk?",
-                );
+            let raw_first = bc.db.key_value().get(db::COL_EXTRA, b"first").expect(
+                "Low level database error when fetching 'first' block. Some issue with disk?",
+            );
             let mut best_ancient = bc.db.key_value().get(db::COL_EXTRA, b"ancient")
 				.expect("Low level database error when fetching 'best ancient' block. Some issue with disk?")
 				.map(|h| H256::from_slice(&h));
@@ -1818,7 +1830,8 @@ impl BlockChain {
     pub fn cache_size(&self) -> CacheSize {
         let mut ops = new_malloc_size_ops();
         CacheSize {
-            blocks: self.block_headers.read().size_of(&mut ops) + self.block_bodies.read().size_of(&mut ops),
+            blocks: self.block_headers.read().size_of(&mut ops)
+                + self.block_bodies.read().size_of(&mut ops),
             block_details: self.block_details.read().size_of(&mut ops),
             transaction_addresses: self.transaction_addresses.read().size_of(&mut ops),
             block_receipts: self.block_receipts.read().size_of(&mut ops),
@@ -1869,12 +1882,12 @@ impl BlockChain {
             block_receipts.shrink_to_fit();
 
             let mut ops = new_malloc_size_ops();
-            block_headers.size_of(&mut ops) +
-                block_bodies.size_of(&mut ops) +
-                block_details.size_of(&mut ops) +
-                block_hashes.size_of(&mut ops) +
-                transaction_addresses.size_of(&mut ops) +
-                block_receipts.size_of(&mut ops)
+            block_headers.size_of(&mut ops)
+                + block_bodies.size_of(&mut ops)
+                + block_details.size_of(&mut ops)
+                + block_hashes.size_of(&mut ops)
+                + transaction_addresses.size_of(&mut ops)
+                + block_receipts.size_of(&mut ops)
         });
     }
 
@@ -2487,7 +2500,8 @@ mod tests {
         let genesis = "f901fcf901f7a00000000000000000000000000000000000000000000000000000000000000000a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a0af81e09f8c46ca322193edfda764fa7e88e81923f802f1d325ec0b0308ac2cd0a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830200008083023e38808454c98c8142a056e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421880102030405060708c0c0".from_hex().unwrap();
         let b1 = "f904a8f901faa0ce1f26f798dd03c8782d63b3e42e79a64eaea5694ea686ac5d7ce3df5171d1aea01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a0a65c2364cd0f1542d761823dc0109c6b072f14c20459598c5455c274601438f4a070616ebd7ad2ed6fb7860cf7e9df00163842351c38a87cac2c1cb193895035a2a05c5b4fc43c2d45787f54e1ae7d27afdb4ad16dfc567c5692070d5c4556e0b1d7b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830200000183023ec683021536845685109780a029f07836e4e59229b3a065913afc27702642c683bba689910b2b2fd45db310d3888957e6d004a31802f902a7f85f800a8255f094aaaf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ca0575da4e21b66fa764be5f74da9389e67693d066fb0d1312e19e17e501da00ecda06baf5a5327595f6619dfc2fcb3f2e6fb410b5810af3cb52d0e7508038e91a188f85f010a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba04fa966bf34b93abc1bcd665554b7f316b50f928477b50be0f3285ead29d18c5ba017bba0eeec1625ab433746955e125d46d80b7fdc97386c51266f842d8e02192ef85f020a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ca004377418ae981cc32b1312b4a427a1d69a821b28db8584f5f2bd8c6d42458adaa053a1dba1af177fac92f3b6af0a9fa46a22adf56e686c93794b6a012bf254abf5f85f030a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ca04fe13febd28a05f4fcb2f451d7ddc2dda56486d9f8c79a62b0ba4da775122615a0651b2382dd402df9ebc27f8cb4b2e0f3cea68dda2dca0ee9603608f0b6f51668f85f040a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba078e6a0ba086a08f8450e208a399bb2f2d2a0d984acd2517c7c7df66ccfab567da013254002cd45a97fac049ae00afbc43ed0d9961d0c56a3b2382c80ce41c198ddf85f050a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba0a7174d8f43ea71c8e3ca9477691add8d80ac8e0ed89d8d8b572041eef81f4a54a0534ea2e28ec4da3b5b944b18c51ec84a5cf35f5b3343c5fb86521fd2d388f506f85f060a82520894bbbf5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba034bd04065833536a10c77ee2a43a5371bc6d34837088b861dd9d4b7f44074b59a078807715786a13876d3455716a6b9cb2186b7a4887a5c31160fc877454958616c0".from_hex().unwrap();
         let b1_hash =
-            H256::from_str("f53f268d23a71e85c7d6d83a9504298712b84c1a2ba220441c86eeda0bf0b6e3").unwrap();
+            H256::from_str("f53f268d23a71e85c7d6d83a9504298712b84c1a2ba220441c86eeda0bf0b6e3")
+                .unwrap();
 
         let db = new_db();
         let bc = new_chain(encoded::Block::new(genesis), db.clone());

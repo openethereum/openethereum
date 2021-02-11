@@ -899,8 +899,8 @@ mod tests {
     use self::tempdir::TempDir;
     use super::{EthMultiStore, EthStore};
     use accounts_dir::{KeyDirectory, MemoryDirectory, RootDiskDirectory};
-    use ethereum_types::H256;
     use crypto::publickey::{Generator, KeyPair, Random};
+    use ethereum_types::H256;
     use secret_store::{
         Derivation, SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
     };
@@ -1075,9 +1075,7 @@ mod tests {
             "First password should work for store."
         );
         assert!(
-            multi_store
-                .sign(&address, &passwd2, &message)
-                .is_ok(),
+            multi_store.sign(&address, &passwd2, &message).is_ok(),
             "Second password should work for second store."
         );
         assert_eq!(multi_store.accounts().unwrap().len(), 1);
@@ -1475,9 +1473,7 @@ mod tests {
         let message = [1u8; 32].into();
         // and we can sign with the derived contract
         assert!(
-            store
-                .sign(&derived, &"test".into(), &message)
-                .is_ok(),
+            store.sign(&derived, &"test".into(), &message).is_ok(),
             "Second password should work for second store."
         );
     }

@@ -88,8 +88,8 @@ impl Substate {
 #[cfg(test)]
 mod tests {
     use super::Substate;
-    use types::log_entry::LogEntry;
     use ethereum_types::Address;
+    use types::log_entry::LogEntry;
 
     #[test]
     fn created() {
@@ -100,7 +100,9 @@ mod tests {
     #[test]
     fn accrue() {
         let mut sub_state = Substate::new();
-        sub_state.contracts_created.push(Address::from_low_u64_be(1u64));
+        sub_state
+            .contracts_created
+            .push(Address::from_low_u64_be(1u64));
         sub_state.logs.push(LogEntry {
             address: Address::from_low_u64_be(1u64),
             topics: vec![],
@@ -110,7 +112,9 @@ mod tests {
         sub_state.suicides.insert(Address::from_low_u64_be(10u64));
 
         let mut sub_state_2 = Substate::new();
-        sub_state_2.contracts_created.push(Address::from_low_u64_be(2u64));
+        sub_state_2
+            .contracts_created
+            .push(Address::from_low_u64_be(2u64));
         sub_state_2.logs.push(LogEntry {
             address: Address::from_low_u64_be(1u64),
             topics: vec![],

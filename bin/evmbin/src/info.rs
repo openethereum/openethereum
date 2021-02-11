@@ -262,10 +262,10 @@ where
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use ethereum_types::Address;
     use rustc_hex::FromHex;
     use std::sync::Arc;
     use tempdir::TempDir;
-    use ethereum_types::Address;
 
     pub fn run_test<T, I, F>(informant: I, compare: F, code: &str, gas: T, expected: &str)
     where

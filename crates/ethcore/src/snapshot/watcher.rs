@@ -141,7 +141,7 @@ mod tests {
 
     use client::{ChainNotify, ChainRoute, NewBlocks};
 
-    use ethereum_types::{BigEndianHash,  H256, U256};
+    use ethereum_types::{BigEndianHash, H256, U256};
 
     use std::{collections::HashMap, time::Duration};
 

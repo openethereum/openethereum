@@ -71,8 +71,8 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use upgrade::upgrade_key_location;
     use std::str::FromStr;
+    use upgrade::upgrade_key_location;
 
     pub use accounts::AccountProvider;
 
@@ -105,9 +105,8 @@ mod accounts {
                 | SpecType::Goerli
                 | SpecType::Sokol
                 | SpecType::Dev => vec![],
-                _ => vec![
-                    H160::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").expect("the string is valid hex; qed"),
-                ],
+                _ => vec![H160::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
+                    .expect("the string is valid hex; qed")],
             },
         };
 
@@ -220,8 +219,10 @@ mod accounts {
     }
 
     fn insert_dev_account(account_provider: &AccountProvider) {
-        let secret = publickey::Secret::from_str("4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7")
-            .expect("Valid account;qed");
+        let secret = publickey::Secret::from_str(
+            "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
+        )
+        .expect("Valid account;qed");
         let dev_account = publickey::KeyPair::from_secret(secret.clone())
             .expect("Valid secret produces valid key;qed");
         if !account_provider.has_account(dev_account.address()) {

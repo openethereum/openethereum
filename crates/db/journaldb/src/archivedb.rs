@@ -129,7 +129,10 @@ impl JournalDB for ArchiveDB {
     }
 
     fn get_sizes(&self, sizes: &mut BTreeMap<String, usize>) {
-        sizes.insert(String::from("db_archive_overlay"), self.overlay.malloc_size_of());
+        sizes.insert(
+            String::from("db_archive_overlay"),
+            self.overlay.malloc_size_of(),
+        );
     }
 
     fn is_empty(&self) -> bool {

@@ -618,18 +618,22 @@ mod test {
         let mut io = TestIo::new(&mut client, &ss, &queue, None);
 
         let mut receipt_list = RlpStream::new_list(4);
-        receipt_list.append(&H256::from_str(
-            "0000000000000000000000000000000000000000000000005555555555555555",
-        ).unwrap());
-        receipt_list.append(&H256::from_str(
-            "ff00000000000000000000000000000000000000000000000000000000000000",
-        ).unwrap());
-        receipt_list.append(&H256::from_str(
-            "fff0000000000000000000000000000000000000000000000000000000000000",
-        ).unwrap());
-        receipt_list.append(&H256::from_str(
-            "aff0000000000000000000000000000000000000000000000000000000000000",
-        ).unwrap());
+        receipt_list.append(
+            &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("ff00000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("fff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
 
         let receipts_request = receipt_list.out();
         // it returns rlp ONLY for hashes started with "f"

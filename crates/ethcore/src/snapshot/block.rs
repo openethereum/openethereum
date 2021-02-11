@@ -154,7 +154,12 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
-        assert_eq!(abridged.to_block(H256::default(), 0, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 0, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 
     #[test]
@@ -165,7 +170,12 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
-        assert_eq!(abridged.to_block(H256::default(), 2, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 2, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 
     #[test]
@@ -204,6 +214,11 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded[..]));
-        assert_eq!(abridged.to_block(H256::default(), 0, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 0, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 }

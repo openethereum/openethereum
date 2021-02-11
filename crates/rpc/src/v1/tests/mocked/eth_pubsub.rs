@@ -26,10 +26,10 @@ use std::time::Duration;
 
 use v1::{EthPubSub, EthPubSubClient, Metadata};
 
-use ethereum_types::{Address, H256};
 use ethcore::client::{
     ChainNotify, ChainRoute, ChainRouteType, EachBlockWith, NewBlocks, TestBlockChainClient,
 };
+use ethereum_types::{Address, H256};
 use parity_runtime::Runtime;
 
 const DURATION_ZERO: Duration = Duration::from_millis(0);
@@ -132,7 +132,12 @@ fn should_subscribe_to_logs() {
     client.set_logs(vec![LocalizedLogEntry {
         entry: LogEntry {
             address: Address::from_low_u64_be(5),
-            topics: vec![H256::from_low_u64_be(1), H256::from_low_u64_be(2), H256::from_low_u64_be(0), H256::from_low_u64_be(0)],
+            topics: vec![
+                H256::from_low_u64_be(1),
+                H256::from_low_u64_be(2),
+                H256::from_low_u64_be(0),
+                H256::from_low_u64_be(0),
+            ],
             data: vec![],
         },
         block_hash: h1,

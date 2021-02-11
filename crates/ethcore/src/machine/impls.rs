@@ -553,7 +553,8 @@ mod tests {
         EthashExtensions {
             homestead_transition: 1150000,
             dao_hardfork_transition: u64::max_value(),
-            dao_hardfork_beneficiary: H160::from_str("0000000000000000000000000000000000000001").unwrap(),
+            dao_hardfork_beneficiary: H160::from_str("0000000000000000000000000000000000000001")
+                .unwrap(),
             dao_hardfork_accounts: Vec::new(),
         }
     }

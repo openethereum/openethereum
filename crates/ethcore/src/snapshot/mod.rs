@@ -580,7 +580,11 @@ fn rebuild_accounts(
                                     .ok_or_else(|| Error::MissingCode(vec![first_with]))?;
 
                                 // and write it again under a different mangled key
-                                AccountDBMut::from_hash(db, hash).emplace(code_hash, EMPTY_PREFIX, code);
+                                AccountDBMut::from_hash(db, hash).emplace(
+                                    code_hash,
+                                    EMPTY_PREFIX,
+                                    code,
+                                );
                             }
                             // if not, queue it up to be filled later
                             None => status.missing_code.push((hash, code_hash)),

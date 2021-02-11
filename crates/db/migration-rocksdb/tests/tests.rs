@@ -41,7 +41,8 @@ fn db_path(path: &Path) -> PathBuf {
 
 // initialize a database at the given directory with the given values.
 fn make_db(path: &Path, pairs: BTreeMap<Vec<u8>, Vec<u8>>) {
-    let db = Database::open(&DatabaseConfig::default(), path.to_str().unwrap()).expect("failed to open temp database");
+    let db = Database::open(&DatabaseConfig::default(), path.to_str().unwrap())
+        .expect("failed to open temp database");
     {
         let mut transaction = db.transaction();
         for (k, v) in pairs {
@@ -55,10 +56,15 @@ fn make_db(path: &Path, pairs: BTreeMap<Vec<u8>, Vec<u8>>) {
 
 // helper for verifying a migrated database.
 fn verify_migration(path: &Path, pairs: BTreeMap<Vec<u8>, Vec<u8>>) {
-    let db = Database::open(&DatabaseConfig::default(), path.to_str().expect("valid path")).expect("database should be there");
+    let db = Database::open(
+        &DatabaseConfig::default(),
+        path.to_str().expect("valid path"),
+    )
+    .expect("database should be there");
 
     for (k, v) in pairs {
-        let x = db.get(0, &k)
+        let x = db
+            .get(0, &k)
             .expect("database IO should work")
             .expect(&format!("key={:?} should be in column 0 in the db", &k));
 
@@ -225,7 +231,9 @@ fn first_and_noop_migration() {
     make_db(&db_path, map![vec![] => vec![], vec![1] => vec![1]]);
     let expected = map![vec![0x11] => vec![0x22], vec![1, 0x11] => vec![1, 0x22]];
 
-    manager.add_migration(Migration0).expect("Migration0 can be added");
+    manager
+        .add_migration(Migration0)
+        .expect("Migration0 can be added");
     let end_path = manager.execute(&db_path, 0).expect("Migration0 runs clean");
 
     verify_migration(&end_path, expected);

@@ -399,8 +399,9 @@ pub fn json_executive_test<H: FnMut(&str, HookType)>(
                         for (k, v) in storage {
                             let key: U256 = k.into();
                             let value: U256 = v.into();
-                            let found_storage =
-                                try_fail!(state.storage_at(&address, &BigEndianHash::from_uint(&key)));
+                            let found_storage = try_fail!(
+                                state.storage_at(&address, &BigEndianHash::from_uint(&key))
+                            );
                             fail_unless(
                                 found_storage == BigEndianHash::from_uint(&value),
                                 "storage is incorrect",

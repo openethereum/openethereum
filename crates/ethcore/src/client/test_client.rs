@@ -945,7 +945,10 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn block_receipts(&self, hash: &H256) -> Option<BlockReceipts> {
         // starts with 'f' ?
-        if *hash > H256::from_str("f000000000000000000000000000000000000000000000000000000000000000").unwrap() {
+        if *hash
+            > H256::from_str("f000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap()
+        {
             let receipt = BlockReceipts::new(vec![TypedReceipt::new(
                 TypedTxId::Legacy,
                 LegacyReceipt::new(

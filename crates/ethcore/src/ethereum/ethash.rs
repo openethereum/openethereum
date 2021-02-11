@@ -879,9 +879,10 @@ mod tests {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
         header.set_seal(vec![
-            rlp::encode(&H256::from_str(
-                "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-            ).unwrap()),
+            rlp::encode(
+                &H256::from_str("b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d")
+                    .unwrap(),
+            ),
             rlp::encode(&H64::zero()),
         ]);
         header.set_difficulty(
@@ -1016,9 +1017,10 @@ mod tests {
         let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
         let mut header = Header::default();
         header.set_seal(vec![
-            rlp::encode(&H256::from_str(
-                "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-            ).unwrap()),
+            rlp::encode(
+                &H256::from_str("b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d")
+                    .unwrap(),
+            ),
             rlp::encode(&H64::zero()),
         ]);
         let info = ethash.extra_info(&header);

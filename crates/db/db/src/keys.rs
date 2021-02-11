@@ -23,9 +23,9 @@ use common_types::{
 };
 use ethereum_types::{H256, H264, U256};
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
+use parity_util_mem::MallocSizeOf;
 use rlp;
 use rlp_derive::{RlpDecodable, RlpEncodable};
-use parity_util_mem::MallocSizeOf;
 
 use crate::db::Key;
 
@@ -133,7 +133,7 @@ pub struct EpochTransitionsKey([u8; EPOCH_KEY_LEN]);
 
 impl AsRef<[u8]> for EpochTransitionsKey {
     fn as_ref(&self) -> &[u8] {
-        &self.0[..] 
+        &self.0[..]
     }
 }
 

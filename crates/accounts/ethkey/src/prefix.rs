@@ -25,13 +25,13 @@ pub struct Prefix {
 impl Prefix {
     pub fn new(prefix: Vec<u8>, iterations: usize) -> Self {
         Prefix { prefix, iterations }
-    }               
+    }
 
     pub fn generate(&mut self) -> Result<KeyPair, Error> {
         for _ in 0..self.iterations {
             let keypair = Random.generate();
             if keypair.address().as_ref().starts_with(&self.prefix) {
-                return Ok(keypair)
+                return Ok(keypair);
             }
         }
 

@@ -339,13 +339,13 @@ pub struct EncryptedConnection {
 impl EncryptedConnection {
     /// Create an encrypted connection out of the handshake.
     pub fn new(handshake: &mut Handshake) -> Result<EncryptedConnection, Error> {
-        let shared = crypto::publickey::ecdh::agree(handshake.ecdhe.secret(), &handshake.remote_ephemeral)?;
+        let shared =
+            crypto::publickey::ecdh::agree(handshake.ecdhe.secret(), &handshake.remote_ephemeral)?;
         let mut nonce_material = H512::default();
         if handshake.originated {
             (&mut nonce_material[0..32]).copy_from_slice(handshake.remote_nonce.as_bytes());
             (&mut nonce_material[32..64]).copy_from_slice(handshake.nonce.as_bytes());
-        }
-        else {
+        } else {
             (&mut nonce_material[0..32]).copy_from_slice(handshake.nonce.as_bytes());
             (&mut nonce_material[32..64]).copy_from_slice(handshake.remote_nonce.as_bytes());
         }

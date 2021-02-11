@@ -31,7 +31,7 @@ use hash_db::{AsHashDB, HashDB, Prefix, EMPTY_PREFIX};
 use journaldb::AsKeyedHashDB;
 use keccak_hasher::KeccakHasher;
 use kvdb::DBValue;
-use memory_db::{MemoryDB, HashKey};
+use memory_db::{HashKey, MemoryDB};
 use parking_lot::Mutex;
 use state::Account;
 
@@ -151,7 +151,7 @@ impl Backend for ProofCheck {
 ///
 /// This doesn't cache anything or rely on the canonical state caches.
 pub struct Proving<H> {
-    base: H,                                  // state we're proving values from.
+    base: H, // state we're proving values from.
     changed: MemoryDB<KeccakHasher, HashKey<KeccakHasher>, DBValue>, // changed state via insertions.
     proof: Mutex<HashSet<DBValue>>,
 }

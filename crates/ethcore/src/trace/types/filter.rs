@@ -202,8 +202,14 @@ mod tests {
     fn multiple_trace_filter_bloom_possibility() {
         let filter = Filter {
             range: (0..0),
-            from_address: AddressesFilter::from(vec![Address::from_low_u64_be(1), Address::from_low_u64_be(3)]),
-            to_address: AddressesFilter::from(vec![Address::from_low_u64_be(2), Address::from_low_u64_be(4)]),
+            from_address: AddressesFilter::from(vec![
+                Address::from_low_u64_be(1),
+                Address::from_low_u64_be(3),
+            ]),
+            to_address: AddressesFilter::from(vec![
+                Address::from_low_u64_be(2),
+                Address::from_low_u64_be(4),
+            ]),
         };
 
         let blooms = filter.bloom_possibilities();
@@ -240,7 +246,10 @@ mod tests {
 
         let f1 = Filter {
             range: (0..0),
-            from_address: AddressesFilter::from(vec![Address::from_low_u64_be(3), Address::from_low_u64_be(1)]),
+            from_address: AddressesFilter::from(vec![
+                Address::from_low_u64_be(3),
+                Address::from_low_u64_be(1),
+            ]),
             to_address: AddressesFilter::from(vec![]),
         };
 
@@ -259,13 +268,19 @@ mod tests {
         let f4 = Filter {
             range: (0..0),
             from_address: AddressesFilter::from(vec![]),
-            to_address: AddressesFilter::from(vec![Address::from_low_u64_be(2), Address::from_low_u64_be(3)]),
+            to_address: AddressesFilter::from(vec![
+                Address::from_low_u64_be(2),
+                Address::from_low_u64_be(3),
+            ]),
         };
 
         let f5 = Filter {
             range: (0..0),
             from_address: AddressesFilter::from(vec![Address::from_low_u64_be(1)]),
-            to_address: AddressesFilter::from(vec![Address::from_low_u64_be(2), Address::from_low_u64_be(3)]),
+            to_address: AddressesFilter::from(vec![
+                Address::from_low_u64_be(2),
+                Address::from_low_u64_be(3),
+            ]),
         };
 
         let f6 = Filter {

@@ -319,7 +319,9 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip210_transition: p
                 .eip210_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            eip210_contract_address: p.eip210_contract_address.map_or(H160::from_low_u64_be(0xf0), Into::into),
+            eip210_contract_address: p
+                .eip210_contract_address
+                .map_or(H160::from_low_u64_be(0xf0), Into::into),
             eip210_contract_code: p.eip210_contract_code.map_or_else(
                 || {
                     DEFAULT_BLOCKHASH_CONTRACT
@@ -1009,7 +1011,8 @@ impl Spec {
                 self.engine.machine(),
                 &env_info,
                 factories.clone(),
-            ).ok_or_else(|| "Failed to prove call: insufficient state".into())
+            )
+            .ok_or_else(|| "Failed to prove call: insufficient state".into())
         };
 
         self.engine.genesis_epoch_data(&genesis, &call)
@@ -1119,10 +1122,10 @@ mod tests {
     use super::*;
     use ethereum_types::{H160, H256};
     use state::State;
+    use std::str::FromStr;
     use tempdir::TempDir;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
-    use std::str::FromStr;
 
     #[test]
     fn test_load_empty() {
@@ -1136,12 +1139,14 @@ mod tests {
 
         assert_eq!(
             test_spec.state_root(),
-            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9").unwrap()
+            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9")
+                .unwrap()
         );
         let genesis = test_spec.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303").unwrap()
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
+                .unwrap()
         );
     }
 
@@ -1159,7 +1164,9 @@ mod tests {
             Default::default(),
         )
         .unwrap();
-        let expected = H256::from_str("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
+        let expected =
+            H256::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
         let address = H160::from_str("0000000000000000000000000000000000001337").unwrap();
 
         assert_eq!(state.storage_at(&address, &H256::zero()).unwrap(), expected);

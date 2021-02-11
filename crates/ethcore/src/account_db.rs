@@ -128,7 +128,8 @@ impl<'db> HashDB<KeccakHasher, DBValue> for AccountDB<'db> {
         if key == &KECCAK_NULL_RLP {
             return true;
         }
-        self.db.contains(&combine_key(&self.address_hash, key), prefix)
+        self.db
+            .contains(&combine_key(&self.address_hash, key), prefix)
     }
 
     fn insert(&mut self, _prefix: Prefix, _value: &[u8]) -> H256 {
@@ -186,7 +187,8 @@ impl<'db> HashDB<KeccakHasher, DBValue> for AccountDBMut<'db> {
         if key == &KECCAK_NULL_RLP {
             return true;
         }
-        self.db.contains(&combine_key(&self.address_hash, key), prefix)
+        self.db
+            .contains(&combine_key(&self.address_hash, key), prefix)
     }
 
     fn insert(&mut self, prefix: Prefix, value: &[u8]) -> H256 {

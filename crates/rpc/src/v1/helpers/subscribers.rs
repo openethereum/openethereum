@@ -47,17 +47,21 @@ impl Id {
 mod random {
     use rand::rngs::OsRng;
     pub type Rng = rand::rngs::OsRng;
-    pub fn new() -> Rng { OsRng }
+    pub fn new() -> Rng {
+        OsRng
+    }
 }
 
 #[cfg(test)]
 mod random {
     extern crate rand_xorshift;
-    use rand::SeedableRng;
     use self::rand_xorshift::XorShiftRng;
+    use rand::SeedableRng;
     const RNG_SEED: [u8; 16] = [0u8; 16];
     pub type Rng = XorShiftRng;
-    pub fn new() -> Rng { Rng::from_seed(RNG_SEED) }
+    pub fn new() -> Rng {
+        Rng::from_seed(RNG_SEED)
+    }
 }
 
 pub struct Subscribers<T> {

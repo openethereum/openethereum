@@ -51,7 +51,7 @@ impl<'a> TypedTransactionView<'a> {
             return TypedTxId::Legacy;
         }
         let tx = rlp.data().expect("unable to decode tx rlp");
-        let id =  TypedTxId::try_from_wire_byte(tx[0]).expect("unable to decode tx type");
+        let id = TypedTxId::try_from_wire_byte(tx[0]).expect("unable to decode tx type");
         if id == TypedTxId::Legacy {
             panic!("Transaction RLP View should be valid. Legacy byte found");
         }

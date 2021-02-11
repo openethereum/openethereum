@@ -140,8 +140,8 @@ impl From<TypedReceipt> for Receipt {
 
 #[cfg(test)]
 mod tests {
-    use types::transaction::TypedTxId;
     use serde_json;
+    use types::transaction::TypedTxId;
     use v1::types::{Log, Receipt};
 
     #[test]

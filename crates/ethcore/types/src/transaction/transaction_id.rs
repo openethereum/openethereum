@@ -27,7 +27,6 @@ pub enum TypedTxId {
 }
 
 impl TypedTxId {
-
     // used in json tets
     pub fn from_u8_id(n: u8) -> Option<Self> {
         match n {
@@ -58,7 +57,7 @@ impl TypedTxId {
     pub fn to_U64_option_id(self) -> Option<U64> {
         match self {
             Self::Legacy => None,
-            _ => Some(U64::from(self as u8))
+            _ => Some(U64::from(self as u8)),
         }
     }
 }
@@ -75,7 +74,10 @@ mod tests {
 
     #[test]
     fn typed_tx_id_try_from_wire() {
-        assert_eq!(Ok(TypedTxId::AccessList), TypedTxId::try_from_wire_byte(0x01));
+        assert_eq!(
+            Ok(TypedTxId::AccessList),
+            TypedTxId::try_from_wire_byte(0x01)
+        );
         assert_eq!(Ok(TypedTxId::Legacy), TypedTxId::try_from_wire_byte(0x81));
         assert_eq!(Err(()), TypedTxId::try_from_wire_byte(0x00));
         assert_eq!(Err(()), TypedTxId::try_from_wire_byte(0x02));
@@ -83,21 +85,27 @@ mod tests {
 
     #[test]
     fn typed_tx_id_to_u64_option_id() {
-        assert_eq!(None,TypedTxId::Legacy.to_U64_option_id());
-        assert_eq!(Some(U64::from(0x01)),TypedTxId::AccessList.to_U64_option_id());
+        assert_eq!(None, TypedTxId::Legacy.to_U64_option_id());
+        assert_eq!(
+            Some(U64::from(0x01)),
+            TypedTxId::AccessList.to_U64_option_id()
+        );
     }
 
     #[test]
     fn typed_tx_id_from_u64_option_id() {
-        assert_eq!(Some(TypedTxId::Legacy),TypedTxId::from_U64_option_id(None));
-        assert_eq!(Some(TypedTxId::AccessList),TypedTxId::from_U64_option_id(Some(U64::from(0x01))));
-        assert_eq!(None,TypedTxId::from_U64_option_id(Some(U64::from(0x02))));
+        assert_eq!(Some(TypedTxId::Legacy), TypedTxId::from_U64_option_id(None));
+        assert_eq!(
+            Some(TypedTxId::AccessList),
+            TypedTxId::from_U64_option_id(Some(U64::from(0x01)))
+        );
+        assert_eq!(None, TypedTxId::from_U64_option_id(Some(U64::from(0x02))));
     }
 
     #[test]
     fn typed_tx_id_from_u8_id() {
-        assert_eq!(Some(TypedTxId::Legacy),TypedTxId::from_u8_id(0));
-        assert_eq!(Some(TypedTxId::AccessList),TypedTxId::from_u8_id(1));
-        assert_eq!(None,TypedTxId::from_u8_id(3));
+        assert_eq!(Some(TypedTxId::Legacy), TypedTxId::from_u8_id(0));
+        assert_eq!(Some(TypedTxId::AccessList), TypedTxId::from_u8_id(1));
+        assert_eq!(None, TypedTxId::from_u8_id(3));
     }
 }

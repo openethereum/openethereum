@@ -178,8 +178,7 @@ mod test {
     use io::IoChannel;
     use miner::Miner;
     use spec::Spec;
-    use std::str::FromStr;
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
     use tempdir::TempDir;
     use test_helpers;
     use types::transaction::{Action, Transaction, TypedTransaction};

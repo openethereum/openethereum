@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use parity_crypto::publickey::{Generator, KeyPair, Secret};
-use parity_crypto::Keccak256;
+use parity_crypto::{
+    publickey::{Generator, KeyPair, Secret},
+    Keccak256,
+};
 use parity_wordlist;
 
 /// Simple brainwallet.

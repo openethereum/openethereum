@@ -20,9 +20,7 @@ use ethereum_types::H256;
 use hash_db::Hasher;
 use keccak_hasher::KeccakHasher;
 use rlp::{DecoderError, Prototype, Rlp, RlpStream};
-use std::borrow::Borrow;
-use std::marker::PhantomData;
-use std::ops::Range;
+use std::{borrow::Borrow, marker::PhantomData, ops::Range};
 use trie::{
     node::{NibbleSlicePlan, NodeHandlePlan, NodePlan},
     ChildReference, NodeCodec, Partial,

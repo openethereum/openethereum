@@ -112,10 +112,6 @@ path = "bin/oe/lib.rs"
 path = "bin/oe/main.rs"
 name = "openethereum"
 
-[[bin]]
-path = "experiments/unpwasm/src/main.rs"
-name = "unpwasm"
-
 [profile.test]
 lto = false
 opt-level = 3 # makes tests slower to compile, but faster to run

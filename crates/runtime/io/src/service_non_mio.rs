@@ -267,7 +267,9 @@ where
     Message: Send + Sync + 'static,
 {
     /// Starts IO event loop
-    pub fn start() -> Result<IoService<Message>, IoError> {
+    pub fn start(_symbolic_name: &'static str) -> Result<IoService<Message>, IoError> {
+        // This minimal implementation of IoService does have named Workers
+        // like the mio-dependent one does, so _symbolic_name is ignored.
         let (tx, rx) = deque::fifo();
 
         let shared = Arc::new(Shared {

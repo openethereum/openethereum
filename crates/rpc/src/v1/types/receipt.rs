@@ -15,10 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256, U64};
-use types::{
-    receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt},
-    transaction::TypedTxId,
-};
+use types::receipt::{LocalizedReceipt, RichReceipt, TransactionOutcome, TypedReceipt};
 use v1::types::Log;
 
 /// Receipt
@@ -26,8 +23,8 @@ use v1::types::Log;
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
     /// Transaction Type
-    #[serde(skip_serializing)]
-    pub transaction_type: TypedTxId,
+    #[serde(rename = "type")]
+    pub transaction_type: U64,
     /// Transaction Hash
     pub transaction_hash: Option<H256>,
     /// Transaction index
@@ -81,7 +78,7 @@ impl From<LocalizedReceipt> for Receipt {
         Receipt {
             to: r.to.map(Into::into),
             from: Some(r.from),
-            transaction_type: r.transaction_type,
+            transaction_type: U64::from(r.transaction_type as u8),
             transaction_hash: Some(r.transaction_hash),
             transaction_index: Some(r.transaction_index.into()),
             block_hash: Some(r.block_hash),
@@ -102,7 +99,7 @@ impl From<RichReceipt> for Receipt {
         Receipt {
             from: Some(r.from),
             to: r.to.map(Into::into),
-            transaction_type: r.transaction_type,
+            transaction_type: U64::from(r.transaction_type as u8),
             transaction_hash: Some(r.transaction_hash),
             transaction_index: Some(r.transaction_index.into()),
             block_hash: None,
@@ -120,7 +117,7 @@ impl From<RichReceipt> for Receipt {
 
 impl From<TypedReceipt> for Receipt {
     fn from(r: TypedReceipt) -> Self {
-        let transaction_type = r.tx_type();
+        let transaction_type = U64::from(r.tx_type() as u8);
         let r = r.receipt().clone();
         Receipt {
             from: None,
@@ -148,7 +145,7 @@ mod tests {
 
     #[test]
     fn receipt_serialization() {
-        let s = r#"{"transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","from":null,"to":null,"blockNumber":"0x4510c","cumulativeGasUsed":"0x20","gasUsed":"0x10","contractAddress":null,"logs":[{"address":"0x33990122638b9132ca29c723bdf037f1a891a70c","topics":["0xa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc","0x4861736852656700000000000000000000000000000000000000000000000000"],"data":"0x","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","blockNumber":"0x4510c","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","logIndex":"0x1","transactionLogIndex":null,"type":"mined","removed":false}],"root":"0x000000000000000000000000000000000000000000000000000000000000000a","logsBloom":"0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f","status":"0x1"}"#;
+        let s = r#"{"type":"0x0","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","from":null,"to":null,"blockNumber":"0x4510c","cumulativeGasUsed":"0x20","gasUsed":"0x10","contractAddress":null,"logs":[{"address":"0x33990122638b9132ca29c723bdf037f1a891a70c","topics":["0xa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc","0x4861736852656700000000000000000000000000000000000000000000000000"],"data":"0x","blockHash":"0xed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5","blockNumber":"0x4510c","transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","logIndex":"0x1","transactionLogIndex":null,"type":"mined","removed":false}],"root":"0x000000000000000000000000000000000000000000000000000000000000000a","logsBloom":"0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f","status":"0x1"}"#;
 
         let receipt = Receipt {
             from: None,

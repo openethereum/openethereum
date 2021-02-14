@@ -210,7 +210,7 @@ impl Body {
     }
 
     /// A view over each transaction in the block.
-    pub fn transaction_views(&self) -> Vec<views::TransactionView> {
+    pub fn transaction_views(&self) -> Vec<views::TypedTransactionView> {
         self.view().transaction_views()
     }
 
@@ -405,7 +405,7 @@ impl Block {
     }
 
     /// A view over each transaction in the block.
-    pub fn transaction_views(&self) -> Vec<views::TransactionView> {
+    pub fn transaction_views(&self) -> Vec<views::TypedTransactionView> {
         self.view().transaction_views()
     }
 

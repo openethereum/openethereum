@@ -21,10 +21,10 @@ mod view_rlp;
 mod block;
 mod body;
 mod header;
-mod transaction;
+mod typed_transaction;
 
 pub use self::{
-    block::BlockView, body::BodyView, header::HeaderView, transaction::TransactionView,
+    block::BlockView, body::BodyView, header::HeaderView, typed_transaction::TypedTransactionView,
     view_rlp::ViewRlp,
 };
 

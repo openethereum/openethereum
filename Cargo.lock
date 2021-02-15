@@ -478,6 +478,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "console"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dea0f3e2e8d7dba335e913b97f9e1992c86c4399d54f8be1d31c8727d0652064"
+dependencies = [
+ "encode_unicode",
+ "lazy_static",
+ "libc",
+ "regex 1.3.9",
+ "terminal_size",
+ "termios",
+ "unicode-width",
+ "winapi 0.3.8",
+ "winapi-util",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -844,6 +861,12 @@ checksum = "073be79b6538296faf81c631872676600616073817dd9a440c477ad09b408983"
 dependencies = [
  "heapsize",
 ]
+
+[[package]]
+name = "encode_unicode"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
 name = "encoding_rs"
@@ -1374,6 +1397,7 @@ name = "ethdl"
 version = "1.0.0"
 dependencies = [
  "futures 0.3.12",
+ "indicatif",
  "num_cpus",
  "reqwest",
  "serde_json",
@@ -2341,6 +2365,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
+dependencies = [
+ "console",
+ "lazy_static",
+ "number_prefix 0.3.0",
+ "regex 1.3.9",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3140,6 +3176,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "number_prefix"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
+
+[[package]]
 name = "ole32-sys"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3204,7 +3246,7 @@ dependencies = [
  "migration-rocksdb",
  "node-filter",
  "num_cpus",
- "number_prefix",
+ "number_prefix 0.2.8",
  "panic_hook",
  "parity-bytes",
  "parity-daemonize",
@@ -5099,6 +5141,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96d6098003bde162e4277c70665bd87c326f5a0c3f3fbfb285787fa482d54e6e"
 dependencies = [
  "wincolor",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86ca8ced750734db02076f44132d802af0b33b09942331f4459dde8636fd2406"
+dependencies = [
+ "libc",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "termios"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "411c5bf740737c7918b8b1fe232dca4dc9f8e754b8ad5e20966814001ed0ac6b"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

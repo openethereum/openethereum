@@ -15,11 +15,13 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::path::Path;
 use std::error::Error;
 use structopt::StructOpt;
 use std::time::SystemTime;
 use tokio_stream::{self as tstream};
 use futures::stream::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name="ethdl")]
@@ -60,15 +62,24 @@ async fn get_blockchain_height(options: &DownloadOptions)
 }
 
 async fn get_block_by_number(options: &DownloadOptions, number: u64) 
-  -> Result<serde_json::Value, reqwest::Error> {
-  reqwest::Client::new()
-    .post(&request_url(&options))
-    .json(&serde_json::json!({
-      "jsonrpc": "2.0",
-      "id": SystemTime::now().elapsed().unwrap().subsec_nanos(),
-      "method": "eth_getBlockByNumber",
-      "params": [format!("0x{:x}", number), true]
-    })).send().await?.json::<serde_json::Value>().await
+  -> Result<bool, reqwest::Error> {
+  let filename = format!("{}/{}.json", options.output_dir, number);
+  match Path::new(&filename).exists() {
+    true => Ok(false),
+    false => {
+      serde_json::to_writer_pretty(
+        &std::fs::File::create(&filename).unwrap(), 
+        &reqwest::Client::new()
+          .post(&request_url(&options))
+          .json(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": SystemTime::now().elapsed().unwrap().subsec_nanos(),
+            "method": "eth_getBlockByNumber",
+            "params": [format!("0x{:x}", number), true]
+          })).send().await?.json::<serde_json::Value>().await?).unwrap();
+      Ok(true)
+    }
+  }
 }
 
 #[tokio::main]
@@ -90,17 +101,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .map(|i| { get_block_by_number(&optstate, i) }) 
     .buffer_unordered(num_cpus::get() * 4);
     
-  while let Ok(response) = blocks_stream.next().await.unwrap() {
-    let blocknohex = response.pointer("/result/number").unwrap().as_str().unwrap();
-    let blocknumber = u64::from_str_radix(&blocknohex[2..], 16)?;
-    let filename = format!("{}/{}.json", optstate.output_dir, blocknumber); 
-    serde_json::to_writer_pretty(
-      &std::fs::File::create(&filename).unwrap(), 
-      &response).unwrap();
-    println!("saving block to: {}  [{}/{}]", 
-      filename, blocknumber, rangelen);
+  let pb = ProgressBar::new(rangelen);
+  pb.set_style(ProgressStyle::default_bar()
+    .template("{spinner:.green} {percent}% [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} - {per_sec} blocks/s - ETA {eta_precise}")
+    .progress_chars("#>-"));
+
+  while let Ok(_) = blocks_stream.next().await.unwrap() {
+    pb.inc(1);
   }
 
+  pb.finish_with_message(&format!("downloaded {} blocks", &rangelen));
   println!("Download complete");
 
   Ok(())

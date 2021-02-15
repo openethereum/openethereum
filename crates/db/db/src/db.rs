@@ -435,7 +435,7 @@ impl PrometheusMetrics for DatabaseWithMetrics {
         p.register_counter(
             "kvdb_writes",
             "db writes",
-            self.reads.load(std::sync::atomic::Ordering::Relaxed) as i64,
+            self.writes.load(std::sync::atomic::Ordering::Relaxed) as i64,
         );
         p.register_counter(
             "kvdb_bytes_read",

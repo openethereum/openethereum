@@ -112,6 +112,7 @@ pub struct RunCmd {
     pub no_persistent_txqueue: bool,
     pub max_round_blocks_to_import: usize,
     pub metrics_conf: MetricsConfiguration,
+    pub db_max_wal_size: Option<u32>,
 }
 
 // node info fetcher for the local store.
@@ -325,6 +326,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         cmd.pruning_memory,
         cmd.check_seal,
         cmd.max_round_blocks_to_import,
+        cmd.db_max_wal_size,
     );
 
     client_config.queue.verifier_settings = cmd.verifier_settings;

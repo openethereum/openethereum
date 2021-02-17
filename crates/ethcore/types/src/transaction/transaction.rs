@@ -22,7 +22,7 @@ use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
@@ -493,7 +493,7 @@ impl TypedTransaction {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let id = tx[0].try_into();
+        let id = TypedTxId::try_from_wire_byte(tx[0]);
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }

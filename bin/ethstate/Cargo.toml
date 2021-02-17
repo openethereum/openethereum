@@ -7,19 +7,27 @@ edition = "2018"
 
 [dependencies]
 url = "2.2"
+size = "0.1"
+colored = "2"
+chrono = "0.4.19"
 structopt = "0.3"
 futures = "0.3"
+hex = "0.4"
 trie-db = "0.11"
 ethereum-types = "0.4"
 futures-util = "0.3.12"
 serde_json = "1.0"
+kvdb = "*"
+pad = "0.1.6"
 kvdb-rocksdb = "*"
 tokio-tungstenite = "0.13"
 tokio = { version = "1.2", features = ["full"] }
+rlp = { version = "0.3.0", features = ["ethereum"] }
 dir = { path = "../../crates/util/dir" }
 ethcore = { path = "../../crates/ethcore" }
 ethcore-sync = { path = "../../crates/ethcore/sync" }
 memory-db = { path = "../../crates/db/memory-db" }
 journaldb = { path = "../../crates/db/journaldb" }
 common-types = { path = "../../crates/ethcore/types" }
+keccak-hasher = { path = "../../crates/util/keccak-hasher" }
 patricia-trie-ethereum = { path = "../../crates/db/patricia-trie-ethereum" }

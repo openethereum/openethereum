@@ -87,7 +87,7 @@ pub enum SessionData {
         /// Packet data
         data: Vec<u8>,
         /// Packet protocol ID
-        protocol: [u8; 3],
+        protocol: ProtocolId,
         /// Zero based packet ID
         packet_id: u8,
     },
@@ -255,7 +255,7 @@ impl Session {
     }
 
     /// Checks if peer supports given capability
-    pub fn have_capability(&self, protocol: [u8; 3]) -> bool {
+    pub fn have_capability(&self, protocol: ProtocolId) -> bool {
         self.info
             .capabilities
             .iter()
@@ -263,7 +263,7 @@ impl Session {
     }
 
     /// Checks if peer supports given capability
-    pub fn capability_version(&self, protocol: [u8; 3]) -> Option<u8> {
+    pub fn capability_version(&self, protocol: ProtocolId) -> Option<u8> {
         self.info
             .capabilities
             .iter()
@@ -313,7 +313,7 @@ impl Session {
     pub fn send_packet<Message>(
         &mut self,
         io: &IoContext<Message>,
-        protocol: Option<[u8; 3]>,
+        protocol: Option<ProtocolId>,
         packet_id: u8,
         data: &[u8],
     ) -> Result<(), Error>
@@ -321,7 +321,7 @@ impl Session {
         Message: Send + Sync + Clone,
     {
         if protocol.is_some() && (self.info.capabilities.is_empty() || !self.had_hello) {
-            debug!(target: "network", "Sending to unconfirmed session {}, protocol: {:?}, packet: {}", self.token(), protocol.as_ref().map(|p| str::from_utf8(&p[..]).unwrap_or("??")), packet_id);
+            debug!(target: "network", "Sending to unconfirmed session {}, protocol: {:?}, packet: {}", self.token(), protocol.map(|p| str::from_utf8(&p.as_u64().to_ne_bytes()).unwrap_or("??").to_string()), packet_id);
             bail!(ErrorKind::BadProtocol);
         }
         if self.expired() {

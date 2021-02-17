@@ -103,8 +103,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
   let pb = ProgressBar::new(rangelen);
   pb.set_style(ProgressStyle::default_bar()
-    .template("{spinner:.green} {percent}% [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} - {per_sec} blocks/s - ETA {eta_precise}")
-    .progress_chars("#>-"));
+    .template(&format!("{}{}",
+    "{spinner:.green} {percent}% [{elapsed_precise}] ", 
+    "[{wide_bar:.cyan/blue}] {pos}/{len} - {per_sec} - ETA {eta}")));
 
   while let Ok(_) = blocks_stream.next().await.unwrap() {
     pb.inc(1);

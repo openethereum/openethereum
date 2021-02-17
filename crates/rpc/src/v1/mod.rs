@@ -34,12 +34,15 @@ mod helpers;
 mod impls;
 #[cfg(test)]
 mod tests;
-mod types;
+//mod types;
 
 pub mod extractors;
 pub mod informant;
 pub mod metadata;
 pub mod traits;
+
+// TODO: extract serializable RPC types
+pub mod types;
 
 pub use self::{
     extractors::{RpcExtractor, WsDispatcher, WsExtractor, WsStats},

@@ -129,7 +129,8 @@ members = [
 	"bin/ethstore",
 	"bin/evmbin",
 	"bin/chainspec",
-	"bin/ethdl"
+	"bin/ethdl",
+	"bin/ethstate"
 ]
 
 [patch.crates-io]

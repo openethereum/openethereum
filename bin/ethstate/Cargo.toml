@@ -1,0 +1,25 @@
+[package]
+name = "ethstate"
+version = "0.1.0"
+description = "Ethereum State DB debug tools"
+authors = ["Karim Agha <karim.dev@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+url = "2.2"
+structopt = "0.3"
+futures = "0.3"
+trie-db = "0.11"
+ethereum-types = "0.4"
+futures-util = "0.3.12"
+serde_json = "1.0"
+kvdb-rocksdb = "*"
+tokio-tungstenite = "0.13"
+tokio = { version = "1.2", features = ["full"] }
+dir = { path = "../../crates/util/dir" }
+ethcore = { path = "../../crates/ethcore" }
+ethcore-sync = { path = "../../crates/ethcore/sync" }
+memory-db = { path = "../../crates/db/memory-db" }
+journaldb = { path = "../../crates/db/journaldb" }
+common-types = { path = "../../crates/ethcore/types" }
+patricia-trie-ethereum = { path = "../../crates/db/patricia-trie-ethereum" }

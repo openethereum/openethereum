@@ -261,6 +261,7 @@ pub fn to_client_config(
     pruning_memory: usize,
     check_seal: bool,
     max_round_blocks_to_import: usize,
+    db_max_wal_size: Option<u32>
 ) -> ClientConfig {
     let mut client_config = ClientConfig::default();
 
@@ -283,6 +284,8 @@ pub fn to_client_config(
     client_config.jump_table_size = cache_config.jump_tables() as usize * mb;
     // in bytes
     client_config.history_mem = pruning_memory * mb;
+    // in bytes
+    client_config.db_max_total_wal_size = db_max_wal_size.map(|s| s as u64 * mb as u64);
 
     client_config.mode = mode;
     client_config.tracing.enabled = tracing;

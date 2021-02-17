@@ -425,6 +425,7 @@ impl Configuration {
                 no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
                 max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
                 metrics_conf,
+                db_max_wal_size: self.args.arg_db_max_wal_size,
             };
             Cmd::Run(run_cmd)
         };

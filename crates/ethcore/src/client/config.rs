@@ -103,6 +103,8 @@ pub struct ClientConfig {
     pub name: String,
     /// RocksDB column cache-size if not default
     pub db_cache_size: Option<usize>,
+    /// RocksDB max total write ahead log size if not default
+    pub db_max_total_wal_size: Option<u64>,
     /// State db compaction profile
     pub db_compaction: DatabaseCompactionProfile,
     /// Operating mode
@@ -141,6 +143,7 @@ impl Default for ClientConfig {
             pruning: journaldb::Algorithm::OverlayRecent,
             name: "default".into(),
             db_cache_size: None,
+            db_max_total_wal_size: None,
             db_compaction: Default::default(),
             mode: Mode::Active,
             spec_name: "".into(),

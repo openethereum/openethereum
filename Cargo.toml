@@ -131,3 +131,6 @@ members = [
 	"bin/evmbin",
 	"bin/chainspec"
 ]
+
+[patch.crates-io]
+kvdb-rocksdb = { path = "crates/kvdb-rocksdb" }

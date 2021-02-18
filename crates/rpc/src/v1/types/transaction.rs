@@ -22,6 +22,7 @@ use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::transaction::{
     Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
+    TypedTxId,
 };
 use v1::types::{AccessList, Bytes, TransactionCondition};
 
@@ -62,8 +63,9 @@ pub struct Transaction {
     pub public_key: Option<H512>,
     /// The network id of the transaction, if any.
     pub chain_id: Option<U64>,
-    /// The standardised V field of the signature (0 or 1).
-    pub standard_v: U256,
+    /// The standardised V field of the signature (0 or 1). Used by legacy transaction
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub standard_v: Option<U256>,
     /// The standardised V field of the signature.
     pub v: U256,
     /// The R field of the signature.
@@ -191,6 +193,12 @@ impl Transaction {
             None
         };
 
+        let standard_v = if t.tx_type() == TypedTxId::Legacy {
+            Some(t.standard_v())
+        } else {
+            None
+        };
+
         Transaction {
             hash: t.hash(),
             nonce: t.tx().nonce,
@@ -215,8 +223,8 @@ impl Transaction {
             raw: Bytes::new(t.signed.encode()),
             public_key: t.recover_public().ok().map(Into::into),
             chain_id: t.chain_id().map(U64::from),
-            standard_v: t.standard_v().into(),
-            v: t.original_v().into(),
+            standard_v: standard_v.map(Into::into),
+            v: t.v().into(),
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
@@ -234,6 +242,12 @@ impl Transaction {
         } else {
             None
         };
+        let standard_v = if t.tx_type() == TypedTxId::Legacy {
+            Some(t.standard_v())
+        } else {
+            None
+        };
+
         Transaction {
             hash: t.hash(),
             nonce: t.tx().nonce,
@@ -258,8 +272,8 @@ impl Transaction {
             raw: t.encode().into(),
             public_key: t.public_key().map(Into::into),
             chain_id: t.chain_id().map(U64::from),
-            standard_v: t.standard_v().into(),
-            v: t.original_v().into(),
+            standard_v: standard_v.map(Into::into),
+            v: t.v().into(),
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
@@ -315,7 +329,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"standardV":"0x0","v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
+            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
         );
     }
 

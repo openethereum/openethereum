@@ -25,7 +25,6 @@ use std::io::Read;
 pub enum ForkSpec {
     EIP150,
     EIP158,
-    EIP2930,
     Frontier,
     Homestead,
     Byzantium,

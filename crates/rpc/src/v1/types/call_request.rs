@@ -26,9 +26,8 @@ use v1::{
 #[serde(rename_all = "camelCase")]
 pub struct CallRequest {
     /// transaction type. Defaults to legacy type.
-    #[serde(default)]
-    #[serde(rename = "type")]
-    pub transaction_type: U64,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<U64>,
     /// From
     pub from: Option<H160>,
     /// To

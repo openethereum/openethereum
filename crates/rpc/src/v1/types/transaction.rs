@@ -30,8 +30,8 @@ use v1::types::{AccessList, Bytes, TransactionCondition};
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// transaction type
-    #[serde(rename = "type")]
-    pub transaction_type: U64,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<U64>,
     /// Hash
     pub hash: H256,
     /// Nonce
@@ -220,7 +220,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            transaction_type: U64::from(t.signed.tx_type() as u8),
+            transaction_type: t.signed.tx_type().to_U64_option_id(),
             access_list,
         }
     }
@@ -263,7 +263,7 @@ impl Transaction {
             r: signature.r().into(),
             s: signature.s().into(),
             condition: None,
-            transaction_type: U64::from(t.tx_type() as u8),
+            transaction_type: t.tx_type().to_U64_option_id(),
             access_list,
         }
     }
@@ -303,7 +303,6 @@ impl LocalTransactionStatus {
 #[cfg(test)]
 mod tests {
     use super::{LocalTransactionStatus, Transaction};
-    use ethereum_types::U64;
     use serde_json;
     use types::transaction::TypedTxId;
     use v1::types::AccessListItem;
@@ -311,7 +310,7 @@ mod tests {
     #[test]
     fn test_transaction_serialize() {
         let mut t = Transaction::default();
-        t.transaction_type = U64::from(TypedTxId::AccessList as u8);
+        t.transaction_type = TypedTxId::AccessList.to_U64_option_id();
         t.access_list = Some(vec![AccessListItem::default()]);
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(

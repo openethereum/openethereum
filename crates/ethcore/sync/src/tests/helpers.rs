@@ -168,8 +168,8 @@ where
         None
     }
 
-    fn protocol_version(&self, protocol: &ProtocolId, _peer_id: PeerId) -> u8 {
-        if protocol == &PAR_PROTOCOL {
+    fn protocol_version(&self, protocol: ProtocolId, _peer_id: PeerId) -> u8 {
+        if protocol == PAR_PROTOCOL {
             PAR_PROTOCOL_VERSION_2.0
         } else {
             ETH_PROTOCOL_VERSION_64.0

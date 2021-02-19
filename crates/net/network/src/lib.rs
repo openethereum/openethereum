@@ -50,7 +50,7 @@ pub use error::{DisconnectReason, Error, ErrorKind};
 pub use io::TimerToken;
 
 use client_version::ClientVersion;
-use ethereum_types::H512;
+use ethereum_types::{H512, U64};
 use ethkey::Secret;
 use ipnetwork::{IpNetwork, IpNetworkError};
 use rlp::{Decodable, DecoderError, Rlp};
@@ -66,7 +66,7 @@ use std::{
 /// Protocol handler level packet id
 pub type PacketId = u8;
 /// Protocol / handler id
-pub type ProtocolId = [u8; 3];
+pub type ProtocolId = U64;
 
 /// Node public key
 pub type NodeId = H512;
@@ -136,16 +136,9 @@ pub struct PeerCapabilityInfo {
 
 impl Decodable for PeerCapabilityInfo {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        let p: Vec<u8> = rlp.val_at(0)?;
-        if p.len() != 3 {
-            return Err(DecoderError::Custom(
-                "Invalid subprotocol string length. Should be 3",
-            ));
-        }
-        let mut p2: ProtocolId = [0u8; 3];
-        p2.clone_from_slice(&p);
+        let p: u64 = rlp.val_at(0)?;
         Ok(PeerCapabilityInfo {
-            protocol: p2,
+            protocol: U64::from(p),
             version: rlp.val_at(1)?,
         })
     }
@@ -155,7 +148,7 @@ impl ToString for PeerCapabilityInfo {
     fn to_string(&self) -> String {
         format!(
             "{}/{}",
-            str::from_utf8(&self.protocol[..]).unwrap_or("???"),
+            str::from_utf8(&self.protocol.as_u64().to_ne_bytes()).unwrap_or("???"),
             self.version
         )
     }
@@ -163,7 +156,7 @@ impl ToString for PeerCapabilityInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionCapabilityInfo {
-    pub protocol: [u8; 3],
+    pub protocol: ProtocolId,
     pub version: u8,
     pub packet_count: u8,
     pub id_offset: u8,

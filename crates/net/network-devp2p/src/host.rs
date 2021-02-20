@@ -95,7 +95,7 @@ pub struct CapabilityInfo {
 impl Encodable for CapabilityInfo {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(2);
-        s.append(&&self.protocol[..]);
+        s.append(&self.protocol.as_u64());
         s.append(&self.version);
     }
 }

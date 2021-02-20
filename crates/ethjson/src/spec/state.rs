@@ -24,7 +24,7 @@ use std::collections::BTreeMap;
 /// Blockchain test state deserializer.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct State(BTreeMap<Address, Account>);
+pub struct State(pub BTreeMap<Address, Account>);
 
 impl State {
     /// Returns all builtins.

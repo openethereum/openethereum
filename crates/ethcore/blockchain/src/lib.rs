@@ -20,16 +20,16 @@
 
 mod best_block;
 mod block_info;
-mod blockchain;
 mod cache;
 mod config;
 mod import_route;
 mod update;
 
+pub mod blockchain;
 pub mod generator;
 
 pub use self::{
-    blockchain::{BlockChain, BlockChainDB, BlockChainDBHandler, BlockProvider},
+    blockchain::{BlockChain, BlockChainDB, BlockChainDBHandler, BlockProvider, InTransactionBlockProvider},
     cache::CacheSize,
     config::Config,
     import_route::ImportRoute,

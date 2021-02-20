@@ -132,10 +132,10 @@ pub mod state_db;
 pub mod trace;
 pub mod transaction_ext;
 pub mod verification;
+pub mod factory;
 
 mod account_db;
 mod externalities;
-mod factory;
 mod tx_filter;
 
 #[cfg(feature = "json-tests")]

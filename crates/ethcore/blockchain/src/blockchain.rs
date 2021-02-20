@@ -224,13 +224,13 @@ pub trait BlockProvider {
 }
 
 /// Interface for querying blocks with pending db transaction by hash and by number.
-trait InTransactionBlockProvider {
+pub trait InTransactionBlockProvider {
     /// Get the familial details concerning a block.
     fn uncommitted_block_details(&self, hash: &H256) -> Option<BlockDetails>;
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-enum CacheId {
+pub enum CacheId {
     BlockHeader(H256),
     BlockBody(H256),
     BlockDetails(H256),

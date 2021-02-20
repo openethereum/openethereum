@@ -1545,27 +1545,36 @@ dependencies = [
 name = "ethstate"
 version = "0.1.0"
 dependencies = [
+ "blooms-db",
  "chrono",
  "colored",
  "common-types",
  "dir",
  "ethcore",
+ "ethcore-blockchain",
+ "ethcore-builtin",
+ "ethcore-db",
  "ethcore-sync",
  "ethereum-types 0.4.2",
+ "ethjson",
+ "filesize",
  "futures 0.3.12",
  "futures-util",
  "hex",
+ "indicatif",
  "journaldb",
+ "keccak-hash",
  "keccak-hasher 0.1.1",
  "kvdb",
+ "kvdb-memorydb",
  "kvdb-rocksdb",
  "memory-db 0.11.0",
- "pad",
  "patricia-trie-ethereum",
  "rlp 0.3.0",
  "serde_json",
  "size",
  "structopt",
+ "tempdir",
  "tokio 1.2.0",
  "tokio-tungstenite",
  "trie-db",
@@ -1723,6 +1732,15 @@ dependencies = [
  "log",
  "tokio 0.1.22",
  "url 2.2.0",
+]
+
+[[package]]
+name = "filesize"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12d741e2415d4e2e5bd1c1d00409d1a8865a57892c2d689b504365655d237d43"
+dependencies = [
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3436,15 +3454,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a4b8ea2179e6a2e27411d3bca09ca6dd630821cf6894c6c7c8467a8ee7ef13"
 dependencies = [
  "stable_deref_trait",
-]
-
-[[package]]
-name = "pad"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2ad9b889f1b12e0b9ee24db044b5129150d5eada288edc800f789928dc8c0e3"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]

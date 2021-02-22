@@ -1,11 +1,12 @@
 [package]
-name = "ethstate"
+name = "ethrun"
 version = "0.1.0"
-description = "Ethereum State DB debug tools"
+description = "Ethereum Blockchain backtesting tool"
 authors = ["Karim Agha <karim.dev@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+sled = "0.34.6"
 url = "2.2"
 size = "0.1"
 colored = "2"
@@ -24,6 +25,8 @@ kvdb-rocksdb = "*"
 kvdb-memorydb = "*"
 keccak-hash = "*"
 indicatif = "*"
+tiny-keccak = "1.5"
+elastic-array = "0.10.2"
 tokio-tungstenite = "0.13"
 tokio = { version = "1.2", features = ["full"] }
 rlp = { version = "0.3.0", features = ["ethereum"] }

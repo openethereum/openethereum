@@ -735,9 +735,17 @@ impl UnverifiedTransaction {
         self.signature.standard_v
     }
 
-    /// The `v` value that appears in the RLP.
-    pub fn original_v(&self) -> u64 {
+    /// The legacy `v` value that contains signatures v and chain_id for replay protection.
+    pub fn legacy_v(&self) -> u64 {
         signature::add_chain_replay_protection(self.signature.standard_v, self.chain_id)
+    }
+
+    /// The `v` value that appears in the RLP.
+    pub fn v(&self) -> u64 {
+        match self.unsigned {
+            TypedTransaction::Legacy(_) => self.legacy_v(),
+            _ => self.signature.standard_v as u64,
+        }
     }
 
     /// The chain ID, or `None` if this is a global transaction.

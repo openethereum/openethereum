@@ -106,7 +106,8 @@ impl<'a> BodyView<'a> {
     pub fn transaction_hashes(&self) -> Vec<H256> {
         self.transactions_rlp()
             .iter()
-            .map(|rlp| keccak(rlp.as_raw()))
+            .map(TypedTransactionView::new)
+            .map(|t| t.hash())
             .collect()
     }
 

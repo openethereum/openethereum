@@ -1,10 +1,10 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
+mod backend;
 mod db;
 mod debug;
 mod machine;
-mod backend;
 
 use std::{
     error::Error,
@@ -13,13 +13,13 @@ use std::{
     path::Path,
 };
 
-use common_types::encoded;
-use ethjson::spec::Spec;
 use filesize::PathExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use machine::is_wasm_creation_transaction;
-use machine::SmallMachine;
 use structopt::StructOpt;
+
+use common_types::encoded;
+use ethjson::spec::Spec;
+use machine::{is_wasm_creation_transaction, SmallMachine};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "EthState", rename_all = "kebab-case")]
@@ -53,8 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         progress.inc(genesis.len() as u64);
         // create the initial value of the machine that
         // is going to run the entire chain.
-        let mut machine = SmallMachine::new(
-            spec, encoded::Block::new(hex::decode(genesis)?))?;
+        let mut machine = SmallMachine::new(spec, encoded::Block::new(hex::decode(genesis)?))?;
 
         // then for every block, include it in the chain
         while let Some(Ok(block)) = lines_iter.next() {

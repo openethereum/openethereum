@@ -121,6 +121,7 @@ pub mod error;
 pub mod ethereum;
 pub mod executed;
 pub mod executive;
+pub mod factory;
 pub mod machine;
 pub mod miner;
 pub mod pod_account;
@@ -132,7 +133,6 @@ pub mod state_db;
 pub mod trace;
 pub mod transaction_ext;
 pub mod verification;
-pub mod factory;
 
 mod account_db;
 mod externalities;

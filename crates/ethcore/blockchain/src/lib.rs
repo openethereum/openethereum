@@ -29,7 +29,9 @@ pub mod blockchain;
 pub mod generator;
 
 pub use self::{
-    blockchain::{BlockChain, BlockChainDB, BlockChainDBHandler, BlockProvider, InTransactionBlockProvider},
+    blockchain::{
+        BlockChain, BlockChainDB, BlockChainDBHandler, BlockProvider, InTransactionBlockProvider,
+    },
     cache::CacheSize,
     config::Config,
     import_route::ImportRoute,

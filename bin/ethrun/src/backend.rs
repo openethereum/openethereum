@@ -39,7 +39,7 @@ impl LiteBackend {
         std::fs::create_dir_all(&dirpath)?;
         std::fs::create_dir_all(&bloomspath)?;
         std::fs::create_dir_all(&tracespath)?;
-        
+
         Ok(LiteBackend {
             kv_backend: Arc::new(KeyValueBackend::new(&dirpath, NUM_COLUMNS.unwrap())?),
             blooms: blooms_db::Database::open(bloomspath)?,

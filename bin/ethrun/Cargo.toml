@@ -31,6 +31,8 @@ tokio-tungstenite = "0.13"
 tokio = { version = "1.2", features = ["full"] }
 rlp = { version = "0.3.0", features = ["ethereum"] }
 keccak-hasher = { version = "0.15.3" }
+lazy_static = "1.4.0"
+derivative = "2.2"
 
 ethcore-builtin = { path = "../../crates/vm/builtin" }
 ethcore-blockchain = { path = "../../crates/ethcore/blockchain" }

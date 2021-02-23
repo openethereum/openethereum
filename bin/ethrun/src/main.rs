@@ -1,7 +1,9 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
+mod action;
 mod backend;
+mod cli;
 mod db;
 mod debug;
 mod machine;
@@ -15,22 +17,19 @@ use std::{
 
 use filesize::PathExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use structopt::StructOpt;
 
+use cli::CliOptions;
 use common_types::encoded;
 use ethjson::spec::Spec;
-use machine::{is_wasm_creation_transaction, SmallMachine};
+use machine::SmallMachine;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "EthState", rename_all = "kebab-case")]
-struct ImportOptions {
-    #[structopt(short, long)]
-    input_path: String,
-}
+use structopt::StructOpt;
+
+use crate::action::{BlockAction, BlockActionResult, TransactionAction};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let opts = ImportOptions::from_args();
+    let opts = CliOptions::from_args();
     let path = Path::new(&opts.input_path);
     println!("startup configuration: {:#?}", &opts);
 
@@ -47,6 +46,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // read block by block from ./openethereum export --format hex
     let mut blockno = 0;
     let mut lines_iter = BufReader::new(file).lines();
+    let block_action = BlockAction::from_name(&opts.block_action).unwrap();
+    let transaction_action = TransactionAction::from_name(&opts.tx_action).unwrap();
+
+    // prints messages above the progress bar
+    // for None optionals its a noop
+    let optional_print = |msg| {
+        if let Some(msg) = msg {
+            progress.println(msg);
+        }
+    };
 
     // initialize the chain with the genesis block
     if let Some(Ok(genesis)) = lines_iter.next() {
@@ -69,12 +78,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let generic_block = encoded::Block::new(hex::decode(block)?);
 
             // ingest the block by the eth machine and print wasm blocks
-            if let Some(wasmblock) = machine.consume_block(generic_block)? {
-                progress.println(debug::format_block_row(&wasmblock));
-                for tx in wasmblock.transactions() {
-                    if is_wasm_creation_transaction(&&tx) {
-                        progress.println(debug::format_transaction(&tx)?);
+            if let Ok(consumed_block) = machine.consume_block(generic_block) {
+                match block_action(&consumed_block) {
+                    BlockActionResult::Include(msg) => {
+                        optional_print(msg);
+                        for tx in consumed_block.transactions() {
+                            optional_print(transaction_action(&tx, &consumed_block));
+                        }
                     }
+                    BlockActionResult::Skip(msg) => optional_print(msg),
                 }
             }
         }

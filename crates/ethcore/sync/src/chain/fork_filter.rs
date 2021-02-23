@@ -86,7 +86,7 @@ mod tests {
             || ethereum::new_foundation(&String::new()),
             vec![
                 1_150_000, 1_920_000, 2_463_000, 2_675_000, 4_370_000, 7_280_000, 9_069_000,
-                9_200_000,
+                9_200_000, 12_244_000,
             ],
         )
     }
@@ -95,7 +95,9 @@ mod tests {
     fn ropsten_spec() {
         test_spec(
             || ethereum::new_ropsten(&String::new()),
-            vec![10, 1_700_000, 4_230_000, 4_939_394, 6_485_846, 7_117_117],
+            vec![
+                10, 1_700_000, 4_230_000, 4_939_394, 6_485_846, 7_117_117, 9_812_189,
+            ],
         )
     }
 
@@ -103,12 +105,17 @@ mod tests {
     fn rinkeby_spec() {
         test_spec(
             || ethereum::new_rinkeby(&String::new()),
-            vec![1, 2, 3, 1_035_301, 3_660_663, 4_321_234, 5_435_345],
+            vec![
+                1, 2, 3, 1_035_301, 3_660_663, 4_321_234, 5_435_345, 8_290_928,
+            ],
         )
     }
 
     #[test]
     fn goerli_spec() {
-        test_spec(|| ethereum::new_goerli(&String::new()), vec![1_561_651])
+        test_spec(
+            || ethereum::new_goerli(&String::new()),
+            vec![1_561_651, 4_460_644],
+        )
     }
 }

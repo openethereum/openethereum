@@ -30,18 +30,12 @@ elastic-array = "0.10.2"
 tokio-tungstenite = "0.13"
 tokio = { version = "1.2", features = ["full"] }
 rlp = { version = "0.3.0", features = ["ethereum"] }
+keccak-hasher = { version = "0.15.3" }
 
-ethcore-db = { path = "../../crates/db/db" }
-ethcore-sync = { path = "../../crates/ethcore/sync" }
 ethcore-builtin = { path = "../../crates/vm/builtin" }
 ethcore-blockchain = { path = "../../crates/ethcore/blockchain" }
 
-dir = { path = "../../crates/util/dir" }
 ethcore = { path = "../../crates/ethcore" }
 ethjson = { path = "../../crates/ethjson/" }
-memory-db = { path = "../../crates/db/memory-db" }
-journaldb = { path = "../../crates/db/journaldb" }
 blooms-db = { path = "../../crates/db/blooms-db" }
 common-types = { path = "../../crates/ethcore/types" }
-keccak-hasher = { path = "../../crates/util/keccak-hasher" }
-patricia-trie-ethereum = { path = "../../crates/db/patricia-trie-ethereum" }

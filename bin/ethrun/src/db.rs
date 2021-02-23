@@ -1,61 +1,13 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
+use kvdb::DBTransaction;
 use std::sync::Arc;
 
-use tempdir::TempDir;
-
-use kvdb::{
-  DBTransaction, 
-  KeyValueDB
-};
-
-use common_types::{
-    encoded,
-    receipt::TypedReceipt,
-};
+use common_types::{encoded, receipt::TypedReceipt};
 use ethcore_blockchain::{
-    BlockChain, BlockChainDB, Config, 
-    ExtrasInsert, ImportRoute,
-    InTransactionBlockProvider,
+    BlockChain, BlockChainDB, Config, ExtrasInsert, ImportRoute, InTransactionBlockProvider,
 };
-
-pub struct InMemoryBlockChainDB {
-    _blooms_dir: TempDir,
-    _trace_blooms_dir: TempDir,
-    blooms: blooms_db::Database,
-    trace_blooms: blooms_db::Database,
-    key_value: Arc<dyn KeyValueDB>,
-}
-
-impl BlockChainDB for InMemoryBlockChainDB {
-    fn key_value(&self) -> &Arc<dyn KeyValueDB> {
-        &self.key_value
-    }
-
-    fn blooms(&self) -> &blooms_db::Database {
-        &self.blooms
-    }
-
-    fn trace_blooms(&self) -> &blooms_db::Database {
-        &self.trace_blooms
-    }
-}
-
-pub fn new_db() -> Arc<dyn BlockChainDB> {
-    let blooms_dir = TempDir::new("").unwrap();
-    let trace_blooms_dir = TempDir::new("").unwrap();
-
-    let db = InMemoryBlockChainDB {
-        blooms: blooms_db::Database::open(blooms_dir.path()).unwrap(),
-        trace_blooms: blooms_db::Database::open(trace_blooms_dir.path()).unwrap(),
-        _blooms_dir: blooms_dir,
-        _trace_blooms_dir: trace_blooms_dir,
-        key_value: Arc::new(kvdb_memorydb::create(ethcore_db::NUM_COLUMNS.unwrap())),
-    };
-
-    Arc::new(db)
-}
 
 pub fn new_chain(genesis: encoded::Block, db: Arc<dyn BlockChainDB>) -> BlockChain {
     BlockChain::new(Config::default(), genesis.raw(), db)
@@ -116,18 +68,3 @@ fn insert_block_batch(
         },
     )
 }
-
-// impl InTransactionBlockProvider for BlockChain {
-//     fn uncommitted_block_details(&self, hash: &H256) -> Option<BlockDetails> {
-//         let result = self.db.key_value().read_with_two_layer_cache(
-//             ethcore_db::COL_EXTRA,
-//             &self.pending_block_details,
-//             &self.block_details,
-//             hash,
-//         )?;
-//         self.cache_man
-//             .lock()
-//             .note_used(CacheId::BlockDetails(*hash));
-//         Some(result)
-//     }
-// }

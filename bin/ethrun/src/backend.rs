@@ -6,9 +6,11 @@ use std::{path::PathBuf, sync::Arc};
 use common_types::encoded::Block;
 use elastic_array::ElasticArray128;
 use ethcore_blockchain::BlockChainDB;
-use ethcore_db::NUM_COLUMNS;
 use ethjson::spec::Spec;
 use kvdb::{DBTransaction, KeyValueDB};
+
+/// Number of columns in DB
+const NUM_COLUMNS: Option<u32> = Some(7);
 
 struct KeyValueBackend {
     kv_forrest: sled::Db,

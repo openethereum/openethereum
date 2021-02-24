@@ -1,13 +1,12 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
-use kvdb::DBTransaction;
-use std::sync::Arc;
-
 use common_types::{encoded, receipt::TypedReceipt};
 use ethcore_blockchain::{
     BlockChain, BlockChainDB, Config, ExtrasInsert, ImportRoute, InTransactionBlockProvider,
 };
+use kvdb::DBTransaction;
+use std::sync::Arc;
 
 pub fn new_chain(genesis: encoded::Block, db: Arc<dyn BlockChainDB>) -> BlockChain {
     BlockChain::new(Config::default(), genesis.raw(), db)

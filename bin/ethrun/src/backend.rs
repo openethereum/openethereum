@@ -1,13 +1,12 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
-use std::{path::PathBuf, sync::Arc};
-
 use common_types::encoded::Block;
 use elastic_array::ElasticArray128;
 use ethcore_blockchain::BlockChainDB;
 use ethjson::spec::Spec;
 use kvdb::{DBTransaction, KeyValueDB};
+use std::{path::PathBuf, sync::Arc};
 
 /// Number of columns in DB
 const NUM_COLUMNS: Option<u32> = Some(7);
@@ -32,6 +31,7 @@ impl LiteBackend {
         let state_root = hex::encode(&genesis.state_root()[0..6]);
         let dirname = format!("{}-{}", &spec.name, state_root);
         let dirpath = std::env::temp_dir().join(dirname);
+        std::fs::remove_dir_all(&dirpath)?; // cleanup after previous runs
 
         let bloomspath = dirpath.join("blooms");
         let tracespath = dirpath.join("trace_blooms");

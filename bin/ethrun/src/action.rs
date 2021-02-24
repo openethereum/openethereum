@@ -1,14 +1,12 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
-use common_types::{encoded::Block, transaction::UnverifiedTransaction};
-
-use lazy_static::lazy_static;
-
 use crate::{
     debug,
     wasm::{has_wasm_create_txs, is_wasm_create_tx},
 };
+use common_types::{encoded::Block, transaction::UnverifiedTransaction};
+use lazy_static::lazy_static;
 
 /// Decides if the transactions within a block should be included and transaction actions
 /// executed for each contained transaction, or txs within a block should be skipped.

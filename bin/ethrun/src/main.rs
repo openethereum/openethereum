@@ -16,20 +16,17 @@ use std::{
     path::Path,
 };
 
-use filesize::PathExt;
-use indicatif::{ProgressBar, ProgressStyle};
+use crate::action::{block_action_by_name, tx_action_by_name, BlockActionResult};
 
 use cli::CliOptions;
 use common_types::encoded;
 use ethjson::spec::Spec;
+use filesize::PathExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use machine::SmallMachine;
-
 use structopt::StructOpt;
 
-use crate::action::{block_action_by_name, tx_action_by_name, BlockActionResult};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let opts = CliOptions::from_args();
     let path = Path::new(&opts.input_path);
     println!("startup configuration: {:#?}", &opts);

@@ -1,17 +1,16 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
+use crate::{
+    backend,
+    db::{insert_block, new_chain},
+};
 use common_types::encoded::Block;
 use ethcore::{machine::EthereumMachine, spec::CommonParams};
 use ethcore_blockchain::{BlockChain, BlockChainDB};
 use ethcore_builtin::Builtin;
 use ethjson::spec::Spec as JsonSpec;
 use std::{convert::TryFrom, error::Error, sync::Arc};
-
-use crate::{
-    backend,
-    db::{insert_block, new_chain},
-};
 
 pub struct SmallMachine {
     database: Arc<dyn BlockChainDB>,

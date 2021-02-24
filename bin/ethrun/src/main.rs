@@ -7,6 +7,7 @@ mod cli;
 mod db;
 mod debug;
 mod machine;
+mod wasm;
 
 use std::{
     error::Error,
@@ -25,7 +26,7 @@ use machine::SmallMachine;
 
 use structopt::StructOpt;
 
-use crate::action::{BlockAction, BlockActionResult, TransactionAction};
+use crate::action::{block_action_by_name, tx_action_by_name, BlockActionResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -46,8 +47,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // read block by block from ./openethereum export --format hex
     let mut blockno = 0;
     let mut lines_iter = BufReader::new(file).lines();
-    let block_action = BlockAction::from_name(&opts.block_action).unwrap();
-    let transaction_action = TransactionAction::from_name(&opts.tx_action).unwrap();
+    let block_action = block_action_by_name(&opts.block_action).unwrap();
+    let tx_action = tx_action_by_name(&opts.tx_action).unwrap();
 
     // prints messages above the progress bar
     // for None optionals its a noop
@@ -79,11 +80,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // ingest the block by the eth machine and print wasm blocks
             if let Ok(consumed_block) = machine.consume_block(generic_block) {
-                match block_action(&consumed_block) {
+                match block_action.invoke(&consumed_block) {
                     BlockActionResult::Include(msg) => {
                         optional_print(msg);
                         for tx in consumed_block.transactions() {
-                            optional_print(transaction_action(&tx, &consumed_block));
+                            optional_print(tx_action.invoke(&tx, &consumed_block));
                         }
                     }
                     BlockActionResult::Skip(msg) => optional_print(msg),

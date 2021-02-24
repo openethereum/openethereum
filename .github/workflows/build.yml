@@ -38,7 +38,7 @@ jobs:
 
       - name:                   Install LLVM for Windows
         if:                     matrix.platform == 'windows2019'
-        run:                    choco install llvm
+        run:                    choco install llvm -y
 
       - name:                   Build OpenEthereum for Windows
         if:                     matrix.platform == 'windows2019'

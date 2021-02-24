@@ -29,3 +29,6 @@ ethcore = { path = "../../crates/ethcore" }
 ethjson = { path = "../../crates/ethjson/" }
 blooms-db = { path = "../../crates/db/blooms-db" }
 common-types = { path = "../../crates/ethcore/types" }
+
+[profile.release]
+debug = true

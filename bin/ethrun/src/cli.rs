@@ -10,7 +10,7 @@ lazy_static! {
     static ref BLOCK_ACTIONS_VALUES: Vec<String> =
         crate::action::BLOCK_ACTIONS
             .iter()
-            .map(|a| a.short_name())
+            .map(|a| a.lock().unwrap().short_name())
             .collect();
 
     static ref BLOCK_ACTIONS_VALUES_REF: Vec<&'static str> =
@@ -22,7 +22,7 @@ lazy_static! {
     static ref TRANSACTION_ACTIONS_VALUES: Vec<String> =
         crate::action::TRANSACTION_ACTIONS
             .iter()
-            .map(|a| a.short_name())
+            .map(|a| a.lock().unwrap().short_name())
             .collect();
 
     static ref TRANSACTION_ACTIONS_VALUES_REF: Vec<&'static str> =

@@ -1,9 +1,11 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
+use std::sync::Mutex;
+
 use crate::{
     debug,
-    wasm::{has_wasm_create_txs, is_wasm_create_tx},
+    wasm::{has_wasm_create_txs, is_wasm_create_tx, WasmContractsWithTxsDump},
 };
 use common_types::{encoded::Block, transaction::UnverifiedTransaction};
 use lazy_static::lazy_static;
@@ -23,11 +25,13 @@ pub(crate) enum BlockActionResult {
 pub(crate) trait BlockAction: Send + Sync {
     fn short_name(&self) -> String;
     fn display_name(&self) -> String;
-    fn invoke(&self, b: &Block) -> BlockActionResult;
+    fn invoke(&mut self, b: &Block) -> BlockActionResult;
 }
 
-pub(crate) fn block_action_by_name(short_name: &str) -> Option<&Box<dyn BlockAction>> {
-    BLOCK_ACTIONS.iter().find(|b| short_name == b.short_name())
+pub(crate) fn block_action_by_name(short_name: &str) -> Option<&Mutex<Box<dyn BlockAction>>> {
+    BLOCK_ACTIONS
+        .iter()
+        .find(|b| short_name == b.lock().unwrap().short_name())
 }
 
 pub(crate) struct StatelessBlockAction {
@@ -58,7 +62,7 @@ impl BlockAction for StatelessBlockAction {
         String::from(self.display_name)
     }
 
-    fn invoke(&self, b: &Block) -> BlockActionResult {
+    fn invoke(&mut self, b: &Block) -> BlockActionResult {
         (self.action)(b)
     }
 }
@@ -72,13 +76,13 @@ unsafe impl Sync for StatelessBlockAction {}
 pub(crate) trait TransactionAction: Send + Sync {
     fn short_name(&self) -> String;
     fn display_name(&self) -> String;
-    fn invoke(&self, t: &UnverifiedTransaction, b: &Block) -> Option<String>;
+    fn invoke(&mut self, t: &UnverifiedTransaction, b: &Block) -> Option<String>;
 }
 
-pub(crate) fn tx_action_by_name(short_name: &str) -> Option<&Box<dyn TransactionAction>> {
+pub(crate) fn tx_action_by_name(short_name: &str) -> Option<&Mutex<Box<dyn TransactionAction>>> {
     TRANSACTION_ACTIONS
         .iter()
-        .find(|t| short_name == t.short_name())
+        .find(|t| short_name == t.lock().unwrap().short_name())
 }
 
 pub(crate) struct StatelessTransactionAction {
@@ -109,7 +113,7 @@ impl TransactionAction for StatelessTransactionAction {
         String::from(self.display_name)
     }
 
-    fn invoke(&self, t: &UnverifiedTransaction, b: &Block) -> Option<String> {
+    fn invoke(&mut self, t: &UnverifiedTransaction, b: &Block) -> Option<String> {
         (self.action)(t, b)
     }
 }
@@ -124,26 +128,28 @@ lazy_static! {
     /// within that block or skip the current block and procede to the next one.
     /// In either case, include or skip, actions have the option to include a debug/output
     /// message that could be printed to stdout.
-    pub(crate) static ref BLOCK_ACTIONS: [Box<dyn BlockAction>; 2] =
+    pub(crate) static ref BLOCK_ACTIONS: [Mutex<Box<dyn BlockAction>>; 2] =
     [
         // will include only blocks that create new WASM contracts
-        StatelessBlockAction::new("filter-create-wasm",
+        Mutex::new(StatelessBlockAction::new("filter-create-wasm",
             &|block| match has_wasm_create_txs(&block) {
                 true => BlockActionResult::Include(Some(debug::format_block_row(&block))),
                 false => BlockActionResult::Skip(None),
-            }),
+            })),
 
         // will include all blocks in the blockchain
-        StatelessBlockAction::new("include-all", &|_| BlockActionResult::Include(None))
+        Mutex::new(StatelessBlockAction::new("include-all", &|_| BlockActionResult::Include(None)))
     ];
 
     /// The list of actions that run per transaction in a block
-    pub(crate) static ref TRANSACTION_ACTIONS: [Box<dyn TransactionAction>; 1] =
+    pub(crate) static ref TRANSACTION_ACTIONS: [Mutex<Box<dyn TransactionAction>>; 2] =
     [
-        StatelessTransactionAction::new("print-wasm-create",
+        Mutex::new(StatelessTransactionAction::new("print-wasm-create",
             &|utx, &_| match is_wasm_create_tx(&utx) {
                 true => Some(debug::format_transaction(&utx).unwrap()),
                 false => None,
-            })
+            })),
+
+        Mutex::new(Box::new(WasmContractsWithTxsDump::new()))
     ];
 }

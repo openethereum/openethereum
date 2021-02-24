@@ -6,13 +6,14 @@ use elastic_array::ElasticArray128;
 use ethcore_blockchain::BlockChainDB;
 use ethjson::spec::Spec;
 use kvdb::{DBTransaction, KeyValueDB};
+use sled::Config;
 use std::{path::PathBuf, sync::Arc};
 
 /// Number of columns in DB
 const NUM_COLUMNS: Option<u32> = Some(7);
 
-struct KeyValueBackend {
-    kv_forrest: sled::Db,
+struct KeyValueSledBackend {
+    _kv_forrest: sled::Db,
     trees: Vec<sled::Tree>,
 }
 
@@ -31,7 +32,11 @@ impl LiteBackend {
         let state_root = hex::encode(&genesis.state_root()[0..6]);
         let dirname = format!("{}-{}", &spec.name, state_root);
         let dirpath = std::env::temp_dir().join(dirname);
-        std::fs::remove_dir_all(&dirpath)?; // cleanup after previous runs
+
+        if dirpath.exists() {
+            // cleanup after previous runs
+            std::fs::remove_dir_all(&dirpath)?;
+        }
 
         let bloomspath = dirpath.join("blooms");
         let tracespath = dirpath.join("trace_blooms");
@@ -41,7 +46,7 @@ impl LiteBackend {
         std::fs::create_dir_all(&tracespath)?;
 
         Ok(LiteBackend {
-            kv_backend: Arc::new(KeyValueBackend::new(&dirpath, NUM_COLUMNS.unwrap())?),
+            kv_backend: Arc::new(KeyValueSledBackend::new(&dirpath, NUM_COLUMNS.unwrap())?),
             blooms: blooms_db::Database::open(bloomspath)?,
             trace_blooms: blooms_db::Database::open(tracespath)?,
             storeroot: dirpath,
@@ -72,16 +77,17 @@ impl BlockChainDB for LiteBackend {
     }
 }
 
-impl KeyValueBackend {
+impl KeyValueSledBackend {
     pub fn new<P: AsRef<std::path::Path>>(path: P, columns: u32) -> sled::Result<Self> {
-        let database = sled::open(path.as_ref())?;
+        let config = Config::new().path(path.as_ref()).flush_every_ms(Some(10000)); // 10sec
+        let database = config.open()?;
         let trees = (0..columns)
             .map(|c| database.open_tree(format!("col_{}", c)).unwrap())
             .collect();
         database.flush()?;
 
-        Ok(KeyValueBackend {
-            kv_forrest: database,
+        Ok(KeyValueSledBackend {
+            _kv_forrest: database,
             trees: trees,
         })
     }
@@ -91,15 +97,11 @@ impl KeyValueBackend {
     }
 }
 
-impl Drop for KeyValueBackend {
-    fn drop(&mut self) {}
-}
-
-impl KeyValueDB for KeyValueBackend {
+impl KeyValueDB for KeyValueSledBackend {
     fn get(&self, col: Option<u32>, key: &[u8]) -> std::io::Result<Option<kvdb::DBValue>> {
         match self.col(col).get(key)? {
             None => Ok(None),
-            Some(val) => Ok(Some(ElasticArray128::<u8>::from_vec(val.to_vec()))),
+            Some(val) => Ok(Some(ElasticArray128::<u8>::from_slice(&val))),
         }
     }
 
@@ -127,7 +129,7 @@ impl KeyValueDB for KeyValueBackend {
     }
 
     fn flush(&self) -> std::io::Result<()> {
-        self.kv_forrest.flush()?;
+        // let sled manage flushing instead
         Ok(())
     }
 

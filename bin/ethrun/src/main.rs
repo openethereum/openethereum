@@ -44,8 +44,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     // read block by block from ./openethereum export --format hex
     let mut blockno = 0;
     let mut lines_iter = BufReader::new(file).lines();
-    let block_action = block_action_by_name(&opts.block_action).unwrap();
-    let tx_action = tx_action_by_name(&opts.tx_action).unwrap();
+    let mut block_action = block_action_by_name(&opts.block_action)
+        .unwrap()
+        .lock()
+        .unwrap();
+    let mut tx_action = tx_action_by_name(&opts.tx_action).unwrap().lock().unwrap();
 
     // prints messages above the progress bar
     // for None optionals its a noop

@@ -47,7 +47,7 @@ pub trait SyncIo {
     /// Returns information on p2p session
     fn peer_session_info(&self, peer_id: PeerId) -> Option<SessionInfo>;
     /// Maximum mutually supported version of a gien protocol.
-    fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8;
+    fn protocol_version(&self, protocol: ProtocolId, peer_id: PeerId) -> u8;
     /// Returns if the chain block queue empty
     fn is_chain_queue_empty(&self) -> bool {
         self.chain().is_queue_empty()
@@ -121,9 +121,9 @@ impl<'s> SyncIo for NetSyncIo<'s> {
         self.network.is_expired()
     }
 
-    fn protocol_version(&self, protocol: &ProtocolId, peer_id: PeerId) -> u8 {
+    fn protocol_version(&self, protocol: ProtocolId, peer_id: PeerId) -> u8 {
         self.network
-            .protocol_version(*protocol, peer_id)
+            .protocol_version(protocol, peer_id)
             .unwrap_or(0)
     }
 

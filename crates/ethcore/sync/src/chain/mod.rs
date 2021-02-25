@@ -1272,8 +1272,8 @@ impl ChainSync {
 
     /// Send Status message
     fn send_status(&mut self, io: &mut dyn SyncIo, peer: PeerId) -> Result<(), network::Error> {
-        let eth_protocol_version = io.protocol_version(&ETH_PROTOCOL, peer);
-        let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer);
+        let eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer);
+        let warp_protocol_version = io.protocol_version(PAR_PROTOCOL, peer);
         let warp_protocol = warp_protocol_version != 0;
         let protocol = if warp_protocol {
             warp_protocol_version

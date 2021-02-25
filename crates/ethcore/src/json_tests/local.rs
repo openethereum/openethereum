@@ -146,7 +146,7 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
             is_ok = is_ok
                 && match ttype {
                     TypedTxId::Legacy => {
-                        test_exp(tx.original_v() == ref_tx.v.0.as_u64(), "Original Sig V")
+                        test_exp(tx.legacy_v() == ref_tx.v.0.as_u64(), "Original Sig V")
                     }
                     TypedTxId::AccessList => {
                         test_exp(tx.standard_v() as u64 == ref_tx.v.0.as_u64(), "Sig V");

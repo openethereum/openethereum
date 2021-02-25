@@ -35,7 +35,7 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
         value: request.value.unwrap_or_default(),
         data: request.data.unwrap_or_default(),
     };
-    let tx_typed = match TypedTxId::from_U64_id(&request.transaction_type) {
+    let tx_typed = match TypedTxId::from_U64_option_id(request.transaction_type) {
         Some(TypedTxId::Legacy) => TypedTransaction::Legacy(tx_legacy),
         Some(TypedTxId::AccessList) => {
             if request.access_list.is_none() {

@@ -22,7 +22,7 @@ use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
@@ -493,7 +493,7 @@ impl TypedTransaction {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let id = tx[0].try_into();
+        let id = TypedTxId::try_from_wire_byte(tx[0]);
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }
@@ -735,9 +735,17 @@ impl UnverifiedTransaction {
         self.signature.standard_v
     }
 
-    /// The `v` value that appears in the RLP.
-    pub fn original_v(&self) -> u64 {
+    /// The legacy `v` value that contains signatures v and chain_id for replay protection.
+    pub fn legacy_v(&self) -> u64 {
         signature::add_chain_replay_protection(self.signature.standard_v, self.chain_id)
+    }
+
+    /// The `v` value that appears in the RLP.
+    pub fn v(&self) -> u64 {
+        match self.unsigned {
+            TypedTransaction::Legacy(_) => self.legacy_v(),
+            _ => self.signature.standard_v as u64,
+        }
     }
 
     /// The chain ID, or `None` if this is a global transaction.

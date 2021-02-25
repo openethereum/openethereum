@@ -669,8 +669,8 @@ impl SyncHandler {
             .next()
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
-        let _eth_protocol_version = io.protocol_version(&ETH_PROTOCOL, peer_id);
-        let warp_protocol_version = io.protocol_version(&PAR_PROTOCOL, peer_id);
+        let _eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer_id);
+        let warp_protocol_version = io.protocol_version(PAR_PROTOCOL, peer_id);
         let warp_protocol = warp_protocol_version != 0;
 
         let network_id = r_iter

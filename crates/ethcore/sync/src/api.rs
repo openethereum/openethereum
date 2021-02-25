@@ -37,7 +37,7 @@ use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
     snapshot::SnapshotService,
 };
-use ethereum_types::{H256, H512, U256};
+use ethereum_types::{H256, H512, U256, U64};
 use ethkey::Secret;
 use io::TimerToken;
 use network::IpFilter;
@@ -55,9 +55,9 @@ use types::{
 };
 
 /// OpenEthereum sync protocol
-pub const PAR_PROTOCOL: ProtocolId = *b"par";
+pub const PAR_PROTOCOL: ProtocolId = U64([0x706172]); // hexadecimal number of "par";
 /// Ethereum sync protocol
-pub const ETH_PROTOCOL: ProtocolId = *b"eth";
+pub const ETH_PROTOCOL: ProtocolId = U64([0x657468]); // hexadecimal number of "eth";
 
 /// Determine warp sync status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,7 +104,7 @@ pub struct SyncConfig {
     /// Network ID
     pub network_id: u64,
     /// Main "eth" subprotocol name.
-    pub subprotocol_name: [u8; 3],
+    pub subprotocol_name: ProtocolId,
     /// Fork block to check
     pub fork_block: Option<(BlockNumber, H256)>,
     /// Enable snapshot sync
@@ -230,7 +230,7 @@ pub struct EthSync {
     /// Main (eth/par) protocol handler
     eth_handler: Arc<SyncProtocolHandler>,
     /// The main subprotocol name
-    subprotocol_name: [u8; 3],
+    subprotocol_name: ProtocolId,
     /// Priority tasks notification channel
     priority_tasks: Mutex<mpsc::Sender<PriorityTask>>,
 }

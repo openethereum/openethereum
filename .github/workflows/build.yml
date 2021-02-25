@@ -18,7 +18,6 @@ jobs:
         platform:
           - ubuntu-16.04
           - macos-latest
-          - windows2019
         toolchain:
           - stable
     runs-on:                    ${{ matrix.platform }}

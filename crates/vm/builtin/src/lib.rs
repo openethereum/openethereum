@@ -260,7 +260,7 @@ impl Pricer for Modexp2565Pricer {
                 }
                 bit_no -= 1;
             }
-            0
+            1
         }
 
         fn calculate_multiplication_complexity(base_len: u64, modulus_len: u64) -> f64 {
@@ -283,17 +283,21 @@ impl Pricer for Modexp2565Pricer {
 
         let (base_len, exp_len, exp_low, mod_len) = ModexpPricer::parse_input(input);
 
-        if let Some(cost) = ModexpPricer::check_input_boundaries(&base_len, &exp_len, &mod_len) {
-            return cost;
-        }
+        let cost = if let Some(cost) =
+            ModexpPricer::check_input_boundaries(&base_len, &exp_len, &mod_len)
+        {
+            cost
+        } else {
+            let (base_len, exp_len, mod_len) =
+                (base_len.low_u64(), exp_len.low_u64(), mod_len.low_u64());
 
-        let (base_len, exp_len, mod_len) =
-            (base_len.low_u64(), exp_len.low_u64(), mod_len.low_u64());
-
-        let multiplication_complexity = calculate_multiplication_complexity(base_len, mod_len);
-        let iteration_count = calculate_iteration_count(exp_len, &exp_low);
-        let computed = (multiplication_complexity * iteration_count as f64 / 3f64).floor() as u64;
-        U256::from(std::cmp::max(200, computed))
+            let multiplication_complexity = calculate_multiplication_complexity(base_len, mod_len);
+            let iteration_count = calculate_iteration_count(exp_len, &exp_low);
+            let computed =
+                (multiplication_complexity * iteration_count as f64 / 3f64).floor() as u64;
+            U256::from(computed)
+        };
+        std::cmp::max(U256::from(200), cost)
     }
 }
 

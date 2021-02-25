@@ -469,7 +469,7 @@ impl EthereumMachine {
             .map_err(|e| transaction::Error::InvalidRlp(e.to_string()))?;
 
         match tx.tx_type() {
-            transaction::TypedTxId::AccessList if schedule.eip2930 => {
+            transaction::TypedTxId::AccessList if !schedule.eip2930 => {
                 return Err(transaction::Error::TransactionTypeNotEnabled)
             }
             _ => (),

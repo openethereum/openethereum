@@ -34,7 +34,7 @@ use ethcore::{
 };
 use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
-use ethereum_types::H256;
+use ethereum_types::{H256, U64};
 use helpers::{execute_upgrades, passwords_from_files, to_client_config};
 use informant::{FullNodeInformantData, Informant};
 use journaldb::Algorithm;
@@ -227,12 +227,10 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         Some(id) => id,
         None => spec.network_id(),
     };
-    if spec.subprotocol_name().len() != 3 {
-        warn!("Your chain specification's subprotocol length is not 3. Ignoring.");
+    if spec.subprotocol_name().len() > 8 {
+        warn!("Your chain specification's subprotocol length is more then 8. Ignoring.");
     } else {
-        sync_config
-            .subprotocol_name
-            .clone_from_slice(spec.subprotocol_name().as_bytes());
+        sync_config.subprotocol_name = U64::from(spec.subprotocol_name().as_bytes())
     }
 
     sync_config.fork_block = spec.fork_block();

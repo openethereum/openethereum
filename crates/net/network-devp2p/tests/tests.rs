@@ -18,12 +18,14 @@ extern crate env_logger;
 extern crate ethcore_io as io;
 extern crate ethcore_network;
 extern crate ethcore_network_devp2p;
+extern crate ethereum_types;
 extern crate ethkey;
 extern crate parity_bytes;
 extern crate parking_lot;
 
 use ethcore_network::*;
 use ethcore_network_devp2p::NetworkService;
+use ethereum_types::U64;
 use ethkey::{Generator, Random};
 use io::TimerToken;
 use parity_bytes::Bytes;
@@ -57,7 +59,11 @@ impl TestProtocol {
     pub fn register(service: &mut NetworkService, drop_session: bool) -> Arc<TestProtocol> {
         let handler = Arc::new(TestProtocol::new(drop_session));
         service
-            .register_protocol(handler.clone(), *b"tst", &[(42u8, 1u8), (43u8, 1u8)])
+            .register_protocol(
+                handler.clone(),
+                U64::from(0x000aaa00),
+                &[(42u8, 1u8), (43u8, 1u8)],
+            )
             .expect("Error registering test protocol handler");
         handler
     }
@@ -111,7 +117,11 @@ fn net_service() {
         .expect("Error creating network service");
     service.start().unwrap();
     service
-        .register_protocol(Arc::new(TestProtocol::new(false)), *b"myp", &[(1u8, 1u8)])
+        .register_protocol(
+            Arc::new(TestProtocol::new(false)),
+            U64::from(0x000aff00),
+            &[(1u8, 1u8)],
+        )
         .unwrap();
 }
 

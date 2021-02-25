@@ -25,6 +25,9 @@ serde_json = "*"
 ethcore-builtin = { path = "../../crates/vm/builtin" }
 ethcore-blockchain = { path = "../../crates/ethcore/blockchain" }
 
+vm = { path = "../../crates/vm/vm" }
+evm = { path = "../../crates/vm/evm" }
+wasm = { path = "../../crates/vm/wasm" }
 ethcore = { path = "../../crates/ethcore" }
 ethjson = { path = "../../crates/ethjson/" }
 blooms-db = { path = "../../crates/db/blooms-db" }

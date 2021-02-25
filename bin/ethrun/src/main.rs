@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let file = File::open(&path)?;
     let spec: Spec = serde_json::from_slice(include_bytes!("../res/kovan.spec.json"))?;
-
+    
     // keep track of read position for progress reporting
     let progress = ProgressBar::new(path.size_on_disk()?);
     progress.set_style(ProgressStyle::default_bar().template(concat!(

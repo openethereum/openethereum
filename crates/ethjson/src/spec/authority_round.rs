@@ -16,7 +16,7 @@
 
 //! Authority params deserialization.
 
-use super::ValidatorSet;
+use super::{BlockReward, ValidatorSet};
 use bytes::Bytes;
 use hash::Address;
 use uint::Uint;
@@ -40,7 +40,7 @@ pub struct AuthorityRoundParams {
     /// Whether transitions should be immediate.
     pub immediate_transitions: Option<bool>,
     /// Reward per block in wei.
-    pub block_reward: Option<Uint>,
+    pub block_reward: Option<BlockReward>,
     /// Block at which the block reward contract should start being used.
     pub block_reward_contract_transition: Option<Uint>,
     /// Block reward contract address (setting the block reward contract
@@ -75,6 +75,7 @@ mod tests {
     use serde_json;
     use spec::{authority_round::AuthorityRound, validator_set::ValidatorSet};
     use uint::Uint;
+    use super::BlockReward;
 
     #[test]
     fn authority_round_deserialization() {
@@ -110,5 +111,9 @@ mod tests {
             deserialized.params.maximum_uncle_count,
             Some(Uint(5.into()))
         );
+        assert_eq!(
+            deserialized.params.block_reward,
+            Some(BlockReward::Single(Uint(5000000.into())))
+        )
     }
 }

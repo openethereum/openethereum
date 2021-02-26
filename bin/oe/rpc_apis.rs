@@ -52,7 +52,7 @@ pub enum Api {
     /// Traces (Safe)
     Traces,
     /// Rpc (Safe)
-	Rpc,
+    Rpc,
     /// Parity PubSub - Generic Publish-Subscriber (Safety depends on other APIs exposed).
     ParityPubSub,
     /// Parity Accounts extensions (UNSAFE: Passwords, Side Effects (new account))

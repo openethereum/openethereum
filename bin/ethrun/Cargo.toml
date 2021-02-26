@@ -21,7 +21,9 @@ rlp = { version = "0.3.0", features = ["ethereum"] }
 keccak-hasher = { version = "0.15.3" }
 lazy_static = "1.4.0"
 serde_json = "*"
+patricia-trie-ethereum = "*"
 
+memory-db = { path = "../../crates/db/memory-db" }
 ethcore-builtin = { path = "../../crates/vm/builtin" }
 ethcore-blockchain = { path = "../../crates/ethcore/blockchain" }
 

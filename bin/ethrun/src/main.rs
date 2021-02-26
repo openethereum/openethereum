@@ -8,6 +8,7 @@ mod db;
 mod debug;
 mod machine;
 mod wasm;
+mod exec;
 
 use std::{
     error::Error,

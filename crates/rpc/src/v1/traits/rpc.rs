@@ -14,28 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-//! RPC mocked tests. Most of these test that the RPC server is serializing and forwarding
-//! method calls properly.
+//! RPC interface.
 
-mod debug;
-mod eth;
-mod eth_pubsub;
-mod manage_network;
-mod net;
-mod parity;
-#[cfg(any(test, feature = "accounts"))]
-mod parity_accounts;
-mod parity_set;
-#[cfg(any(test, feature = "accounts"))]
-mod personal;
-mod pubsub;
-mod rpc;
-#[cfg(any(test, feature = "accounts"))]
-mod secretstore;
-mod signer;
-#[cfg(any(test, feature = "accounts"))]
-mod signing;
-#[cfg(any(test, feature = "accounts"))]
-mod signing_unsafe;
-mod traces;
-mod web3;
+use std::collections::BTreeMap;
+
+use jsonrpc_core::Result;
+use jsonrpc_derive::rpc;
+
+/// RPC Interface.
+#[rpc(server)]
+pub trait Rpc {
+	/// Returns supported modules for Geth 1.3.6
+	/// @ignore
+	#[rpc(name = "modules")]
+	fn modules(&self) -> Result<BTreeMap<String, String>>;
+
+	/// Returns supported modules for Geth 1.4.0
+	/// @ignore
+	#[rpc(name = "rpc_modules")]
+	fn rpc_modules(&self) -> Result<BTreeMap<String, String>>;
+}

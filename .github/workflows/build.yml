@@ -9,6 +9,7 @@ on:
 env:
   AWS_REGION:                   "us-east-1"
   AWS_S3_ARTIFACTS_BUCKET:      "openethereum-releases"
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 jobs:
   build:
@@ -38,7 +39,7 @@ jobs:
 
       - name:                   Install LLVM for Windows
         if:                     matrix.platform == 'windows2019'
-        run:                    choco install llvm
+        run:                    choco install llvm -y
 
       - name:                   Build OpenEthereum for Windows
         if:                     matrix.platform == 'windows2019'
@@ -85,11 +86,11 @@ jobs:
       #       Create ZIP files
       # ==============================
 
-      - name:                   Download Windows artifacts
-        uses:                   actions/download-artifact@v2
-        with:
-          name:                 windows-artifacts
-          path:                 windows-artifacts
+      # - name:                   Download Windows artifacts
+      #   uses:                   actions/download-artifact@v2
+      #   with:
+      #     name:                 windows-artifacts
+      #     path:                 windows-artifacts
 
       - name:                   Download Linux artifacts
         uses:                   actions/download-artifact@v2
@@ -140,7 +141,6 @@ jobs:
           ls openethereum-windows-${{ env.RELEASE_VERSION }}.zip
           cd ..
           mv windows-artifacts/openethereum-windows-${{ env.RELEASE_VERSION }}.zip .
-
           echo "Setting outputs..."
           echo ::set-output name=WINDOWS_ARTIFACT::openethereum-windows-${{ env.RELEASE_VERSION }}.zip
           echo ::set-output name=WINDOWS_SHASUM::$(shasum -a 256 openethereum-windows-${{ env.RELEASE_VERSION }}.zip | awk '{print $1}')

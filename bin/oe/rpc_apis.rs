@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{cmp::PartialEq, collections::{BTreeMap, HashSet}, str::FromStr, sync::Arc};
+use std::{
+    cmp::PartialEq,
+    collections::{BTreeMap, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
 pub use parity_rpc::signer::SignerService;
 
@@ -150,27 +155,27 @@ impl FromStr for ApiSet {
 }
 
 fn to_modules(apis: &HashSet<Api>) -> BTreeMap<String, String> {
-	let mut modules = BTreeMap::new();
-	for api in apis {
-		let (name, version) = match *api {
-			Api::Debug => ("debug", "1.0"),
-			Api::Eth => ("eth", "1.0"),
-			Api::EthPubSub => ("pubsub", "1.0"),
-			Api::Net => ("net", "1.0"),
-			Api::Parity => ("parity", "1.0"),
-			Api::ParityAccounts => ("parity_accounts", "1.0"),
-			Api::ParityPubSub => ("parity_pubsub", "1.0"),
-			Api::ParitySet => ("parity_set", "1.0"),
-			Api::Personal => ("personal", "1.0"),
-			Api::Rpc => ("rpc", "1.0"),
-			Api::SecretStore => ("secretstore", "1.0"),
-			Api::Signer => ("signer", "1.0"),
-			Api::Traces => ("traces", "1.0"),
-			Api::Web3 => ("web3", "1.0"),
-		};
-		modules.insert(name.into(), version.into());
-	}
-	modules
+    let mut modules = BTreeMap::new();
+    for api in apis {
+        let (name, version) = match *api {
+            Api::Debug => ("debug", "1.0"),
+            Api::Eth => ("eth", "1.0"),
+            Api::EthPubSub => ("pubsub", "1.0"),
+            Api::Net => ("net", "1.0"),
+            Api::Parity => ("parity", "1.0"),
+            Api::ParityAccounts => ("parity_accounts", "1.0"),
+            Api::ParityPubSub => ("parity_pubsub", "1.0"),
+            Api::ParitySet => ("parity_set", "1.0"),
+            Api::Personal => ("personal", "1.0"),
+            Api::Rpc => ("rpc", "1.0"),
+            Api::SecretStore => ("secretstore", "1.0"),
+            Api::Signer => ("signer", "1.0"),
+            Api::Traces => ("traces", "1.0"),
+            Api::Web3 => ("web3", "1.0"),
+        };
+        modules.insert(name.into(), version.into());
+    }
+    modules
 }
 
 macro_rules! add_signing_methods {
@@ -404,9 +409,9 @@ impl FullDependencies {
                 }
                 Api::Traces => handler.extend_with(TracesClient::new(&self.client).to_delegate()),
                 Api::Rpc => {
-					let modules = to_modules(&apis);
-					handler.extend_with(RpcClient::new(modules).to_delegate());
-				}
+                    let modules = to_modules(&apis);
+                    handler.extend_with(RpcClient::new(modules).to_delegate());
+                }
                 Api::SecretStore => {
                     #[cfg(feature = "accounts")]
                     handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
@@ -440,11 +445,17 @@ impl ApiSet {
     }
 
     pub fn list_apis(&self) -> HashSet<Api> {
-        let mut public_list: HashSet<Api> =
-            [Api::Web3, Api::Net, Api::Eth, Api::EthPubSub, Api::Parity, Api::Rpc]
-                .iter()
-                .cloned()
-                .collect();
+        let mut public_list: HashSet<Api> = [
+            Api::Web3,
+            Api::Net,
+            Api::Eth,
+            Api::EthPubSub,
+            Api::Parity,
+            Api::Rpc,
+        ]
+        .iter()
+        .cloned()
+        .collect();
 
         match *self {
             ApiSet::List(ref apis) => apis.clone(),

@@ -13,19 +13,34 @@ mod wasm;
 use std::{
     error::Error,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Cursor},
     path::Path,
+    str::FromStr,
 };
 
 use crate::action::{block_action_by_name, tx_action_by_name, BlockActionResult};
 
 use cli::CliOptions;
 use common_types::encoded;
-use ethjson::spec::Spec;
+use ethereum_types::{Address, U256};
+use evm::ActionParams;
 use filesize::PathExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use machine::SmallMachine;
 use structopt::StructOpt;
+
+fn evm_call(spec: &ethcore::spec::Spec, codehex: &str) {
+    // instantiate a VM that executes EVM smart contracts
+    let mut vm = exec::new_evm(&spec).unwrap();
+    let mut params = ActionParams::default();
+    params.address = Address::from_str("0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6").unwrap();
+    params.gas = U256::from(1000000000);
+    params.call_type = evm::CallType::Call;
+    params.code = Some(hex::decode(codehex).unwrap().into());
+    println!("action params: {:#?}", params);
+    let callres = vm.call(params).unwrap();
+    println!("callres: {:#?}", callres);
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let opts = CliOptions::from_args();
@@ -33,10 +48,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("startup configuration: {:#?}", &opts);
 
     let file = File::open(&path)?;
-    let spec: Spec = serde_json::from_slice(include_bytes!("../res/kovan.spec.json"))?;
+    let spec_read = Cursor::new(include_bytes!("../res/kovan.spec.json"));
+    let spec_json: ethjson::spec::Spec = serde_json::from_reader(spec_read.clone())?;
+    let spec_core = ethcore::spec::Spec::load(&path, spec_read.clone())?;
 
-    // instantiate a VM that executes EVM smart contracts
-    //let _vm = exec::new_evm(ethcore::spec::load_bundled!("kovan")).unwrap();
+    evm_call(&spec_core, "6001600081905550");
 
     // keep track of read position for progress reporting
     let progress = ProgressBar::new(path.size_on_disk()?);
@@ -67,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         progress.inc(genesis.len() as u64);
         // create the initial value of the machine that
         // is going to run the entire chain.
-        let mut machine = SmallMachine::new(spec, encoded::Block::new(hex::decode(genesis)?))?;
+        let mut machine = SmallMachine::new(spec_json, encoded::Block::new(hex::decode(genesis)?))?;
 
         // then for every block, include it in the chain
         while let Some(Ok(block)) = lines_iter.next() {

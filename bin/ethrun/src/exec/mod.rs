@@ -1,14 +1,24 @@
 // Copyright 2021 The OpenEthereum Authors.
 // Licensed under the Apache License, Version 2.0.
 
-use std::sync::Arc;
+mod trace;
 
-use ethcore::{error, ethereum, factory::{self, Factories}, pod_state, spec::{self, Spec}, state, state_db};
-use ethjson::spec::ForkSpec;
+use std::{io, sync::Arc};
+
+use ethcore::{
+    client, error, executive,
+    factory::{self, Factories},
+    pod_state,
+    spec::{self, Spec},
+    state, state_db,
+};
+use ethereum_types::H256;
 use ethtrie::trie;
-use evm::VMType;
+use evm::{ActionParams, FinalizationResult, VMType};
 use kvdb::KeyValueDB;
 use patricia_trie_ethereum as ethtrie;
+
+use self::trace::{Informant, NoopTracer};
 
 /// EVM test Error.
 #[derive(Debug)]
@@ -27,36 +37,15 @@ pub struct EvmTestClient<'a> {
     state: ethcore::state::State<state_db::StateDB>,
     spec: &'a spec::Spec,
     dump_state: fn(&ethcore::state::State<state_db::StateDB>) -> Option<pod_state::PodState>,
+    informant: Informant,
+    tracer: NoopTracer
 }
 
-pub fn new<'a>(spec: &'a Spec) -> Result<EvmTestClient<'a>, EvmTestError> {
+pub fn new_evm<'a>(spec: &'a Spec) -> Result<EvmTestClient<'a>, EvmTestError> {
     EvmTestClient::new(spec)
 }
 
 impl<'a> EvmTestClient<'a> {
-    /// Converts a json spec definition into spec.
-    pub fn spec_from_json(spec: &ForkSpec) -> Option<spec::Spec> {
-        match *spec {
-            ForkSpec::Frontier => Some(ethereum::new_frontier_test()),
-            ForkSpec::Homestead => Some(ethereum::new_homestead_test()),
-            ForkSpec::EIP150 => Some(ethereum::new_eip150_test()),
-            ForkSpec::EIP158 => Some(ethereum::new_eip161_test()),
-            ForkSpec::Byzantium => Some(ethereum::new_byzantium_test()),
-            ForkSpec::Constantinople => Some(ethereum::new_constantinople_test()),
-            ForkSpec::ConstantinopleFix => Some(ethereum::new_constantinople_fix_test()),
-            ForkSpec::Istanbul => Some(ethereum::new_istanbul_test()),
-            ForkSpec::EIP158ToByzantiumAt5 => Some(ethereum::new_transition_test()),
-            ForkSpec::ByzantiumToConstantinopleFixAt5 => {
-                Some(ethereum::new_byzantium_to_constantinoplefixat5_test())
-            }
-            ForkSpec::Berlin => Some(ethereum::new_berlin_test()),
-            ForkSpec::FrontierToHomesteadAt5
-            | ForkSpec::HomesteadToDaoAt5
-            | ForkSpec::HomesteadToEIP150At5
-            | ForkSpec::ByzantiumToConstantinopleAt5 => None,
-        }
-    }
-
     fn state_from_spec(
         spec: &'a spec::Spec,
         factories: &Factories,
@@ -70,7 +59,9 @@ impl<'a> EvmTestClient<'a> {
         // Write DB
         {
             let mut batch = kvdb::DBTransaction::new();
-            state_db.journal_under(&mut batch, 0, &genesis.hash()).unwrap();
+            state_db
+                .journal_under(&mut batch, 0, &genesis.hash())
+                .unwrap();
             db.write(batch).unwrap();
         }
 
@@ -96,7 +87,45 @@ impl<'a> EvmTestClient<'a> {
             dump_state: |s: &state::State<state_db::StateDB>| {
                 None // TODO, continue investigating here.
             },
+            informant: Informant::default(),
+            tracer: NoopTracer
         })
+    }
+
+    pub fn call(&mut self, params: ActionParams) -> Result<FinalizationResult, EvmTestError> {
+        let genesis = self.spec.genesis_header();
+        let info = client::EnvInfo {
+            number: genesis.number(),
+            author: *genesis.author(),
+            timestamp: genesis.timestamp(),
+            difficulty: *genesis.difficulty(),
+            last_hashes: Arc::new([H256::default(); 256].to_vec()),
+            gas_used: 0.into(),
+            gas_limit: *genesis.gas_limit(),
+        };
+
+        let mut tracer = NoopTracer;
+        let mut informant = Informant::default();
+
+        self.call_envinfo(params, &mut informant, &mut tracer, info)
+    }
+
+    /// Execute the VM given envinfo, ActionParams and tracer.
+    /// Returns amount of gas left and the output.
+    pub fn call_envinfo<T: ethcore::trace::Tracer, V: ethcore::trace::VMTracer>(
+        &mut self,
+        params: ActionParams,
+        tracer: &mut T,
+        vm_tracer: &mut V,
+        info: client::EnvInfo,
+    ) -> Result<FinalizationResult, EvmTestError> {
+        let mut substate = state::Substate::new();
+        let machine = self.spec.engine.machine();
+        let schedule = machine.schedule(info.number);
+        let mut executive = executive::Executive::new(&mut self.state, &info, &machine, &schedule);
+        executive
+            .call(params, &mut substate, tracer, vm_tracer)
+            .map_err(EvmTestError::Evm)
     }
 
     /// Creates new EVM test client with an in-memory DB initialized with genesis of given chain Spec.

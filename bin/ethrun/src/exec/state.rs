@@ -123,7 +123,7 @@ pub trait WorldState<'s> {
     ///
     /// The individual account substorage integrity is guarded by
     /// the storage_root hash for each account.
-    fn hash() -> H256;
+    fn hash(&self) -> H256;
 
     /// Gets a reference to an account stored at a given address.
     /// For accoutns that have no balance or nonce this will return None.
@@ -133,7 +133,13 @@ pub trait WorldState<'s> {
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests {
+    
     use super::*;
+    use ethereum_types::{Address, H256, U256};
+    use common_types::transaction::{
+        Action, Transaction, 
+        TypedTransaction
+    };
 
     struct TestWorldState;
     struct TestEOAccount;
@@ -142,7 +148,7 @@ mod tests {
     struct TestContractAccount;
     
     impl<'s> WorldState<'s> for TestWorldState {
-        fn hash() -> H256 { todo!() }
+        fn hash(&self) -> H256 { todo!() }
         fn access(&self, address: &Address) -> Result<Option<&'s Account<'s>>> { todo!() }
     }
 
@@ -170,8 +176,16 @@ mod tests {
     }
 
     #[test]
-    fn test_ea_transaction_code_interaction() {
+    fn test_ea_transaction_code_interaction() -> Result<()> {
         let state = TestWorldState{};
-        
+        let tx = TypedTransaction::Legacy(Transaction {
+            action: Action::Create,
+            nonce: U256::from(42),
+            gas_price: U256::from(3000),
+            gas: U256::from(50_000),
+            value: U256::from(1),
+            data: b"Hello!".to_vec(),
+        }).fake_sign(Address::from(0x69));
+        Ok(())
     }
 }

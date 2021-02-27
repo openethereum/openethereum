@@ -21,11 +21,13 @@ rlp = { version = "0.3.0", features = ["ethereum"] }
 keccak-hasher = { version = "0.15.3" }
 lazy_static = "1.4.0"
 serde_json = "*"
-patricia-trie-ethereum = "*"
+kvdb-memorydb = "0.1.0"
 
 memory-db = { path = "../../crates/db/memory-db" }
+journaldb = { path = "../../crates/db/journaldb"}
 ethcore-builtin = { path = "../../crates/vm/builtin" }
 ethcore-blockchain = { path = "../../crates/ethcore/blockchain" }
+patricia-trie-ethereum = { path = "../../crates/db/patricia-trie-ethereum" }
 
 vm = { path = "../../crates/vm/vm" }
 evm = { path = "../../crates/vm/evm" }

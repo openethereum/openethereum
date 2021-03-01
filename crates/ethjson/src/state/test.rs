@@ -21,7 +21,7 @@ use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use serde_json::{self, Error};
 use spec::ForkSpec;
-use state::{AccountState, Env, Transaction};
+use state::{AccountState, Env, Transaction, AccessListTx, TypedTransaction};
 use std::{collections::BTreeMap, io::Read};
 use uint::Uint;
 
@@ -69,6 +69,8 @@ pub struct State {
 pub struct MultiTransaction {
     /// Transaction data set.
     pub data: Vec<Bytes>,
+	/// Optional access list
+	pub access_lists: Option<Vec<Option<Vec<AccessList>>>>,
     /// Gas limit set.
     pub gas_limit: Vec<Uint>,
     /// Gas price.
@@ -86,8 +88,9 @@ pub struct MultiTransaction {
 
 impl MultiTransaction {
     /// Build transaction with given indexes.
-    pub fn select(&self, indexes: &PostStateIndexes) -> Transaction {
-        Transaction {
+    pub fn select(&self, indexes: &PostStateIndexes) -> TypedTransaction {
+
+        let transaction = Transaction {
             data: self.data[indexes.data as usize].clone(),
             gas_limit: self.gas_limit[indexes.gas as usize].clone(),
             gas_price: self.gas_price.clone(),
@@ -95,7 +98,15 @@ impl MultiTransaction {
             secret: self.secret.clone(),
             to: self.to.clone(),
             value: self.value[indexes.value as usize].clone(),
+        };
+
+        if let Some(access_lists) = self.access_lists.as_ref() {
+            if let Some(access_list) = access_lists[indexes.data as usize].clone() { //intentionally reused index from data
+                return TypedTransaction::AccessList(AccessListTx {transaction, access_list})
+            }
         }
+
+        TypedTransaction::Legacy(transaction)
     }
 }
 
@@ -108,6 +119,16 @@ pub struct PostStateIndexes {
     pub gas: u64,
     /// Index into transaction value set.
     pub value: u64,
+}
+
+/// Access list deserialization.
+#[derive(Debug, PartialEq, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessList {
+    /// Address
+    pub address: Address,
+    /// Storage keys
+    pub storage_keys: Vec<H256>
 }
 
 /// State test indexed state result deserialization.
@@ -136,6 +157,41 @@ mod tests {
 			"value" : [ "0x00", "0x01", "0x02" ]
 		}"#;
         let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
+		println!("_deserialized = {:?}", _deserialized);
+    }
+
+    #[test]
+    fn multi_transaction_deserialization_with_access_list() {
+        let s = r#"{
+			"data" : [ "" ],
+			"accessLists" : [
+				null,
+                [
+                ],
+                [
+                    {
+                        "address" : "0x0000000000000000000000000000000000000102",
+                        "storageKeys" : [
+                        ]
+                    },
+                    {
+                        "address" : "0x0000000000000000000000000000000000000101",
+                        "storageKeys" : [
+                            "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "0x0000000000000000000000000000000000000000000000000000000000000010"
+                        ]
+                    }
+                ]
+			],
+			"gasLimit" : [ "0x2dc6c0", "0x222222" ],
+			"gasPrice" : "0x01",
+			"nonce" : "0x00",
+			"secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
+			"to" : "1000000000000000000000000000000000000000",
+			"value" : [ "0x00", "0x01", "0x02" ]
+		}"#;
+        let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
+		println!("_deserialized = {:?}", _deserialized);
     }
 
     #[test]

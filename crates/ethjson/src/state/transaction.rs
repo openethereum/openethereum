@@ -21,6 +21,15 @@ use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use uint::Uint;
 
+use super::test::AccessList;
+
+#[derive(Debug, PartialEq)]
+pub enum TypedTransaction
+{
+    Legacy(Transaction),
+    AccessList(AccessListTx),
+}
+
 /// State test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +51,12 @@ pub struct Transaction {
     pub value: Uint,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct AccessListTx {
+    pub transaction: Transaction,
+    pub access_list: Vec<AccessList>,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json;
@@ -51,6 +66,7 @@ mod tests {
     fn transaction_deserialization() {
         let s = r#"{
 			"data" : "",
+            "accessLists": null,
 			"gasLimit" : "0x2dc6c0",
 			"gasPrice" : "0x01",
 			"nonce" : "0x00",

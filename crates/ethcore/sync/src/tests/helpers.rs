@@ -35,6 +35,10 @@ use ethereum_types::H256;
 use io::{IoChannel, IoContext, IoHandler};
 use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId, SessionInfo};
 use parking_lot::RwLock;
+use std::sync::{
+    RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
+    RwLockWriteGuard as StdRwLockWriteGuard,
+};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
@@ -249,7 +253,7 @@ where
     pub chain: Arc<C>,
     pub miner: Arc<Miner>,
     pub snapshot_service: Arc<TestSnapshotService>,
-    pub sync: RwLock<ChainSync>,
+    pub sync: StdRwLock<ChainSync>,
     pub queue: RwLock<VecDeque<TestPacket>>,
     pub io_queue: RwLock<VecDeque<ChainMessageType>>,
     new_blocks_queue: RwLock<VecDeque<NewBlockMessage>>,
@@ -270,15 +274,17 @@ where
     fn process_io_message(&self, message: ChainMessageType) {
         let mut io = TestIo::new(&*self.chain, &self.snapshot_service, &self.queue, None);
         match message {
-            ChainMessageType::Consensus(data) => {
-                self.sync.write().propagate_consensus_packet(&mut io, data)
-            }
+            ChainMessageType::Consensus(data) => self
+                .sync
+                .write()
+                .unwrap()
+                .propagate_consensus_packet(&mut io, data),
         }
     }
 
     fn process_new_block_message(&self, message: NewBlockMessage) {
         let mut io = TestIo::new(&*self.chain, &self.snapshot_service, &self.queue, None);
-        self.sync.write().chain_new_blocks(
+        self.sync.write().unwrap().chain_new_blocks(
             &mut io,
             &message.imported,
             &message.invalid,
@@ -294,8 +300,8 @@ impl<C: FlushingBlockChainClient> Peer for EthPeer<C> {
     type Message = TestPacket;
 
     fn on_connect(&self, other: PeerId) {
-        self.sync.write().update_targets(&*self.chain);
-        self.sync.write().on_peer_connected(
+        self.sync.write().unwrap().update_targets(&*self.chain);
+        self.sync.write().unwrap().on_peer_connected(
             &mut TestIo::new(
                 &*self.chain,
                 &self.snapshot_service,
@@ -313,7 +319,7 @@ impl<C: FlushingBlockChainClient> Peer for EthPeer<C> {
             &self.queue,
             Some(other),
         );
-        self.sync.write().on_peer_aborting(&mut io, other);
+        self.sync.write().unwrap().on_peer_aborting(&mut io, other);
     }
 
     fn receive_message(&self, from: PeerId, msg: TestPacket) -> HashSet<PeerId> {
@@ -340,14 +346,17 @@ impl<C: FlushingBlockChainClient> Peer for EthPeer<C> {
     fn sync_step(&self) {
         let mut io = TestIo::new(&*self.chain, &self.snapshot_service, &self.queue, None);
         self.chain.flush();
-        self.sync.write().maintain_peers(&mut io);
-        self.sync.write().maintain_sync(&mut io);
-        self.sync.write().continue_sync(&mut io);
-        self.sync.write().propagate_new_transactions(&mut io);
+        self.sync.write().unwrap().maintain_peers(&mut io);
+        self.sync.write().unwrap().maintain_sync(&mut io);
+        self.sync.write().unwrap().continue_sync(&mut io);
+        self.sync
+            .write()
+            .unwrap()
+            .propagate_new_transactions(&mut io);
     }
 
     fn restart_sync(&self) {
-        self.sync.write().restart(&mut TestIo::new(
+        self.sync.write().unwrap().restart(&mut TestIo::new(
             &*self.chain,
             &self.snapshot_service,
             &self.queue,
@@ -400,7 +409,7 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
             let ss = Arc::new(TestSnapshotService::new());
             let sync = ChainSync::new(config.clone(), &chain, ForkFilterApi::new_dummy(&chain));
             net.peers.push(Arc::new(EthPeer {
-                sync: RwLock::new(sync),
+                sync: StdRwLock::new(sync),
                 snapshot_service: ss,
                 chain: Arc::new(chain),
                 miner: Arc::new(Miner::new_for_tests(&Spec::new_test(), None)),
@@ -449,7 +458,7 @@ impl TestNet<EthPeer<EthcoreClient>> {
         let ss = Arc::new(TestSnapshotService::new());
         let sync = ChainSync::new(config, &*client, ForkFilterApi::new_dummy(&*client));
         let peer = Arc::new(EthPeer {
-            sync: RwLock::new(sync),
+            sync: StdRwLock::new(sync),
             snapshot_service: ss,
             chain: client,
             miner,
@@ -558,7 +567,7 @@ where
 impl<C: FlushingBlockChainClient> TestNet<EthPeer<C>> {
     pub fn trigger_chain_new_blocks(&mut self, peer_id: usize) {
         let peer = &mut self.peers[peer_id];
-        peer.sync.write().chain_new_blocks(
+        peer.sync.write().unwrap().chain_new_blocks(
             &mut TestIo::new(&*peer.chain, &peer.snapshot_service, &peer.queue, None),
             &[],
             &[],

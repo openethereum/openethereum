@@ -51,7 +51,11 @@
 		"eip1344Transition": "0x62f756",
 		"eip1706Transition": "0x62f756",
 		"eip1884Transition": "0x62f756",
-		"eip2028Transition": "0x62f756"
+		"eip2028Transition": "0x62f756",
+		"eip2315Transition": "0x95b8dd",
+		"eip2929Transition": "0x95b8dd",
+		"eip2930Transition": "0x95b8dd"
+		
 	},
 	"genesis": {
 		"seal": {
@@ -135,10 +139,20 @@
 			"nonce": "0x0",
 			"builtin": {
 				"name": "modexp",
-				"activate_at": "0x19f0a0",
 				"pricing": {
-					"modexp": {
-						"divisor": 20
+					"0x19f0a0": {
+						"info": "EIP-198: Big integer modular exponentiation. Byzantium hardfork (1_700_000)",
+						"price": {
+							"modexp": {
+								"divisor": 20
+							}
+						}
+					},
+					"0x95b8dd": {
+						"info": "EIP-2565: ModExp Gas Cost. Berlin hardfork (9_812_189)",
+						"price": {
+							"modexp2565": {}
+						}
 					}
 				}
 			}

@@ -20,10 +20,7 @@ use super::transaction::TypedTxId;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
 use heapsize::HeapSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
-use std::{
-    convert::TryInto,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 use log_entry::{LocalizedLogEntry, LogEntry};
 use BlockNumber;
@@ -151,7 +148,7 @@ impl TypedReceipt {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let id = tx[0].try_into();
+        let id = TypedTxId::try_from_wire_byte(tx[0]);
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }

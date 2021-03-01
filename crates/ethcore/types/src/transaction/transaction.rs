@@ -22,7 +22,7 @@ use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
@@ -142,11 +142,6 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    /// The message hash of the transaction. This hash is used for signing transaction
-    pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
-        keccak(self.encode(chain_id, None))
-    }
-
     /// encode raw transaction
     fn encode(&self, chain_id: Option<u64>, signature: Option<&SignatureComponents>) -> Vec<u8> {
         let mut stream = RlpStream::new();
@@ -321,20 +316,13 @@ impl AccessListTx {
 
     fn encode_payload(
         &self,
-        tx_type: Option<u8>, //used only for signature hashing for EIP-2930
         chain_id: Option<u64>,
         signature: Option<&SignatureComponents>,
     ) -> RlpStream {
         let mut stream = RlpStream::new();
 
-        let mut list_size = if signature.is_some() { 11 } else { 8 };
-        list_size += if tx_type.is_some() { 1 } else { 0 };
+        let list_size = if signature.is_some() { 11 } else { 8 };
         stream.begin_list(list_size);
-
-        // append tx_type at beggining of list, this is used only for data hash for signature.
-        if let Some(tx_type) = tx_type {
-            stream.append(&tx_type);
-        }
 
         // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
@@ -353,7 +341,7 @@ impl AccessListTx {
             }
         }
 
-        // append signature
+        // append signature if any
         if let Some(signature) = signature {
             signature.rlp_append(&mut stream);
         }
@@ -366,7 +354,7 @@ impl AccessListTx {
         chain_id: Option<u64>,
         signature: Option<&SignatureComponents>,
     ) -> Vec<u8> {
-        let stream = self.encode_payload(None, chain_id, signature);
+        let stream = self.encode_payload(chain_id, signature);
         // make as vector of bytes
         [&[TypedTxId::AccessList as u8], stream.as_raw()].concat()
     }
@@ -378,14 +366,6 @@ impl AccessListTx {
         signature: &SignatureComponents,
     ) {
         rlp.append(&self.encode(chain_id, Some(signature)));
-    }
-
-    pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
-        keccak(
-            &self
-                .encode_payload(Some(TypedTxId::AccessList as u8), chain_id, None)
-                .as_raw(),
-        )
     }
 }
 
@@ -406,10 +386,10 @@ impl TypedTransaction {
 
     /// The message hash of the transaction.
     pub fn signature_hash(&self, chain_id: Option<u64>) -> H256 {
-        match self {
-            Self::Legacy(tx) => tx.signature_hash(chain_id),
-            Self::AccessList(tx) => tx.signature_hash(chain_id),
-        }
+        keccak(match self {
+            Self::Legacy(tx) => tx.encode(chain_id, None),
+            Self::AccessList(tx) => tx.encode(chain_id, None),
+        })
     }
 
     /// Signs the transaction as coming from `sender`.
@@ -513,7 +493,7 @@ impl TypedTransaction {
             // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let id = tx[0].try_into();
+        let id = TypedTxId::try_from_wire_byte(tx[0]);
         if id.is_err() {
             return Err(DecoderError::Custom("Unknown transaction"));
         }
@@ -755,9 +735,17 @@ impl UnverifiedTransaction {
         self.signature.standard_v
     }
 
-    /// The `v` value that appears in the RLP.
-    pub fn original_v(&self) -> u64 {
+    /// The legacy `v` value that contains signatures v and chain_id for replay protection.
+    pub fn legacy_v(&self) -> u64 {
         signature::add_chain_replay_protection(self.signature.standard_v, self.chain_id)
+    }
+
+    /// The `v` value that appears in the RLP.
+    pub fn v(&self) -> u64 {
+        match self.unsigned {
+            TypedTransaction::Legacy(_) => self.legacy_v(),
+            _ => self.signature.standard_v as u64,
+        }
     }
 
     /// The chain ID, or `None` if this is a global transaction.

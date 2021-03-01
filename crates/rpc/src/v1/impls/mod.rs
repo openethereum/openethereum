@@ -28,6 +28,7 @@ mod parity_set;
 #[cfg(any(test, feature = "accounts"))]
 mod personal;
 mod pubsub;
+mod rpc;
 #[cfg(any(test, feature = "accounts"))]
 mod secretstore;
 mod signer;
@@ -53,6 +54,7 @@ pub use self::{
     parity::ParityClient,
     parity_set::ParitySetClient,
     pubsub::PubSubClient,
+    rpc::RpcClient,
     signer::SignerClient,
     signing::SigningQueueClient,
     signing_unsafe::SigningUnsafeClient,

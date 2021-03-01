@@ -42,7 +42,7 @@ fn skip_test(
     })
 }
 
-pub fn json_chain_test<H: FnMut(&str, HookType)>(
+pub fn json_state_test<H: FnMut(&str, HookType)>(
     state_test: &ethjson::test::StateTests,
     path: &Path,
     json_data: &[u8],

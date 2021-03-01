@@ -24,8 +24,7 @@ use uint::Uint;
 use super::test::AccessList;
 
 #[derive(Debug, PartialEq)]
-pub enum TypedTransaction
-{
+pub enum TypedTransaction {
     Legacy(Transaction),
     AccessList(AccessListTx),
 }

@@ -184,7 +184,7 @@ impl TestRunner {
                         return Vec::new();
                     }
                 }
-                super::state::json_chain_test(&test, &path, &json, &mut |_, _| {})
+                super::state::json_state_test(&test, &path, &json, &mut |_, _| {})
             },
         )
     }

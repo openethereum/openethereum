@@ -21,7 +21,7 @@ use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use serde_json::{self, Error};
 use spec::ForkSpec;
-use state::{AccountState, Env, Transaction, AccessListTx, TypedTransaction};
+use state::{AccessListTx, AccountState, Env, Transaction, TypedTransaction};
 use std::{collections::BTreeMap, io::Read};
 use uint::Uint;
 
@@ -69,8 +69,8 @@ pub struct State {
 pub struct MultiTransaction {
     /// Transaction data set.
     pub data: Vec<Bytes>,
-	/// Optional access list
-	pub access_lists: Option<Vec<Option<Vec<AccessList>>>>,
+    /// Optional access list
+    pub access_lists: Option<Vec<Option<Vec<AccessList>>>>,
     /// Gas limit set.
     pub gas_limit: Vec<Uint>,
     /// Gas price.
@@ -89,7 +89,6 @@ pub struct MultiTransaction {
 impl MultiTransaction {
     /// Build transaction with given indexes.
     pub fn select(&self, indexes: &PostStateIndexes) -> TypedTransaction {
-
         let transaction = Transaction {
             data: self.data[indexes.data as usize].clone(),
             gas_limit: self.gas_limit[indexes.gas as usize].clone(),
@@ -101,8 +100,11 @@ impl MultiTransaction {
         };
 
         if let Some(access_lists) = self.access_lists.as_ref() {
-            if let Some(access_list) = access_lists[indexes.data as usize].clone() { //intentionally reused index from data
-                return TypedTransaction::AccessList(AccessListTx {transaction, access_list})
+            if let Some(access_list) = access_lists[indexes.data as usize].clone() {
+                return TypedTransaction::AccessList(AccessListTx {
+                    transaction,
+                    access_list,
+                });
             }
         }
 
@@ -128,7 +130,7 @@ pub struct AccessList {
     /// Address
     pub address: Address,
     /// Storage keys
-    pub storage_keys: Vec<H256>
+    pub storage_keys: Vec<H256>,
 }
 
 /// State test indexed state result deserialization.
@@ -157,7 +159,7 @@ mod tests {
 			"value" : [ "0x00", "0x01", "0x02" ]
 		}"#;
         let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
-		println!("_deserialized = {:?}", _deserialized);
+        println!("_deserialized = {:?}", _deserialized);
     }
 
     #[test]
@@ -191,7 +193,7 @@ mod tests {
 			"value" : [ "0x00", "0x01", "0x02" ]
 		}"#;
         let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
-		println!("_deserialized = {:?}", _deserialized);
+        println!("_deserialized = {:?}", _deserialized);
     }
 
     #[test]

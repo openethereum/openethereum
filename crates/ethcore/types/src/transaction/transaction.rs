@@ -628,7 +628,7 @@ impl From<ethjson::state::transaction::TypedTransaction> for SignedTransaction {
     fn from(t: ethjson::state::transaction::TypedTransaction) -> Self {
         match t {
             ethjson::state::transaction::TypedTransaction::AccessList(tx) => tx.into(),
-            ethjson::state::transaction::TypedTransaction::Legacy(tx) => tx.into()
+            ethjson::state::transaction::TypedTransaction::Legacy(tx) => tx.into(),
         }
     }
 }
@@ -650,18 +650,22 @@ impl From<ethjson::state::Transaction> for SignedTransaction {
 impl From<ethjson::state::transaction::AccessListTx> for SignedTransaction {
     fn from(t: ethjson::state::transaction::AccessListTx) -> Self {
         let secret = t.transaction.secret.clone().map(|s| Secret::from(s.0));
-        let access_list = t.access_list
+        let access_list = t
+            .access_list
             .into_iter()
             .map(|elem| {
-                (elem.address.into(), elem.storage_keys
-                    .into_iter()
-                    .map(|a| a.into())
-                    .collect())
-                })
+                (
+                    elem.address.into(),
+                    elem.storage_keys.into_iter().map(|x| x.into()).collect(),
+                )
+            })
             .collect();
 
         let transaction: Transaction = t.transaction.into();
-        let tx = TypedTransaction::AccessList(AccessListTx{transaction, access_list});
+        let tx = TypedTransaction::AccessList(AccessListTx {
+            transaction,
+            access_list,
+        });
 
         match secret {
             Some(s) => tx.sign(&s, None),

@@ -1746,7 +1746,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),
@@ -1767,7 +1767,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),

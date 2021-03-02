@@ -639,10 +639,7 @@ impl From<ethjson::state::Transaction> for SignedTransaction {
         let secret = t.secret.clone().map(|s| Secret::from(s.0));
         let tx = TypedTransaction::Legacy(t.into());
 
-        match secret {
-            Some(s) => tx.sign(&s, None),
-            None => tx.null_sign(1),
-        }
+        sign_with_secret(tx, secret)
     }
 }
 
@@ -650,27 +647,29 @@ impl From<ethjson::state::Transaction> for SignedTransaction {
 impl From<ethjson::state::transaction::AccessListTx> for SignedTransaction {
     fn from(t: ethjson::state::transaction::AccessListTx) -> Self {
         let secret = t.transaction.secret.clone().map(|s| Secret::from(s.0));
-        let access_list = t
-            .access_list
-            .into_iter()
-            .map(|elem| {
-                (
-                    elem.address.into(),
-                    elem.storage_keys.into_iter().map(|x| x.into()).collect(),
-                )
-            })
-            .collect();
-
-        let transaction: Transaction = t.transaction.into();
         let tx = TypedTransaction::AccessList(AccessListTx {
-            transaction,
-            access_list,
+            transaction: t.transaction.into(),
+            access_list: t
+                .access_list
+                .into_iter()
+                .map(|elem| {
+                    (
+                        elem.address.into(),
+                        elem.storage_keys.into_iter().map(|x| x.into()).collect(),
+                    )
+                })
+                .collect(),
         });
 
-        match secret {
-            Some(s) => tx.sign(&s, None),
-            None => tx.null_sign(1),
-        }
+        sign_with_secret(tx, secret)
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTransaction {
+    match secret {
+        Some(s) => tx.sign(&s, None),
+        None => tx.null_sign(1),
     }
 }
 

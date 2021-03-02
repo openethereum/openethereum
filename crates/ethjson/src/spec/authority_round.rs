@@ -70,12 +70,14 @@ pub struct AuthorityRound {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use super::BlockReward;
     use ethereum_types::{H160, U256};
     use hash::Address;
     use serde_json;
     use spec::{authority_round::AuthorityRound, validator_set::ValidatorSet};
     use uint::Uint;
-    use super::BlockReward;
 
     #[test]
     fn authority_round_deserialization() {
@@ -115,5 +117,37 @@ mod tests {
             deserialized.params.block_reward,
             Some(BlockReward::Single(Uint(5000000.into())))
         )
+    }
+
+    #[test]
+    fn authority_round_deserialization_multi_block() {
+        let s = r#"{
+			"params": {
+				"stepDuration": "0x02",
+				"validators": {
+					"contract" : "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
+				},
+				"blockReward": {
+                    "0": 5000000,
+                    "100": 150
+                }
+			}
+		}"#;
+
+        let deserialized: AuthorityRound = serde_json::from_str(s).unwrap();
+        assert_eq!(deserialized.params.step_duration, Uint(U256::from(0x02)));
+        assert_eq!(
+            deserialized.params.validators,
+            ValidatorSet::Contract(Address(H160::from(
+                "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
+            )))
+        );
+        let mut rewards: BTreeMap<Uint, Uint> = BTreeMap::new();
+        rewards.insert(Uint(U256::from(0)), Uint(U256::from(5000000)));
+        rewards.insert(Uint(U256::from(100)), Uint(U256::from(150)));
+        assert_eq!(
+            deserialized.params.block_reward,
+            Some(BlockReward::Multi(rewards))
+        );
     }
 }

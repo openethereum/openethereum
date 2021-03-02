@@ -21,11 +21,6 @@ pub mod state;
 pub mod test;
 pub mod transaction;
 
-pub use self::{
-    log::Log,
-    state::State,
-    test::Test,
-    transaction::{AccessListTx, Transaction, TypedTransaction},
-};
+pub use self::{log::Log, state::State, test::Test, transaction::Transaction};
 pub use blockchain::State as AccountState;
 pub use vm::Env;

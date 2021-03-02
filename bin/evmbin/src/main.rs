@@ -204,7 +204,7 @@ fn run_state_test(args: Args) {
             }
             for (idx, state) in states.into_iter().enumerate() {
                 let post_root = state.hash.into();
-                let transaction = multitransaction.select(&state.indexes).into();
+                let transaction = multitransaction.select(&state.indexes);
 
                 let trie_spec = if args.flag_std_dump_json {
                     TrieSpec::Fat

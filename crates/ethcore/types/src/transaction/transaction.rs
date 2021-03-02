@@ -17,7 +17,6 @@
 //! Transaction data structure.
 
 use ethereum_types::{Address, H160, H256, U256};
-use ethjson;
 use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
@@ -603,100 +602,6 @@ impl SignatureComponents {
         ));
         s.append(&self.r);
         s.append(&self.s);
-    }
-}
-
-impl From<ethjson::state::Transaction> for Transaction {
-    fn from(t: ethjson::state::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        Transaction {
-            nonce: t.nonce.into(),
-            gas_price: t.gas_price.into(),
-            gas: t.gas_limit.into(),
-            action: match to {
-                Some(to) => Action::Call(to.into()),
-                None => Action::Create,
-            },
-            value: t.value.into(),
-            data: t.data.into(),
-        }
-    }
-}
-
-#[cfg(any(test, feature = "test-helpers"))]
-impl From<ethjson::state::transaction::TypedTransaction> for SignedTransaction {
-    fn from(t: ethjson::state::transaction::TypedTransaction) -> Self {
-        match t {
-            ethjson::state::transaction::TypedTransaction::AccessList(tx) => tx.into(),
-            ethjson::state::transaction::TypedTransaction::Legacy(tx) => tx.into(),
-        }
-    }
-}
-
-#[cfg(any(test, feature = "test-helpers"))]
-impl From<ethjson::state::Transaction> for SignedTransaction {
-    fn from(t: ethjson::state::Transaction) -> Self {
-        let secret = t.secret.clone().map(|s| Secret::from(s.0));
-        let tx = TypedTransaction::Legacy(t.into());
-
-        sign_with_secret(tx, secret)
-    }
-}
-
-#[cfg(any(test, feature = "test-helpers"))]
-impl From<ethjson::state::transaction::AccessListTx> for SignedTransaction {
-    fn from(t: ethjson::state::transaction::AccessListTx) -> Self {
-        let secret = t.transaction.secret.clone().map(|s| Secret::from(s.0));
-        let tx = TypedTransaction::AccessList(AccessListTx {
-            transaction: t.transaction.into(),
-            access_list: t
-                .access_list
-                .into_iter()
-                .map(|elem| {
-                    (
-                        elem.address.into(),
-                        elem.storage_keys.into_iter().map(|x| x.into()).collect(),
-                    )
-                })
-                .collect(),
-        });
-
-        sign_with_secret(tx, secret)
-    }
-}
-
-#[cfg(any(test, feature = "test-helpers"))]
-fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTransaction {
-    match secret {
-        Some(s) => tx.sign(&s, None),
-        None => tx.null_sign(1),
-    }
-}
-
-impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
-    fn from(t: ethjson::transaction::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        UnverifiedTransaction {
-            unsigned: TypedTransaction::Legacy(Transaction {
-                nonce: t.nonce.into(),
-                gas_price: t.gas_price.into(),
-                gas: t.gas_limit.into(),
-                action: match to {
-                    Some(to) => Action::Call(to.into()),
-                    None => Action::Create,
-                },
-                value: t.value.into(),
-                data: t.data.into(),
-            }),
-            chain_id: signature::extract_chain_id_from_legacy_v(t.v.into()),
-            signature: SignatureComponents {
-                r: t.r.into(),
-                s: t.s.into(),
-                standard_v: signature::extract_standard_v(t.v.into()),
-            },
-            hash: 0.into(),
-        }
-        .compute_hash()
     }
 }
 

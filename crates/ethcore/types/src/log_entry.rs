@@ -21,7 +21,6 @@ use ethereum_types::{Address, Bloom, BloomInput, H256};
 use heapsize::HeapSizeOf;
 use std::ops::Deref;
 
-use ethjson;
 use BlockNumber;
 
 /// A record of execution for a `LOG` operation.
@@ -50,16 +49,6 @@ impl LogEntry {
                 b.accrue(BloomInput::Raw(t));
                 b
             })
-    }
-}
-
-impl From<ethjson::state::Log> for LogEntry {
-    fn from(l: ethjson::state::Log) -> Self {
-        LogEntry {
-            address: l.address.into(),
-            topics: l.topics.into_iter().map(Into::into).collect(),
-            data: l.data.into(),
-        }
     }
 }
 

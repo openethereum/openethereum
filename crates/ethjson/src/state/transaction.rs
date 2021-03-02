@@ -21,14 +21,6 @@ use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use uint::Uint;
 
-use super::test::AccessList;
-
-#[derive(Debug, PartialEq)]
-pub enum TypedTransaction {
-    Legacy(Transaction),
-    AccessList(AccessListTx),
-}
-
 /// State test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,12 +40,6 @@ pub struct Transaction {
     pub to: MaybeEmpty<Address>,
     /// Value.
     pub value: Uint,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct AccessListTx {
-    pub transaction: Transaction,
-    pub access_list: Vec<AccessList>,
 }
 
 #[cfg(test)]

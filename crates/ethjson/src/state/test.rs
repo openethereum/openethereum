@@ -17,13 +17,17 @@
 //! General test deserialization.
 
 use bytes::Bytes;
+use ethkey::Secret;
 use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use serde_json::{self, Error};
 use spec::ForkSpec;
-use state::{AccessListTx, AccountState, Env, Transaction, TypedTransaction};
+use state::{AccountState, Env};
 use std::{collections::BTreeMap, io::Read};
+use types::transaction::{AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction};
 use uint::Uint;
+
+use crate::blockchain::transaction::AccessList;
 
 /// State test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -70,7 +74,7 @@ pub struct MultiTransaction {
     /// Transaction data set.
     pub data: Vec<Bytes>,
     /// Optional access list
-    pub access_lists: Option<Vec<Option<Vec<AccessList>>>>,
+    pub access_lists: Option<Vec<Option<AccessList>>>,
     /// Gas limit set.
     pub gas_limit: Vec<Uint>,
     /// Gas price.
@@ -86,29 +90,55 @@ pub struct MultiTransaction {
     pub value: Vec<Uint>,
 }
 
+fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTransaction {
+    match secret {
+        Some(s) => tx.sign(&s, None),
+        None => tx.null_sign(1),
+    }
+}
+
 impl MultiTransaction {
     /// Build transaction with given indexes.
-    pub fn select(&self, indexes: &PostStateIndexes) -> TypedTransaction {
+    pub fn select(&self, indexes: &PostStateIndexes) -> SignedTransaction {
+        let secret = self.secret.clone().map(|s| Secret::from(s.0));
+        let to: Option<Address> = self.to.clone().into();
         let transaction = Transaction {
-            data: self.data[indexes.data as usize].clone(),
-            gas_limit: self.gas_limit[indexes.gas as usize].clone(),
-            gas_price: self.gas_price.clone(),
-            nonce: self.nonce.clone(),
-            secret: self.secret.clone(),
-            to: self.to.clone(),
-            value: self.value[indexes.value as usize].clone(),
+            nonce: self.nonce.clone().into(),
+            gas_price: self.gas_price.clone().into(),
+            gas: self.gas_limit[indexes.gas as usize].clone().into(),
+            action: match to {
+                Some(to) => Action::Call(to.into()),
+                None => Action::Create,
+            },
+            value: self.value[indexes.value as usize].clone().into(),
+            data: self.data[indexes.data as usize].clone().into(),
         };
 
         if let Some(access_lists) = self.access_lists.as_ref() {
-            if let Some(access_list) = access_lists[indexes.data as usize].clone() {
-                return TypedTransaction::AccessList(AccessListTx {
-                    transaction,
-                    access_list,
-                });
+            if access_lists.len() > indexes.data as usize {
+                if let Some(access_list) = access_lists[indexes.data as usize].clone() {
+                    //access list type of transaction
+
+                    return sign_with_secret(
+                        TypedTransaction::AccessList(AccessListTx {
+                            transaction,
+                            access_list: access_list
+                                .into_iter()
+                                .map(|elem| {
+                                    (
+                                        elem.address.into(),
+                                        elem.storage_keys.into_iter().map(Into::into).collect(),
+                                    )
+                                })
+                                .collect(),
+                        }),
+                        secret,
+                    );
+                }
             }
         }
 
-        TypedTransaction::Legacy(transaction)
+        sign_with_secret(TypedTransaction::Legacy(transaction), secret)
     }
 }
 
@@ -121,16 +151,6 @@ pub struct PostStateIndexes {
     pub gas: u64,
     /// Index into transaction value set.
     pub value: u64,
-}
-
-/// Access list deserialization.
-#[derive(Debug, PartialEq, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AccessList {
-    /// Address
-    pub address: Address,
-    /// Storage keys
-    pub storage_keys: Vec<H256>,
 }
 
 /// State test indexed state result deserialization.

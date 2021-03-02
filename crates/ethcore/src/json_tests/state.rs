@@ -20,7 +20,6 @@ use ethjson;
 use pod_state::PodState;
 use std::path::Path;
 use trace;
-use types::transaction::SignedTransaction;
 use vm::EnvInfo;
 
 fn skip_test(
@@ -91,8 +90,7 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
                     }
 
                     let post_root: H256 = state.hash.into();
-                    let transaction: SignedTransaction =
-                        multitransaction.select(&state.indexes).into();
+                    let transaction = multitransaction.select(&state.indexes);
 
                     let result = || -> Result<_, EvmTestError> {
                         Ok(EvmTestClient::from_pod_state(&spec, pre.clone())?.transact(

@@ -439,7 +439,6 @@ name = "common-types"
 version = "0.1.0"
 dependencies = [
  "ethereum-types 0.4.2",
- "ethjson",
  "ethkey",
  "heapsize",
  "keccak-hash",
@@ -1375,7 +1374,9 @@ dependencies = [
 name = "ethjson"
 version = "0.1.0"
 dependencies = [
+ "common-types",
  "ethereum-types 0.4.2",
+ "ethkey",
  "macros",
  "maplit",
  "rustc-hex 1.0.0",

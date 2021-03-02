@@ -766,7 +766,7 @@ impl Service {
             | Err(Error(SnapshotErrorKind::Snapshot(SnapshotError::RestorationAborted), _)) => (),
             Err(e) => {
                 warn!("Encountered error during snapshot restoration: {}", e);
-                *self.restoration.lock() = None;
+                *restoration = None;
                 *self.status.lock() = RestorationStatus::Failed;
                 let _ = fs::remove_dir_all(self.restoration_dir());
             }

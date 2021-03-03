@@ -35,7 +35,6 @@
 #![warn(unused_extern_crates)]
 
 extern crate ethereum_types;
-extern crate ethjson;
 extern crate ethkey;
 extern crate heapsize;
 extern crate keccak_hash as hash;

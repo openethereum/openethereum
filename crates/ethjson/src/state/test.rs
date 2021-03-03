@@ -17,13 +17,17 @@
 //! General test deserialization.
 
 use bytes::Bytes;
+use ethkey::Secret;
 use hash::{Address, H256};
 use maybe::MaybeEmpty;
 use serde_json::{self, Error};
 use spec::ForkSpec;
-use state::{AccountState, Env, Transaction};
+use state::{AccountState, Env};
 use std::{collections::BTreeMap, io::Read};
+use types::transaction::{AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction};
 use uint::Uint;
+
+use crate::blockchain::transaction::AccessList;
 
 /// State test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -69,6 +73,8 @@ pub struct State {
 pub struct MultiTransaction {
     /// Transaction data set.
     pub data: Vec<Bytes>,
+    /// Optional access list
+    pub access_lists: Option<Vec<Option<AccessList>>>,
     /// Gas limit set.
     pub gas_limit: Vec<Uint>,
     /// Gas price.
@@ -84,18 +90,57 @@ pub struct MultiTransaction {
     pub value: Vec<Uint>,
 }
 
+fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTransaction {
+    match secret {
+        Some(s) => tx.sign(&s, None),
+        None => tx.null_sign(1),
+    }
+}
+
 impl MultiTransaction {
     /// Build transaction with given indexes.
-    pub fn select(&self, indexes: &PostStateIndexes) -> Transaction {
-        Transaction {
-            data: self.data[indexes.data as usize].clone(),
-            gas_limit: self.gas_limit[indexes.gas as usize].clone(),
-            gas_price: self.gas_price.clone(),
-            nonce: self.nonce.clone(),
-            secret: self.secret.clone(),
-            to: self.to.clone(),
-            value: self.value[indexes.value as usize].clone(),
+    pub fn select(&self, indexes: &PostStateIndexes) -> SignedTransaction {
+        let secret = self.secret.clone().map(|s| Secret::from(s.0));
+        let to: Option<Address> = self.to.clone().into();
+        let transaction = Transaction {
+            nonce: self.nonce.clone().into(),
+            gas_price: self.gas_price.clone().into(),
+            gas: self.gas_limit[indexes.gas as usize].clone().into(),
+            action: match to {
+                Some(to) => Action::Call(to.into()),
+                None => Action::Create,
+            },
+            value: self.value[indexes.value as usize].clone().into(),
+            data: self.data[indexes.data as usize].clone().into(),
+        };
+
+        if let Some(access_lists) = self.access_lists.as_ref() {
+            if access_lists.len() > indexes.data as usize {
+                if let Some(access_list) = access_lists[indexes.data as usize].clone() {
+                    //access list type of transaction
+
+                    let access_list = access_list
+                        .into_iter()
+                        .map(|elem| {
+                            (
+                                elem.address.into(),
+                                elem.storage_keys.into_iter().map(Into::into).collect(),
+                            )
+                        })
+                        .collect();
+
+                    let tx = TypedTransaction::AccessList(AccessListTx {
+                        transaction,
+                        access_list,
+                    });
+
+                    return sign_with_secret(tx, secret);
+                }
+            }
         }
+
+        let tx = TypedTransaction::Legacy(transaction);
+        sign_with_secret(tx, secret)
     }
 }
 
@@ -128,6 +173,39 @@ mod tests {
     fn multi_transaction_deserialization() {
         let s = r#"{
 			"data" : [ "" ],
+			"gasLimit" : [ "0x2dc6c0", "0x222222" ],
+			"gasPrice" : "0x01",
+			"nonce" : "0x00",
+			"secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
+			"to" : "1000000000000000000000000000000000000000",
+			"value" : [ "0x00", "0x01", "0x02" ]
+		}"#;
+        let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
+    }
+
+    #[test]
+    fn multi_transaction_deserialization_with_access_list() {
+        let s = r#"{
+			"data" : [ "" ],
+			"accessLists" : [
+				null,
+                [
+                ],
+                [
+                    {
+                        "address" : "0x0000000000000000000000000000000000000102",
+                        "storageKeys" : [
+                        ]
+                    },
+                    {
+                        "address" : "0x0000000000000000000000000000000000000101",
+                        "storageKeys" : [
+                            "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "0x0000000000000000000000000000000000000000000000000000000000000010"
+                        ]
+                    }
+                ]
+			],
 			"gasLimit" : [ "0x2dc6c0", "0x222222" ],
 			"gasPrice" : "0x01",
 			"nonce" : "0x00",

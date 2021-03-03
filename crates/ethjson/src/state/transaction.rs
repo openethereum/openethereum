@@ -51,6 +51,7 @@ mod tests {
     fn transaction_deserialization() {
         let s = r#"{
 			"data" : "",
+			"accessLists": null,
 			"gasLimit" : "0x2dc6c0",
 			"gasPrice" : "0x01",
 			"nonce" : "0x00",

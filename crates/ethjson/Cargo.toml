@@ -5,6 +5,8 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
+common-types = { path = "../ethcore/types", features = ["test-helpers"] }
+ethkey = { path = "../accounts/ethkey" }
 ethereum-types = "0.4"
 rustc-hex = "1.0"
 serde = "1.0"

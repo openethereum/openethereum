@@ -25,7 +25,6 @@ use executive;
 use factory::{self, Factories};
 use journaldb;
 use kvdb::{self, KeyValueDB};
-use kvdb_memorydb;
 use pod_state;
 use spec;
 use state;
@@ -181,7 +180,7 @@ impl<'a> EvmTestClient<'a> {
         spec: &'a spec::Spec,
         factories: &Factories,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
             db::NUM_COLUMNS.expect("We use column-based DB; qed"),
         ));
         let journal_db =
@@ -211,7 +210,7 @@ impl<'a> EvmTestClient<'a> {
         factories: &Factories,
         pod_state: pod_state::PodState,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
             db::NUM_COLUMNS.expect("We use column-based DB; qed"),
         ));
         let journal_db =

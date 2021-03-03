@@ -119,26 +119,28 @@ impl MultiTransaction {
                 if let Some(access_list) = access_lists[indexes.data as usize].clone() {
                     //access list type of transaction
 
-                    return sign_with_secret(
-                        TypedTransaction::AccessList(AccessListTx {
-                            transaction,
-                            access_list: access_list
-                                .into_iter()
-                                .map(|elem| {
-                                    (
-                                        elem.address.into(),
-                                        elem.storage_keys.into_iter().map(Into::into).collect(),
-                                    )
-                                })
-                                .collect(),
-                        }),
-                        secret,
-                    );
+                    let access_list = access_list
+                        .into_iter()
+                        .map(|elem| {
+                            (
+                                elem.address.into(),
+                                elem.storage_keys.into_iter().map(Into::into).collect(),
+                            )
+                        })
+                        .collect();
+
+                    let tx = TypedTransaction::AccessList(AccessListTx {
+                        transaction,
+                        access_list,
+                    });
+
+                    return sign_with_secret(tx, secret);
                 }
             }
         }
 
-        sign_with_secret(TypedTransaction::Legacy(transaction), secret)
+        let tx = TypedTransaction::Legacy(transaction);
+        sign_with_secret(tx, secret)
     }
 }
 

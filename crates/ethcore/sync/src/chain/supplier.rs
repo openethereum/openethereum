@@ -25,8 +25,7 @@ use enum_primitive::FromPrimitive;
 use ethereum_types::H256;
 use network::{self, PeerId};
 use rlp::{Rlp, RlpStream};
-use std::cmp;
-use std::sync::RwLock as StdRwLock;
+use std::{cmp, sync::RwLock as StdRwLock};
 use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
@@ -422,8 +421,7 @@ mod test {
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
-    use std::collections::VecDeque;
-    use std::sync::RwLock as StdRwLock;
+    use std::{collections::VecDeque, sync::RwLock as StdRwLock};
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
 
     #[test]

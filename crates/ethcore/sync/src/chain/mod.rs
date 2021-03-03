@@ -112,12 +112,13 @@ use parking_lot::Mutex;
 use rand::Rng;
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{RwLock as StdRwLock, RwLockWriteGuard as StdRwLockWriteGuard};
 use std::{
     cmp,
     collections::{BTreeMap, HashMap, HashSet},
-    sync::mpsc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, RwLock as StdRwLock, RwLockWriteGuard as StdRwLockWriteGuard,
+    },
     time::{Duration, Instant},
 };
 use sync_io::SyncIo;

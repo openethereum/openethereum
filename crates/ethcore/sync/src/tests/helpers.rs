@@ -35,13 +35,12 @@ use ethereum_types::H256;
 use io::{IoChannel, IoContext, IoHandler};
 use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId, SessionInfo};
 use parking_lot::RwLock;
-use std::sync::{
-    RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
-    RwLockWriteGuard as StdRwLockWriteGuard,
-};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    sync::Arc,
+    sync::{
+        Arc, RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
+        RwLockWriteGuard as StdRwLockWriteGuard,
+    },
 };
 use sync_io::SyncIo;
 use tests::snapshot::*;

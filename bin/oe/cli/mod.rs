@@ -1548,7 +1548,7 @@ mod tests {
                 }),
                 metrics: Some(Metrics {
                     enable: Some(true),
-                    prefix: Some("".to_string()),
+                    prefix: Some("oe".to_string()),
                     interface: Some("local".to_string()),
                     port: Some(4000),
                 }),

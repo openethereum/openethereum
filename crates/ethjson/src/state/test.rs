@@ -179,7 +179,6 @@ mod tests {
 			"value" : [ "0x00", "0x01", "0x02" ]
 		}"#;
         let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
-        println!("_deserialized = {:?}", _deserialized);
     }
 
     #[test]
@@ -213,7 +212,6 @@ mod tests {
 			"value" : [ "0x00", "0x01", "0x02" ]
 		}"#;
         let _deserialized: MultiTransaction = serde_json::from_str(s).unwrap();
-        println!("_deserialized = {:?}", _deserialized);
     }
 
     #[test]

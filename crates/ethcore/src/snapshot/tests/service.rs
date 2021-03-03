@@ -363,6 +363,8 @@ fn recover_aborted_recovery() {
         }
         e => panic!("Snapshot restoration must be ongoing ; {:?}", e),
     }
+    // abort restoration so that we can delete snapshot root folder
+    service.abort_restore();
 
     // Remove the snapshot directory, and restart the restoration
     // It shouldn't have restored any previous blocks

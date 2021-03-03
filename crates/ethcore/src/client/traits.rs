@@ -220,6 +220,9 @@ pub trait IoClient: Sync + Send {
         receipts_bytes: Bytes,
     ) -> EthcoreResult<H256>;
 
+    /// Return percentage of how full is queue that handles ancient blocks. 0 if empty, 1 if full.
+    fn ancient_block_queue_fullness(&self) -> f32;
+
     /// Queue conensus engine message.
     fn queue_consensus_message(&self, message: Bytes);
 }

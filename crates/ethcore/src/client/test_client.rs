@@ -1069,6 +1069,10 @@ impl IoClient for TestBlockChainClient {
         self.miner.import_external_transactions(self, txs);
     }
 
+    fn ancient_block_queue_fullness(&self) -> f32 {
+        0.0
+    }
+
     fn queue_ancient_block(&self, unverified: Unverified, _r: Bytes) -> EthcoreResult<H256> {
         self.import_block(unverified)
     }

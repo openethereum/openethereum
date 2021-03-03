@@ -51,6 +51,7 @@ extern crate parking_lot;
 extern crate patricia_trie_ethereum as ethtrie;
 extern crate rand;
 extern crate rayon;
+extern crate reth_util;
 extern crate rlp;
 extern crate rustc_hex;
 extern crate serde;

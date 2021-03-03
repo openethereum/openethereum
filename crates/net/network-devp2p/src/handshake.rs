@@ -20,14 +20,13 @@ use ethkey::{
     crypto::{ecdh, ecies},
     recover, sign, Generator, KeyPair, Public, Random, Secret,
 };
-use hash::write_keccak;
 use host::HostInfo;
 use io::{IoContext, StreamToken};
 use mio::tcp::*;
 use network::{Error, ErrorKind};
 use node_table::NodeId;
 use parity_bytes::Bytes;
-use rand::random;
+use rand::{random, Rng};
 use rlp::{Rlp, RlpStream};
 use std::time::Duration;
 
@@ -314,25 +313,23 @@ impl Handshake {
         Message: Send + Clone + Sync + 'static,
     {
         trace!(target: "network", "Sending handshake auth to {:?}", self.connection.remote_addr_str());
-        let mut data = [0u8; /*Signature::SIZE*/ 65 + /*H256::SIZE*/ 32 + /*Public::SIZE*/ 64 + /*H256::SIZE*/ 32 + 1]; //TODO: use associated constants
-        let len = data.len();
-        {
-            data[len - 1] = 0x0;
-            let (sig, rest) = data.split_at_mut(65);
-            let (hepubk, rest) = rest.split_at_mut(32);
-            let (pubk, rest) = rest.split_at_mut(64);
-            let (nonce, _) = rest.split_at_mut(32);
-
-            // E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
-            let shared = *ecdh::agree(secret, &self.id)?;
-            sig.copy_from_slice(&*sign(self.ecdhe.secret(), &(shared ^ self.nonce))?);
-            write_keccak(self.ecdhe.public(), hepubk);
-            pubk.copy_from_slice(public);
-            nonce.copy_from_slice(&self.nonce);
-        }
-        let message = ecies::encrypt(&self.id, &[], &data)?;
-        self.auth_cipher = message.clone();
-        self.connection.send(io, message);
+        let mut rlp = RlpStream::new_list(4);
+        let shared = *ecdh::agree(secret, &self.id)?;
+        rlp.append(&sign(self.ecdhe.secret(), &(shared ^ self.nonce))?.to_vec());
+        rlp.append(public);
+        rlp.append(&self.nonce);
+        rlp.append(&PROTOCOL_VERSION);
+        let mut encoded = rlp.out();
+        encoded.resize(
+            encoded.len() + rand::thread_rng().gen_range::<usize>(100, 301),
+            0,
+        );
+        let len = (encoded.len() + ECIES_OVERHEAD) as u16;
+        let prefix = len.to_be_bytes();
+        let message = ecies::encrypt(&self.id, &prefix, &encoded)?;
+        self.auth_cipher.extend_from_slice(&prefix);
+        self.auth_cipher.extend_from_slice(&message);
+        self.connection.send(io, self.auth_cipher.clone());
         self.connection.expect(V4_ACK_PACKET_SIZE);
         self.state = HandshakeState::ReadingAck;
         Ok(())

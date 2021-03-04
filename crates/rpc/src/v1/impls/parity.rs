@@ -47,7 +47,7 @@ use v1::{
     types::{
         block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
         LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
-        Transaction, TransactionStats,
+        Transaction, TransactionFilter, TransactionStats,
     },
 };
 use Host;
@@ -268,7 +268,11 @@ where
             .map(Into::into)
     }
 
-    fn pending_transactions(&self, limit: Option<usize>) -> Result<Vec<Transaction>> {
+    fn pending_transactions(
+        &self,
+        limit: Option<usize>,
+        filter: Option<TransactionFilter>,
+    ) -> Result<Vec<Transaction>> {
         let ready_transactions = self.miner.ready_transactions(
             &*self.client,
             limit.unwrap_or_else(usize::max_value),
@@ -278,6 +282,7 @@ where
         Ok(ready_transactions
             .into_iter()
             .map(|t| Transaction::from_pending(t.pending().clone()))
+            .filter(|t| { if let Some(f) = &filter { f.matches(t) } else { true } })
             .collect())
     }
 

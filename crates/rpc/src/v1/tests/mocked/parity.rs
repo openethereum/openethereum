@@ -19,7 +19,7 @@ use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H256, U256};
 use ethstore::ethkey::{Generator, Random};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use sync::ManageNetwork;
 use types::{
     receipt::{LocalizedReceipt, TransactionOutcome},
@@ -288,6 +288,73 @@ fn rpc_parity_pending_transactions() {
     let response = r#"{"jsonrpc":"2.0","result":[],"id":1}"#;
 
     assert_eq!(io.handle_request_sync(request), Some(response.to_owned()));
+}
+
+fn assert_txs_filtered(io: &IoHandler<Metadata>, filter: &str, expected: Vec<u8>) {
+    let request = format!(
+        r#"{{"jsonrpc": "2.0", "method": "parity_pendingTransactions",
+        "params":[10, {}], "id": 1}}"#,
+        filter
+    );
+    let response_str = io.handle_request_sync(&request).unwrap();
+    let response = serde_json::Value::from_str(&response_str).unwrap();
+    assert_eq!(response["result"].as_array().unwrap().len(), expected.len());
+    for n in expected {
+        let expected_sender = format!("0x000000000000000000000000000000000000005{}", n);
+        assert!(response_str.contains(&expected_sender));
+    }
+}
+
+#[test]
+fn rpc_parity_pending_transactions_with_filter() {
+    use types::transaction::{Action, Transaction, TypedTransaction};
+    let deps = Dependencies::new();
+    let io = deps.default_client();
+
+    for i in 1..6 {
+        let tx = TypedTransaction::Legacy(Transaction {
+            value: i.into(),
+            gas: (i + 0x10).into(),
+            gas_price: (i + 0x20).into(),
+            nonce: (i + 0x30).into(),
+            action: Action::Call((i+0x40).into()),
+            data: vec![]
+        }).fake_sign((i + 0x50).into());
+        deps.miner.pending_transactions.lock().insert((i+0x60).into(), tx);
+    }
+
+    let tx = TypedTransaction::Legacy(Transaction {
+        value: 0.into(),
+        gas: 0x16.into(),
+        gas_price: 0x26.into(),
+        nonce: 0x36.into(),
+        action: Action::Create,
+        data: vec![0x01, 0x02, 0x03],
+    }).fake_sign(0x56.into());
+    deps.miner.pending_transactions.lock().insert(0x66.into(), tx);
+
+    assert_txs_filtered(
+        &io,
+        r#"{"from":{"eq":"0x0000000000000000000000000000000000000052"}}"#,
+        vec![2],
+    );
+    assert_txs_filtered(
+        &io,
+        r#"{"to":{"eq":"0x0000000000000000000000000000000000000041"}}"#,
+        vec![1],
+    );
+    assert_txs_filtered(&io, r#"{"to":{"eq":null}}"#, vec![6]);
+    assert_txs_filtered(&io, r#"{"gas":{"gt":"0x12"}}"#, vec![3, 4, 5, 6]);
+    assert_txs_filtered(&io, r#"{"gas_price":{"eq":"0x24"}}"#, vec![4]);
+    assert_txs_filtered(&io, r#"{"nonce":{"lt":"0x33"}}"#, vec![1, 2]);
+    assert_txs_filtered(&io, r#"{"value":{"lt":"0x2"}}"#, vec![1, 6]);
+    assert_txs_filtered(&io, r#"{"value":{"gt":"0x1"},"gas":{"lt":"0x14"}}"#, vec![2, 3]);
+    assert_txs_filtered(&io, r#"{"value":{"gt":"0x6"},"gas":{"gt":"0x1"}}"#, vec![]);
+    assert_txs_filtered(
+        &io,
+        r#"{"value":{"lt":"0x60"},"nonce":{"lt":"0x60"}}"#,
+        vec![1, 2, 3, 4, 5, 6],
+    );
 }
 
 #[test]

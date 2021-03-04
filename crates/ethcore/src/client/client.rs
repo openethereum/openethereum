@@ -1867,6 +1867,12 @@ impl StateClient for Client {
     }
 }
 
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.shutdown()
+    }
+}
+
 impl Call for Client {
     type State = State<::state_db::StateDB>;
 

@@ -282,7 +282,13 @@ where
         Ok(ready_transactions
             .into_iter()
             .map(|t| Transaction::from_pending(t.pending().clone()))
-            .filter(|t| { if let Some(f) = &filter { f.matches(t) } else { true } })
+            .filter(|t| {
+                if let Some(f) = &filter {
+                    f.matches(t)
+                } else {
+                    true
+                }
+            })
             .take(limit.unwrap_or_else(usize::max_value))
             .collect())
     }

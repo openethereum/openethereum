@@ -317,10 +317,14 @@ fn rpc_parity_pending_transactions_with_filter() {
             gas: (i + 0x10).into(),
             gas_price: (i + 0x20).into(),
             nonce: (i + 0x30).into(),
-            action: Action::Call((i+0x40).into()),
-            data: vec![]
-        }).fake_sign((i + 0x50).into());
-        deps.miner.pending_transactions.lock().insert((i+0x60).into(), tx);
+            action: Action::Call((i + 0x40).into()),
+            data: vec![],
+        })
+        .fake_sign((i + 0x50).into());
+        deps.miner
+            .pending_transactions
+            .lock()
+            .insert((i + 0x60).into(), tx);
     }
 
     let tx = TypedTransaction::Legacy(Transaction {
@@ -330,8 +334,12 @@ fn rpc_parity_pending_transactions_with_filter() {
         nonce: 0x36.into(),
         action: Action::Create,
         data: vec![0x01, 0x02, 0x03],
-    }).fake_sign(0x56.into());
-    deps.miner.pending_transactions.lock().insert(0x66.into(), tx);
+    })
+    .fake_sign(0x56.into());
+    deps.miner
+        .pending_transactions
+        .lock()
+        .insert(0x66.into(), tx);
 
     assert_txs_filtered(
         &io,
@@ -348,7 +356,11 @@ fn rpc_parity_pending_transactions_with_filter() {
     assert_txs_filtered(&io, r#"{"gas_price":{"eq":"0x24"}}"#, vec![4]);
     assert_txs_filtered(&io, r#"{"nonce":{"lt":"0x33"}}"#, vec![1, 2]);
     assert_txs_filtered(&io, r#"{"value":{"lt":"0x2"}}"#, vec![1, 6]);
-    assert_txs_filtered(&io, r#"{"value":{"gt":"0x1"},"gas":{"lt":"0x14"}}"#, vec![2, 3]);
+    assert_txs_filtered(
+        &io,
+        r#"{"value":{"gt":"0x1"},"gas":{"lt":"0x14"}}"#,
+        vec![2, 3],
+    );
     assert_txs_filtered(&io, r#"{"value":{"gt":"0x6"},"gas":{"gt":"0x1"}}"#, vec![]);
     assert_txs_filtered(
         &io,

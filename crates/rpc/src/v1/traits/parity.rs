@@ -24,7 +24,7 @@ use jsonrpc_derive::rpc;
 use v1::types::{
     BlockNumber, Bytes, CallRequest, ChainStatus, Histogram, LocalTransactionStatus, Peers,
     Receipt, RecoveredAccount, RichHeader, RpcSettings, Transaction, TransactionFilter,
-    TransactionStats
+    TransactionStats,
 };
 
 /// Parity-specific rpc interface.
@@ -136,7 +136,7 @@ pub trait Parity {
     fn pending_transactions(
         &self,
         _: Option<usize>,
-        _: Option<TransactionFilter>
+        _: Option<TransactionFilter>,
     ) -> Result<Vec<Transaction>>;
 
     /// Returns all transactions from transaction queue.

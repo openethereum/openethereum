@@ -10,7 +10,9 @@ pub enum EqFilterArgument<T: Eq> {
 }
 
 impl<T: Eq> Default for EqFilterArgument<T> {
-    fn default() -> Self { Self::Nil }
+    fn default() -> Self {
+        Self::Nil
+    }
 }
 
 impl<T: Eq> EqFilterArgument<T> {
@@ -33,7 +35,9 @@ pub enum ValueFilterArgument {
 }
 
 impl Default for ValueFilterArgument {
-    fn default() -> Self { Self::Nil }
+    fn default() -> Self {
+        Self::Nil
+    }
 }
 
 impl ValueFilterArgument {

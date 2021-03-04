@@ -958,6 +958,7 @@ impl Configuration {
     fn metrics_config(&self) -> Result<MetricsConfiguration, String> {
         let conf = MetricsConfiguration {
             enabled: self.metrics_enabled(),
+            prefix: self.metrics_prefix(),
             interface: self.metrics_interface(),
             port: self.args.arg_ports_shift + self.args.arg_metrics_port,
         };
@@ -1145,6 +1146,10 @@ impl Configuration {
 
     fn metrics_enabled(&self) -> bool {
         self.args.flag_metrics
+    }
+
+    fn metrics_prefix(&self) -> String {
+        self.args.arg_metrics_prefix.clone()
     }
 
     fn secretstore_enabled(&self) -> bool {

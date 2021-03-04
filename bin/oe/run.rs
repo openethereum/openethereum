@@ -450,7 +450,15 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     let is_ready = Arc::new(atomic::AtomicBool::new(true));
     miner.add_transactions_listener(Box::new(move |_hashes| {
         // we want to have only one PendingTransactions task in the queue.
-        if is_ready.compare_and_swap(true, false, atomic::Ordering::SeqCst) {
+        if is_ready
+            .compare_exchange(
+                true,
+                false,
+                atomic::Ordering::SeqCst,
+                atomic::Ordering::SeqCst,
+            )
+            .is_ok()
+        {
             let task =
                 ::sync::PriorityTask::PropagateTransactions(Instant::now(), is_ready.clone());
             // we ignore error cause it means that we are closing

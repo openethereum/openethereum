@@ -438,7 +438,6 @@ name = "common-types"
 version = "0.1.0"
 dependencies = [
  "ethereum-types",
- "ethkey",
  "keccak-hash",
  "parity-bytes",
  "parity-crypto",
@@ -919,6 +918,7 @@ dependencies = [
  "rustc-hex 1.0.0",
  "serde_json",
  "tempdir",
+ "tiny-keccak 2.0.2",
 ]
 
 [[package]]

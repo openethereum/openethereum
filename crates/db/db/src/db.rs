@@ -20,7 +20,7 @@ use kvdb::DBTransaction;
 use kvdb_rocksdb::Database;
 use parking_lot::RwLock;
 use stats::{PrometheusMetrics, PrometheusRegistry};
-use std::{collections::HashMap, hash::Hash, io::Read, ops::Deref};
+use std::{collections::HashMap, hash::Hash, io::Read};
 
 use rlp;
 

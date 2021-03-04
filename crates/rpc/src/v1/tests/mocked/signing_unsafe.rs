@@ -210,7 +210,6 @@ fn rpc_eth_sign_transaction() {
         + &rlp.to_hex()
         + r#"","#
         + r#""tx":{"#
-        + r#""accessList":[],"#
         + r#""blockHash":null,"blockNumber":null,"#
         + &format!(
             "\"chainId\":{},",

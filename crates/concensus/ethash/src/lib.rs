@@ -19,6 +19,7 @@ extern crate ethereum_types;
 extern crate memmap;
 extern crate parking_lot;
 extern crate primal;
+extern crate tiny_keccak;
 
 #[macro_use]
 extern crate crunchy;

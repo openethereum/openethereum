@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use parity_crypto::publickey::{KeyPair, Generator, Error};
+use parity_crypto::publickey::{KeyPair, Error};
 use parity_wordlist as wordlist;
 use super::Brain;
 

@@ -38,8 +38,7 @@ use parking_lot::RwLock;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     sync::{
-        Arc, RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
-        RwLockWriteGuard as StdRwLockWriteGuard,
+        Arc, RwLock as StdRwLock
     },
 };
 use sync_io::SyncIo;

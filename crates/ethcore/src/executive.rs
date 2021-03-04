@@ -1220,7 +1220,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
         self.state.sub_balance(
             &sender,
-            &U256::try_from(gas_cost).unwrap(),
+            &U256::try_from(gas_cost).expect("Total cost (value + gas_cost) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 

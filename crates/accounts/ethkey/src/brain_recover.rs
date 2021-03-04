@@ -18,7 +18,7 @@ use std::collections::HashSet;
 
 use edit_distance::edit_distance;
 use parity_wordlist;
-use parity_crypto::publickey::{Address, Generator};
+use parity_crypto::publickey::Address;
 
 use super::Brain;
 

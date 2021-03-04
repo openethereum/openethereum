@@ -346,7 +346,7 @@ mod tests {
             .insert_blooms(
                 0,
                 vec![
-                    Bloom::from_low_u64_be(0),
+                    Bloom::zero(),
                     Bloom::from_low_u64_be(0x01),
                     Bloom::from_low_u64_be(0x10),
                     Bloom::from_low_u64_be(0x11),
@@ -356,28 +356,28 @@ mod tests {
             .unwrap();
 
         let matches = database
-            .iterate_matching(0, 3, Some(&Bloom::from_low_u64_be(0)))
+            .iterate_matching(0, 3, Some(&Bloom::zero()))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![0, 1, 2, 3]);
 
         let matches = database
-            .iterate_matching(0, 4, Some(&Bloom::from_low_u64_be(0)))
+            .iterate_matching(0, 4, Some(&Bloom::zero()))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![0, 1, 2, 3]);
 
         let matches = database
-            .iterate_matching(1, 3, Some(&Bloom::from_low_u64_be(0)))
+            .iterate_matching(1, 3, Some(&Bloom::zero()))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches, vec![1, 2, 3]);
 
         let matches = database
-            .iterate_matching(1, 2, Some(&Bloom::from_low_u64_be(0)))
+            .iterate_matching(1, 2, Some(&Bloom::zero()))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap();

@@ -239,7 +239,6 @@ impl<T: NodeInfo> Drop for LocalDataStore<T> {
 mod tests {
     use super::NodeInfo;
 
-    use crypto::publickey::Generator;
     use ethkey::Brain;
     use std::sync::Arc;
     use types::transaction::{Condition, PendingTransaction, Transaction, TypedTransaction};

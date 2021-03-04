@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use parity_crypto::publickey::{KeyPair, Generator, Secret};
+use parity_crypto::publickey::{KeyPair, Secret};
 use parity_crypto::Keccak256;
 use parity_wordlist;
 
@@ -29,10 +29,8 @@ impl Brain {
     pub fn validate_phrase(phrase: &str, expected_words: usize) -> Result<(), ::WordlistError> {
         parity_wordlist::validate_phrase(phrase, expected_words)
     }
-}
 
-impl Generator for Brain {
-    fn generate(&mut self) -> KeyPair {
+    pub fn generate(&mut self) -> KeyPair {
         let seed = self.0.clone();
         let mut secret = seed.into_bytes().keccak256();
 
@@ -61,7 +59,6 @@ impl Generator for Brain {
 #[cfg(test)]
 mod tests {
     use Brain;
-    use parity_crypto::publickey::Generator;
 
     #[test]
     fn test_brain() {

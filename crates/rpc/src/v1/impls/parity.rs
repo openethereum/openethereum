@@ -275,7 +275,7 @@ where
     ) -> Result<Vec<Transaction>> {
         let ready_transactions = self.miner.ready_transactions(
             &*self.client,
-            limit.unwrap_or_else(usize::max_value),
+            usize::max_value(),
             miner::PendingOrdering::Priority,
         );
 
@@ -283,6 +283,7 @@ where
             .into_iter()
             .map(|t| Transaction::from_pending(t.pending().clone()))
             .filter(|t| { if let Some(f) = &filter { f.matches(t) } else { true } })
+            .take(limit.unwrap_or_else(usize::max_value))
             .collect())
     }
 

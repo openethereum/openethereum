@@ -34,7 +34,6 @@ use ethtrie;
 use hash::keccak;
 use itertools::Itertools;
 use kvdb::DBValue;
-use kvdb_memorydb;
 use parking_lot::RwLock;
 use rlp::RlpStream;
 use rustc_hex::FromHex;
@@ -75,7 +74,7 @@ use miner::{self, Miner, MinerService};
 use spec::Spec;
 use state::StateInfo;
 use state_db::StateDB;
-use stats::{prometheus, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use trace::LocalizedTrace;
 use verification::queue::{kind::blocks::Unverified, QueueInfo};
 
@@ -409,7 +408,7 @@ impl TestBlockChainClient {
 
 /// Get temporary db state1
 pub fn get_temp_state_db() -> StateDB {
-    let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
+    let db = ethcore_db::InMemoryWithMetrics::create(NUM_COLUMNS.unwrap_or(0));
     let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::EarlyMerge, COL_STATE);
     StateDB::new(journal_db, 1024 * 1024)
 }
@@ -1132,5 +1131,5 @@ impl super::traits::EngineClient for TestBlockChainClient {
 }
 
 impl PrometheusMetrics for TestBlockChainClient {
-    fn prometheus_metrics(&self, _r: &mut prometheus::Registry) {}
+    fn prometheus_metrics(&self, _r: &mut PrometheusRegistry) {}
 }

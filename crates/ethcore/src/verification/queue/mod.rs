@@ -181,8 +181,13 @@ impl QueueSignal {
 
         if self
             .signalled
-            .compare_and_swap(false, true, AtomicOrdering::Relaxed)
-            == false
+            .compare_exchange(
+                false,
+                true,
+                AtomicOrdering::Relaxed,
+                AtomicOrdering::Relaxed,
+            )
+            .is_ok()
         {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
@@ -199,8 +204,13 @@ impl QueueSignal {
 
         if self
             .signalled
-            .compare_and_swap(false, true, AtomicOrdering::Relaxed)
-            == false
+            .compare_exchange(
+                false,
+                true,
+                AtomicOrdering::Relaxed,
+                AtomicOrdering::Relaxed,
+            )
+            .is_ok()
         {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send(ClientIoMessage::BlockVerified) {

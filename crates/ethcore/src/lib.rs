@@ -73,8 +73,6 @@ extern crate ethcore_accounts as accounts;
 extern crate ethcore_stratum;
 #[cfg(feature = "json-tests")]
 extern crate globset;
-#[cfg(any(test, feature = "test-helpers"))]
-extern crate kvdb_memorydb;
 #[cfg(any(test, feature = "kvdb-rocksdb"))]
 extern crate kvdb_rocksdb;
 #[cfg(test)]

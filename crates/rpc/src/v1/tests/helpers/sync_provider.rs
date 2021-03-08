@@ -19,7 +19,7 @@
 use ethereum_types::H256;
 use network::client_version::ClientVersion;
 use parking_lot::RwLock;
-use stats::{prometheus, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use std::collections::BTreeMap;
 use sync::{EthProtocolInfo, PeerInfo, SyncProvider, SyncState, SyncStatus, TransactionStats};
 
@@ -69,7 +69,7 @@ impl TestSyncProvider {
 }
 
 impl PrometheusMetrics for TestSyncProvider {
-    fn prometheus_metrics(&self, _: &mut prometheus::Registry) {}
+    fn prometheus_metrics(&self, _: &mut PrometheusRegistry) {}
 }
 
 impl SyncProvider for TestSyncProvider {

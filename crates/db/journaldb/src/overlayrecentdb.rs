@@ -23,12 +23,12 @@ use std::{
 };
 
 use super::{error_negatively_reference_hash, JournalDB, DB_PREFIX_LEN, LATEST_ERA_KEY};
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use fastmap::H256FastMap;
 use hash_db::HashDB;
 use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use parking_lot::RwLock;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
@@ -554,11 +554,10 @@ mod tests {
     use super::*;
     use hash_db::HashDB;
     use keccak::keccak;
-    use kvdb_memorydb;
     use JournalDB;
 
     fn new_db() -> OverlayRecentDB {
-        let backing = Arc::new(kvdb_memorydb::create(0));
+        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         OverlayRecentDB::new(backing, None)
     }
 
@@ -832,7 +831,7 @@ mod tests {
 
     #[test]
     fn reopen() {
-        let shared_db = Arc::new(kvdb_memorydb::create(0));
+        let shared_db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         let bar = H256::random();
 
         let foo = {
@@ -1015,7 +1014,7 @@ mod tests {
     fn reopen_remove_three() {
         let _ = ::env_logger::try_init();
 
-        let shared_db = Arc::new(kvdb_memorydb::create(0));
+        let shared_db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         let foo = keccak(b"foo");
 
         {
@@ -1076,7 +1075,7 @@ mod tests {
 
     #[test]
     fn reopen_fork() {
-        let shared_db = Arc::new(kvdb_memorydb::create(0));
+        let shared_db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
 
         let (foo, bar, baz) = {
             let mut jdb = OverlayRecentDB::new(shared_db.clone(), None);
@@ -1146,7 +1145,7 @@ mod tests {
 
     #[test]
     fn earliest_era() {
-        let shared_db = Arc::new(kvdb_memorydb::create(0));
+        let shared_db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
 
         // empty DB
         let mut jdb = OverlayRecentDB::new(shared_db.clone(), None);

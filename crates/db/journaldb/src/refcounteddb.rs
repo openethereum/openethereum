@@ -23,11 +23,11 @@ use std::{
 };
 
 use super::{traits::JournalDB, LATEST_ERA_KEY};
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
 use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::MemoryDB;
 use overlaydb::OverlayDB;
 use rlp::{decode, encode};
@@ -252,11 +252,10 @@ mod tests {
     use super::*;
     use hash_db::HashDB;
     use keccak::keccak;
-    use kvdb_memorydb;
     use JournalDB;
 
     fn new_db() -> RefCountedDB {
-        let backing = Arc::new(kvdb_memorydb::create(0));
+        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         RefCountedDB::new(backing, None)
     }
 

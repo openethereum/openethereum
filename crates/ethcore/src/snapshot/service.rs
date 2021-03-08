@@ -516,7 +516,8 @@ impl Service {
     pub fn take_snapshot(&self, client: &Client, num: u64) -> Result<(), Error> {
         if self
             .taking_snapshot
-            .compare_and_swap(false, true, Ordering::SeqCst)
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
         {
             info!(
                 "Skipping snapshot at #{} as another one is currently in-progress.",

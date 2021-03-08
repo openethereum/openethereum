@@ -366,6 +366,8 @@ impl Schedule {
     pub fn new_london() ->Schedule {
         let mut schedule = Self::new_berlin();
         schedule.eip1559 = true;
+
+        schedule
     }
 
     fn new(efcd: bool, hdc: bool, tcg: usize) -> Schedule {

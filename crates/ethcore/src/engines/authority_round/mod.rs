@@ -1213,7 +1213,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
         // first check to avoid generating signature most of the time
-        // (but there's still a race to the `compare_and_swap`)
+        // (but there's still a race to the `compare_exchange`)
         if !self.step.can_propose.load(AtomicOrdering::SeqCst) {
             trace!(target: "engine", "Aborting seal generation. Can't propose.");
             return Seal::None;
@@ -1271,7 +1271,8 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 if self
                     .step
                     .can_propose
-                    .compare_and_swap(true, false, AtomicOrdering::SeqCst)
+                    .compare_exchange(true, false, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+                    .is_ok()
                 {
                     self.generate_empty_step(header.parent_hash());
                 }
@@ -1292,11 +1293,12 @@ impl Engine<EthereumMachine> for AuthorityRound {
             )) {
                 trace!(target: "engine", "generate_seal: Issuing a block for step {}.", step);
 
-                // only issue the seal if we were the first to reach the compare_and_swap.
+                // only issue the seal if we were the first to reach the compare_exchange.
                 if self
                     .step
                     .can_propose
-                    .compare_and_swap(true, false, AtomicOrdering::SeqCst)
+                    .compare_exchange(true, false, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+                    .is_ok()
                 {
                     // we can drop all accumulated empty step messages that are
                     // older than the parent step since we're including them in

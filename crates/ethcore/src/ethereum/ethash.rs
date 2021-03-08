@@ -17,7 +17,7 @@
 use std::{cmp, collections::BTreeMap, path::Path, sync::Arc};
 
 use ethereum_types::{H256, H64, U256};
-use ethjson;
+use ethjson::{self, uint::Uint};
 use hash::KECCAK_EMPTY_LIST_RLP;
 use rlp::Rlp;
 use types::{
@@ -145,10 +145,19 @@ impl From<ethjson::spec::EthashParams> for EthashParams {
                         ret.insert(0, reward.into());
                         ret
                     }
-                    ethjson::spec::BlockReward::Multi(multi) => multi
-                        .into_iter()
-                        .map(|(block, reward)| (block.into(), reward.into()))
-                        .collect(),
+                    ethjson::spec::BlockReward::Multi(mut multi) => {
+                        if multi.is_empty() {
+                            panic!("No block rewards are found in config");
+                        }
+                        // add block reward from genesis and put reward to zero.
+                        multi
+                            .entry(Uint(U256::from(0)))
+                            .or_insert(Uint(U256::from(0)));
+                        multi
+                            .into_iter()
+                            .map(|(block, reward)| (block.into(), reward.into()))
+                            .collect()
+                    }
                 },
             ),
             expip2_transition: p.expip2_transition.map_or(u64::max_value(), Into::into),

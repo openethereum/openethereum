@@ -16,38 +16,6 @@
 
 //! RPC types
 
-#[cfg(test)]
-mod eth_types;
-
-mod account_info;
-mod block;
-mod block_number;
-mod bytes;
-mod call_request;
-mod confirmations;
-mod derivation;
-mod eip191;
-mod filter;
-mod histogram;
-mod index;
-mod log;
-mod node_kind;
-mod provenance;
-mod receipt;
-mod rpc_settings;
-mod secretstore;
-mod sync;
-mod trace;
-mod trace_filter;
-mod transaction;
-mod transaction_access_list;
-mod transaction_condition;
-mod transaction_filter;
-mod transaction_request;
-mod work;
-
-pub mod pubsub;
-
 pub use self::{
     account_info::{AccountInfo, EthAccount, ExtAccountInfo, RecoveredAccount, StorageProof},
     block::{Block, BlockTransactions, Header, Rich, RichBlock, RichHeader},
@@ -79,10 +47,40 @@ pub use self::{
     transaction::{LocalTransactionStatus, RichRawTransaction, Transaction},
     transaction_access_list::{AccessList, AccessListItem},
     transaction_condition::TransactionCondition,
-    transaction_filter::TransactionFilter,
     transaction_request::TransactionRequest,
     work::Work,
 };
+
+#[cfg(test)]
+mod eth_types;
+
+mod account_info;
+mod block;
+mod block_number;
+mod bytes;
+mod call_request;
+mod confirmations;
+mod derivation;
+mod eip191;
+mod filter;
+mod histogram;
+mod index;
+mod log;
+mod node_kind;
+mod provenance;
+mod receipt;
+mod rpc_settings;
+mod secretstore;
+mod sync;
+mod trace;
+mod trace_filter;
+mod transaction;
+mod transaction_access_list;
+mod transaction_condition;
+mod transaction_request;
+mod work;
+
+pub mod pubsub;
 
 // TODO [ToDr] Refactor to a proper type Vec of enums?
 /// Expected tracing type.

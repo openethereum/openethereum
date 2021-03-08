@@ -351,9 +351,9 @@ fn rpc_parity_pending_transactions_with_filter() {
         r#"{"to":{"eq":"0x0000000000000000000000000000000000000041"}}"#,
         vec![1],
     );
-    assert_txs_filtered(&io, r#"{"to":{"eq":null}}"#, vec![6]);
+    assert_txs_filtered(&io, r#"{"to":{"action":"contract_creation"}}"#, vec![6]);
     assert_txs_filtered(&io, r#"{"gas":{"gt":"0x12"}}"#, vec![3, 4, 5, 6]);
-    assert_txs_filtered(&io, r#"{"gas_price":{"eq":"0x24"}}"#, vec![4]);
+    assert_txs_filtered(&io, r#"{"gasPrice":{"eq":"0x24"}}"#, vec![4]);
     assert_txs_filtered(&io, r#"{"nonce":{"lt":"0x33"}}"#, vec![1, 2]);
     assert_txs_filtered(&io, r#"{"value":{"lt":"0x2"}}"#, vec![1, 6]);
     assert_txs_filtered(

@@ -29,7 +29,11 @@ use ethcore_miner::work_notify::NotifyWork;
 use ethcore_miner::{
     gas_pricer::GasPricer,
     local_accounts::LocalAccounts,
-    pool::{self, PrioritizationStrategy, QueueStatus, TransactionQueue, VerifiedTransaction},
+    pool::{
+        self,
+        transaction_filter::{match_filter, TransactionFilter},
+        PrioritizationStrategy, QueueStatus, TransactionQueue, VerifiedTransaction,
+    },
     service_transaction_checker::ServiceTransactionChecker,
 };
 use ethereum_types::{Address, H256, U256};
@@ -1099,10 +1103,11 @@ impl miner::MinerService for Miner {
         }
     }
 
-    fn ready_transactions<C>(
+    fn ready_transactions_filtered<C>(
         &self,
         chain: &C,
         max_len: usize,
+        filter: Option<TransactionFilter>,
         ordering: miner::PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
@@ -1116,16 +1121,20 @@ impl miner::MinerService for Miner {
             // those transactions are valid and will just be ready to be included in next block.
             let nonce_cap = None;
 
-            self.transaction_queue.pending(
-                CachedNonceClient::new(chain, &self.nonce_cache),
-                pool::PendingSettings {
-                    block_number: chain_info.best_block_number,
-                    current_timestamp: chain_info.best_block_timestamp,
-                    nonce_cap,
-                    max_len,
-                    ordering,
-                },
-            )
+            let client = CachedNonceClient::new(chain, &self.nonce_cache);
+            let settings = pool::PendingSettings {
+                block_number: chain_info.best_block_number,
+                current_timestamp: chain_info.best_block_timestamp,
+                nonce_cap,
+                max_len,
+                ordering,
+            };
+
+            if let Some(ref f) = filter {
+                self.transaction_queue.pending_filtered(client, settings, f)
+            } else {
+                self.transaction_queue.pending(client, settings)
+            }
         };
 
         let from_pending = || {
@@ -1139,6 +1148,7 @@ impl miner::MinerService for Miner {
                                 signed.clone(),
                             )
                         })
+                        .filter(|tx| match_filter(&filter, tx))
                         .map(Arc::new)
                         .take(max_len)
                         .collect()

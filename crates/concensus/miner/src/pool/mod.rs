@@ -29,6 +29,7 @@ pub mod client;
 pub mod local_transactions;
 pub mod replace;
 pub mod scoring;
+pub mod transaction_filter;
 pub mod verifier;
 
 #[cfg(test)]

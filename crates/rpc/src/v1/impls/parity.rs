@@ -20,7 +20,7 @@ use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use crypto::DEFAULT_MAC;
 use ethcore::{
     client::{BlockChainClient, Call, StateClient},
-    miner::{self, MinerService},
+    miner::{self, MinerService, TransactionFilter},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
 };
@@ -32,8 +32,6 @@ use jsonrpc_core::{futures::future, BoxFuture, Result};
 use stats::PrometheusMetrics;
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
-use version::version_data;
-
 use v1::{
     helpers::{
         self,
@@ -47,10 +45,11 @@ use v1::{
     types::{
         block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
         LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
-        Transaction, TransactionFilter, TransactionStats,
+        Transaction, TransactionStats,
     },
 };
 use Host;
+use version::version_data;
 
 /// Parity implementation.
 pub struct ParityClient<C, M>
@@ -273,23 +272,16 @@ where
         limit: Option<usize>,
         filter: Option<TransactionFilter>,
     ) -> Result<Vec<Transaction>> {
-        let ready_transactions = self.miner.ready_transactions(
+        let ready_transactions = self.miner.ready_transactions_filtered(
             &*self.client,
-            usize::max_value(),
+            limit.unwrap_or_else(usize::max_value),
+            filter,
             miner::PendingOrdering::Priority,
         );
 
         Ok(ready_transactions
             .into_iter()
             .map(|t| Transaction::from_pending(t.pending().clone()))
-            .filter(|t| {
-                if let Some(f) = &filter {
-                    f.matches(t)
-                } else {
-                    true
-                }
-            })
-            .take(limit.unwrap_or_else(usize::max_value))
             .collect())
     }
 

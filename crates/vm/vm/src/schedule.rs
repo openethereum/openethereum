@@ -155,6 +155,8 @@ pub struct Schedule {
     pub eip2929: bool,
     /// Enable EIP-2930 rules for optional access list transactions. it depends on EIP-2929
     pub eip2930: bool,
+    /// Enable EIP-1559 rules
+    pub eip1559: bool,
 }
 
 /// Wasm cost table
@@ -302,6 +304,7 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            eip1559: false,
         }
     }
 
@@ -357,6 +360,12 @@ impl Schedule {
         schedule.sstore_reset_gas = EIP2929_SSTORE_RESET_GAS;
 
         schedule
+    }
+
+    /// Schedule for the London fork of the Ethereum main net.
+    pub fn new_london() ->Schedule {
+        let mut schedule = Self::new_berlin();
+        schedule.eip1559 = true;
     }
 
     fn new(efcd: bool, hdc: bool, tcg: usize) -> Schedule {
@@ -422,6 +431,7 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            eip1559: false,
         }
     }
 

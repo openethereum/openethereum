@@ -43,7 +43,7 @@ use engines::{
 };
 use error::{BlockError, Error, ErrorKind};
 use ethereum_types::{Address, H256, H520, U128, U256};
-use ethjson;
+use ethjson::{self, uint::Uint};
 use ethkey::{self, Signature};
 use hash::keccak;
 use io::{IoContext, IoHandler, IoService, TimerToken};
@@ -80,7 +80,7 @@ pub struct AuthorityRoundParams {
     /// Immediate transitions.
     pub immediate_transitions: bool,
     /// Block reward in base units.
-    pub block_reward: U256,
+    pub block_reward: BTreeMap<BlockNumber, U256>,
     /// Block reward contract transition block.
     pub block_reward_contract_transition: u64,
     /// Block reward contract.
@@ -113,7 +113,33 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             validate_score_transition: p.validate_score_transition.map_or(0, Into::into),
             validate_step_transition: p.validate_step_transition.map_or(0, Into::into),
             immediate_transitions: p.immediate_transitions.unwrap_or(false),
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
+            block_reward: p.block_reward.map_or_else(
+                || {
+                    let mut ret = BTreeMap::new();
+                    ret.insert(0, U256::zero());
+                    ret
+                },
+                |reward| match reward {
+                    ethjson::spec::BlockReward::Single(reward) => {
+                        let mut ret = BTreeMap::new();
+                        ret.insert(0, reward.into());
+                        ret
+                    }
+                    ethjson::spec::BlockReward::Multi(mut multi) => {
+                        if multi.is_empty() {
+                            panic!("No block rewards are found in config");
+                        }
+                        // add block reward from genesis and put reward to zero.
+                        multi
+                            .entry(Uint(U256::from(0)))
+                            .or_insert(Uint(U256::from(0)));
+                        multi
+                            .into_iter()
+                            .map(|(block, reward)| (block.into(), reward.into()))
+                            .collect()
+                    }
+                },
+            ),
             block_reward_contract_transition: p
                 .block_reward_contract_transition
                 .map_or(0, Into::into),
@@ -457,7 +483,7 @@ pub struct AuthorityRound {
     empty_steps: Mutex<BTreeSet<EmptyStep>>,
     epoch_manager: Mutex<EpochManager>,
     immediate_transitions: bool,
-    block_reward: U256,
+    block_reward: BTreeMap<BlockNumber, U256>,
     block_reward_contract_transition: u64,
     block_reward_contract: Option<BlockRewardContract>,
     maximum_uncle_count_transition: u64,
@@ -1374,10 +1400,11 @@ impl Engine<EthereumMachine> for AuthorityRound {
         }
 
         let author = *block.header.author();
+        let number = block.header.number();
         beneficiaries.push((author, RewardKind::Author));
 
         let rewards: Vec<_> = match self.block_reward_contract {
-            Some(ref c) if block.header.number() >= self.block_reward_contract_transition => {
+            Some(ref c) if number >= self.block_reward_contract_transition => {
                 let mut call = super::default_system_or_code_call(&self.machine, block);
 
                 let rewards = c.reward(&beneficiaries, &mut call)?;
@@ -1386,10 +1413,18 @@ impl Engine<EthereumMachine> for AuthorityRound {
                     .map(|(author, amount)| (author, RewardKind::External, amount))
                     .collect()
             }
-            _ => beneficiaries
-                .into_iter()
-                .map(|(author, reward_kind)| (author, reward_kind, self.block_reward))
-                .collect(),
+            _ => {
+                let (_, reward) = self.block_reward.iter()
+                .rev()
+                .find(|&(block, _)| *block <= number)
+                .expect("Current block's reward is not found; this indicates a chain config error; qed");
+                let reward = *reward;
+
+                beneficiaries
+                    .into_iter()
+                    .map(|(author, reward_kind)| (author, reward_kind, reward))
+                    .collect()
+            }
         };
 
         block_reward::apply_block_rewards(&rewards, block, &self.machine)

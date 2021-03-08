@@ -43,7 +43,7 @@ use engines::{
 };
 use error::{BlockError, Error, ErrorKind};
 use ethereum_types::{Address, H256, H520, U128, U256};
-use ethjson;
+use ethjson::{self, uint::Uint};
 use ethkey::{self, Signature};
 use hash::keccak;
 use io::{IoContext, IoHandler, IoService, TimerToken};
@@ -125,10 +125,19 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
                         ret.insert(0, reward.into());
                         ret
                     }
-                    ethjson::spec::BlockReward::Multi(multi) => multi
-                        .into_iter()
-                        .map(|(block, reward)| (block.into(), reward.into()))
-                        .collect(),
+                    ethjson::spec::BlockReward::Multi(mut multi) => {
+                        if multi.is_empty() {
+                            panic!("No block rewards are found in config");
+                        }
+                        // add block reward from genesis and put reward to zero.
+                        multi
+                            .entry(Uint(U256::from(0)))
+                            .or_insert(Uint(U256::from(0)));
+                        multi
+                            .into_iter()
+                            .map(|(block, reward)| (block.into(), reward.into()))
+                            .collect()
+                    }
                 },
             ),
             block_reward_contract_transition: p

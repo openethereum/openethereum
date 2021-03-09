@@ -464,7 +464,7 @@ impl Host {
     }
 
     pub fn stop(&self, io: &IoContext<NetworkIoMessage>) {
-        self.stopping.store(true, AtomicOrdering::Release);
+        self.stopping.store(true, AtomicOrdering::SeqCst);
         let mut to_kill = Vec::new();
         for e in self.sessions.read().iter() {
             let mut s = e.lock();
@@ -1168,7 +1168,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn stream_readable(&self, io: &IoContext<NetworkIoMessage>, stream: StreamToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match stream {
@@ -1180,7 +1180,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn stream_writable(&self, io: &IoContext<NetworkIoMessage>, stream: StreamToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match stream {
@@ -1191,7 +1191,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn timeout(&self, io: &IoContext<NetworkIoMessage>, token: TimerToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match token {
@@ -1253,7 +1253,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn message(&self, io: &IoContext<NetworkIoMessage>, message: &NetworkIoMessage) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match *message {

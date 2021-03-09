@@ -259,7 +259,7 @@ impl Rpc {
     {
         let (c, p) = oneshot::<Result<JsonValue, RpcError>>();
 
-        let id = self.counter.fetch_add(1, Ordering::Relaxed);
+        let id = self.counter.fetch_add(1, Ordering::SeqCst);
         self.pending.insert(id, c);
 
         let request = MethodCall {

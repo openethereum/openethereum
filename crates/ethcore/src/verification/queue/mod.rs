@@ -175,7 +175,7 @@ struct QueueSignal {
 impl QueueSignal {
     fn set_sync(&self) {
         // Do not signal when we are about to close
-        if self.deleting.load(AtomicOrdering::Relaxed) {
+        if self.deleting.load(AtomicOrdering::SeqCst) {
             return;
         }
 
@@ -184,8 +184,8 @@ impl QueueSignal {
             .compare_exchange(
                 false,
                 true,
-                AtomicOrdering::Relaxed,
-                AtomicOrdering::Relaxed,
+                AtomicOrdering::SeqCst,
+                AtomicOrdering::SeqCst,
             )
             .is_ok()
         {
@@ -198,7 +198,7 @@ impl QueueSignal {
 
     fn set_async(&self) {
         // Do not signal when we are about to close
-        if self.deleting.load(AtomicOrdering::Relaxed) {
+        if self.deleting.load(AtomicOrdering::SeqCst) {
             return;
         }
 
@@ -207,8 +207,8 @@ impl QueueSignal {
             .compare_exchange(
                 false,
                 true,
-                AtomicOrdering::Relaxed,
-                AtomicOrdering::Relaxed,
+                AtomicOrdering::SeqCst,
+                AtomicOrdering::SeqCst,
             )
             .is_ok()
         {
@@ -220,7 +220,7 @@ impl QueueSignal {
     }
 
     fn reset(&self) {
-        self.signalled.store(false, AtomicOrdering::Relaxed);
+        self.signalled.store(false, AtomicOrdering::SeqCst);
     }
 }
 
@@ -499,9 +499,9 @@ impl<K: Kind> VerificationQueue<K> {
         verified.clear();
 
         let sizes = &self.verification.sizes;
-        sizes.unverified.store(0, AtomicOrdering::Release);
-        sizes.verifying.store(0, AtomicOrdering::Release);
-        sizes.verified.store(0, AtomicOrdering::Release);
+        sizes.unverified.store(0, AtomicOrdering::SeqCst);
+        sizes.verifying.store(0, AtomicOrdering::SeqCst);
+        sizes.verified.store(0, AtomicOrdering::SeqCst);
         *self.total_difficulty.write() = 0.into();
 
         self.processing.write().clear();
@@ -728,7 +728,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .unverified
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
 
             (len, size + len * size_of::<K::Unverified>())
         };
@@ -738,7 +738,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .verifying
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
             (len, size + len * size_of::<Verifying<K>>())
         };
         let (verified_len, verified_bytes) = {
@@ -747,7 +747,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .verified
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
             (len, size + len * size_of::<K::Verified>())
         };
 

@@ -127,34 +127,34 @@ pub struct Progress {
 impl Progress {
     /// Reset the progress.
     pub fn reset(&self) {
-        self.accounts.store(0, Ordering::Release);
-        self.blocks.store(0, Ordering::Release);
-        self.size.store(0, Ordering::Release);
-        self.abort.store(false, Ordering::Release);
+        self.accounts.store(0, Ordering::SeqCst);
+        self.blocks.store(0, Ordering::SeqCst);
+        self.size.store(0, Ordering::SeqCst);
+        self.abort.store(false, Ordering::SeqCst);
 
         // atomic fence here to ensure the others are written first?
         // logs might very rarely get polluted if not.
-        self.done.store(false, Ordering::Release);
+        self.done.store(false, Ordering::SeqCst);
     }
 
     /// Get the number of accounts snapshotted thus far.
     pub fn accounts(&self) -> usize {
-        self.accounts.load(Ordering::Acquire)
+        self.accounts.load(Ordering::SeqCst)
     }
 
     /// Get the number of blocks snapshotted thus far.
     pub fn blocks(&self) -> usize {
-        self.blocks.load(Ordering::Acquire)
+        self.blocks.load(Ordering::SeqCst)
     }
 
     /// Get the written size of the snapshot in bytes.
     pub fn size(&self) -> u64 {
-        self.size.load(Ordering::Acquire)
+        self.size.load(Ordering::SeqCst)
     }
 
     /// Whether the snapshot is complete.
     pub fn done(&self) -> bool {
-        self.done.load(Ordering::Acquire)
+        self.done.load(Ordering::SeqCst)
     }
 }
 /// Take a snapshot using the given blockchain, starting block hash, and database, writing into the given writer.

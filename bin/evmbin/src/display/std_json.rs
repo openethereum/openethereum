@@ -203,6 +203,11 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
     fn trace_next_instruction(&mut self, pc: usize, instruction: u8, current_gas: U256) -> bool {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant<Trace, Out>| {
+            let storage = if informant.config.omit_storage_output() {
+                None
+            } else {
+                Some(&informant.storage)
+            };
             let info = ::evm::Instruction::from_u8(instruction).map(|i| i.info());
             informant.instruction = instruction;
             let trace_data = json!({
@@ -211,7 +216,7 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
                 "opName": info.map(|i| i.name).unwrap_or(""),
                 "gas": format!("{:#x}", current_gas),
                 "stack": informant.stack,
-                "storage": informant.storage,
+                "storage": storage,
                 "depth": informant.depth,
             });
 

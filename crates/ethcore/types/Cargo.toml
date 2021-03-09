@@ -3,7 +3,10 @@ description = "Parity Ethereum Common Types"
 name = "common-types"
 version = "0.1.0"
 edition = "2018"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = [
+  "Gnosis Ltd <openethereum@gnosis.io>",
+  "Parity Technologies <admin@parity.io>",
+]
 
 [dependencies]
 ethereum-types = "0.4"

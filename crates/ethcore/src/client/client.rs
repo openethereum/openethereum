@@ -21,7 +21,7 @@ use std::{
     io::{BufRead, BufReader},
     str::{from_utf8, FromStr},
     sync::{
-        atomic::{AtomicBool, AtomicI64, Ordering as AtomicOrdering},
+        atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering as AtomicOrdering},
         Arc, Weak,
     },
     time::{Duration, Instant},
@@ -208,6 +208,9 @@ pub struct Client {
 
     /// Database pruning strategy to use for StateDB
     pruning: journaldb::Algorithm,
+
+    /// Don't prune the state we're currently snapshotting
+    snapshotting_at: AtomicU64,
 
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<dyn BlockChainDB>>,
@@ -946,6 +949,7 @@ impl Client {
             tracedb,
             engine,
             pruning: config.pruning.clone(),
+            snapshotting_at: AtomicU64::new(0),
             db: RwLock::new(db.clone()),
             state_db: RwLock::new(state_db),
             report: RwLock::new(Default::default()),
@@ -1137,7 +1141,7 @@ impl Client {
         mut state_db: StateDB,
         chain: &BlockChain,
     ) -> Result<(), ::error::Error> {
-        let number = match state_db.journal_db().latest_era() {
+        let latest_era = match state_db.journal_db().latest_era() {
             Some(n) => n,
             None => return Ok(()),
         };
@@ -1152,16 +1156,27 @@ impl Client {
                 break;
             }
             match state_db.journal_db().earliest_era() {
-                Some(era) if era + self.history <= number => {
-                    trace!(target: "client", "Pruning state for ancient era {}", era);
-                    match chain.block_hash(era) {
+                Some(earliest_era) if earliest_era + self.history <= latest_era => {
+                    let freeze_at = self.snapshotting_at.load(AtomicOrdering::SeqCst);
+                    if freeze_at > 0 && freeze_at == earliest_era {
+                        // Note: journal_db().mem_used() can be used for a more accurate memory
+                        // consumption measurement but it can be expensive so sticking with the
+                        // faster `journal_size()` instead.
+                        trace!(target: "pruning", "Pruning is paused at era {} (snapshot under way); earliest era={}, latest era={}, journal_size={} – Not pruning.",
+						       freeze_at, earliest_era, latest_era, state_db.journal_db().journal_size());
+                        break;
+                    }
+                    trace!(target: "client", "Pruning state for ancient era {}", earliest_era);
+                    match chain.block_hash(earliest_era) {
                         Some(ancient_hash) => {
                             let mut batch = DBTransaction::new();
-                            state_db.mark_canonical(&mut batch, era, &ancient_hash)?;
+                            state_db.mark_canonical(&mut batch, earliest_era, &ancient_hash)?;
                             self.db.read().key_value().write_buffered(batch);
                             state_db.journal_db().flush();
                         }
-                        None => debug!(target: "client", "Missing expected hash for block {}", era),
+                        None => {
+                            debug!(target: "client", "Missing expected hash for block {}", earliest_era)
+                        }
                     }
                 }
                 _ => break, // means that every era is kept, no pruning necessary.
@@ -1349,7 +1364,6 @@ impl Client {
         p: &snapshot::Progress,
     ) -> Result<(), EthcoreError> {
         let db = self.state_db.read().journal_db().boxed_clone();
-        let best_block_number = self.chain_info().best_block_number;
         let block_number = self
             .block_number(at)
             .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?;
@@ -1360,19 +1374,23 @@ impl Client {
 
         let history = ::std::cmp::min(self.history, 1000);
 
-        let start_hash = match at {
+        let (snapshot_block_number, start_hash) = match at {
             BlockId::Latest => {
+                let best_block_number = self.chain_info().best_block_number;
                 let start_num = match db.earliest_era() {
                     Some(era) => ::std::cmp::max(era, best_block_number.saturating_sub(history)),
                     None => best_block_number.saturating_sub(history),
                 };
 
-                self.block_hash(BlockId::Number(start_num))
-                    .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?
+                match self.block_hash(BlockId::Number(start_num)) {
+                    Some(h) => (start_num, h),
+                    None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
+                }
             }
-            _ => self
-                .block_hash(at)
-                .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?,
+            _ => match self.block_hash(at) {
+                Some(hash) => (block_number, hash),
+                None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
+            },
         };
 
         let processing_threads = self.config.snapshot.processing_threads;
@@ -1380,15 +1398,23 @@ impl Client {
             .engine
             .snapshot_components()
             .ok_or(snapshot::Error::SnapshotsUnsupported)?;
-        snapshot::take_snapshot(
-            chunker,
-            &self.chain.read(),
-            start_hash,
-            db.as_hash_db(),
-            writer,
-            p,
-            processing_threads,
-        )?;
+        self.snapshotting_at
+            .store(snapshot_block_number, AtomicOrdering::SeqCst);
+        {
+            scopeguard::defer! {{
+                info!(target: "snapshot", "Re-enabling pruning.");
+                self.snapshotting_at.store(0, AtomicOrdering::SeqCst)
+            }};
+            snapshot::take_snapshot(
+                chunker,
+                &self.chain.read(),
+                start_hash,
+                db.as_hash_db(),
+                writer,
+                p,
+                processing_threads,
+            )?;
+        }
         Ok(())
     }
 

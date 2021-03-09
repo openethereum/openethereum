@@ -74,6 +74,7 @@ using_queue = { path = "../concensus/miner/using-queue" }
 vm = { path = "../vm/vm" }
 walkdir = "2.3"
 wasm = { path = "../vm/wasm" }
+scopeguard = "1.1.0"
 
 [dev-dependencies]
 blooms-db = { path = "../db/blooms-db" }

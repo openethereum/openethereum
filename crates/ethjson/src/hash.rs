@@ -116,7 +116,7 @@ impl_hash!(Bloom, Hash2048);
 #[cfg(test)]
 mod test {
     use ethereum_types;
-    use hash::H256;
+    use crate::hash::H256;
     use serde_json;
     use std::str::FromStr;
 

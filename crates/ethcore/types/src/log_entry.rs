@@ -16,13 +16,11 @@
 
 //! Log entry type definition.
 
-use bytes::Bytes;
 use ethereum_types::{Address, Bloom, BloomInput, H256};
 use heapsize::HeapSizeOf;
 use std::ops::Deref;
 
-use ethjson;
-use BlockNumber;
+use crate::{bytes::Bytes, BlockNumber};
 
 /// A record of execution for a `LOG` operation.
 #[derive(Default, Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]
@@ -50,16 +48,6 @@ impl LogEntry {
                 b.accrue(BloomInput::Raw(t));
                 b
             })
-    }
-}
-
-impl From<ethjson::state::Log> for LogEntry {
-    fn from(l: ethjson::state::Log) -> Self {
-        LogEntry {
-            address: l.address.into(),
-            topics: l.topics.into_iter().map(Into::into).collect(),
-            data: l.data.into(),
-        }
     }
 }
 

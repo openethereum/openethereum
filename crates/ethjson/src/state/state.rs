@@ -16,9 +16,11 @@
 
 //! State test deserialization.
 
-use bytes::Bytes;
-use hash::H256;
-use state::{AccountState, Env, Log, Transaction};
+use crate::{
+    bytes::Bytes,
+    hash::H256,
+    state::{AccountState, Env, Log, Transaction},
+};
 
 /// State test deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -46,7 +48,7 @@ pub struct State {
 #[cfg(test)]
 mod tests {
     use serde_json;
-    use state::State;
+    use super::State;
 
     #[test]
     fn state_deserialization() {

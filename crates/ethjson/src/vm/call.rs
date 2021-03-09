@@ -16,10 +16,12 @@
 
 //! Vm call deserialization.
 
-use bytes::Bytes;
-use hash::Address;
-use maybe::MaybeEmpty;
-use uint::Uint;
+use crate::{ 
+    bytes::Bytes,
+    hash::Address,
+    maybe::MaybeEmpty,
+    uint::Uint
+};
 
 /// Vm call deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -38,12 +40,16 @@ pub struct Call {
 #[cfg(test)]
 mod tests {
     use ethereum_types::{H160 as Hash160, U256};
-    use hash::Address;
-    use maybe::MaybeEmpty;
+    use crate::{
+        hash::Address,
+        maybe::MaybeEmpty,
+        uint::Uint,
+        vm::Call
+    };
+
     use serde_json;
     use std::str::FromStr;
-    use uint::Uint;
-    use vm::Call;
+
 
     #[test]
     fn call_deserialization_empty_dest() {

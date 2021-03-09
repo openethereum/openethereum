@@ -18,7 +18,7 @@
 
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};
-use trie::Trie;
+use crate::trie::Trie;
 
 /// TransactionTest test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]

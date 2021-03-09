@@ -94,9 +94,8 @@ impl<T> Into<Option<T>> for MaybeEmpty<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{hash::H256, maybe::MaybeEmpty};
     use ethereum_types;
-    use hash::H256;
-    use maybe::MaybeEmpty;
     use serde_json;
     use std::str::FromStr;
 

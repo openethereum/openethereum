@@ -489,7 +489,8 @@ impl ChainSyncApi {
 
         if self
             .priority_tasks_gate
-            .compare_and_swap(false, true, Ordering::AcqRel)
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Release)
+            .is_ok()
         {
             return;
         }

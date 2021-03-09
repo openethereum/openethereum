@@ -18,12 +18,12 @@ use std::sync::{mpsc, Arc};
 
 use ethcore::{client::BlockChainClient, snapshot::SnapshotService};
 use std::collections::BTreeSet;
-use sync::{self, ConnectionFilter, NetworkConfiguration, Params, SyncConfig};
-use types::BlockNumber;
+use crate::sync::{self, ConnectionFilter, NetworkConfiguration, Params, SyncConfig};
+use crate::types::BlockNumber;
 
 pub use ethcore::client::ChainNotify;
 use ethcore_logger::Config as LogConfig;
-pub use sync::{EthSync, ManageNetwork, SyncProvider};
+pub use crate::sync::{EthSync, ManageNetwork, SyncProvider};
 
 pub type SyncModules = (
     Arc<dyn SyncProvider>,

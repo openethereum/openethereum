@@ -22,9 +22,9 @@ use std::{
 use ansi_term::Colour::White;
 use ethcore_logger::Config as LogConfig;
 use parity_rpc;
-use path::restrict_permissions_owner;
-use rpc;
-use rpc_apis;
+use crate::path::restrict_permissions_owner;
+use crate::rpc;
+use crate::rpc_apis;
 
 pub const CODES_FILENAME: &'static str = "authcodes";
 

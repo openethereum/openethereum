@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use params::SpecType;
+use crate::params::SpecType;
 use std::num::NonZeroU32;
 
 #[derive(Debug, PartialEq)]
@@ -53,9 +53,9 @@ pub fn execute(_cmd: AccountCmd) -> Result<String, String> {
 #[cfg(feature = "accounts")]
 mod command {
     use super::*;
-    use accounts::{AccountProvider, AccountProviderSettings};
+    use crate::accounts::{AccountProvider, AccountProviderSettings};
     use ethstore::{accounts_dir::RootDiskDirectory, import_account, import_accounts, EthStore};
-    use helpers::{password_from_file, password_prompt};
+    use crate::helpers::{password_from_file, password_prompt};
     use std::path::PathBuf;
 
     pub fn execute(cmd: AccountCmd) -> Result<String, String> {

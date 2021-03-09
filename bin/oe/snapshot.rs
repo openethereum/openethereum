@@ -32,15 +32,15 @@ use ethcore::{
     },
 };
 use ethcore_service::ClientService;
-use hash::keccak;
-use types::ids::BlockId;
+use crate::hash::keccak;
+use crate::types::ids::BlockId;
 
-use cache::CacheConfig;
-use db;
+use crate::cache::CacheConfig;
+use crate::db;
 use dir::Directories;
-use helpers::{execute_upgrades, to_client_config};
-use params::{fatdb_switch_to_bool, tracing_switch_to_bool, Pruning, SpecType, Switch};
-use user_defaults::UserDefaults;
+use crate::helpers::{execute_upgrades, to_client_config};
+use crate::params::{fatdb_switch_to_bool, tracing_switch_to_bool, Pruning, SpecType, Switch};
+use crate::user_defaults::UserDefaults;
 
 /// Kinds of snapshot commands.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -303,7 +303,7 @@ impl SnapshotCommand {
                 let cur_size = p.size();
                 if cur_size != last_size {
                     last_size = cur_size;
-                    let bytes = ::informant::format_bytes(cur_size as usize);
+                    let bytes = crate::informant::format_bytes(cur_size as usize);
                     info!(
                         "Snapshot: {} accounts {} blocks {}",
                         p.accounts(),

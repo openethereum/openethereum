@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use account_utils::AccountProvider;
+use crate::account_utils::AccountProvider;
 use dir::{default_data_path, helpers::replace_home};
 use ethcore::{client::Client, miner::Miner};
 use ethereum_types::Address;
 use ethkey::{Password, Public, Secret};
 use parity_runtime::Executor;
 use std::{collections::BTreeMap, sync::Arc};
-use sync::SyncProvider;
+use crate::sync::SyncProvider;
 
 /// This node secret key.
 #[derive(Debug, PartialEq, Clone)]

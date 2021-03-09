@@ -181,12 +181,7 @@ impl QueueSignal {
 
         if self
             .signalled
-            .compare_exchange(
-                false,
-                true,
-                AtomicOrdering::SeqCst,
-                AtomicOrdering::SeqCst,
-            )
+            .compare_exchange(false, true, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
             .is_ok()
         {
             let channel = self.message_channel.lock().clone();
@@ -204,12 +199,7 @@ impl QueueSignal {
 
         if self
             .signalled
-            .compare_exchange(
-                false,
-                true,
-                AtomicOrdering::SeqCst,
-                AtomicOrdering::SeqCst,
-            )
+            .compare_exchange(false, true, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
             .is_ok()
         {
             let channel = self.message_channel.lock().clone();

@@ -16,11 +16,13 @@
 
 //! Vm execution env.
 
-use blockchain::State;
-use bytes::Bytes;
-use hash::H256;
-use uint::Uint;
-use vm::{Call, Env, Transaction};
+use crate::{
+    blockchain::State,
+    bytes::Bytes,
+    hash::H256,
+    uint::Uint,
+    vm::{Call, Env, Transaction},
+};
 
 /// Represents vm execution environment before and after execution of transaction.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -59,7 +61,7 @@ impl Vm {
 #[cfg(test)]
 mod tests {
     use serde_json;
-    use vm::Vm;
+    use super::Vm;
 
     #[test]
     fn vm_deserialization() {

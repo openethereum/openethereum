@@ -15,8 +15,11 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! State test log deserialization.
-use bytes::Bytes;
-use hash::{Address, Bloom, H256};
+use crate::{
+    bytes::Bytes,
+    hash::{Address, Bloom, H256},
+};
+use common_types::log_entry::LogEntry;
 
 /// State test log deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -34,7 +37,7 @@ pub struct Log {
 #[cfg(test)]
 mod tests {
     use serde_json;
-    use state::Log;
+    use super::Log;
 
     #[test]
     fn log_deserialization() {
@@ -48,5 +51,15 @@ mod tests {
 		}"#;
         let _deserialized: Log = serde_json::from_str(s).unwrap();
         // TODO: validate all fields
+    }
+}
+
+impl From<Log> for LogEntry {
+    fn from(l: Log) -> Self {
+        LogEntry {
+            address: l.address.into(),
+            topics: l.topics.into_iter().map(Into::into).collect(),
+            data: l.data.into(),
+        }
     }
 }

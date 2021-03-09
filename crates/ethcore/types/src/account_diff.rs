@@ -16,7 +16,7 @@
 
 //! Diff between two accounts.
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 use ethereum_types::{H256, U256};
 use std::{cmp::*, collections::BTreeMap, fmt};
 
@@ -141,7 +141,7 @@ fn interpreted_hash(u: &H256) -> String {
 
 impl fmt::Display for AccountDiff {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use bytes::ToPretty;
+        use crate::bytes::ToPretty;
 
         match self.nonce {
             Diff::Born(ref x) => write!(f, "  non {}", x)?,

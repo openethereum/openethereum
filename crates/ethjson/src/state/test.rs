@@ -16,14 +16,16 @@
 
 //! General test deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    spec::ForkSpec,
+    state::{AccountState, Env, Transaction},
+    uint::Uint,
+};
 use serde_json::{self, Error};
-use spec::ForkSpec;
-use state::{AccountState, Env, Transaction};
 use std::{collections::BTreeMap, io::Read};
-use uint::Uint;
 
 /// State test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]

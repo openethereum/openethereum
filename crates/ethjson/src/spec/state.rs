@@ -16,9 +16,11 @@
 
 //! Blockchain test state deserializer.
 
-use bytes::Bytes;
-use hash::Address;
-use spec::{Account, Builtin};
+use crate::{
+    bytes::Bytes,
+    hash::Address,
+    spec::{Account, Builtin},
+};
 use std::collections::BTreeMap;
 
 /// Blockchain test state deserializer.

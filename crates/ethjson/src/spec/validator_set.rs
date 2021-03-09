@@ -16,9 +16,8 @@
 
 //! Validator set deserialization.
 
-use hash::Address;
+use crate::{hash::Address, uint::Uint};
 use std::collections::BTreeMap;
-use uint::Uint;
 
 /// Different ways of specifying validators.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -37,11 +36,9 @@ pub enum ValidatorSet {
 
 #[cfg(test)]
 mod tests {
+    use crate::{hash::Address, spec::validator_set::ValidatorSet, uint::Uint};
     use ethereum_types::{H160, U256};
-    use hash::Address;
     use serde_json;
-    use spec::validator_set::ValidatorSet;
-    use uint::Uint;
 
     #[test]
     fn validator_set_deserialization() {

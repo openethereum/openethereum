@@ -4,6 +4,7 @@ homepage = "https://github.com/openethereum/openethereum"
 license = "GPL-3.0"
 name = "ethcore"
 version = "1.12.0"
+edition = "2018"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]

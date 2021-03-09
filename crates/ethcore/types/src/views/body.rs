@@ -17,13 +17,15 @@
 //! View onto block body rlp.
 
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    header::Header,
+    transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction},
+    views::{HeaderView, TypedTransactionView},
+    BlockNumber,
+};
 use ethereum_types::H256;
-use hash::keccak;
-use header::Header;
-use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TypedTransactionView};
-use BlockNumber;
 
 /// View onto block rlp.
 pub struct BodyView<'a> {
@@ -184,10 +186,9 @@ impl<'a> BodyView<'a> {
 #[cfg(test)]
 mod tests {
     use super::BodyView;
-    use bytes::Bytes;
+    use crate::{bytes::Bytes, views::BlockView};
     use rlp::RlpStream;
     use rustc_hex::FromHex;
-    use views::BlockView;
 
     fn block_to_body(block: &[u8]) -> Bytes {
         let mut body = RlpStream::new_list(2);

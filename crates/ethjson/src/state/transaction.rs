@@ -16,10 +16,12 @@
 
 //! State test transaction deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
-use uint::Uint;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    uint::Uint,
+};
 
 /// State test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -42,10 +44,33 @@ pub struct Transaction {
     pub value: Uint,
 }
 
+#[cfg(any(test, feature = "test-helpers"))]
+impl From<Transaction> for SignedTransaction {
+    fn from(t: Transaction) -> Self {
+        let to: Option<Address> = t.to.into();
+        let secret = t.secret.map(|s| Secret::from(s.0));
+        let tx = TypedTransaction::Legacy(CoreTransaction {
+            nonce: t.nonce.into(),
+            gas_price: t.gas_price.into(),
+            gas: t.gas_limit.into(),
+            action: match to {
+                Some(to) => Action::Call(to.into()),
+                None => Action::Create,
+            },
+            value: t.value.into(),
+            data: t.data.into(),
+        });
+        match secret {
+            Some(s) => tx.sign(&Secret::from(s), None),
+            None => tx.null_sign(1),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::Transaction;
     use serde_json;
-    use state::Transaction;
 
     #[test]
     fn transaction_deserialization() {

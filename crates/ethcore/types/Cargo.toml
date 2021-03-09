@@ -2,11 +2,12 @@
 description = "Parity Ethereum Common Types"
 name = "common-types"
 version = "0.1.0"
+edition = "2018"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
 ethereum-types = "0.4"
-ethjson = { path = "../../ethjson" }
+
 ethkey = { path = "../../accounts/ethkey" }
 heapsize = "0.4"
 keccak-hash = "0.1"

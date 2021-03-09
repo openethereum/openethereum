@@ -17,7 +17,7 @@
 //! Authority params deserialization.
 
 use super::ValidatorSet;
-use uint::Uint;
+use crate::uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -40,11 +40,13 @@ pub struct BasicAuthority {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        hash::Address,
+        spec::{basic_authority::BasicAuthority, validator_set::ValidatorSet},
+        uint::Uint,
+    };
     use ethereum_types::{H160, U256};
-    use hash::Address;
     use serde_json;
-    use spec::{basic_authority::BasicAuthority, validator_set::ValidatorSet};
-    use uint::Uint;
 
     #[test]
     fn basic_authority_deserialization() {

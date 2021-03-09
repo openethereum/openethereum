@@ -149,9 +149,9 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::uint::Uint;
     use ethereum_types::U256;
     use serde_json;
-    use uint::Uint;
 
     #[test]
     fn uint_deserialization() {

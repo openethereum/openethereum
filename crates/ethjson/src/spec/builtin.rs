@@ -17,7 +17,7 @@
 //! Spec builtin deserialization.
 
 use std::collections::BTreeMap;
-use uint::Uint;
+use crate::uint::Uint;
 
 /// Linear pricing.
 #[derive(Debug, PartialEq, Deserialize, Clone)]

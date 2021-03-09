@@ -16,7 +16,7 @@
 
 //! Null engine params deserialization.
 
-use uint::Uint;
+use crate::uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -42,7 +42,7 @@ mod tests {
     use super::*;
     use ethereum_types::U256;
     use serde_json;
-    use uint::Uint;
+    use crate::uint::Uint;
 
     #[test]
     fn null_engine_deserialization() {

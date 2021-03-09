@@ -17,9 +17,7 @@
 //! Transaction data structure.
 
 use ethereum_types::{Address, H160, H256, U256};
-use ethjson;
 use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
-use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
 use std::ops::Deref;
@@ -28,8 +26,7 @@ pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
 
 use super::TypedTxId;
-
-use transaction::error;
+use crate::{hash::keccak, transaction::error};
 
 type Bytes = Vec<u8>;
 type BlockNumber = u64;
@@ -135,7 +132,7 @@ pub struct Transaction {
     pub gas: U256,
     /// Action, can be either call or contract create.
     pub action: Action,
-    /// Transfered value.
+    /// Transfered value.s
     pub value: U256,
     /// Transaction data.
     pub data: Bytes,
@@ -582,11 +579,11 @@ impl HeapSizeOf for TypedTransaction {
 pub struct SignatureComponents {
     /// The V field of the signature; the LS bit described which half of the curve our point falls
     /// in. It can be 0 or 1.
-    standard_v: u8,
+    pub standard_v: u8,
     /// The R field of the signature; helps describe the point on the curve.
-    r: U256,
+    pub r: U256,
     /// The S field of the signature; helps describe the point on the curve.
-    s: U256,
+    pub s: U256,
 }
 
 impl SignatureComponents {
@@ -606,67 +603,17 @@ impl SignatureComponents {
     }
 }
 
-#[cfg(any(test, feature = "test-helpers"))]
-impl From<ethjson::state::Transaction> for SignedTransaction {
-    fn from(t: ethjson::state::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        let secret = t.secret.map(|s| Secret::from(s.0));
-        let tx = TypedTransaction::Legacy(Transaction {
-            nonce: t.nonce.into(),
-            gas_price: t.gas_price.into(),
-            gas: t.gas_limit.into(),
-            action: match to {
-                Some(to) => Action::Call(to.into()),
-                None => Action::Create,
-            },
-            value: t.value.into(),
-            data: t.data.into(),
-        });
-        match secret {
-            Some(s) => tx.sign(&s, None),
-            None => tx.null_sign(1),
-        }
-    }
-}
-
-impl From<ethjson::transaction::Transaction> for UnverifiedTransaction {
-    fn from(t: ethjson::transaction::Transaction) -> Self {
-        let to: Option<ethjson::hash::Address> = t.to.into();
-        UnverifiedTransaction {
-            unsigned: TypedTransaction::Legacy(Transaction {
-                nonce: t.nonce.into(),
-                gas_price: t.gas_price.into(),
-                gas: t.gas_limit.into(),
-                action: match to {
-                    Some(to) => Action::Call(to.into()),
-                    None => Action::Create,
-                },
-                value: t.value.into(),
-                data: t.data.into(),
-            }),
-            chain_id: signature::extract_chain_id_from_legacy_v(t.v.into()),
-            signature: SignatureComponents {
-                r: t.r.into(),
-                s: t.s.into(),
-                standard_v: signature::extract_standard_v(t.v.into()),
-            },
-            hash: 0.into(),
-        }
-        .compute_hash()
-    }
-}
-
 /// Signed transaction information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnverifiedTransaction {
     /// Plain Transaction.
-    unsigned: TypedTransaction,
+    pub unsigned: TypedTransaction,
     /// Transaction signature
-    signature: SignatureComponents,
+    pub signature: SignatureComponents,
     /// chain_id recover from signature in legacy transaction. For TypedTransaction it is probably separate field.
-    chain_id: Option<u64>,
+    pub chain_id: Option<u64>,
     /// Hash of the transaction
-    hash: H256,
+    pub hash: H256,
 }
 
 impl HeapSizeOf for UnverifiedTransaction {
@@ -700,7 +647,7 @@ impl UnverifiedTransaction {
     }
 
     /// Used to compute hash of created transactions.
-    fn compute_hash(mut self) -> UnverifiedTransaction {
+    pub fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = keccak(&*self.encode());
         self.hash = hash;
         self
@@ -955,7 +902,7 @@ impl From<SignedTransaction> for PendingTransaction {
 mod tests {
     use super::*;
     use ethereum_types::U256;
-    use hash::keccak;
+    use crate::hash::keccak;
 
     #[test]
     fn sender_test() {

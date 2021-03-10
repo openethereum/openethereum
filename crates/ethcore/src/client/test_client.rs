@@ -237,7 +237,7 @@ impl TestBlockChainClient {
 
     /// Set block queue size for testing
     pub fn set_queue_size(&self, size: usize) {
-        self.queue_size.store(size, AtomicOrder::Relaxed);
+        self.queue_size.store(size, AtomicOrder::SeqCst);
     }
 
     /// Set timestamp assigned to latest sealed block
@@ -402,7 +402,7 @@ impl TestBlockChainClient {
 
     /// Returns true if the client has been disabled.
     pub fn is_disabled(&self) -> bool {
-        self.disabled.load(AtomicOrder::Relaxed)
+        self.disabled.load(AtomicOrder::SeqCst)
     }
 }
 
@@ -959,7 +959,7 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn queue_info(&self) -> QueueInfo {
         QueueInfo {
-            verified_queue_size: self.queue_size.load(AtomicOrder::Relaxed),
+            verified_queue_size: self.queue_size.load(AtomicOrder::SeqCst),
             unverified_queue_size: 0,
             verifying_queue_size: 0,
             max_queue_size: 0,
@@ -1019,7 +1019,7 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn disable(&self) {
-        self.disabled.store(true, AtomicOrder::Relaxed);
+        self.disabled.store(true, AtomicOrder::SeqCst);
     }
 
     fn pruning_info(&self) -> PruningInfo {

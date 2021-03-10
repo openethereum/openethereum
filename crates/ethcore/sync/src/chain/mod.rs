@@ -489,7 +489,7 @@ impl ChainSyncApi {
 
         if self
             .priority_tasks_gate
-            .compare_exchange(false, true, Ordering::Acquire, Ordering::Release)
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_err()
         {
             return;
@@ -552,7 +552,7 @@ impl ChainSyncApi {
         // Process as many items as we can until the deadline is reached.
         loop {
             if work().is_none() {
-                self.priority_tasks_gate.store(false, Ordering::Release);
+                self.priority_tasks_gate.store(false, Ordering::SeqCst);
                 return;
             }
         }

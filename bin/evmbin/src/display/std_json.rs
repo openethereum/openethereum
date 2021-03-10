@@ -203,6 +203,11 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
     fn trace_next_instruction(&mut self, pc: usize, instruction: u8, current_gas: U256) -> bool {
         let subdepth = self.subdepth;
         Self::with_informant_in_depth(self, subdepth, |informant: &mut Informant<Trace, Out>| {
+            let storage = if informant.config.omit_storage_output() {
+                None
+            } else {
+                Some(&informant.storage)
+            };
             let info = ::evm::Instruction::from_u8(instruction).map(|i| i.info());
             informant.instruction = instruction;
             let trace_data = json!({
@@ -211,7 +216,7 @@ impl<Trace: Writer, Out: Writer> trace::VMTracer for Informant<Trace, Out> {
                 "opName": info.map(|i| i.name).unwrap_or(""),
                 "gas": format!("{:#x}", current_gas),
                 "stack": informant.stack,
-                "storage": informant.storage,
+                "storage": storage,
                 "depth": informant.depth,
             });
 
@@ -307,19 +312,16 @@ pub mod tests {
         }
     }
 
-    pub fn informant() -> (Informant<TestWriter, TestWriter>, Arc<Mutex<Vec<u8>>>) {
+    pub fn informant(config: Config) -> (Informant<TestWriter, TestWriter>, Arc<Mutex<Vec<u8>>>) {
         let trace_writer: TestWriter = Default::default();
         let out_writer: TestWriter = Default::default();
         let res = trace_writer.0.clone();
-        (
-            Informant::new(trace_writer, out_writer, Config::default()),
-            res,
-        )
+        (Informant::new(trace_writer, out_writer, config), res)
     }
 
     #[test]
     fn should_trace_failure() {
-        let (inf, res) = informant();
+        let (inf, res) = informant(Config::default());
         run_test(
             inf,
             move |_, expected| {
@@ -333,7 +335,7 @@ pub mod tests {
 "#,
         );
 
-        let (inf, res) = informant();
+        let (inf, res) = informant(Config::default());
         run_test(
             inf,
             move |_, expected| {
@@ -349,7 +351,7 @@ pub mod tests {
 
     #[test]
     fn should_trace_create_correctly() {
-        let (informant, res) = informant();
+        let (informant, res) = informant(Config::default());
         run_test(
             informant,
             move |_, expected| {
@@ -382,6 +384,26 @@ pub mod tests {
 {"depth":2,"gas":"0x2102","op":88,"opName":"PC","pc":5,"stack":["0x0","0x0","0x0","0x0","0x0"],"storage":{}}
 {"depth":2,"gas":"0x2100","op":48,"opName":"ADDRESS","pc":6,"stack":["0x0","0x0","0x0","0x0","0x0","0x5"],"storage":{}}
 {"depth":2,"gas":"0x20fe","op":241,"opName":"CALL","pc":7,"stack":["0x0","0x0","0x0","0x0","0x0","0x5","0xbd770416a3345f91e4b34576cb804a576fa48eb1"],"storage":{}}
+"#,
+        )
+    }
+
+    #[test]
+    fn should_omit_storage_and_memory_flag() {
+        // should omit storage
+        let (informant, res) = informant(Config::new(true, true));
+        run_test(
+            informant,
+            move |_, expected| {
+                let bytes = res.lock().unwrap();
+                assert_eq!(expected, &String::from_utf8_lossy(&**bytes))
+            },
+            "3260D85554",
+            0xffff,
+            r#"{"depth":1,"gas":"0xffff","op":50,"opName":"ORIGIN","pc":0,"stack":[],"storage":null}
+{"depth":1,"gas":"0xfffd","op":96,"opName":"PUSH1","pc":1,"stack":["0x0"],"storage":null}
+{"depth":1,"gas":"0xfffa","op":85,"opName":"SSTORE","pc":3,"stack":["0x0","0xd8"],"storage":null}
+{"depth":1,"gas":"0xec72","op":84,"opName":"SLOAD","pc":4,"stack":[],"storage":null}
 "#,
         )
     }

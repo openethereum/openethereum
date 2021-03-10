@@ -287,9 +287,9 @@ pub mod tests {
 
     #[test]
     fn should_call_account_from_spec() {
-        use display::std_json::tests::informant;
+        use display::{config::Config, std_json::tests::informant};
 
-        let (inf, res) = informant();
+        let (inf, res) = informant(Config::default());
         let mut params = ActionParams::default();
         params.code_address = 0x20.into();
         params.gas = 0xffff.into();

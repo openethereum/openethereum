@@ -284,7 +284,7 @@ impl Importer {
     // t_nb 6.0 This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
         // Shortcut out if we know we're incapable of syncing the chain.
-        if !client.enabled.load(AtomicOrdering::Relaxed) {
+        if !client.enabled.load(AtomicOrdering::SeqCst) {
             return 0;
         }
 
@@ -1445,18 +1445,18 @@ impl Client {
     }
 
     fn wake_up(&self) {
-        if !self.liveness.load(AtomicOrdering::Relaxed) {
-            self.liveness.store(true, AtomicOrdering::Relaxed);
+        if !self.liveness.load(AtomicOrdering::SeqCst) {
+            self.liveness.store(true, AtomicOrdering::SeqCst);
             self.notify(|n| n.start());
             info!(target: "mode", "wake_up: Waking.");
         }
     }
 
     fn sleep(&self, force: bool) {
-        if self.liveness.load(AtomicOrdering::Relaxed) {
+        if self.liveness.load(AtomicOrdering::SeqCst) {
             // only sleep if the import queue is mostly empty.
             if force || (self.queue_info().total_queue_size() <= MAX_QUEUE_SIZE_TO_SLEEP_ON) {
-                self.liveness.store(false, AtomicOrdering::Relaxed);
+                self.liveness.store(false, AtomicOrdering::SeqCst);
                 self.notify(|n| n.stop());
                 info!(target: "mode", "sleep: Sleeping.");
             } else {
@@ -2058,13 +2058,13 @@ impl BlockChainClient for Client {
 
     fn disable(&self) {
         self.set_mode(Mode::Off);
-        self.enabled.store(false, AtomicOrdering::Relaxed);
+        self.enabled.store(false, AtomicOrdering::SeqCst);
         self.clear_queue();
     }
 
     fn set_mode(&self, new_mode: Mode) {
         trace!(target: "mode", "Client::set_mode({:?})", new_mode);
-        if !self.enabled.load(AtomicOrdering::Relaxed) {
+        if !self.enabled.load(AtomicOrdering::SeqCst) {
             return;
         }
         {
@@ -2095,7 +2095,7 @@ impl BlockChainClient for Client {
 
     fn set_spec_name(&self, new_spec_name: String) -> Result<(), ()> {
         trace!(target: "mode", "Client::set_spec_name({:?})", new_spec_name);
-        if !self.enabled.load(AtomicOrdering::Relaxed) {
+        if !self.enabled.load(AtomicOrdering::SeqCst) {
             return Err(());
         }
         if let Some(ref h) = *self.exit_handler.lock() {
@@ -3241,7 +3241,7 @@ impl IoChannelQueue {
     where
         F: Fn(&Client) + Send + Sync + 'static,
     {
-        let queue_size = self.currently_queued.load(AtomicOrdering::Relaxed);
+        let queue_size = self.currently_queued.load(AtomicOrdering::SeqCst);
         if queue_size >= self.limit {
             let err_limit = usize::try_from(self.limit).unwrap_or(usize::max_value());
             bail!("The queue is full ({})", err_limit);

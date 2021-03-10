@@ -480,7 +480,7 @@ impl TransactionQueue {
         // We want to clear stale transactions from the queue as well.
         // (Transactions that are occuping the queue for a long time without being included)
         let stale_id = {
-            let current_id = self.insertion_id.load(atomic::Ordering::Relaxed);
+            let current_id = self.insertion_id.load(atomic::Ordering::SeqCst);
             // wait at least for half of the queue to be replaced
             let gap = self.pool.read().options().max_count / 2;
             // but never less than 100 transactions

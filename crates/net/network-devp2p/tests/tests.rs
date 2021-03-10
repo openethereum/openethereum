@@ -73,11 +73,11 @@ impl TestProtocol {
     }
 
     pub fn got_timeout(&self) -> bool {
-        self.got_timeout.load(AtomicOrdering::Relaxed)
+        self.got_timeout.load(AtomicOrdering::SeqCst)
     }
 
     pub fn got_disconnect(&self) -> bool {
-        self.got_disconnect.load(AtomicOrdering::Relaxed)
+        self.got_disconnect.load(AtomicOrdering::SeqCst)
     }
 }
 
@@ -101,13 +101,13 @@ impl NetworkProtocolHandler for TestProtocol {
     }
 
     fn disconnected(&self, _io: &dyn NetworkContext, _peer: &PeerId) {
-        self.got_disconnect.store(true, AtomicOrdering::Relaxed);
+        self.got_disconnect.store(true, AtomicOrdering::SeqCst);
     }
 
     /// Timer function called after a timeout created with `NetworkContext::timeout`.
     fn timeout(&self, _io: &dyn NetworkContext, timer: TimerToken) {
         assert_eq!(timer, 0);
-        self.got_timeout.store(true, AtomicOrdering::Relaxed);
+        self.got_timeout.store(true, AtomicOrdering::SeqCst);
     }
 }
 

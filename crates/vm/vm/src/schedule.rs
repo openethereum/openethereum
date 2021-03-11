@@ -363,7 +363,7 @@ impl Schedule {
     }
 
     /// Schedule for the London fork of the Ethereum main net.
-    pub fn new_london() ->Schedule {
+    pub fn new_london() -> Schedule {
         let mut schedule = Self::new_berlin();
         schedule.eip1559 = true;
 

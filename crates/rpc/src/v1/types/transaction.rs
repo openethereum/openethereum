@@ -77,6 +77,9 @@ pub struct Transaction {
     /// optional access list
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_list: Option<AccessList>,
+    /// miner bribe
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 /// Local Transaction Status
@@ -187,11 +190,27 @@ impl Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
-        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone().into_iter().map(Into::into).collect())
-        } else {
-            None
+        let access_list = match t.as_unsigned() {
+            TypedTransaction::AccessList(tx) => {
+                Some(tx.access_list.clone().into_iter().map(Into::into).collect())
+            }
+            TypedTransaction::EIP1559Transaction(tx) => Some(
+                tx.transaction
+                    .access_list
+                    .clone()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ),
+            TypedTransaction::Legacy(_) => None,
         };
+
+        let max_inclusion_fee_per_gas =
+            if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
+                Some(tx.max_inclusion_fee_per_gas)
+            } else {
+                None
+            };
 
         let standard_v = if t.tx_type() == TypedTxId::Legacy {
             Some(t.standard_v())
@@ -230,6 +249,7 @@ impl Transaction {
             condition: None,
             transaction_type: t.signed.tx_type().to_U64_option_id(),
             access_list,
+            max_inclusion_fee_per_gas,
         }
     }
 
@@ -237,11 +257,29 @@ impl Transaction {
     pub fn from_signed(t: SignedTransaction) -> Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
-        let access_list = if let TypedTransaction::AccessList(al) = t.as_unsigned() {
-            Some(al.access_list.clone().into_iter().map(Into::into).collect())
-        } else {
-            None
+
+        let access_list = match t.as_unsigned() {
+            TypedTransaction::AccessList(tx) => {
+                Some(tx.access_list.clone().into_iter().map(Into::into).collect())
+            }
+            TypedTransaction::EIP1559Transaction(tx) => Some(
+                tx.transaction
+                    .access_list
+                    .clone()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ),
+            TypedTransaction::Legacy(_) => None,
         };
+
+        let max_inclusion_fee_per_gas =
+            if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
+                Some(tx.max_inclusion_fee_per_gas)
+            } else {
+                None
+            };
+
         let standard_v = if t.tx_type() == TypedTxId::Legacy {
             Some(t.standard_v())
         } else {
@@ -279,6 +317,7 @@ impl Transaction {
             condition: None,
             transaction_type: t.tx_type().to_U64_option_id(),
             access_list,
+            max_inclusion_fee_per_gas,
         }
     }
 

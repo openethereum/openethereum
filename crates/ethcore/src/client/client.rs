@@ -3141,7 +3141,8 @@ fn transaction_receipt(
     let transaction_index = tx.transaction_index;
     let transaction_type = tx.tx_type();
 
-    let receipt = receipt.receipt().clone();
+    let effective_gas_price = receipt.effective_gas_price();
+    let receipt = receipt.legacy_receipt().clone();
 
     LocalizedReceipt {
         from: sender,
@@ -3155,6 +3156,7 @@ fn transaction_receipt(
         block_hash: block_hash,
         block_number: block_number,
         cumulative_gas_used: receipt.gas_used,
+        effective_gas_price,
         gas_used: receipt.gas_used - prior_gas_used,
         contract_address: match tx.tx().action {
             Action::Call(_) => None,
@@ -3528,6 +3530,7 @@ mod tests {
                 block_hash: block_hash,
                 block_number: block_number,
                 cumulative_gas_used: gas_used,
+                effective_gas_price: None,
                 gas_used: gas_used - 5,
                 contract_address: None,
                 logs: vec![

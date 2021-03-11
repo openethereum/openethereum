@@ -1134,6 +1134,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     ));
                 }
             }
+            TypedTransaction::EIP1559Transaction(_) => {
+                if !schedule.eip1559 {
+                    return Err(ExecutionError::TransactionMalformed(
+                        "1559 type of transactions not enabled".into(),
+                    ));
+                }
+            }
             TypedTransaction::Legacy(_) => (), //legacy transactions are allways valid
         };
 
@@ -1148,17 +1155,15 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             for (address, _) in self.machine.builtins() {
                 access_list.insert_address(*address);
             }
-            if schedule.eip2930 {
-                // optional access list
-                if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
-                    for item in al_tx.access_list.iter() {
-                        access_list.insert_address(item.0);
-                        base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
-                        for key in item.1.iter() {
-                            access_list.insert_storage_key(item.0, *key);
-                            base_gas_required +=
-                                vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
-                        }
+
+            if let Some(al) = t.access_list() {
+                for item in al.iter() {
+                    access_list.insert_address(item.0);
+                    base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                    for key in item.1.iter() {
+                        access_list.insert_storage_key(item.0, *key);
+                        base_gas_required +=
+                            vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
                     }
                 }
             }

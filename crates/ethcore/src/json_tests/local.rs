@@ -148,10 +148,11 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
                     TypedTxId::Legacy => {
                         test_exp(tx.legacy_v() == ref_tx.v.0.as_u64(), "Original Sig V")
                     }
-                    TypedTxId::AccessList => {
+                    TypedTxId::AccessList | TypedTxId::EIP1559Transaction => {
                         test_exp(tx.standard_v() as u64 == ref_tx.v.0.as_u64(), "Sig V");
                         let al = match tx.as_unsigned() {
                             TypedTransaction::AccessList(tx) => &tx.access_list,
+                            TypedTransaction::EIP1559Transaction(tx) => &tx.transaction.access_list,
                             _ => {
                                 println!("Wrong data in tx type");
                                 continue;

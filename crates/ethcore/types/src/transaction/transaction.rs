@@ -370,10 +370,148 @@ impl AccessListTx {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct EIP1559TransactionTx {
+    pub transaction: AccessListTx,
+    pub max_inclusion_fee_per_gas: U256, //miner bribe
+}
+
+impl EIP1559TransactionTx {
+    pub fn tx_type(&self) -> TypedTxId {
+        TypedTxId::EIP1559Transaction
+    }
+
+    pub fn tx(&self) -> &Transaction {
+        &self.transaction.tx()
+    }
+
+    pub fn tx_mut(&mut self) -> &mut Transaction {
+        self.transaction.tx_mut()
+    }
+
+    // decode bytes by this payload spec: rlp([2, [chainId, nonce, maxInclusionFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        let tx_rlp = &Rlp::new(tx);
+
+        // we need to have 12 items in this list
+        if tx_rlp.item_count()? != 12 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+
+        let chain_id = Some(tx_rlp.val_at(0)?);
+
+        let max_inclusion_fee_per_gas = tx_rlp.val_at(2)?;
+
+        let tx = Transaction {
+            nonce: tx_rlp.val_at(1)?,
+            gas_price: tx_rlp.val_at(3)?, //taken from max_fee_per_gas
+            gas: tx_rlp.val_at(4)?,
+            action: tx_rlp.val_at(5)?,
+            value: tx_rlp.val_at(6)?,
+            data: tx_rlp.val_at(7)?,
+        };
+
+        // access list we get from here
+        let accl_rlp = tx_rlp.at(8)?;
+
+        // access_list pattern: [[{20 bytes}, [{32 bytes}...]]...]
+        let mut accl: AccessList = Vec::new();
+
+        for i in 0..accl_rlp.item_count()? {
+            let accounts = accl_rlp.at(i)?;
+
+            // check if there is list of 2 items
+            if accounts.item_count()? != 2 {
+                return Err(DecoderError::Custom("Unknown access list length"));
+            }
+            accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
+        }
+
+        // we get signature part from here
+        let signature = SignatureComponents {
+            standard_v: tx_rlp.val_at(9)?,
+            r: tx_rlp.val_at(10)?,
+            s: tx_rlp.val_at(11)?,
+        };
+
+        // and here we create UnverifiedTransaction and calculate its hash
+        Ok(UnverifiedTransaction::new(
+            TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                transaction: AccessListTx::new(tx, accl),
+                max_inclusion_fee_per_gas,
+            }),
+            chain_id,
+            signature,
+            0.into(),
+        )
+        .compute_hash())
+    }
+
+    fn encode_payload(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> RlpStream {
+        let mut stream = RlpStream::new();
+
+        let list_size = if signature.is_some() { 12 } else { 9 };
+        stream.begin_list(list_size);
+
+        // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
+        stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
+
+        stream.append(&self.tx().nonce);
+        stream.append(&self.max_inclusion_fee_per_gas);
+        stream.append(&self.tx().gas_price);
+        stream.append(&self.tx().gas);
+        stream.append(&self.tx().action);
+        stream.append(&self.tx().value);
+        stream.append(&self.tx().data);
+
+        // access list
+        stream.begin_list(self.transaction.access_list.len());
+        for access in self.transaction.access_list.iter() {
+            stream.begin_list(2);
+            stream.append(&access.0);
+            stream.begin_list(access.1.len());
+            for storage_key in access.1.iter() {
+                stream.append(storage_key);
+            }
+        }
+
+        // append signature if any
+        if let Some(signature) = signature {
+            signature.rlp_append(&mut stream);
+        }
+        stream
+    }
+
+    // encode by this payload spec: 0x02 | rlp([2, [chainId, nonce, maxInclusionFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn encode(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> Vec<u8> {
+        let stream = self.encode_payload(chain_id, signature);
+        // make as vector of bytes
+        [&[TypedTxId::EIP1559Transaction as u8], stream.as_raw()].concat()
+    }
+
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        rlp.append(&self.encode(chain_id, Some(signature)));
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypedTransaction {
-    Legacy(Transaction), // old legacy RLP encoded transaction
+    Legacy(Transaction),      // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
-                              // Accesses outside the list are possible, but become more expensive.
+    // Accesses outside the list are possible, but become more expensive.
+    EIP1559Transaction(EIP1559TransactionTx),
 }
 
 impl TypedTransaction {
@@ -381,6 +519,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,
             Self::AccessList(_) => TypedTxId::AccessList,
+            Self::EIP1559Transaction(_) => TypedTxId::EIP1559Transaction,
         }
     }
 
@@ -389,6 +528,7 @@ impl TypedTransaction {
         keccak(match self {
             Self::Legacy(tx) => tx.encode(chain_id, None),
             Self::AccessList(tx) => tx.encode(chain_id, None),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, None),
         })
     }
 
@@ -478,6 +618,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx(),
+            Self::EIP1559Transaction(tx) => tx.tx(),
         }
     }
 
@@ -485,6 +626,15 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx_mut(),
+            Self::EIP1559Transaction(tx) => tx.tx_mut(),
+        }
+    }
+
+    pub fn access_list(&self) -> Option<&AccessList> {
+        match self {
+            Self::EIP1559Transaction(tx) => Some(&tx.transaction.access_list),
+            Self::AccessList(tx) => Some(&tx.access_list),
+            Self::Legacy(_) => None,
         }
     }
 
@@ -499,6 +649,7 @@ impl TypedTransaction {
         }
         // other transaction types
         match id.unwrap() {
+            TypedTxId::EIP1559Transaction => EIP1559TransactionTx::decode(&tx[1..]),
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
             TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
         }
@@ -549,6 +700,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.rlp_append(s, chain_id, signature),
             Self::AccessList(opt) => opt.rlp_append(s, chain_id, signature),
+            Self::EIP1559Transaction(tx) => tx.rlp_append(s, chain_id, signature),
         }
     }
 
@@ -564,6 +716,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.encode(chain_id, signature),
             Self::AccessList(opt) => opt.encode(chain_id, signature),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, signature),
         }
     }
 }
@@ -573,6 +726,7 @@ impl HeapSizeOf for TypedTransaction {
         match self {
             TypedTransaction::Legacy(legacy) => legacy.heap_size_of_children(),
             TypedTransaction::AccessList(oal) => oal.tx().heap_size_of_children(),
+            TypedTransaction::EIP1559Transaction(tx) => tx.tx().heap_size_of_children(),
         }
     }
 }

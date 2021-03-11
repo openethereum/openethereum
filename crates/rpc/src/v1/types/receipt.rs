@@ -39,6 +39,9 @@ pub struct Receipt {
     pub block_number: Option<U256>,
     /// Cumulative gas used
     pub cumulative_gas_used: U256,
+    /// Effective gas price
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_gas_price: Option<U256>,
     /// Gas used
     pub gas_used: Option<U256>,
     /// Contract address
@@ -84,6 +87,7 @@ impl From<LocalizedReceipt> for Receipt {
             block_hash: Some(r.block_hash),
             block_number: Some(r.block_number.into()),
             cumulative_gas_used: r.cumulative_gas_used,
+            effective_gas_price: r.effective_gas_price,
             gas_used: Some(r.gas_used),
             contract_address: r.contract_address.map(Into::into),
             logs: r.logs.into_iter().map(Into::into).collect(),
@@ -105,6 +109,7 @@ impl From<RichReceipt> for Receipt {
             block_hash: None,
             block_number: None,
             cumulative_gas_used: r.cumulative_gas_used,
+            effective_gas_price: r.effective_gas_price,
             gas_used: Some(r.gas_used),
             contract_address: r.contract_address.map(Into::into),
             logs: r.logs.into_iter().map(Into::into).collect(),
@@ -118,7 +123,7 @@ impl From<RichReceipt> for Receipt {
 impl From<TypedReceipt> for Receipt {
     fn from(r: TypedReceipt) -> Self {
         let transaction_type = r.tx_type().to_U64_option_id();
-        let r = r.receipt().clone();
+        let legacy_receipt = r.legacy_receipt().clone();
         Receipt {
             from: None,
             to: None,
@@ -127,13 +132,14 @@ impl From<TypedReceipt> for Receipt {
             transaction_index: None,
             block_hash: None,
             block_number: None,
-            cumulative_gas_used: r.gas_used,
+            cumulative_gas_used: legacy_receipt.gas_used,
+            effective_gas_price: r.effective_gas_price(),
             gas_used: None,
             contract_address: None,
-            logs: r.logs.into_iter().map(Into::into).collect(),
-            status_code: Self::outcome_to_status_code(&r.outcome),
-            state_root: Self::outcome_to_state_root(r.outcome),
-            logs_bloom: r.log_bloom,
+            logs: legacy_receipt.logs.into_iter().map(Into::into).collect(),
+            status_code: Self::outcome_to_status_code(&legacy_receipt.outcome),
+            state_root: Self::outcome_to_state_root(legacy_receipt.outcome),
+            logs_bloom: legacy_receipt.log_bloom,
         }
     }
 }
@@ -161,6 +167,7 @@ mod tests {
             ),
             block_number: Some(0x4510c.into()),
             cumulative_gas_used: 0x20.into(),
+            effective_gas_price: None,
             gas_used: Some(0x10.into()),
             contract_address: None,
             logs: vec![Log {

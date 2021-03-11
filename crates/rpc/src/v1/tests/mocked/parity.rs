@@ -475,6 +475,7 @@ fn rpc_parity_block_receipts() {
             block_hash: 3.into(),
             block_number: 0,
             cumulative_gas_used: 21_000.into(),
+            effective_gas_price: None,
             gas_used: 21_000.into(),
             contract_address: None,
             logs: vec![],

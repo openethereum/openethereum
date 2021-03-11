@@ -472,6 +472,9 @@ impl EthereumMachine {
             transaction::TypedTxId::AccessList if !schedule.eip2930 => {
                 return Err(transaction::Error::TransactionTypeNotEnabled)
             }
+            transaction::TypedTxId::EIP1559Transaction if !schedule.eip1559 => {
+                return Err(transaction::Error::TransactionTypeNotEnabled)
+            }
             _ => (),
         };
 

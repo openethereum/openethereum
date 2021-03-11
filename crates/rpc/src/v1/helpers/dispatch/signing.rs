@@ -23,7 +23,8 @@ use ethereum_types::{Address, H256, U256};
 use ethkey::Signature;
 use jsonrpc_core::{Error, ErrorCode};
 use types::transaction::{
-    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,
+    AccessListTx, Action, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,
+    TypedTxId,
 };
 
 use jsonrpc_core::Result;
@@ -74,6 +75,28 @@ impl super::Accounts for Signer {
                         .map(Into::into)
                         .collect(),
                 ))
+            }
+            Some(TypedTxId::EIP1559Transaction) => {
+                if filled.access_list.is_none() {
+                    return Err(Error::new(ErrorCode::InvalidParams));
+                }
+                if let Some(max_inclusion_fee_per_gas) = filled.max_inclusion_fee_per_gas {
+                    let transaction = AccessListTx::new(
+                        legacy_tx,
+                        filled
+                            .access_list
+                            .unwrap_or_default()
+                            .into_iter()
+                            .map(Into::into)
+                            .collect(),
+                    );
+                    TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                        transaction,
+                        max_inclusion_fee_per_gas,
+                    })
+                } else {
+                    return Err(Error::new(ErrorCode::InvalidParams));
+                }
             }
             None => return Err(Error::new(ErrorCode::InvalidParams)),
         };

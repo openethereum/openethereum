@@ -52,6 +52,9 @@ pub struct TransactionRequest {
     /// Access list
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 pub fn format_ether(i: U256) -> String {
@@ -113,6 +116,7 @@ impl From<helpers::TransactionRequest> for TransactionRequest {
             nonce: r.nonce.map(Into::into),
             condition: r.condition.map(Into::into),
             access_list: r.access_list.map(Into::into),
+            max_inclusion_fee_per_gas: r.max_inclusion_fee_per_gas.map(Into::into),
         }
     }
 }
@@ -130,6 +134,7 @@ impl From<helpers::FilledTransactionRequest> for TransactionRequest {
             nonce: r.nonce,
             condition: r.condition,
             access_list: r.access_list.map(Into::into),
+            max_inclusion_fee_per_gas: r.max_inclusion_fee_per_gas,
         }
     }
 }
@@ -147,6 +152,7 @@ impl Into<helpers::TransactionRequest> for TransactionRequest {
             nonce: self.nonce.map(Into::into),
             condition: self.condition.map(Into::into),
             access_list: self.access_list.map(Into::into),
+            max_inclusion_fee_per_gas: self.max_inclusion_fee_per_gas.map(Into::into),
         }
     }
 }
@@ -187,6 +193,7 @@ mod tests {
                 nonce: Some(U256::from(4)),
                 condition: Some(TransactionCondition::Number(0x13)),
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }
         );
     }
@@ -214,6 +221,7 @@ mod tests {
 			nonce: None,
             condition: None,
             access_list: None,
+            max_inclusion_fee_per_gas: None,
 		});
     }
 
@@ -235,6 +243,7 @@ mod tests {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }
         );
     }
@@ -264,6 +273,7 @@ mod tests {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }
         );
     }

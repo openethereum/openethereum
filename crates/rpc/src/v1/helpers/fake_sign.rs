@@ -16,7 +16,8 @@
 
 use std::cmp::min;
 use types::transaction::{
-    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,
+    AccessListTx, Action, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,
+    TypedTxId,
 };
 
 use ethereum_types::U256;
@@ -50,6 +51,28 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
                     .map(Into::into)
                     .collect(),
             ))
+        }
+        Some(TypedTxId::EIP1559Transaction) => {
+            if request.access_list.is_none() {
+                return Err(Error::new(ErrorCode::InvalidParams));
+            }
+            if let Some(max_inclusion_fee_per_gas) = request.max_inclusion_fee_per_gas {
+                let transaction = AccessListTx::new(
+                    tx_legacy,
+                    request
+                        .access_list
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                );
+                TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                    transaction,
+                    max_inclusion_fee_per_gas,
+                })
+            } else {
+                return Err(Error::new(ErrorCode::InvalidParams));
+            }
         }
         _ => return Err(Error::new(ErrorCode::InvalidParams)),
     };

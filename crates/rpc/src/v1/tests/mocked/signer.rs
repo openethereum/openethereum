@@ -102,6 +102,7 @@ fn should_return_list_of_items_to_confirm() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -149,6 +150,7 @@ fn should_reject_transaction_from_queue_without_dispatching() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -187,6 +189,7 @@ fn should_not_remove_transaction_if_password_is_invalid() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -253,6 +256,7 @@ fn should_confirm_transaction_and_dispatch() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -318,6 +322,7 @@ fn should_alter_the_sender_and_nonce() {
                 nonce: Some(10.into()),
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -384,6 +389,7 @@ fn should_confirm_transaction_with_token() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -452,6 +458,7 @@ fn should_confirm_transaction_with_rlp() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -518,6 +525,7 @@ fn should_return_error_when_sender_does_not_match() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -585,6 +593,7 @@ fn should_confirm_sign_transaction_with_rlp() {
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }),
             Origin::Unknown,
         )

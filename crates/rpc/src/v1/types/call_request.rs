@@ -45,6 +45,9 @@ pub struct CallRequest {
     /// Access list
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 impl Into<Request> for CallRequest {
@@ -59,6 +62,7 @@ impl Into<Request> for CallRequest {
             data: self.data.map(Into::into),
             nonce: self.nonce.map(Into::into),
             access_list: self.access_list.map(Into::into),
+            max_inclusion_fee_per_gas: self.max_inclusion_fee_per_gas.map(Into::into),
         }
     }
 }
@@ -96,6 +100,7 @@ mod tests {
                 data: Some(vec![0x12, 0x34, 0x56].into()),
                 nonce: Some(U256::from(4)),
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }
         );
     }
@@ -122,6 +127,7 @@ mod tests {
 			data: Some("d46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675".from_hex().unwrap().into()),
             nonce: None,
             access_list: None,
+            max_inclusion_fee_per_gas: None,
 		});
     }
 
@@ -142,6 +148,7 @@ mod tests {
                 data: None,
                 nonce: None,
                 access_list: None,
+                max_inclusion_fee_per_gas: None,
             }
         );
     }

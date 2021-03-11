@@ -1203,6 +1203,7 @@ impl miner::MinerService for Miner {
                             transaction_type: tx.tx_type(),
                             transaction_index: index,
                             cumulative_gas_used: receipt.gas_used,
+                            effective_gas_price: receipt.effective_gas_price(),
                             gas_used: receipt.gas_used - prev_gas,
                             contract_address: match tx.tx().action {
                                 Action::Call(_) => None,

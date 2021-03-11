@@ -42,6 +42,8 @@ pub struct TransactionRequest {
     pub condition: Option<TransactionCondition>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 /// Transaction request coming from RPC with default values filled in.
@@ -69,6 +71,8 @@ pub struct FilledTransactionRequest {
     pub condition: Option<TransactionCondition>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 impl From<FilledTransactionRequest> for TransactionRequest {
@@ -84,6 +88,7 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             nonce: r.nonce,
             condition: r.condition,
             access_list: r.access_list.map(Into::into),
+            max_inclusion_fee_per_gas: r.max_inclusion_fee_per_gas,
         }
     }
 }
@@ -109,6 +114,8 @@ pub struct CallRequest {
     pub nonce: Option<U256>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_inclusion_fee_per_gas: Option<U256>,
 }
 
 /// Confirmation object

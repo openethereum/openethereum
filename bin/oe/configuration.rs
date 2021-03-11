@@ -14,9 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::{
+    bytes::Bytes,
+    cli::{Args, ArgsError},
+    hash::keccak,
+    metrics::MetricsConfiguration,
+    miner::pool,
+    sync::{self, validate_node_url, NetworkConfiguration},
+};
 use ansi_term::Colour;
-use bytes::Bytes;
-use cli::{Args, ArgsError};
 use ethcore::{
     client::VMType,
     miner::{stratum, MinerOptions},
@@ -25,9 +31,6 @@ use ethcore::{
 };
 use ethereum_types::{Address, H256, U256};
 use ethkey::{Public, Secret};
-use hash::keccak;
-use metrics::MetricsConfiguration;
-use miner::pool;
 use num_cpus;
 use parity_version::{version, version_data};
 use std::{
@@ -40,35 +43,37 @@ use std::{
     path::PathBuf,
     time::Duration,
 };
-use sync::{self, validate_node_url, NetworkConfiguration};
 
-use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
-use blockchain::{
-    BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain, KillBlockchain, ResetBlockchain,
+use crate::{
+    account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount},
+    blockchain::{
+        BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain, KillBlockchain,
+        ResetBlockchain,
+    },
+    cache::CacheConfig,
+    helpers::{
+        parity_ipc_path, to_address, to_addresses, to_block_id, to_bootnodes, to_duration, to_mode,
+        to_pending_set, to_price, to_queue_penalization, to_queue_strategy, to_u256,
+    },
+    network::IpFilter,
+    params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType},
+    presale::ImportWallet,
+    rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration},
+    run::RunCmd,
+    secretstore::{
+        Configuration as SecretStoreConfiguration, ContractAddress as SecretStoreContractAddress,
+        NodeSecretKey,
+    },
+    snapshot::{self, SnapshotCommand},
+    types::data_format::DataFormat,
 };
-use cache::CacheConfig;
 use dir::{
     self, default_data_path, default_local_path,
     helpers::{replace_home, replace_home_and_local},
     Directories,
 };
 use ethcore_logger::Config as LogConfig;
-use helpers::{
-    parity_ipc_path, to_address, to_addresses, to_block_id, to_bootnodes, to_duration, to_mode,
-    to_pending_set, to_price, to_queue_penalization, to_queue_strategy, to_u256,
-};
-use network::IpFilter;
-use params::{AccountsConfig, GasPricerConfig, MinerExtras, ResealPolicy, SpecType};
 use parity_rpc::NetworkSettings;
-use presale::ImportWallet;
-use rpc::{HttpConfiguration, IpcConfiguration, WsConfiguration};
-use run::RunCmd;
-use secretstore::{
-    Configuration as SecretStoreConfiguration, ContractAddress as SecretStoreContractAddress,
-    NodeSecretKey,
-};
-use snapshot::{self, SnapshotCommand};
-use types::data_format::DataFormat;
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -166,7 +171,7 @@ impl Configuration {
         let cmd = if self.args.flag_version {
             Cmd::Version
         } else if self.args.cmd_signer {
-            let authfile = ::signer::codes_path(&ws_conf.signer_path);
+            let authfile = crate::signer::codes_path(&ws_conf.signer_path);
 
             if self.args.cmd_signer_new_token {
                 Cmd::SignerToken(ws_conf, logger_config.clone())
@@ -1243,23 +1248,25 @@ fn into_secretstore_service_contract_address(
 mod tests {
     use std::{fs::File, io::Write, str::FromStr};
 
-    use account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount};
-    use blockchain::{BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain};
-    use cli::Args;
+    use crate::{
+        account::{AccountCmd, ImportAccounts, ListAccounts, NewAccount},
+        blockchain::{BlockchainCmd, ExportBlockchain, ExportState, ImportBlockchain},
+        cli::Args,
+        helpers::default_network_config,
+        miner::pool::PrioritizationStrategy,
+        params::SpecType,
+        presale::ImportWallet,
+        rpc::WsConfiguration,
+        rpc_apis::ApiSet,
+        run::RunCmd,
+        types::{data_format::DataFormat, ids::BlockId},
+    };
     use dir::Directories;
     use ethcore::{client::VMType, miner::MinerOptions};
-    use helpers::default_network_config;
-    use miner::pool::PrioritizationStrategy;
-    use params::SpecType;
     use parity_rpc::NetworkSettings;
-    use presale::ImportWallet;
-    use rpc::WsConfiguration;
-    use rpc_apis::ApiSet;
-    use run::RunCmd;
     use tempdir::TempDir;
-    use types::{data_format::DataFormat, ids::BlockId};
 
-    use network::{AllowIP, IpFilter};
+    use crate::network::{AllowIP, IpFilter};
 
     extern crate ipnetwork;
     use self::ipnetwork::IpNetwork;

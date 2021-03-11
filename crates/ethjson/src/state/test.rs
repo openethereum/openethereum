@@ -16,16 +16,19 @@
 
 //! General test deserialization.
 
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    spec::ForkSpec,
+    state::{AccountState, Env},
+    uint::Uint,
+};
+
 use ethkey::Secret;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
 use serde_json::{self, Error};
-use spec::ForkSpec;
-use state::{AccountState, Env};
 use std::{collections::BTreeMap, io::Read};
 use types::transaction::{AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction};
-use uint::Uint;
 
 use crate::blockchain::transaction::AccessList;
 

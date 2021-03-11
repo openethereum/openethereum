@@ -16,9 +16,7 @@
 
 //! Spec seal deserialization.
 
-use bytes::Bytes;
-use hash::*;
-use uint::Uint;
+use crate::{bytes::Bytes, hash::*, uint::Uint};
 
 /// Ethereum seal.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -70,12 +68,14 @@ pub enum Seal {
 
 #[cfg(test)]
 mod tests {
-    use bytes::Bytes;
+    use crate::{
+        bytes::Bytes,
+        hash::*,
+        spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal},
+        uint::Uint,
+    };
     use ethereum_types::{H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
-    use hash::*;
     use serde_json;
-    use spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal};
-    use uint::Uint;
 
     #[test]
     fn seal_deserialization() {

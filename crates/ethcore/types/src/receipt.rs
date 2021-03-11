@@ -22,8 +22,10 @@ use heapsize::HeapSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
 
-use log_entry::{LocalizedLogEntry, LogEntry};
-use BlockNumber;
+use crate::{
+    log_entry::{LocalizedLogEntry, LogEntry},
+    BlockNumber,
+};
 
 /// Transaction outcome store in the receipt.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -302,7 +304,7 @@ pub struct LocalizedReceipt {
 #[cfg(test)]
 mod tests {
     use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
-    use log_entry::LogEntry;
+    use crate::log_entry::LogEntry;
 
     #[test]
     fn test_no_state_root() {

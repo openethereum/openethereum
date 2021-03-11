@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use cache::CacheConfig;
-use db::migrate;
+use crate::{
+    cache::CacheConfig,
+    db::migrate,
+    miner::pool::PrioritizationStrategy,
+    sync::{self, validate_node_url},
+    upgrade::{upgrade, upgrade_data_paths},
+};
 use dir::{helpers::replace_home, DatabaseDirectories};
 use ethcore::{
     client::{BlockId, ClientConfig, DatabaseCompactionProfile, Mode, VMType, VerifierType},
@@ -24,7 +29,6 @@ use ethcore::{
 use ethereum_types::{clean_0x, Address, U256};
 use ethkey::Password;
 use journaldb::Algorithm;
-use miner::pool::PrioritizationStrategy;
 use std::{
     collections::HashSet,
     fs::File,
@@ -32,8 +36,6 @@ use std::{
     io::{BufRead, BufReader, Write},
     time::Duration,
 };
-use sync::{self, validate_node_url};
-use upgrade::{upgrade, upgrade_data_paths};
 
 pub fn to_duration(s: &str) -> Result<Duration, String> {
     to_seconds(s).map(Duration::from_secs)
@@ -215,9 +217,9 @@ pub fn to_bootnodes(bootnodes: &Option<String>) -> Result<Vec<String>, String> {
 }
 
 #[cfg(test)]
-pub fn default_network_config() -> ::sync::NetworkConfiguration {
+pub fn default_network_config() -> crate::sync::NetworkConfiguration {
     use super::network::IpFilter;
-    use sync::NetworkConfiguration;
+    use crate::sync::NetworkConfiguration;
     NetworkConfiguration {
         config_path: Some(replace_home(&::dir::default_data_path(), "$BASE/network")),
         net_config_path: None,

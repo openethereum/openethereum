@@ -250,7 +250,9 @@ fn test_difficulty_to_boundary_regression() {
         );
         assert_eq!(
             U256::from(difficulty),
-            boundary_to_difficulty(&BigEndianHash::from_uint(&boundary_to_difficulty(&H256::from_low_u64_be(difficulty)))),
+            boundary_to_difficulty(&BigEndianHash::from_uint(&boundary_to_difficulty(
+                &H256::from_low_u64_be(difficulty)
+            ))),
         );
         assert_eq!(
             H256::from_low_u64_be(difficulty),

@@ -44,8 +44,8 @@ mod tests {
     use hash::Address;
     use serde_json;
     use spec::{basic_authority::BasicAuthority, validator_set::ValidatorSet};
-    use uint::Uint;
     use std::str::FromStr;
+    use uint::Uint;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -62,7 +62,7 @@ mod tests {
 
         assert_eq!(deserialized.params.duration_limit, Uint(U256::from(0x0d)));
         let vs = ValidatorSet::List(vec![Address(
-                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap(),
         )]);
         assert_eq!(deserialized.params.validators, vs);
     }

@@ -115,5 +115,8 @@ pub fn extract_signers(header: &Header) -> Result<BTreeSet<Address>, Error> {
 
 /// Retrieve `null_seal`
 pub fn null_seal() -> Vec<Vec<u8>> {
-    vec![encode(&NULL_MIXHASH.as_bytes().to_vec()), encode(&NULL_NONCE.as_bytes().to_vec())]
+    vec![
+        encode(&NULL_MIXHASH.as_bytes().to_vec()),
+        encode(&NULL_NONCE.as_bytes().to_vec()),
+    ]
 }

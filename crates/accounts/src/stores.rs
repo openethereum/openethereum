@@ -171,8 +171,8 @@ impl<K: hash::Hash + Eq, V> DiskMap<K, V> {
 #[cfg(test)]
 mod tests {
     use super::AddressBook;
-    use ethereum_types::H160;
     use crate::account_data::AccountMeta;
+    use ethereum_types::H160;
     use std::collections::HashMap;
     use tempdir::TempDir;
 

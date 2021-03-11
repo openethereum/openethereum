@@ -59,7 +59,8 @@ fn verify_external(header: &Header, validators: &dyn ValidatorSet) -> Result<(),
 
     // Check if the signature belongs to a validator, can depend on parent state.
     let sig = Rlp::new(&header.seal()[0]).as_val::<H520>()?;
-    let signer = publickey::public_to_address(&publickey::recover(&sig.into(), &header.bare_hash())?);
+    let signer =
+        publickey::public_to_address(&publickey::recover(&sig.into(), &header.bare_hash())?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(*header.author()).into());

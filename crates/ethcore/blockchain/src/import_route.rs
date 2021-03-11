@@ -131,15 +131,24 @@ mod tests {
             location: BlockLocation::BranchBecomingCanonChain(BranchBecomingCanonChainData {
                 ancestor: BigEndianHash::from_uint(&U256::from(0)),
                 enacted: vec![BigEndianHash::from_uint(&U256::from(1))],
-                retracted: vec![BigEndianHash::from_uint(&U256::from(3)), BigEndianHash::from_uint(&U256::from(4))],
+                retracted: vec![
+                    BigEndianHash::from_uint(&U256::from(3)),
+                    BigEndianHash::from_uint(&U256::from(4)),
+                ],
             }),
         };
 
         assert_eq!(
             ImportRoute::from(info),
             ImportRoute {
-                retracted: vec![BigEndianHash::from_uint(&U256::from(3)), BigEndianHash::from_uint(&U256::from(4))],
-                enacted: vec![BigEndianHash::from_uint(&U256::from(1)), BigEndianHash::from_uint(&U256::from(2))],
+                retracted: vec![
+                    BigEndianHash::from_uint(&U256::from(3)),
+                    BigEndianHash::from_uint(&U256::from(4))
+                ],
+                enacted: vec![
+                    BigEndianHash::from_uint(&U256::from(1)),
+                    BigEndianHash::from_uint(&U256::from(2))
+                ],
                 omitted: vec![],
             }
         );

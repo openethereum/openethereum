@@ -20,7 +20,6 @@ extern crate parity_util_mem;
 #[cfg(test)]
 extern crate keccak_hasher;
 
-
 use hash_db::{AsHashDB, AsPlainDB, HashDB, HashDBRef, Hasher as KeyHasher, PlainDB, PlainDBRef};
 use parity_util_mem::MallocSizeOf;
 use std::{

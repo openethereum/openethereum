@@ -392,10 +392,10 @@ impl<K: Kind> VerificationQueue<K> {
                         if e.hash == hash {
                             idx = Some(i);
 
-                            verification.sizes.verifying.fetch_add(
-                                verified.malloc_size_of(),
-                                AtomicOrdering::SeqCst,
-                            );
+                            verification
+                                .sizes
+                                .verifying
+                                .fetch_add(verified.malloc_size_of(), AtomicOrdering::SeqCst);
                             e.output = Some(verified);
                             break;
                         }

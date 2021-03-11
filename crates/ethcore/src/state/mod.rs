@@ -663,7 +663,9 @@ impl<B: Backend> State<B> {
                         }
                     }
                     // The account didn't exist at that point. Return empty value.
-                    Some(Some(AccountEntry { account: None, .. })) => return Ok(Some(H256::default())),
+                    Some(Some(AccountEntry { account: None, .. })) => {
+                        return Ok(Some(H256::default()))
+                    }
                     // The value was not cached at that checkpoint, meaning it was not modified at all.
                     Some(None) => {
                         kind = Some(ReturnKind::OriginalAt);
@@ -1168,8 +1170,8 @@ impl<B: Backend> State<B> {
                     H256::from_slice(&key[..]),
                     BigEndianHash::from_uint(
                         &rlp::decode::<U256>(&val[..])
-                        .expect("Decoded from trie which was encoded from the same type; qed")
-                    )
+                            .expect("Decoded from trie which was encoded from the same type; qed"),
+                    ),
                 );
             }
         }
@@ -1720,7 +1722,10 @@ mod tests {
         .sign(&secret(), None);
 
         state
-            .init_code(&Address::from_low_u64_be(0xa), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xa),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -1907,7 +1912,10 @@ mod tests {
             )
             .unwrap();
         state
-            .init_code(&Address::from_low_u64_be(0xb), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         let result = state.apply(&info, &machine, &t, true).unwrap();
 
@@ -2043,7 +2051,10 @@ mod tests {
         .sign(&secret(), None);
 
         state
-            .init_code(&Address::from_low_u64_be(0xa), FromHex::from_hex("5b600056").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xa),
+                FromHex::from_hex("5b600056").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2093,7 +2104,10 @@ mod tests {
             )
             .unwrap();
         state
-            .init_code(&Address::from_low_u64_be(0xb), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2280,7 +2294,10 @@ mod tests {
             )
             .unwrap();
         state
-            .init_code(&Address::from_low_u64_be(0xb), FromHex::from_hex("5b600056").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("5b600056").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2354,7 +2371,10 @@ mod tests {
             )
             .unwrap();
         state
-            .init_code(&Address::from_low_u64_be(0xc), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xc),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2447,7 +2467,10 @@ mod tests {
             )
             .unwrap();
         state
-            .init_code(&Address::from_low_u64_be(0xc), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xc),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2532,7 +2555,11 @@ mod tests {
             )
             .unwrap();
         state
-            .add_balance(&Address::from_low_u64_be(0xa), &50.into(), CleanupMode::NoEmpty)
+            .add_balance(
+                &Address::from_low_u64_be(0xa),
+                &50.into(),
+                CleanupMode::NoEmpty,
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &100.into(), CleanupMode::NoEmpty)
@@ -2612,7 +2639,8 @@ mod tests {
 
         let s = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
         assert_eq!(
-            s.storage_at(&a, &BigEndianHash::from_uint(&U256::from(1u64))).unwrap(),
+            s.storage_at(&a, &BigEndianHash::from_uint(&U256::from(1u64)))
+                .unwrap(),
             BigEndianHash::from_uint(&U256::from(69u64))
         );
     }
@@ -2777,7 +2805,8 @@ mod tests {
         state.commit().unwrap();
         assert_eq!(
             *state.root(),
-            H256::from_str("0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785").unwrap()
+            H256::from_str("0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785")
+                .unwrap()
         );
     }
 
@@ -2825,7 +2854,9 @@ mod tests {
 
         let c0 = state.checkpoint();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
 
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
@@ -2835,14 +2866,20 @@ mod tests {
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
             Some(BigEndianHash::from_uint(&U256::from(0)))
         );
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(1)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
+        );
 
         state.revert_to_checkpoint(); // Revert to c1.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
             Some(BigEndianHash::from_uint(&U256::from(0)))
         );
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
     }
 
     #[test]
@@ -2852,21 +2889,30 @@ mod tests {
         let k = BigEndianHash::from_uint(&U256::from(0));
         let k2 = BigEndianHash::from_uint(&U256::from(1));
 
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.clear();
 
         let c0 = state.checkpoint();
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         let c2 = state.checkpoint();
         let c3 = state.checkpoint();
         state
             .set_storage(&a, k2, BigEndianHash::from_uint(&U256::from(3)))
             .unwrap();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3)))
+            .unwrap();
         let c4 = state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4)))
+            .unwrap();
         let c5 = state.checkpoint();
 
         assert_eq!(
@@ -2988,15 +3034,21 @@ mod tests {
         let c0 = state.checkpoint();
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         let c2 = state.checkpoint();
         let c3 = state.checkpoint();
         state
             .set_storage(&a, k2, BigEndianHash::from_uint(&U256::from(3)))
             .unwrap();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3)))
+            .unwrap();
         let c4 = state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4)))
+            .unwrap();
         let c5 = state.checkpoint();
 
         assert_eq!(
@@ -3125,13 +3177,21 @@ mod tests {
         let a = Address::zero();
         let k = BigEndianHash::from_uint(&U256::from(0));
         state.checkpoint();
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         state.checkpoint();
         state.kill_account(&a);
 
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.revert_to_checkpoint();
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(1)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
+        );
     }
 
     #[test]
@@ -3179,9 +3239,14 @@ mod tests {
         state.checkpoint(); // c1
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         state.checkpoint(); // c2
-        state.set_storage(&a, k, BigEndianHash::from_uint(&U256::from(2))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(2)))
+            .unwrap();
         state.revert_to_checkpoint(); // revert to c2
-        assert_eq!(state.storage_at(&a, &k).unwrap(), BigEndianHash::from_uint(&U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.revert_to_checkpoint(); // revert to c1
         assert_eq!(
             state.storage_at(&a, &k).unwrap(),
@@ -3198,7 +3263,8 @@ mod tests {
         state.commit().unwrap();
         assert_eq!(
             *state.root(),
-            H256::from_str("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421").unwrap()
+            H256::from_str("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+                .unwrap()
         );
     }
 
@@ -3211,10 +3277,14 @@ mod tests {
         state
             .add_balance(&a, &256.into(), CleanupMode::NoEmpty)
             .unwrap();
-        state.set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xc)).unwrap();
+        state
+            .set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xc))
+            .unwrap();
 
         let mut new_state = state.clone();
-        new_state.set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xd)).unwrap();
+        new_state
+            .set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xd))
+            .unwrap();
 
         new_state.diff_from(state).unwrap();
     }
@@ -3419,7 +3489,11 @@ mod tests {
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), factories.clone());
             state
-                .set_storage(&a, storage_address.clone(), BigEndianHash::from_uint(&U256::from(20u64)))
+                .set_storage(
+                    &a,
+                    storage_address.clone(),
+                    BigEndianHash::from_uint(&U256::from(20u64)),
+                )
                 .unwrap();
             let dump = state.to_pod_full().unwrap();
             assert_eq!(
@@ -3442,7 +3516,11 @@ mod tests {
             BigEndianHash::from_uint(&U256::from(20u64))
         );
         state
-            .set_storage(&a, storage_address.clone(), BigEndianHash::from_uint(&U256::from(21u64)))
+            .set_storage(
+                &a,
+                storage_address.clone(),
+                BigEndianHash::from_uint(&U256::from(21u64)),
+            )
             .unwrap();
         let dump = state.to_pod_full().unwrap();
         assert_eq!(
@@ -3451,7 +3529,11 @@ mod tests {
         );
         state.commit().unwrap();
         state
-            .set_storage(&a, storage_address.clone(), BigEndianHash::from_uint(&U256::from(0u64)))
+            .set_storage(
+                &a,
+                storage_address.clone(),
+                BigEndianHash::from_uint(&U256::from(0u64)),
+            )
             .unwrap();
         let dump = state.to_pod_full().unwrap();
         assert_eq!(

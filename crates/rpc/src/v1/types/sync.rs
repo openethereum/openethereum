@@ -175,9 +175,9 @@ pub struct ChainStatus {
 #[cfg(test)]
 mod tests {
     use super::{ChainStatus, Peers, SyncInfo, SyncStatus, TransactionStats};
+    use ethereum_types::H512;
     use serde_json;
     use std::collections::BTreeMap;
-    use ethereum_types::H512;
 
     #[test]
     fn test_serialize_sync_info() {

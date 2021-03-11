@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use parity_crypto::publickey::{KeyPair, Secret};
-use parity_crypto::Keccak256;
+use parity_crypto::{
+    publickey::{KeyPair, Secret},
+    Keccak256,
+};
 use parity_wordlist;
 
 /// Simple brainwallet.
@@ -41,20 +43,17 @@ impl Brain {
             match i > 16384 {
                 false => i += 1,
                 true => {
-                    if let Ok(pair) = Secret::import_key(&secret)
-                        .and_then(KeyPair::from_secret)
-                    {
+                    if let Ok(pair) = Secret::import_key(&secret).and_then(KeyPair::from_secret) {
                         if pair.address()[0] == 0 {
                             trace!("Testing: {}, got: {:?}", self.0, pair.address());
-                            return pair
+                            return pair;
                         }
                     }
-                },
+                }
             }
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -1783,13 +1783,13 @@ mod tests {
     };
     use accounts::AccountProvider;
     use block::*;
+    use crypto::publickey::Signature;
     use engines::{
         validator_set::{SimpleList, TestSet},
         Engine, EngineError, EthEngine, Seal,
     };
     use error::{Error, ErrorKind};
     use ethereum_types::{Address, H256, H520, U256};
-    use crypto::publickey::Signature;
     use hash::keccak;
     use rlp::encode;
     use spec::Spec;

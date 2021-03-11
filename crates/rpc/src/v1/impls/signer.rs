@@ -291,9 +291,9 @@ impl<D: Dispatcher + 'static> Signer for SignerClient<D> {
                         let expected_hash = eth_data_hash(data);
                         let signature = publickey::Signature::from_electrum(&bytes.0);
                         match publickey::verify_address(&address, &signature, &expected_hash) {
-                            Ok(true) => {
-                                Ok(ConfirmationResponse::Signature(H520::from_slice(bytes.0.as_slice())))
-                            }
+                            Ok(true) => Ok(ConfirmationResponse::Signature(H520::from_slice(
+                                bytes.0.as_slice(),
+                            ))),
                             Ok(false) => Err(errors::invalid_params(
                                 "Sender address does not match the signature.",
                                 (),
@@ -306,9 +306,9 @@ impl<D: Dispatcher + 'static> Signer for SignerClient<D> {
                     ConfirmationPayload::SignMessage(address, hash) => {
                         let signature = publickey::Signature::from_electrum(&bytes.0);
                         match publickey::verify_address(&address, &signature, &hash) {
-                            Ok(true) => {
-                                Ok(ConfirmationResponse::Signature(H520::from_slice(bytes.0.as_slice())))
-                            }
+                            Ok(true) => Ok(ConfirmationResponse::Signature(H520::from_slice(
+                                bytes.0.as_slice(),
+                            ))),
                             Ok(false) => Err(errors::invalid_params(
                                 "Sender address does not match the signature.",
                                 (),

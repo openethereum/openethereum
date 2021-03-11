@@ -15,11 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use crypto::{
-    self, 
-    Keccak256,
-    publickey::Secret,
-};
+use crypto::{self, publickey::Secret, Keccak256};
 use ethkey::Password;
 use json;
 use random::Random;

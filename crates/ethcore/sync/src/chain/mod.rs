@@ -109,7 +109,7 @@ use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
 use parking_lot::Mutex;
-use rand::{Rng, seq::SliceRandom};
+use rand::{seq::SliceRandom, Rng};
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
@@ -388,12 +388,11 @@ pub mod random {
 pub mod random {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    const RNG_SEED: [u8; 16] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+    const RNG_SEED: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     pub fn new() -> XorShiftRng {
         XorShiftRng::from_seed(RNG_SEED)
     }
 }
-
 
 pub type RlpResponseResult = Result<Option<(SyncPacket, RlpStream)>, PacketProcessError>;
 pub type Peers = HashMap<PeerId, PeerInfo>;
@@ -1033,7 +1032,7 @@ impl ChainSync {
                 );
 
                 peers.shuffle(&mut random::new()); // TODO (#646): sort by rating
-                // prefer peers with higher protocol version
+                                                   // prefer peers with higher protocol version
 
                 peers.sort_by(|&(_, ref v1), &(_, ref v2)| v1.cmp(v2));
 

@@ -711,7 +711,10 @@ mod tests {
         let mut db = AccountDBMut::new(&mut db, &Address::default());
         let rlp = {
             let mut a = Account::new_contract(69.into(), 0.into(), KECCAK_NULL_RLP);
-            a.set_storage(H256::from_low_u64_be(0x00u64), H256::from_low_u64_be(0x1234u64));
+            a.set_storage(
+                H256::from_low_u64_be(0x00u64),
+                H256::from_low_u64_be(0x1234u64),
+            );
             a.commit_storage(&Default::default(), &mut db).unwrap();
             a.init_code(vec![]);
             a.commit_code(&mut db);
@@ -721,14 +724,17 @@ mod tests {
         let a = Account::from_rlp(&rlp).expect("decoding db value failed");
         assert_eq!(
             a.storage_root().unwrap(),
-            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2").unwrap()
+            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2")
+                .unwrap()
         );
         assert_eq!(
-            a.storage_at(&db.immutable(), &H256::from_low_u64_be(0x00u64)).unwrap(),
+            a.storage_at(&db.immutable(), &H256::from_low_u64_be(0x00u64))
+                .unwrap(),
             H256::from_low_u64_be(0x1234u64)
         );
         assert_eq!(
-            a.storage_at(&db.immutable(), &H256::from_low_u64_be(0x01u64)).unwrap(),
+            a.storage_at(&db.immutable(), &H256::from_low_u64_be(0x01u64))
+                .unwrap(),
             H256::default()
         );
     }
@@ -762,7 +768,8 @@ mod tests {
         a.commit_storage(&Default::default(), &mut db).unwrap();
         assert_eq!(
             a.storage_root().unwrap(),
-            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2").unwrap()
+            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2")
+                .unwrap()
         );
     }
 
@@ -779,7 +786,8 @@ mod tests {
         a.commit_storage(&Default::default(), &mut db).unwrap();
         assert_eq!(
             a.storage_root().unwrap(),
-            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2").unwrap()
+            H256::from_str("c57e1afb758b07f8d2c8f13a3b6e44fa5ff94ab266facc5a4fd3f062426e50b2")
+                .unwrap()
         );
     }
 
@@ -794,7 +802,8 @@ mod tests {
         a.commit_code(&mut db);
         assert_eq!(
             a.code_hash(),
-            H256::from_str("af231e631776a517ca23125370d542873eca1fb4d613ed9b5d5335a46ae5b7eb").unwrap()
+            H256::from_str("af231e631776a517ca23125370d542873eca1fb4d613ed9b5d5335a46ae5b7eb")
+                .unwrap()
         );
     }
 
@@ -809,14 +818,16 @@ mod tests {
         assert_eq!(a.code_filth, Filth::Clean);
         assert_eq!(
             a.code_hash(),
-            H256::from_str("af231e631776a517ca23125370d542873eca1fb4d613ed9b5d5335a46ae5b7eb").unwrap()
+            H256::from_str("af231e631776a517ca23125370d542873eca1fb4d613ed9b5d5335a46ae5b7eb")
+                .unwrap()
         );
         a.reset_code(vec![0x55]);
         assert_eq!(a.code_filth, Filth::Dirty);
         a.commit_code(&mut db);
         assert_eq!(
             a.code_hash(),
-            H256::from_str("37bf2238b11b68cdc8382cece82651b59d3c3988873b6e0f33d79694aa45f1be").unwrap()
+            H256::from_str("37bf2238b11b68cdc8382cece82651b59d3c3988873b6e0f33d79694aa45f1be")
+                .unwrap()
         );
     }
 

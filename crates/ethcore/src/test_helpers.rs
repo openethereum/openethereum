@@ -23,8 +23,8 @@ use blockchain::{
 };
 use blooms_db;
 use bytes::Bytes;
-use db::KeyValueDB;
 use crypto::publickey::KeyPair;
+use db::KeyValueDB;
 use ethereum_types::{Address, H256, U256};
 use evm::Factory as EvmFactory;
 use hash::keccak;

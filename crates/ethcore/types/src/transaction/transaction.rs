@@ -16,8 +16,8 @@
 
 //! Transaction data structure.
 
-use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
 use crypto::publickey::{self, public_to_address, recover, Public, Secret, Signature};
+use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
 use hash::keccak;
 use parity_util_mem::MallocSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
@@ -887,7 +887,10 @@ mod tests {
         assert_eq!(t.tx().gas_price, U256::from(0x01u64));
         assert_eq!(t.tx().nonce, U256::from(0x00u64));
         if let Action::Call(ref to) = t.tx().action {
-            assert_eq!(*to, H160::from_str("095e7baea6a6c7c4c2dfeb977efac326af552d87").unwrap());
+            assert_eq!(
+                *to,
+                H160::from_str("095e7baea6a6c7c4c2dfeb977efac326af552d87").unwrap()
+            );
         } else {
             panic!();
         }
@@ -1026,7 +1029,10 @@ mod tests {
                 data: b"Hello!".to_vec(),
             },
             vec![
-                (H160::from_low_u64_be(10), vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)]),
+                (
+                    H160::from_low_u64_be(10),
+                    vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                ),
                 (H160::from_low_u64_be(400), vec![]),
             ],
         ))

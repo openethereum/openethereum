@@ -76,7 +76,9 @@ fn rpc_parity_accounts_info() {
     assert_eq!(accounts.len(), 1);
     let address = accounts[0];
 
-    tester.accounts.set_address_name(Address::from_low_u64_be(1), "XX".into());
+    tester
+        .accounts
+        .set_address_name(Address::from_low_u64_be(1), "XX".into());
     tester
         .accounts
         .set_account_name(address.clone(), "Test".into())

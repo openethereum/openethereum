@@ -213,7 +213,8 @@ mod tests {
         let view = view!(BlockView, &rlp);
         assert_eq!(
             view.hash(),
-            H256::from_str("2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259").unwrap()
+            H256::from_str("2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259")
+                .unwrap()
         );
         assert_eq!(view.transactions_count(), 1);
         assert_eq!(view.uncles_count(), 0);

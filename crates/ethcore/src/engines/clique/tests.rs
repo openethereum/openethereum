@@ -203,7 +203,8 @@ impl CliqueTester {
             b.header.set_difficulty(difficulty);
             b.header.set_seal(seal);
 
-            let sign = crypto::publickey::sign(self.signers[&signer].secret(), &b.header.hash()).unwrap();
+            let sign =
+                crypto::publickey::sign(self.signers[&signer].secret(), &b.header.hash()).unwrap();
             let mut extra_data = b.header.extra_data().clone();
             extra_data.extend_from_slice(&*sign);
             b.header.set_extra_data(extra_data);

@@ -48,7 +48,10 @@ impl<'a> BuiltinBenchmark<'a> {
     fn new(builtin_address: &'static str, input: &str, expected: &str) -> BuiltinBenchmark<'a> {
         let builtins = BYZANTIUM_MACHINE.builtins();
 
-        let builtin = builtins.get(&H160::from_str(builtin_address).unwrap()).unwrap().clone();
+        let builtin = builtins
+            .get(&H160::from_str(builtin_address).unwrap())
+            .unwrap()
+            .clone();
         let input = FromHex::from_hex(input).unwrap();
         let expected = FromHex::from_hex(expected).unwrap();
 

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-
 #![warn(missing_docs)]
 
 //! Account management.
@@ -821,8 +820,7 @@ mod tests {
         ap.sign_with_token(kp.address(), token.clone(), dummy_msg)
             .expect("First usage of token should be correct.");
         assert!(
-            ap.sign_with_token(kp.address(), token, dummy_msg)
-                .is_err(),
+            ap.sign_with_token(kp.address(), token, dummy_msg).is_err(),
             "Second usage of the same token should fail."
         );
     }

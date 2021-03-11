@@ -384,14 +384,14 @@ fn rpc_parity_local_transactions() {
     })
     .fake_sign(Address::from_low_u64_be(3));
     let tx = Arc::new(::miner::pool::VerifiedTransaction::from_pending_block_transaction(tx));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(H256::from_low_u64_be(10), LocalTransactionStatus::Pending(tx.clone()));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(H256::from_low_u64_be(15), LocalTransactionStatus::Pending(tx.clone()));
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(10),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(15),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
 
     let request =
         r#"{"jsonrpc": "2.0", "method": "parity_localTransactions", "params":[], "id": 1}"#;

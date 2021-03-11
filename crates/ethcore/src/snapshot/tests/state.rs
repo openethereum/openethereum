@@ -31,15 +31,15 @@ use types::basic_account::BasicAccount;
 
 use error::{Error, ErrorKind};
 
+use self::rand_xorshift::XorShiftRng;
 use ethereum_types::H256;
 use journaldb::{self, Algorithm};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::Mutex;
 use rand::SeedableRng;
-use self::rand_xorshift::XorShiftRng;
 use tempdir::TempDir;
 
-const RNG_SEED: [u8; 16] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+const RNG_SEED: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 #[test]
 fn snap_and_restore() {

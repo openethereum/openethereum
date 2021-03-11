@@ -30,8 +30,7 @@ extern crate serde_derive;
 use std::{env, fmt, io, num::ParseIntError, process, sync};
 
 use crypto::publickey::{
-    sign, verify_address, verify_public, Error as EthkeyError,
-    Generator, KeyPair, Random,
+    sign, verify_address, verify_public, Error as EthkeyError, Generator, KeyPair, Random,
 };
 use docopt::Docopt;
 use ethkey::{brain_recover, Brain, BrainPrefix, Prefix};

@@ -34,9 +34,6 @@ mod prefix;
 pub mod brain_recover;
 
 pub use self::{
-    brain::Brain,
-    brain_prefix::BrainPrefix,
-    parity_wordlist::Error as WordlistError,
-    password::Password,
-    prefix::Prefix,
+    brain::Brain, brain_prefix::BrainPrefix, parity_wordlist::Error as WordlistError,
+    password::Password, prefix::Prefix,
 };

@@ -75,8 +75,8 @@ mod tests {
     use hash::*;
     use serde_json;
     use spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal};
-    use uint::Uint;
     use std::str::FromStr;
+    use uint::Uint;
 
     #[test]
     fn seal_deserialization() {
@@ -110,9 +110,12 @@ mod tests {
             deserialized[0],
             Seal::Ethereum(Ethereum {
                 nonce: H64(Eth64::from_str("0000000000000042").unwrap()),
-                mix_hash: H256(Eth256::from_str(
-                    "1000000000000000000000000000000000000000000000000000000000000001"
-                ).unwrap())
+                mix_hash: H256(
+                    Eth256::from_str(
+                        "1000000000000000000000000000000000000000000000000000000000000001"
+                    )
+                    .unwrap()
+                )
             })
         );
 

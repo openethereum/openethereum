@@ -190,12 +190,12 @@ impl DatabaseDirectories {
     pub fn legacy_fork_path(&self) -> PathBuf {
         let gh = H64::from_slice(&self.genesis_hash.as_bytes()[20..28]);
         Path::new(&self.legacy_path).join(format!(
-                "{:x}{}",
-                gh,
-                self.fork_name
-                    .as_ref()
-                    .map(|f| format!("-{}", f))
-                    .unwrap_or_default()
+            "{:x}{}",
+            gh,
+            self.fork_name
+                .as_ref()
+                .map(|f| format!("-{}", f))
+                .unwrap_or_default()
         ))
     }
 
@@ -214,9 +214,7 @@ impl DatabaseDirectories {
     /// DB root path, named after genesis hash
     pub fn db_root_path(&self) -> PathBuf {
         let gh = H64::from_slice(&self.genesis_hash.as_bytes()[20..28]);
-        self.spec_root_path()
-            .join("db")
-            .join(format!("{:x}", gh))
+        self.spec_root_path().join("db").join(format!("{:x}", gh))
     }
 
     /// DB path

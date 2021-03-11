@@ -560,9 +560,9 @@ mod tests {
     use ethereum_types::{Address, U256};
     use evm::{CallType, EnvInfo, Ext};
     use state::{State, Substate};
+    use std::str::FromStr;
     use test_helpers::get_temp_state;
     use trace::{NoopTracer, NoopVMTracer};
-    use std::str::FromStr;
 
     fn get_test_origin() -> OriginInfo {
         OriginInfo {
@@ -675,7 +675,8 @@ mod tests {
     #[test]
     fn can_return_block_hash() {
         let test_hash =
-            H256::from_str("afafafafafafafafafafafbcbcbcbcbcbcbcbcbcbeeeeeeeeeeeeedddddddddd").unwrap();
+            H256::from_str("afafafafafafafafafafafbcbcbcbcbcbcbcbcbcbeeeeeeeeeeeeedddddddddd")
+                .unwrap();
         let test_env_number = 0x120001;
 
         let mut setup = TestSetup::new();
@@ -765,7 +766,8 @@ mod tests {
         let log_data = vec![120u8, 110u8];
         let log_topics = vec![H256::from_str(
             "af0fa234a6af46afa23faf23bcbc1c1cb4bcb7bcbe7e7e7ee3ee2edddddddddd",
-        ).unwrap()];
+        )
+        .unwrap()];
 
         let mut setup = TestSetup::new();
         let state = &mut setup.state;

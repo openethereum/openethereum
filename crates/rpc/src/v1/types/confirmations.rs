@@ -312,7 +312,10 @@ mod tests {
         // given
         let request = helpers::ConfirmationRequest {
             id: 15.into(),
-            payload: helpers::ConfirmationPayload::EthSignMessage(Address::from_low_u64_be(1), vec![5].into()),
+            payload: helpers::ConfirmationPayload::EthSignMessage(
+                Address::from_low_u64_be(1),
+                vec![5].into(),
+            ),
             origin: Origin::Rpc("test service".into()),
         };
 
@@ -344,7 +347,9 @@ mod tests {
                     access_list: None,
                 },
             ),
-            origin: Origin::Signer { session: H256::from_low_u64_be(5) },
+            origin: Origin::Signer {
+                session: H256::from_low_u64_be(5),
+            },
         };
 
         // when
@@ -391,7 +396,10 @@ mod tests {
         // given
         let request = helpers::ConfirmationRequest {
             id: 15.into(),
-            payload: helpers::ConfirmationPayload::Decrypt(Address::from_low_u64_be(10), vec![1, 2, 3].into()),
+            payload: helpers::ConfirmationPayload::Decrypt(
+                Address::from_low_u64_be(10),
+                vec![1, 2, 3].into(),
+            ),
             origin: Default::default(),
         };
 

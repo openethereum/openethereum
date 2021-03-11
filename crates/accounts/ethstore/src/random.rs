@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use rand::{Rng, RngCore, rngs::OsRng, distributions::Alphanumeric};
+use rand::{distributions::Alphanumeric, rngs::OsRng, Rng, RngCore};
 
 pub trait Random {
     fn random() -> Self
@@ -45,4 +45,3 @@ pub fn random_string(length: usize) -> String {
     let rng = OsRng;
     rng.sample_iter(&Alphanumeric).take(length).collect()
 }
-

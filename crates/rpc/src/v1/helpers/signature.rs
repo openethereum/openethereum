@@ -59,8 +59,8 @@ pub fn verify_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{H160, U64};
     use crypto::publickey::{self, Generator};
+    use ethereum_types::{H160, U64};
 
     pub fn add_chain_replay_protection(v: u64, chain_id: Option<u64>) -> u64 {
         v + if let Some(n) = chain_id {

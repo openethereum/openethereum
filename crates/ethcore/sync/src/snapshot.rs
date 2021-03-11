@@ -191,8 +191,12 @@ mod test {
     }
 
     fn test_manifest() -> (ManifestData, H256, Vec<Bytes>, Vec<Bytes>) {
-        let state_chunks: Vec<Bytes> = (0..20).map(|_| H256::random().as_bytes().to_vec()).collect();
-        let block_chunks: Vec<Bytes> = (0..20).map(|_| H256::random().as_bytes().to_vec()).collect();
+        let state_chunks: Vec<Bytes> = (0..20)
+            .map(|_| H256::random().as_bytes().to_vec())
+            .collect();
+        let block_chunks: Vec<Bytes> = (0..20)
+            .map(|_| H256::random().as_bytes().to_vec())
+            .collect();
         let manifest = ManifestData {
             version: 2,
             state_hashes: state_chunks.iter().map(|data| keccak(data)).collect(),
@@ -222,7 +226,9 @@ mod test {
         let (manifest, mhash, state_chunks, block_chunks) = test_manifest();
         snapshot.reset_to(&manifest, &mhash);
         assert_eq!(snapshot.done_chunks(), 0);
-        assert!(snapshot.validate_chunk(&H256::random().as_bytes().to_vec()).is_err());
+        assert!(snapshot
+            .validate_chunk(&H256::random().as_bytes().to_vec())
+            .is_err());
 
         let requested: Vec<H256> = (0..40).map(|_| snapshot.needed_chunk().unwrap()).collect();
         assert!(snapshot.needed_chunk().is_none());

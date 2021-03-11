@@ -18,7 +18,7 @@ use ethstore::{
     accounts_dir::{KeyDirectory, RootDiskDirectory},
     Error, SafeAccount,
 };
-use rand::{RngCore, rngs::OsRng};
+use rand::{rngs::OsRng, RngCore};
 use std::{env, fs, path::PathBuf};
 
 pub fn random_dir() -> PathBuf {

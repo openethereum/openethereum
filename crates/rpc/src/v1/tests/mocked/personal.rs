@@ -413,10 +413,7 @@ fn should_unlock_account_permanently() {
         Some(response.into())
     );
     assert!(
-        tester
-            .accounts
-            .sign(address, None, message)
-            .is_ok(),
+        tester.accounts.sign(address, None, message).is_ok(),
         "Should unlock account."
     );
 }

@@ -41,8 +41,8 @@ mod tests {
     use hash::Address;
     use serde_json;
     use spec::validator_set::ValidatorSet;
-    use uint::Uint;
     use std::str::FromStr;
+    use uint::Uint;
 
     #[test]
     fn validator_set_deserialization() {
@@ -65,21 +65,21 @@ mod tests {
 
         assert_eq!(
             deserialized[0],
-            ValidatorSet::List(vec![Address(H160::from_str(
-                "c6d9d2cd449a754c494264e1809c50e34d64562b"
-            ).unwrap())])
+            ValidatorSet::List(vec![Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            )])
         );
         assert_eq!(
             deserialized[1],
-            ValidatorSet::SafeContract(Address(H160::from_str(
-                "c6d9d2cd449a754c494264e1809c50e34d64562b"
-            ).unwrap()))
+            ValidatorSet::SafeContract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
         );
         assert_eq!(
             deserialized[2],
-            ValidatorSet::Contract(Address(H160::from_str(
-                "c6d9d2cd449a754c494264e1809c50e34d64562b"
-            ).unwrap()))
+            ValidatorSet::Contract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
         );
         match deserialized[3] {
             ValidatorSet::Multi(ref map) => {

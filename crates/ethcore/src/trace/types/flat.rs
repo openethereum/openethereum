@@ -97,7 +97,9 @@ impl Into<Vec<FlatTrace>> for FlatTransactionTraces {
 }
 
 /// Represents all traces produced by transactions in a single block.
-#[derive(Debug, PartialEq, Clone, Default, RlpEncodableWrapper, RlpDecodableWrapper, MallocSizeOf)]
+#[derive(
+    Debug, PartialEq, Clone, Default, RlpEncodableWrapper, RlpDecodableWrapper, MallocSizeOf,
+)]
 pub struct FlatBlockTraces(Vec<FlatTransactionTraces>);
 
 impl From<Vec<FlatTransactionTraces>> for FlatBlockTraces {

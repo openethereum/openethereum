@@ -16,13 +16,11 @@
 
 use super::crypto::Crypto;
 use account::Version;
-use ethkey::Password;
 use crypto::{
-    self, 
-    publickey::{
-        ecdh::agree, sign, Address, KeyPair, Message, Public, Secret, Signature,
-    }
+    self,
+    publickey::{ecdh::agree, sign, Address, KeyPair, Message, Public, Secret, Signature},
 };
+use ethkey::Password;
 use json;
 use std::num::NonZeroU32;
 use Error;

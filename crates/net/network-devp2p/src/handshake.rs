@@ -15,10 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use connection::Connection;
+use crypto::publickey::{ecdh, ecies, recover, sign, Generator, KeyPair, Public, Random, Secret};
 use ethereum_types::{H256, H520};
-use crypto::publickey::{
-    ecdh, ecies, recover, sign, Generator, KeyPair, Public, Random, Secret,
-};
 use host::HostInfo;
 use io::{IoContext, StreamToken};
 use mio::tcp::*;
@@ -319,10 +317,7 @@ impl Handshake {
         rlp.append(&self.nonce);
         rlp.append(&PROTOCOL_VERSION);
         let mut encoded = rlp.out();
-        encoded.resize(
-            encoded.len() + rand::thread_rng().gen_range(100, 301),
-            0,
-        );
+        encoded.resize(encoded.len() + rand::thread_rng().gen_range(100, 301), 0);
         let len = (encoded.len() + ECIES_OVERHEAD) as u16;
         let prefix = len.to_be_bytes();
         let message = ecies::encrypt(&self.id, &prefix, &encoded)?;
@@ -348,7 +343,6 @@ impl Handshake {
             let (nonce, _) = rest.split_at_mut(32);
             epubk.copy_from_slice(self.ecdhe.public().as_bytes());
             nonce.copy_from_slice(self.nonce.as_bytes());
-
         }
         let message = ecies::encrypt(&self.id, &[], &data)?;
         self.ack_cipher = message.clone();
@@ -387,8 +381,8 @@ impl Handshake {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ethereum_types::{H256, H512};
     use crypto::publickey::Public;
+    use ethereum_types::{H256, H512};
     use io::*;
     use mio::tcp::TcpStream;
     use rustc_hex::FromHex;
@@ -398,7 +392,8 @@ mod test {
         assert_eq!(h.id, H512::from_str("fda1cff674c90c9a197539fe3dfb53086ace64f83ed7c6eabec741f7f381cc803e52ab2cd55d5569bce4347107a310dfd5f88a010cd2ffd1005ca406f1842877").unwrap());
         assert_eq!(
             h.remote_nonce,
-            H256::from_str("7e968bba13b6c50e2c4cd7f241cc0d64d1ac25c7f5952df231ac6a2bda8ee5d6").unwrap()
+            H256::from_str("7e968bba13b6c50e2c4cd7f241cc0d64d1ac25c7f5952df231ac6a2bda8ee5d6")
+                .unwrap()
         );
         assert_eq!(h.remote_ephemeral, H512::from_str("654d1044b69c577a44e5f01a1209523adb4026e70c62d1c13a067acabc09d2667a49821a0ad4b634554d330a15a58fe61f8a8e0544b310c6de7b0c8da7528a8d").unwrap());
         assert_eq!(h.remote_version, version);
@@ -407,7 +402,8 @@ mod test {
     fn check_ack(h: &Handshake, version: u64) {
         assert_eq!(
             h.remote_nonce,
-            H256::from_str("559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd").unwrap()
+            H256::from_str("559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd")
+                .unwrap()
         );
         assert_eq!(h.remote_ephemeral, H512::from_str("b6d82fa3409da933dbf9cb0140c5dde89f4e64aec88d476af648880f4a10e1e49fe35ef3e69e93dd300b4797765a747c6384a6ecf5db9c2690398607a86181e4").unwrap());
         assert_eq!(h.remote_version, version);

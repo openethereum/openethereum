@@ -182,7 +182,6 @@ pub fn new_memory_db() -> memory_db::MemoryDB<keccak_hasher::KeccakHasher, kvdb:
     memory_db::MemoryDB::from_null_node(&rlp::NULL_RLP, rlp::NULL_RLP.as_ref().into())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::Algorithm;

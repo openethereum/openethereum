@@ -29,8 +29,8 @@ use fastmap::H256FastMap;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use memory_db::*;
-use parking_lot::RwLock;
 use parity_util_mem::MallocSizeOf;
+use parking_lot::RwLock;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use util::DatabaseKey;
 
@@ -492,7 +492,9 @@ impl JournalDB for OverlayRecentDB {
                 0 => {}
                 _ if rc > 0 => batch.put(self.column, key.as_bytes(), &value),
                 -1 => {
-                    if cfg!(debug_assertions) && self.backing.get(self.column, key.as_bytes())?.is_none() {
+                    if cfg!(debug_assertions)
+                        && self.backing.get(self.column, key.as_bytes())?.is_none()
+                    {
                         return Err(error_negatively_reference_hash(&key));
                     }
                     batch.delete(self.column, key.as_bytes())

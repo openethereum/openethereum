@@ -17,7 +17,7 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crypto::{DEFAULT_MAC, publickey::ecies};
+use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
     client::{BlockChainClient, Call, StateClient},
     miner::{self, MinerService},
@@ -213,9 +213,7 @@ where
     }
 
     fn phrase_to_address(&self, phrase: String) -> Result<H160> {
-        Ok(Brain::new(phrase)
-            .generate()
-            .address())
+        Ok(Brain::new(phrase).generate().address())
     }
 
     fn list_accounts(

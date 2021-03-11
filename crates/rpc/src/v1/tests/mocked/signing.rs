@@ -155,7 +155,10 @@ fn should_add_sign_to_queue() {
         if signer.requests().len() == 1 {
             // respond
             let sender = signer.take(&1.into()).unwrap();
-            signer.request_confirmed(sender, Ok(ConfirmationResponse::Signature(H520::from_low_u64_be(0))));
+            signer.request_confirmed(
+                sender,
+                Ok(ConfirmationResponse::Signature(H520::from_low_u64_be(0))),
+            );
             break;
         }
         ::std::thread::sleep(Duration::from_millis(100))
@@ -249,9 +252,10 @@ fn should_check_status_of_request_when_its_resolved() {
 	}"#;
     tester.io.handle_request_sync(&request).expect("Sent");
     let sender = tester.signer.take(&1.into()).unwrap();
-    tester
-        .signer
-        .request_confirmed(sender, Ok(ConfirmationResponse::Signature(H520::from_low_u64_be(1))));
+    tester.signer.request_confirmed(
+        sender,
+        Ok(ConfirmationResponse::Signature(H520::from_low_u64_be(1))),
+    );
 
     // This is not ideal, but we need to give futures some time to be executed, and they need to run in a separate thread
     thread::sleep(Duration::from_millis(20));
@@ -342,7 +346,12 @@ fn should_add_transaction_to_queue() {
         if signer.requests().len() == 1 {
             // respond
             let sender = signer.take(&1.into()).unwrap();
-            signer.request_confirmed(sender, Ok(ConfirmationResponse::SendTransaction(H256::from_low_u64_be(0))));
+            signer.request_confirmed(
+                sender,
+                Ok(ConfirmationResponse::SendTransaction(
+                    H256::from_low_u64_be(0),
+                )),
+            );
             break;
         }
         ::std::thread::sleep(Duration::from_millis(100))

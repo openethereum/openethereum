@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use parity_crypto::publickey::{KeyPair, Error};
-use parity_wordlist as wordlist;
 use super::Brain;
+use parity_crypto::publickey::{Error, KeyPair};
+use parity_wordlist as wordlist;
 
 /// Tries to find brain-seed keypair with address starting with given prefix.
 pub struct BrainPrefix {
@@ -46,14 +46,13 @@ impl BrainPrefix {
             let keypair = Brain::new(phrase.clone()).generate();
             if keypair.address().as_ref().starts_with(&self.prefix) {
                 self.last_phrase = phrase;
-                return Ok(keypair)
+                return Ok(keypair);
             }
         }
 
         Err(Error::Custom("Could not find keypair".into()))
     }
 }
-
 
 #[cfg(test)]
 mod tests {

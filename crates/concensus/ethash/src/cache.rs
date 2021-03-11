@@ -326,14 +326,8 @@ unsafe fn initialize_memory(memory: *mut Node, num_nodes: usize, ident: &H256) {
 
     for i in 1..num_nodes {
         // We use raw pointers here, see above
-        let dst = slice::from_raw_parts_mut(
-            memory.offset(i as _) as *mut u8,
-            NODE_BYTES,
-        );
-        let src = slice::from_raw_parts(
-            memory.offset(i as isize - 1) as *mut u8,
-            NODE_BYTES,
-        );
+        let dst = slice::from_raw_parts_mut(memory.offset(i as _) as *mut u8, NODE_BYTES);
+        let src = slice::from_raw_parts(memory.offset(i as isize - 1) as *mut u8, NODE_BYTES);
         keccak_512::write(src, dst);
     }
 
@@ -360,4 +354,3 @@ unsafe fn initialize_memory(memory: *mut Node, num_nodes: usize, ident: &H256) {
         }
     }
 }
-

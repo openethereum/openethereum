@@ -84,24 +84,33 @@ mod tests {
             Genesis {
                 seal: Seal::Ethereum(Ethereum {
                     nonce: H64(Eth64::from_str("00006d6f7264656e").unwrap()),
-                    mix_hash: H256(Eth256::from_str(
-                        "0000000000000000000000000000000000000000000000000000000000000000"
-                    ).unwrap())
+                    mix_hash: H256(
+                        Eth256::from_str(
+                            "0000000000000000000000000000000000000000000000000000000000000000"
+                        )
+                        .unwrap()
+                    )
                 }),
                 difficulty: Uint(U256::from(0x400000000u64)),
                 author: Some(Address(
-                        H160::from_str("1000000000000000000000000000000000000001").unwrap()
+                    H160::from_str("1000000000000000000000000000000000000001").unwrap()
                 )),
                 timestamp: Some(Uint(U256::from(0x07))),
-                parent_hash: Some(H256(Eth256::from_str(
-                    "9000000000000000000000000000000000000000000000000000000000000000"
-                ).unwrap())),
+                parent_hash: Some(H256(
+                    Eth256::from_str(
+                        "9000000000000000000000000000000000000000000000000000000000000000"
+                    )
+                    .unwrap()
+                )),
                 gas_limit: Uint(U256::from(0x1388)),
                 transactions_root: None,
                 receipts_root: None,
-                state_root: Some(H256(Eth256::from_str(
-                    "d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"
-                ).unwrap())),
+                state_root: Some(H256(
+                    Eth256::from_str(
+                        "d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"
+                    )
+                    .unwrap()
+                )),
                 gas_used: None,
                 extra_data: Some(
                     Bytes::from_str(

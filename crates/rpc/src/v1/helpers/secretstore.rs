@@ -18,7 +18,7 @@ use bytes::Bytes;
 use crypto::publickey::{self, ec_math_utils, Generator, Public, Random, Secret};
 use ethereum_types::{H256, H512};
 use jsonrpc_core::Error;
-use rand::{RngCore, rngs::OsRng};
+use rand::{rngs::OsRng, RngCore};
 use std::collections::BTreeSet;
 use tiny_keccak::Keccak;
 use v1::{helpers::errors, types::EncryptedDocumentKey};
@@ -150,7 +150,8 @@ fn decrypt_with_shadow_coefficients(
 
     ec_math_utils::public_mul_secret(&mut common_shadow_point, &shadow_coefficients_sum)
         .map_err(errors::encryption)?;
-    ec_math_utils::public_add(&mut decrypted_shadow, &common_shadow_point).map_err(errors::encryption)?;
+    ec_math_utils::public_add(&mut decrypted_shadow, &common_shadow_point)
+        .map_err(errors::encryption)?;
     Ok(decrypted_shadow)
 }
 
@@ -162,11 +163,13 @@ fn encrypt_secret(secret: &Public, joint_public: &Public) -> Result<(Public, Pub
 
     // k * T
     let mut common_point = ec_math_utils::generation_point();
-    ec_math_utils::public_mul_secret(&mut common_point, key_pair.secret()).map_err(errors::encryption)?;
+    ec_math_utils::public_mul_secret(&mut common_point, key_pair.secret())
+        .map_err(errors::encryption)?;
 
     // M + k * y
     let mut encrypted_point = joint_public.clone();
-    ec_math_utils::public_mul_secret(&mut encrypted_point, key_pair.secret()).map_err(errors::encryption)?;
+    ec_math_utils::public_mul_secret(&mut encrypted_point, key_pair.secret())
+        .map_err(errors::encryption)?;
     ec_math_utils::public_add(&mut encrypted_point, secret).map_err(errors::encryption)?;
 
     Ok((common_point, encrypted_point))

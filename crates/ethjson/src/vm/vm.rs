@@ -60,8 +60,8 @@ impl Vm {
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use super::Vm;
+    use serde_json;
 
     #[test]
     fn vm_deserialization() {

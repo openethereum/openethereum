@@ -16,10 +16,10 @@
 
 //! Log entry type definition.
 
+use crate::{bytes::Bytes, BlockNumber};
 use ethereum_types::{Address, Bloom, BloomInput, H256};
 use heapsize::HeapSizeOf;
 use std::ops::Deref;
-use crate::{bytes::Bytes, BlockNumber};
 
 /// A record of execution for a `LOG` operation.
 #[derive(Default, Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]

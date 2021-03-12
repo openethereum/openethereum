@@ -25,7 +25,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use ethereum_types::{Address, Bloom, H256, U256};
+use ethereum_types::{Address, Bloom, H160, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_NULL_RLP};
 use parking_lot::RwLock;
@@ -318,7 +318,9 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip210_transition: p
                 .eip210_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            eip210_contract_address: p.eip210_contract_address.map_or(0xf0.into(), Into::into),
+            eip210_contract_address: p
+                .eip210_contract_address
+                .map_or(H160::from_low_u64_be(0xf0), Into::into),
             eip210_contract_code: p.eip210_contract_code.map_or_else(
                 || {
                     DEFAULT_BLOCKHASH_CONTRACT
@@ -382,7 +384,7 @@ impl From<ethjson::spec::Params> for CommonParams {
             nonce_cap_increment: p.nonce_cap_increment.map_or(64, Into::into),
             remove_dust_contracts: p.remove_dust_contracts.unwrap_or(false),
             gas_limit_bound_divisor: p.gas_limit_bound_divisor.into(),
-            registrar: p.registrar.map_or_else(Address::new, Into::into),
+            registrar: p.registrar.map_or_else(Address::default, Into::into),
             node_permission_contract: p.node_permission_contract.map(Into::into),
             max_code_size: p.max_code_size.map_or(u64::max_value(), Into::into),
             max_transaction_size: p
@@ -742,7 +744,7 @@ impl Spec {
             let mut t = factories.trie.create(db.as_hash_db_mut(), &mut root);
 
             for (address, account) in self.genesis_state.get().iter() {
-                t.insert(&**address, &account.rlp())?;
+                t.insert(address.as_bytes(), &account.rlp())?;
             }
         }
 
@@ -1119,7 +1121,9 @@ impl Spec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_types::{H160, H256};
     use state::State;
+    use std::str::FromStr;
     use tempdir::TempDir;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
@@ -1136,12 +1140,14 @@ mod tests {
 
         assert_eq!(
             test_spec.state_root(),
-            "f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9".into()
+            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9")
+                .unwrap()
         );
         let genesis = test_spec.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303".into()
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
+                .unwrap()
         );
     }
 
@@ -1159,8 +1165,10 @@ mod tests {
             Default::default(),
         )
         .unwrap();
-        let expected = "0000000000000000000000000000000000000000000000000000000000000001".into();
-        let address = "0000000000000000000000000000000000001337".into();
+        let expected =
+            H256::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
+        let address = H160::from_str("0000000000000000000000000000000000001337").unwrap();
 
         assert_eq!(state.storage_at(&address, &H256::zero()).unwrap(), expected);
         assert_eq!(state.balance(&address).unwrap(), 1.into());

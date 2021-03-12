@@ -16,7 +16,7 @@
 
 extern crate common_types as types;
 extern crate ethereum_types;
-extern crate ethkey;
+extern crate parity_crypto as crypto;
 extern crate rustc_hex;
 extern crate serde;
 extern crate serde_json;

@@ -421,7 +421,7 @@ mod test {
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
-    use std::{collections::VecDeque, sync::RwLock as StdRwLock};
+    use std::{collections::VecDeque, str::FromStr, sync::RwLock as StdRwLock};
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
 
     #[test]
@@ -470,7 +470,7 @@ mod test {
         let ss = TestSnapshotService::new();
         let io = TestIo::new(&mut client, &ss, &queue, None);
 
-        let unknown: H256 = H256::new();
+        let unknown: H256 = H256::default();
         let result = SyncSupplier::return_block_headers(
             &io,
             &Rlp::new(&make_hash_req(&unknown, 1, 0, false)),
@@ -614,23 +614,27 @@ mod test {
     fn return_receipts() {
         let mut client = TestBlockChainClient::new();
         let queue = RwLock::new(VecDeque::new());
-        let sync = dummy_sync_with_peer(H256::new(), &client);
+        let sync = dummy_sync_with_peer(H256::default(), &client);
         let ss = TestSnapshotService::new();
         let mut io = TestIo::new(&mut client, &ss, &queue, None);
 
         let mut receipt_list = RlpStream::new_list(4);
-        receipt_list.append(&H256::from(
-            "0000000000000000000000000000000000000000000000005555555555555555",
-        ));
-        receipt_list.append(&H256::from(
-            "ff00000000000000000000000000000000000000000000000000000000000000",
-        ));
-        receipt_list.append(&H256::from(
-            "fff0000000000000000000000000000000000000000000000000000000000000",
-        ));
-        receipt_list.append(&H256::from(
-            "aff0000000000000000000000000000000000000000000000000000000000000",
-        ));
+        receipt_list.append(
+            &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("ff00000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("fff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
 
         let receipts_request = receipt_list.out();
         // it returns rlp ONLY for hashes started with "f"

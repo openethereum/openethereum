@@ -149,7 +149,7 @@ impl OverlayDB {
     /// Get the refs and value of the given key.
     fn payload(&self, key: &H256) -> Option<Payload> {
         self.backing
-            .get(self.column, key)
+            .get(self.column, key.as_bytes())
             .expect("Low-level database error. Some issue with your hard disk?")
             .map(|ref d| decode(d).expect("decoding db value failed"))
     }
@@ -162,10 +162,10 @@ impl OverlayDB {
         payload: &Payload,
     ) -> bool {
         if payload.count > 0 {
-            batch.put(self.column, key, &encode(payload));
+            batch.put(self.column, key.as_bytes(), &encode(payload));
             false
         } else {
-            batch.delete(self.column, key);
+            batch.delete(self.column, key.as_bytes());
             true
         }
     }

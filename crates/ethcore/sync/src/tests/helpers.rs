@@ -37,10 +37,7 @@ use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId,
 use parking_lot::RwLock;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    sync::{
-        Arc, RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
-        RwLockWriteGuard as StdRwLockWriteGuard,
-    },
+    sync::{Arc, RwLock as StdRwLock},
 };
 use sync_io::SyncIo;
 use tests::snapshot::*;

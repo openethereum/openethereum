@@ -22,7 +22,7 @@ use super::config::Config;
 use bytes::ToPretty;
 use display;
 use ethcore::trace;
-use ethereum_types::{H256, U256};
+use ethereum_types::{BigEndianHash, H256, U256};
 use info as vm;
 
 /// JSON formatting informant.
@@ -208,7 +208,10 @@ impl trace::VMTracer for Informant {
             }
 
             if let Some((pos, val)) = store_diff {
-                informant.storage.insert(pos.into(), val.into());
+                informant.storage.insert(
+                    BigEndianHash::from_uint(&pos),
+                    BigEndianHash::from_uint(&val),
+                );
             }
 
             if !informant.subtraces.is_empty() {

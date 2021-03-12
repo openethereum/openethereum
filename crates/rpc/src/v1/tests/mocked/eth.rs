@@ -223,15 +223,15 @@ fn rpc_eth_chain_id() {
 fn rpc_eth_hashrate() {
     let tester = EthTester::default();
     tester.hashrates.lock().insert(
-        H256::from(0),
+        H256::from_low_u64_be(0),
         (Instant::now() + Duration::from_secs(2), U256::from(0xfffa)),
     );
     tester.hashrates.lock().insert(
-        H256::from(0),
+        H256::from_low_u64_be(0),
         (Instant::now() + Duration::from_secs(2), U256::from(0xfffb)),
     );
     tester.hashrates.lock().insert(
-        H256::from(1),
+        H256::from_low_u64_be(1),
         (Instant::now() + Duration::from_secs(2), U256::from(0x1)),
     );
 
@@ -302,10 +302,16 @@ fn rpc_eth_logs() {
 
 #[test]
 fn rpc_eth_logs_error() {
+    fn h256_from_digit_be(d: u8) -> H256 {
+        let mut bytes = [0u8; 32];
+        bytes[0] = d;
+        H256(bytes)
+    }
+
     let tester = EthTester::default();
     tester
         .client
-        .set_error_on_logs(Some(BlockId::Hash(H256::from([5u8].as_ref()))));
+        .set_error_on_logs(Some(BlockId::Hash(h256_from_digit_be(5))));
     let request = r#"{"jsonrpc": "2.0", "method": "eth_getLogs", "params": [{"limit":1,"blockHash":"0x0000000000000000000000000000000000000000000000000000000000000000"}], "id": 1}"#;
     let response = r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"One of the blocks specified in filter (fromBlock, toBlock or blockHash) cannot be found","data":"0x0500000000000000000000000000000000000000000000000000000000000000"},"id":1}"#;
     assert_eq!(
@@ -457,9 +463,10 @@ fn rpc_eth_submit_hashrate() {
         tester
             .hashrates
             .lock()
-            .get(&H256::from(
-                "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"
-            ))
+            .get(
+                &H256::from_str("59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c")
+                    .unwrap()
+            )
             .cloned()
             .unwrap()
             .1,
@@ -536,10 +543,10 @@ fn rpc_eth_accounts() {
     let address = tester.accounts_provider.new_account(&"".into()).unwrap();
     tester
         .accounts_provider
-        .set_address_name(1.into(), "1".into());
+        .set_address_name(Address::from_low_u64_be(1), "1".into());
     tester
         .accounts_provider
-        .set_address_name(10.into(), "10".into());
+        .set_address_name(Address::from_low_u64_be(10), "10".into());
 
     // with current policy it should return the account
     let request = r#"{"jsonrpc": "2.0", "method": "eth_accounts", "params": [], "id": 1}"#;
@@ -569,7 +576,9 @@ fn rpc_eth_block_number() {
 #[test]
 fn rpc_eth_balance() {
     let tester = EthTester::default();
-    tester.client.set_balance(Address::from(1), U256::from(5));
+    tester
+        .client
+        .set_balance(Address::from_low_u64_be(1), U256::from(5));
 
     let request = r#"{
 		"jsonrpc": "2.0",
@@ -588,7 +597,9 @@ fn rpc_eth_balance() {
 #[test]
 fn rpc_eth_balance_pending() {
     let tester = EthTester::default();
-    tester.client.set_balance(Address::from(1), U256::from(5));
+    tester
+        .client
+        .set_balance(Address::from_low_u64_be(1), U256::from(5));
 
     let request = r#"{
 		"jsonrpc": "2.0",
@@ -608,9 +619,11 @@ fn rpc_eth_balance_pending() {
 #[test]
 fn rpc_eth_storage_at() {
     let tester = EthTester::default();
-    tester
-        .client
-        .set_storage(Address::from(1), H256::from(4), H256::from(7));
+    tester.client.set_storage(
+        Address::from_low_u64_be(1),
+        H256::from_low_u64_be(4),
+        H256::from_low_u64_be(7),
+    );
 
     let request = r#"{
 		"jsonrpc": "2.0",
@@ -755,7 +768,9 @@ fn rpc_eth_uncle_count_by_block_number() {
 #[test]
 fn rpc_eth_code() {
     let tester = EthTester::default();
-    tester.client.set_code(Address::from(1), vec![0xff, 0x21]);
+    tester
+        .client
+        .set_code(Address::from_low_u64_be(1), vec![0xff, 0x21]);
 
     let request = r#"{
 		"jsonrpc": "2.0",
@@ -1162,13 +1177,13 @@ fn rpc_eth_transaction_receipt() {
             )
             .unwrap(),
             block_number: 0x4510c,
-            transaction_hash: H256::new(),
+            transaction_hash: H256::default(),
             transaction_index: 0,
             transaction_log_index: 0,
             log_index: 1,
         }],
-        log_bloom: 0.into(),
-        outcome: TransactionOutcome::StateRoot(0.into()),
+        log_bloom: Bloom::zero(),
+        outcome: TransactionOutcome::StateRoot(H256::zero()),
     };
 
     let hash =

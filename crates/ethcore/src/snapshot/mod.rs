@@ -50,7 +50,7 @@ use trie::{Trie, TrieMut};
 use self::io::SnapshotWriter;
 
 use crossbeam_utils::thread;
-use rand::{OsRng, Rng};
+use rand::{rngs::OsRng, Rng};
 
 pub use self::error::Error;
 
@@ -496,7 +496,7 @@ impl StateRebuilder {
                     return Err(Error::RestorationAborted.into());
                 }
 
-                account_trie.insert(&hash, &thin_rlp)?;
+                account_trie.insert(hash.as_bytes(), &thin_rlp)?;
             }
         }
         trace!(target: "snapshot", "current state root: {:?}", self.state_root);

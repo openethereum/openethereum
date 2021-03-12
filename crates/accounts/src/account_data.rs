@@ -18,7 +18,8 @@
 
 use std::{collections::HashMap, time::Instant};
 
-use ethkey::{Address, Password};
+use crypto::publickey::Address;
+use ethkey::Password;
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 

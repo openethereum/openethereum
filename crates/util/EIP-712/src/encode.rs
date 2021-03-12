@@ -134,8 +134,7 @@ fn encode_data(
                 items.append(&mut encoded);
             }
 
-            //			keccak(items).as_ref().to_vec()
-            keccak(items).to_vec()
+            keccak(items).as_ref().to_vec()
         }
 
         Type::Custom(ref ident) if message_types.get(&*ident).is_some() => {
@@ -152,8 +151,7 @@ fn encode_data(
                 tokens.append(&mut encoded);
             }
 
-            //			keccak(tokens).as_ref().to_vec()
-            keccak(tokens).to_vec()
+            keccak(tokens).as_ref().to_vec()
         }
 
         Type::Bytes => {
@@ -164,8 +162,7 @@ fn encode_data(
             let bytes = (&string[2..])
                 .from_hex::<Vec<u8>>()
                 .map_err(|err| ErrorKind::HexParseError(format!("{}", err)))?;
-            //			let bytes = keccak(&bytes).as_ref().to_vec();
-            let bytes = keccak(&bytes).to_vec();
+            let bytes = keccak(&bytes).as_ref().to_vec();
 
             encode(&[EthAbiToken::FixedBytes(bytes)])
         }
@@ -184,8 +181,7 @@ fn encode_data(
 
         Type::String => {
             let value = value.as_str().ok_or(serde_error("string", field_name))?;
-            //			let hash = keccak(value).as_ref().to_vec();
-            let hash = keccak(value).to_vec();
+            let hash = keccak(value).as_ref().to_vec();
             encode(&[EthAbiToken::FixedBytes(hash)])
         }
 

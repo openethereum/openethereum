@@ -21,7 +21,6 @@ use jsonrpc_pubsub::{
     typed::{Sink, Subscriber},
     SubscriptionId,
 };
-use rand::{Rng, StdRng};
 use std::{collections::HashMap, ops, str};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -44,34 +43,44 @@ impl Id {
     }
 }
 
-#[derive(Clone)]
+#[cfg(not(test))]
+mod random {
+    use rand::rngs::OsRng;
+    pub type Rng = rand::rngs::OsRng;
+    pub fn new() -> Rng {
+        OsRng
+    }
+}
+
+#[cfg(test)]
+mod random {
+    extern crate rand_xorshift;
+    use self::rand_xorshift::XorShiftRng;
+    use rand::SeedableRng;
+    const RNG_SEED: [u8; 16] = [0u8; 16];
+    pub type Rng = XorShiftRng;
+    pub fn new() -> Rng {
+        Rng::from_seed(RNG_SEED)
+    }
+}
+
 pub struct Subscribers<T> {
-    rand: StdRng,
+    rand: random::Rng,
     subscriptions: HashMap<Id, T>,
 }
 
 impl<T> Default for Subscribers<T> {
     fn default() -> Self {
         Subscribers {
-            rand: StdRng::new().expect("Valid random source is required."),
+            rand: random::new(),
             subscriptions: HashMap::new(),
         }
     }
 }
 
 impl<T> Subscribers<T> {
-    /// Create a new Subscribers with given random source.
-    #[cfg(test)]
-    pub fn new_test() -> Self {
-        Subscribers {
-            rand: ::rand::SeedableRng::from_seed([0usize].as_ref()),
-            subscriptions: HashMap::new(),
-        }
-    }
-
     fn next_id(&mut self) -> Id {
-        let mut data = H64::default();
-        self.rand.fill_bytes(&mut data.0);
+        let data = H64::random_using(&mut self.rand);
         Id(data)
     }
 

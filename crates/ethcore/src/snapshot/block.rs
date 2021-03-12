@@ -154,7 +154,12 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
-        assert_eq!(abridged.to_block(H256::new(), 0, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 0, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 
     #[test]
@@ -165,7 +170,12 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
-        assert_eq!(abridged.to_block(H256::new(), 2, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 2, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 
     #[test]
@@ -180,7 +190,7 @@ mod tests {
             value: U256::from(1),
             data: b"Hello!".to_vec(),
         })
-        .fake_sign(Address::from(0x69));
+        .fake_sign(Address::from_low_u64_be(0x69));
 
         let t2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
@@ -190,7 +200,7 @@ mod tests {
             value: U256::from(1000000000),
             data: "Eep!".into(),
         })
-        .fake_sign(Address::from(0x55));
+        .fake_sign(Address::from_low_u64_be(0x55));
 
         b.transactions.push(t1.into());
         b.transactions.push(t2.into());
@@ -204,6 +214,11 @@ mod tests {
         let encoded = encode_block(&b);
 
         let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded[..]));
-        assert_eq!(abridged.to_block(H256::new(), 0, receipts_root).unwrap(), b);
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 0, receipts_root)
+                .unwrap(),
+            b
+        );
     }
 }

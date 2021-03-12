@@ -22,8 +22,10 @@ use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
 
-use log_entry::{LocalizedLogEntry, LogEntry};
-use BlockNumber;
+use crate::{
+    log_entry::{LocalizedLogEntry, LogEntry},
+    BlockNumber,
+};
 
 /// Transaction outcome store in the receipt.
 #[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
@@ -296,8 +298,8 @@ pub struct LocalizedReceipt {
 #[cfg(test)]
 mod tests {
     use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
+    use crate::log_entry::LogEntry;
     use ethereum_types::{H160, H256};
-    use log_entry::LogEntry;
     use std::str::FromStr;
 
     #[test]

@@ -17,12 +17,15 @@
 //! View onto block rlp.
 
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    header::Header,
+    transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction},
+    views::{HeaderView, TypedTransactionView},
+};
+
 use ethereum_types::H256;
-use hash::keccak;
-use header::Header;
-use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TypedTransactionView};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {

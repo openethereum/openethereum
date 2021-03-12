@@ -16,10 +16,14 @@
 
 //! Transaction data structure.
 
-use crypto::publickey::{self, public_to_address, recover, Public, Secret, Signature};
+use crate::{
+    crypto::publickey::{self, public_to_address, recover, Public, Secret, Signature},
+    hash::keccak,
+    transaction::error,
+};
 use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
-use hash::keccak;
 use parity_util_mem::MallocSizeOf;
+
 use rlp::{self, DecoderError, Rlp, RlpStream};
 use std::ops::Deref;
 
@@ -27,8 +31,6 @@ pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
 
 use super::TypedTxId;
-
-use transaction::error;
 
 type Bytes = Vec<u8>;
 type BlockNumber = u64;
@@ -134,7 +136,7 @@ pub struct Transaction {
     pub gas: U256,
     /// Action, can be either call or contract create.
     pub action: Action,
-    /// Transfered value.
+    /// Transfered value.s
     pub value: U256,
     /// Transaction data.
     pub data: Bytes,
@@ -430,7 +432,6 @@ impl TypedTransaction {
     /// Legacy EIP-86 compatible empty signature.
     /// This method is used in json tests as well as
     /// signature verification tests.
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn null_sign(self, chain_id: u64) -> SignedTransaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
@@ -566,11 +567,11 @@ impl TypedTransaction {
 pub struct SignatureComponents {
     /// The V field of the signature; the LS bit described which half of the curve our point falls
     /// in. It can be 0 or 1.
-    standard_v: u8,
+    pub standard_v: u8,
     /// The R field of the signature; helps describe the point on the curve.
-    r: U256,
+    pub r: U256,
     /// The S field of the signature; helps describe the point on the curve.
-    s: U256,
+    pub s: U256,
 }
 
 impl SignatureComponents {
@@ -594,13 +595,13 @@ impl SignatureComponents {
 #[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub struct UnverifiedTransaction {
     /// Plain Transaction.
-    unsigned: TypedTransaction,
+    pub unsigned: TypedTransaction,
     /// Transaction signature
-    signature: SignatureComponents,
+    pub signature: SignatureComponents,
     /// chain_id recover from signature in legacy transaction. For TypedTransaction it is probably separate field.
-    chain_id: Option<u64>,
+    pub chain_id: Option<u64>,
     /// Hash of the transaction
-    hash: H256,
+    pub hash: H256,
 }
 
 impl Deref for UnverifiedTransaction {
@@ -628,7 +629,7 @@ impl UnverifiedTransaction {
     }
 
     /// Used to compute hash of created transactions.
-    fn compute_hash(mut self) -> UnverifiedTransaction {
+    pub fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = keccak(&*self.encode());
         self.hash = hash;
         self
@@ -874,8 +875,8 @@ impl From<SignedTransaction> for PendingTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::hash::keccak;
     use ethereum_types::{H160, U256};
-    use hash::keccak;
     use std::str::FromStr;
 
     #[test]

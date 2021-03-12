@@ -16,6 +16,7 @@
 
 use std::{error, fmt};
 
+use crate::crypto;
 use ethereum_types::U256;
 use rlp;
 use unexpected::OutOfBounds;

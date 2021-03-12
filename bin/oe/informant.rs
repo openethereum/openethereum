@@ -29,6 +29,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::{
+    io::{IoContext, IoHandler, TimerToken},
+    sync::{ManageNetwork, SyncProvider},
+    types::BlockNumber,
+};
 use atty;
 use ethcore::{
     client::{
@@ -37,12 +42,9 @@ use ethcore::{
     },
     snapshot::{service::Service as SnapshotService, RestorationStatus, SnapshotService as SS},
 };
-use io::{IoContext, IoHandler, TimerToken};
 use number_prefix::{binary_prefix, Prefixed, Standalone};
 use parity_rpc::{informant::RpcStats, is_major_importing_or_waiting};
 use parking_lot::{Mutex, RwLock};
-use sync::{ManageNetwork, SyncProvider};
-use types::BlockNumber;
 
 /// Format byte counts to standard denominations.
 pub fn format_bytes(b: usize) -> String {

@@ -15,9 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Executed transaction.
-use bytes::Bytes;
-use hash::Address;
-use uint::Uint;
+use crate::{bytes::Bytes, hash::Address, uint::Uint};
 
 /// Executed transaction.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -44,8 +42,8 @@ pub struct Transaction {
 
 #[cfg(test)]
 mod tests {
+    use super::Transaction;
     use serde_json;
-    use vm::Transaction;
 
     #[test]
     fn transaction_deserialization() {

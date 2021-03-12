@@ -17,9 +17,7 @@
 //! Authority params deserialization.
 
 use super::{BlockReward, ValidatorSet};
-use bytes::Bytes;
-use hash::Address;
-use uint::Uint;
+use crate::{bytes::Bytes, hash::Address, uint::Uint};
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -73,12 +71,14 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::BlockReward;
+    use crate::{
+        hash::Address,
+        spec::{authority_round::AuthorityRound, validator_set::ValidatorSet},
+        uint::Uint,
+    };
     use ethereum_types::{H160, U256};
-    use hash::Address;
     use serde_json;
-    use spec::{authority_round::AuthorityRound, validator_set::ValidatorSet};
     use std::str::FromStr;
-    use uint::Uint;
 
     #[test]
     fn authority_round_deserialization() {

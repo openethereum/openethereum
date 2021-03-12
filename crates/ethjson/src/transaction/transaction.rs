@@ -16,10 +16,12 @@
 
 //! Transaction test transaction deserialization.
 
-use bytes::Bytes;
-use hash::Address;
-use maybe::MaybeEmpty;
-use uint::Uint;
+use crate::{bytes::Bytes, hash::Address, maybe::MaybeEmpty, uint::Uint};
+use common_types::transaction::{
+    signature, Action, SignatureComponents, Transaction as CoreTransaction, TypedTransaction,
+    UnverifiedTransaction,
+};
+use ethereum_types::H256;
 
 /// Transaction test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -45,10 +47,37 @@ pub struct Transaction {
     pub v: Uint,
 }
 
+impl From<Transaction> for UnverifiedTransaction {
+    fn from(t: Transaction) -> Self {
+        let to: Option<Address> = t.to.into();
+        UnverifiedTransaction {
+            unsigned: TypedTransaction::Legacy(CoreTransaction {
+                nonce: t.nonce.into(),
+                gas_price: t.gas_price.into(),
+                gas: t.gas_limit.into(),
+                action: match to {
+                    Some(to) => Action::Call(to.into()),
+                    None => Action::Create,
+                },
+                value: t.value.into(),
+                data: t.data.into(),
+            }),
+            chain_id: signature::extract_chain_id_from_legacy_v(t.v.into()),
+            signature: SignatureComponents {
+                r: t.r.into(),
+                s: t.s.into(),
+                standard_v: signature::extract_standard_v(t.v.into()),
+            },
+            hash: H256::zero(),
+        }
+        .compute_hash()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::Transaction;
     use serde_json;
-    use transaction::Transaction;
 
     #[test]
     fn transaction_deserialization() {

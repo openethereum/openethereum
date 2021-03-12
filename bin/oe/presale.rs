@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::{
+    helpers::{password_from_file, password_prompt},
+    params::SpecType,
+};
 use crypto::publickey;
+
 use ethkey::Password;
 use ethstore::PresaleWallet;
-use helpers::{password_from_file, password_prompt};
-use params::SpecType;
 use std::num::NonZeroU32;
 
 #[derive(Debug, PartialEq)]
@@ -45,6 +48,7 @@ pub fn execute(cmd: ImportWallet) -> Result<String, String> {
 }
 
 #[cfg(feature = "accounts")]
+
 pub fn import_account(cmd: &ImportWallet, kp: publickey::KeyPair, password: Password) {
     use accounts::{AccountProvider, AccountProviderSettings};
     use ethstore::{accounts_dir::RootDiskDirectory, EthStore};

@@ -114,9 +114,11 @@ mod user_defaults;
 
 use std::{fs::File, io::BufReader, sync::Arc};
 
-use cli::Args;
-use configuration::{Cmd, Execute};
-use hash::keccak_buffer;
+use crate::{
+    cli::Args,
+    configuration::{Cmd, Execute},
+    hash::keccak_buffer,
+};
 
 #[cfg(feature = "memory_profiling")]
 use std::alloc::System;

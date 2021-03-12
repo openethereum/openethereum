@@ -16,9 +16,9 @@
 
 //! Vm test deserializer.
 
+use crate::vm::Vm;
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};
-use vm::Vm;
 
 /// Vm test deserializer.
 #[derive(Debug, PartialEq, Deserialize)]

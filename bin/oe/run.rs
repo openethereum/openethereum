@@ -22,10 +22,24 @@ use std::{
     time::{Duration, Instant},
 };
 
-use account_utils;
+use crate::{
+    account_utils,
+    cache::CacheConfig,
+    db,
+    helpers::{execute_upgrades, passwords_from_files, to_client_config},
+    informant::{FullNodeInformantData, Informant},
+    metrics::{start_prometheus_metrics, MetricsConfiguration},
+    miner::{external::ExternalMiner, work_notify::WorkPoster},
+    modules,
+    params::{
+        fatdb_switch_to_bool, mode_switch_to_bool, tracing_switch_to_bool, AccountsConfig,
+        GasPricerConfig, MinerExtras, Pruning, SpecType, Switch,
+    },
+    rpc, rpc_apis, secretstore, signer,
+    sync::{self, SyncConfig},
+    user_defaults::UserDefaults,
+};
 use ansi_term::Colour;
-use cache::CacheConfig;
-use db;
 use dir::{DatabaseDirectories, Directories};
 use ethcore::{
     client::{BlockChainClient, BlockInfo, Client, DatabaseCompactionProfile, Mode, VMType},
@@ -36,30 +50,15 @@ use ethcore::{
 use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
 use ethereum_types::{H256, U64};
-use helpers::{execute_upgrades, passwords_from_files, to_client_config};
-use informant::{FullNodeInformantData, Informant};
 use journaldb::Algorithm;
 use jsonrpc_core;
-use metrics::{start_prometheus_metrics, MetricsConfiguration};
-use miner::{external::ExternalMiner, work_notify::WorkPoster};
-use modules;
 use node_filter::NodeFilter;
-use params::{
-    fatdb_switch_to_bool, mode_switch_to_bool, tracing_switch_to_bool, AccountsConfig,
-    GasPricerConfig, MinerExtras, Pruning, SpecType, Switch,
-};
 use parity_rpc::{
     informant, is_major_importing, FutureOutput, FutureResponse, FutureResult, Metadata,
     NetworkSettings, Origin, PubSubSession,
 };
 use parity_runtime::Runtime;
 use parity_version::version;
-use rpc;
-use rpc_apis;
-use secretstore;
-use signer;
-use sync::{self, SyncConfig};
-use user_defaults::UserDefaults;
 
 // How often we attempt to take a snapshot: only snapshot on blocknumbers that are multiples of this.
 const SNAPSHOT_PERIOD: u64 = 20000;
@@ -120,8 +119,8 @@ struct FullNodeInfo {
     miner: Option<Arc<Miner>>, // TODO: only TXQ needed, just use that after decoupling.
 }
 
-impl ::local_store::NodeInfo for FullNodeInfo {
-    fn pending_transactions(&self) -> Vec<::types::transaction::PendingTransaction> {
+impl crate::local_store::NodeInfo for FullNodeInfo {
+    fn pending_transactions(&self) -> Vec<crate::types::transaction::PendingTransaction> {
         let miner = match self.miner.as_ref() {
             Some(m) => m,
             None => return Vec::new(),
@@ -131,7 +130,7 @@ impl ::local_store::NodeInfo for FullNodeInfo {
             .local_transactions()
             .values()
             .filter_map(|status| match *status {
-                ::miner::pool::local_transactions::Status::Pending(ref tx) => {
+                crate::miner::pool::local_transactions::Status::Pending(ref tx) => {
                     Some(tx.pending().clone())
                 }
                 _ => None,
@@ -387,7 +386,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             },
         };
 
-        let store = ::local_store::create(
+        let store = crate::local_store::create(
             db.key_value().clone(),
             ::ethcore_db::COL_NODE_INFO,
             node_info,
@@ -461,7 +460,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             .is_ok()
         {
             let task =
-                ::sync::PriorityTask::PropagateTransactions(Instant::now(), is_ready.clone());
+                crate::sync::PriorityTask::PropagateTransactions(Instant::now(), is_ready.clone());
             // we ignore error cause it means that we are closing
             let _ = tx.lock().send(task);
         }

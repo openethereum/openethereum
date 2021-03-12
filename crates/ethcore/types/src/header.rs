@@ -338,7 +338,11 @@ impl Header {
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
     fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
-        let len = if self.number >= EIP_1559_FORK_BLOCK_NUMBER {14} else {13};
+        let len = if self.number >= EIP_1559_FORK_BLOCK_NUMBER {
+            14
+        } else {
+            13
+        };
         if let Seal::With = with_seal {
             s.begin_list(len + self.seal.len());
         } else {
@@ -365,8 +369,7 @@ impl Header {
             }
         }
 
-        if self.number >= EIP_1559_FORK_BLOCK_NUMBER
-        {
+        if self.number >= EIP_1559_FORK_BLOCK_NUMBER {
             s.append(&self.base_fee_per_gas);
         }
     }
@@ -404,17 +407,13 @@ impl Decodable for Header {
             base_fee_per_gas: EIP_1559_INITIAL_BASE_FEE.into(),
         };
 
-        if blockheader.number >= EIP_1559_FORK_BLOCK_NUMBER
-        {
-            for i in 13..(r.item_count()?-1) {
+        if blockheader.number >= EIP_1559_FORK_BLOCK_NUMBER {
+            for i in 13..(r.item_count()? - 1) {
                 blockheader.seal.push(r.at(i)?.as_raw().to_vec())
             }
 
-            blockheader.base_fee_per_gas = r.val_at(r.item_count()?-1)?;
-
-        }
-        else
-        {
+            blockheader.base_fee_per_gas = r.val_at(r.item_count()? - 1)?;
+        } else {
             for i in 13..r.item_count()? {
                 blockheader.seal.push(r.at(i)?.as_raw().to_vec())
             }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate ethereum_types;
+extern crate common_types;
 extern crate rustc_hex;
 extern crate serde;
 extern crate serde_json;

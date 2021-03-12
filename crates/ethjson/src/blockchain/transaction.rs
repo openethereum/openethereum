@@ -38,7 +38,7 @@ pub struct Transaction {
     pub hash: Option<H256>,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessListItem {
     pub address: H160,

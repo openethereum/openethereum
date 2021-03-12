@@ -25,10 +25,12 @@ use crate::{
     uint::Uint,
 };
 
+use common_types::transaction::{
+    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction,
+};
 use ethkey::Secret;
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};
-use types::transaction::{AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction};
 
 use crate::blockchain::transaction::AccessList;
 

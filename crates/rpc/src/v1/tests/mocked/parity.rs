@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey::{Generator, Random};
 use ethcore::client::{Executed, TestBlockChainClient, TransactionId};
 use ethcore_logger::RotatingLogger;
-use ethereum_types::{Address, H256, U256};
-use ethstore::ethkey::{Generator, Random};
+use ethereum_types::{Address, BigEndianHash, Bloom, H256, U256};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::sync::Arc;
 use sync::ManageNetwork;
@@ -294,7 +294,7 @@ fn rpc_parity_pending_transactions() {
 fn rpc_parity_encrypt() {
     let deps = Dependencies::new();
     let io = deps.default_client();
-    let key = format!("{:x}", Random.generate().unwrap().public());
+    let key = format!("{:x}", Random.generate().public());
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_encryptMessage", "params":["0x"#
         .to_owned()
@@ -382,16 +382,16 @@ fn rpc_parity_local_transactions() {
         data: vec![1, 2, 3],
         nonce: 0.into(),
     })
-    .fake_sign(3.into());
+    .fake_sign(Address::from_low_u64_be(3));
     let tx = Arc::new(::miner::pool::VerifiedTransaction::from_pending_block_transaction(tx));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(10.into(), LocalTransactionStatus::Pending(tx.clone()));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(15.into(), LocalTransactionStatus::Pending(tx.clone()));
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(10),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(15),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
 
     let request =
         r#"{"jsonrpc": "2.0", "method": "parity_localTransactions", "params":[], "id": 1}"#;
@@ -406,7 +406,7 @@ fn rpc_parity_chain_status() {
     let io = deps.default_client();
 
     *deps.client.ancient_block.write() = Some((H256::default(), 5));
-    *deps.client.first_block.write() = Some((H256::from(U256::from(1234)), 3333));
+    *deps.client.first_block.write() = Some((BigEndianHash::from_uint(&U256::from(1234)), 3333));
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_chainStatus", "params":[], "id": 1}"#;
     let response = r#"{"jsonrpc":"2.0","result":{"blockGap":["0x6","0xd05"]},"id":1}"#;
@@ -467,21 +467,21 @@ fn rpc_parity_call() {
 fn rpc_parity_block_receipts() {
     let deps = Dependencies::new();
     deps.client.receipts.write().insert(
-        TransactionId::Hash(1.into()),
+        TransactionId::Hash(H256::from_low_u64_be(1)),
         LocalizedReceipt {
-            transaction_hash: 1.into(),
+            transaction_hash: H256::from_low_u64_be(1),
             transaction_type: TypedTxId::Legacy,
             transaction_index: 0,
-            block_hash: 3.into(),
+            block_hash: H256::from_low_u64_be(3),
             block_number: 0,
             cumulative_gas_used: 21_000.into(),
             gas_used: 21_000.into(),
             contract_address: None,
             logs: vec![],
-            log_bloom: 1.into(),
+            log_bloom: Bloom::from_low_u64_be(1),
             outcome: TransactionOutcome::Unknown,
             to: None,
-            from: 9.into(),
+            from: Address::from_low_u64_be(9),
         },
     );
     let io = deps.default_client();

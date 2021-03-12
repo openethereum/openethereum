@@ -692,8 +692,10 @@ impl SyncHandler {
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
         let forkid_validation_error = {
-            let fork_id = rlp04::Rlp::new(r.as_raw()).val_at(5)?;
-            r_iter.next().ok_or(rlp::DecoderError::RlpIsTooShort)?;
+            let fork_id = r_iter
+                .next()
+                .ok_or(rlp::DecoderError::RlpIsTooShort)?
+                .as_val()?;
             sync.fork_filter
                 .is_compatible(io.chain(), fork_id)
                 .err()

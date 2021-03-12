@@ -19,7 +19,6 @@
 use ethereum_types::{
     Bloom as Hash2048, H160 as Hash160, H256 as Hash256, H520 as Hash520, H64 as Hash64,
 };
-use rustc_hex::ToHex;
 use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -63,8 +62,8 @@ macro_rules! impl_hash {
                         E: Error,
                     {
                         let value = match value.len() {
-                            0 => $inner::from(0),
-                            2 if value == "0x" => $inner::from(0),
+                            0 => $inner::from_low_u64_be(0),
+                            2 if value == "0x" => $inner::from_low_u64_be(0),
                             _ if value.starts_with("0x") => {
                                 $inner::from_str(&value[2..]).map_err(|e| {
                                     Error::custom(
@@ -99,9 +98,7 @@ macro_rules! impl_hash {
             where
                 S: Serializer,
             {
-                let mut hex = "0x".to_owned();
-                hex.push_str(&self.0.to_hex());
-                serializer.serialize_str(&hex)
+                serializer.serialize_str(&format!("{:#x}", self.0))
             }
         }
     };
@@ -127,7 +124,7 @@ mod test {
         assert_eq!(
             deserialized,
             vec![
-                H256(ethereum_types::H256::from(0)),
+                H256(ethereum_types::H256::zero()),
                 H256(
                     ethereum_types::H256::from_str(
                         "5a39ed1020c04d4d84539975b893a4e7c53eab6c2965db8bc3468093a31bc5ae"
@@ -141,8 +138,8 @@ mod test {
     #[test]
     fn hash_into() {
         assert_eq!(
-            ethereum_types::H256::from(0),
-            H256(ethereum_types::H256::from(0)).into()
+            ethereum_types::H256::zero(),
+            H256(ethereum_types::H256::zero()).into()
         );
     }
 }

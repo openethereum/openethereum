@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::u256_to_address;
-use ethereum_types::{Address, H256, U256};
+use ethereum_types::{Address, BigEndianHash, U256};
 use std::cmp;
 
 use super::stack::VecStack;
@@ -139,14 +139,14 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                 if schedule.eip1706 && self.current_gas <= Gas::from(schedule.call_stipend) {
                     return Err(vm::Error::OutOfGas);
                 }
-                let key = H256::from(stack.peek(0));
+                let key = BigEndianHash::from_uint(stack.peek(0));
                 let newval = stack.peek(1);
-                let val = U256::from(&*ext.storage_at(&key)?);
+                let val = ext.storage_at(&key)?.into_uint();
 
                 let is_cold = !ext.al_contains_storage_key(current_address, &key);
 
                 let gas = if schedule.eip1283 {
-                    let orig = U256::from(&*ext.initial_storage_at(&key)?);
+                    let orig = ext.initial_storage_at(&key)?.into_uint();
                     calculate_eip1283_eip2929_sstore_gas(schedule, is_cold, &orig, &val, &newval)
                 } else {
                     if val.is_zero() && !newval.is_zero() {
@@ -161,7 +161,7 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                 Request::Gas(gas.into())
             }
             instructions::SLOAD => {
-                let key = H256::from(stack.peek(0));
+                let key = BigEndianHash::from_uint(stack.peek(0));
                 let gas = if ext.al_is_enabled() {
                     if ext.al_contains_storage_key(current_address, &key) {
                         schedule.warm_storage_read_cost

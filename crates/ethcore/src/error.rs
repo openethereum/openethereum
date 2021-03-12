@@ -22,8 +22,8 @@
 
 use std::{error, fmt, time::SystemTime};
 
+use crypto::publickey::Error as EthkeyError;
 use ethereum_types::{Address, Bloom, H256, U256};
-use ethkey::Error as EthkeyError;
 use ethtrie::TrieError;
 use rlp;
 use snappy::InvalidInput;

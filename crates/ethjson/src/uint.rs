@@ -35,19 +35,18 @@ impl Into<U256> for Uint {
 
 impl Into<u64> for Uint {
     fn into(self) -> u64 {
-        u64::from(self.0)
+        self.0.low_u64()
     }
 }
 
 impl Into<usize> for Uint {
     fn into(self) -> usize {
-        // TODO: clean it after util conversions refactored.
-        u64::from(self.0) as usize
+        self.0.low_u64() as usize
     }
 }
 impl Into<u8> for Uint {
     fn into(self) -> u8 {
-        u64::from(self.0) as u8
+        self.0.low_u64() as u8
     }
 }
 

@@ -346,8 +346,9 @@ pub fn new_kovan_wasm_test_machine() -> EthereumMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::U256;
+    use ethereum_types::{H160, H256, U256};
     use state::*;
+    use std::str::FromStr;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
 
@@ -367,32 +368,32 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            s.balance(&"0000000000000000000000000000000000000001".into())
+            s.balance(&H160::from_str("0000000000000000000000000000000000000001").unwrap())
                 .unwrap(),
             1u64.into()
         );
         assert_eq!(
-            s.balance(&"0000000000000000000000000000000000000002".into())
+            s.balance(&H160::from_str("0000000000000000000000000000000000000002").unwrap())
                 .unwrap(),
             1u64.into()
         );
         assert_eq!(
-            s.balance(&"0000000000000000000000000000000000000003".into())
+            s.balance(&H160::from_str("0000000000000000000000000000000000000003").unwrap())
                 .unwrap(),
             1u64.into()
         );
         assert_eq!(
-            s.balance(&"0000000000000000000000000000000000000004".into())
+            s.balance(&H160::from_str("0000000000000000000000000000000000000004").unwrap())
                 .unwrap(),
             1u64.into()
         );
         assert_eq!(
-            s.balance(&"102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c".into())
+            s.balance(&H160::from_str("102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c").unwrap())
                 .unwrap(),
             U256::from(1u64) << 200
         );
         assert_eq!(
-            s.balance(&"0000000000000000000000000000000000000000".into())
+            s.balance(&H160::from_str("0000000000000000000000000000000000000000").unwrap())
                 .unwrap(),
             0u64.into()
         );
@@ -404,12 +405,14 @@ mod tests {
 
         assert_eq!(
             morden.state_root(),
-            "f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9".into()
+            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9")
+                .unwrap()
         );
         let genesis = morden.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303".into()
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
+                .unwrap()
         );
 
         let _ = morden.engine;
@@ -421,12 +424,14 @@ mod tests {
 
         assert_eq!(
             frontier.state_root(),
-            "d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544".into()
+            H256::from_str("d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544")
+                .unwrap()
         );
         let genesis = frontier.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            "d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3".into()
+            H256::from_str("d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+                .unwrap()
         );
 
         let _ = frontier.engine;

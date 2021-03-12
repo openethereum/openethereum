@@ -26,7 +26,7 @@ use ethcore::{
     client::{BlockId, ClientConfig, DatabaseCompactionProfile, Mode, VMType, VerifierType},
     miner::{Penalization, PendingSet},
 };
-use ethereum_types::{clean_0x, Address, U256};
+use ethereum_types::{Address, U256};
 use ethkey::Password;
 use journaldb::Algorithm;
 use std::{
@@ -39,6 +39,14 @@ use std::{
 
 pub fn to_duration(s: &str) -> Result<Duration, String> {
     to_seconds(s).map(Duration::from_secs)
+}
+
+fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
 }
 
 fn to_seconds(s: &str) -> Result<u64, String> {

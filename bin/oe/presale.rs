@@ -18,6 +18,8 @@ use crate::{
     helpers::{password_from_file, password_prompt},
     params::SpecType,
 };
+use crypto::publickey;
+
 use ethkey::Password;
 use ethstore::PresaleWallet;
 use std::num::NonZeroU32;
@@ -46,8 +48,9 @@ pub fn execute(cmd: ImportWallet) -> Result<String, String> {
 }
 
 #[cfg(feature = "accounts")]
-pub fn import_account(cmd: &ImportWallet, kp: ethkey::KeyPair, password: Password) {
-    use crate::accounts::{AccountProvider, AccountProviderSettings};
+
+pub fn import_account(cmd: &ImportWallet, kp: publickey::KeyPair, password: Password) {
+    use accounts::{AccountProvider, AccountProviderSettings};
     use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 
     let dir = Box::new(RootDiskDirectory::create(cmd.path.clone()).unwrap());
@@ -59,4 +62,4 @@ pub fn import_account(cmd: &ImportWallet, kp: ethkey::KeyPair, password: Passwor
 }
 
 #[cfg(not(feature = "accounts"))]
-pub fn import_account(_cmd: &ImportWallet, _kp: ethkey::KeyPair, _password: Password) {}
+pub fn import_account(_cmd: &ImportWallet, _kp: publickey::KeyPair, _password: Password) {}

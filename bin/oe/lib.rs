@@ -61,6 +61,7 @@ extern crate keccak_hash as hash;
 extern crate kvdb;
 extern crate node_filter;
 extern crate parity_bytes as bytes;
+extern crate parity_crypto as crypto;
 extern crate parity_local_store as local_store;
 extern crate parity_path as path;
 extern crate parity_rpc;

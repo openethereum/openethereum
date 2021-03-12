@@ -70,7 +70,7 @@ impl Filter {
         let blooms = match self.address {
             Some(ref addresses) if !addresses.is_empty() => addresses
                 .iter()
-                .map(|ref address| Bloom::from(BloomInput::Raw(address)))
+                .map(|ref address| Bloom::from(BloomInput::Raw(address.as_bytes())))
                 .collect(),
             _ => vec![Bloom::default()],
         };
@@ -84,7 +84,7 @@ impl Filter {
                         .into_iter()
                         .map(|topic| {
                             let mut b = bloom.clone();
-                            b.accrue(BloomInput::Raw(topic));
+                            b.accrue(BloomInput::Raw(topic.as_bytes()));
                             b
                         })
                         .collect::<Vec<Bloom>>()
@@ -119,7 +119,8 @@ impl Filter {
 #[cfg(test)]
 mod tests {
     use crate::{filter::Filter, ids::BlockId, log_entry::LogEntry};
-    use ethereum_types::Bloom;
+    use ethereum_types::{Bloom, H160, H256};
+    use std::str::FromStr;
 
     #[test]
     fn test_bloom_possibilities_none() {
@@ -142,11 +143,15 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec!["b372018f3be9e171df0581136b59d2faf73a7d5d".into()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
                 None,
                 None,
@@ -155,7 +160,7 @@ mod tests {
         };
 
         let possibilities = filter.bloom_possibilities();
-        assert_eq!(possibilities, vec!["00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000".into()] as Vec<Bloom>);
+        assert_eq!(possibilities, vec![Bloom::from_str("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000").unwrap()] as Vec<Bloom>);
     }
 
     #[test]
@@ -163,14 +168,19 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec!["b372018f3be9e171df0581136b59d2faf73a7d5d".into()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                ]),
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
                 None,
             ],
@@ -178,7 +188,7 @@ mod tests {
         };
 
         let possibilities = filter.bloom_possibilities();
-        assert_eq!(possibilities, vec!["00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000".into()] as Vec<Bloom>);
+        assert_eq!(possibilities, vec![Bloom::from_str("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000").unwrap()] as Vec<Bloom>);
     }
 
     #[test]
@@ -187,21 +197,34 @@ mod tests {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
             address: Some(vec![
-                "b372018f3be9e171df0581136b59d2faf73a7d5d".into(),
-                "b372018f3be9e171df0581136b59d2faf73a7d5d".into(),
+                H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
+                H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
             ]),
             topics: vec![
                 Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
                 ]),
                 Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
+                    H256::from_str(
+                        "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                    )
+                    .unwrap(),
                 ]),
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
                 None,
             ],
             limit: None,
@@ -210,7 +233,7 @@ mod tests {
         // number of possibilites should be equal 2 * 2 * 2 * 1 = 8
         let possibilities = filter.bloom_possibilities();
         assert_eq!(possibilities.len(), 8);
-        assert_eq!(possibilities[0], Bloom::from("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000"));
+        assert_eq!(possibilities[0], Bloom::from_str("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000004000000004000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000").unwrap());
     }
 
     #[test]
@@ -218,14 +241,19 @@ mod tests {
         let filter = Filter {
             from_block: BlockId::Earliest,
             to_block: BlockId::Latest,
-            address: Some(vec!["b372018f3be9e171df0581136b59d2faf73a7d5d".into()]),
+            address: Some(vec![H160::from_str(
+                "b372018f3be9e171df0581136b59d2faf73a7d5d",
+            )
+            .unwrap()]),
             topics: vec![
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                ]),
-                Some(vec![
-                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa".into(),
-                ]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+                )
+                .unwrap()]),
+                Some(vec![H256::from_str(
+                    "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa",
+                )
+                .unwrap()]),
                 None,
                 None,
             ],
@@ -233,28 +261,37 @@ mod tests {
         };
 
         let entry0 = LogEntry {
-            address: "b372018f3be9e171df0581136b59d2faf73a7d5d".into(),
+            address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
             topics: vec![
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa".into(),
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
             ],
             data: vec![],
         };
 
         let entry1 = LogEntry {
-            address: "b372018f3be9e171df0581136b59d2faf73a7d5e".into(),
+            address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5e").unwrap(),
             topics: vec![
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa".into(),
-                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23fa")
+                    .unwrap(),
+                H256::from_str("ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9")
+                    .unwrap(),
             ],
             data: vec![],
         };
 
         let entry2 = LogEntry {
-            address: "b372018f3be9e171df0581136b59d2faf73a7d5d".into(),
-            topics: vec!["ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9".into()],
+            address: H160::from_str("b372018f3be9e171df0581136b59d2faf73a7d5d").unwrap(),
+            topics: vec![H256::from_str(
+                "ff74e91598aed6ae5d2fdcf8b24cd2c7be49a0808112a305069355b7160f23f9",
+            )
+            .unwrap()],
             data: vec![],
         };
 

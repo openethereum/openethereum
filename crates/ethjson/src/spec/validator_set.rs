@@ -39,6 +39,7 @@ mod tests {
     use crate::{hash::Address, spec::validator_set::ValidatorSet, uint::Uint};
     use ethereum_types::{H160, U256};
     use serde_json;
+    use std::str::FromStr;
 
     #[test]
     fn validator_set_deserialization() {
@@ -61,21 +62,21 @@ mod tests {
 
         assert_eq!(
             deserialized[0],
-            ValidatorSet::List(vec![Address(H160::from(
-                "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
-            ))])
+            ValidatorSet::List(vec![Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            )])
         );
         assert_eq!(
             deserialized[1],
-            ValidatorSet::SafeContract(Address(H160::from(
-                "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
-            )))
+            ValidatorSet::SafeContract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
         );
         assert_eq!(
             deserialized[2],
-            ValidatorSet::Contract(Address(H160::from(
-                "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
-            )))
+            ValidatorSet::Contract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
         );
         match deserialized[3] {
             ValidatorSet::Multi(ref map) => {

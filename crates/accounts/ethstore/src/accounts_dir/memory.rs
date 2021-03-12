@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethkey::Address;
+use crypto::publickey::Address;
 use itertools;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -70,7 +70,7 @@ impl KeyDirectory for MemoryDirectory {
         let mut val = 0u64;
         let accounts = self.accounts.read();
         for acc in accounts.keys() {
-            val = val ^ acc.low_u64()
+            val = val ^ acc.to_low_u64_be()
         }
         Ok(val)
     }

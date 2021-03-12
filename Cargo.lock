@@ -443,15 +443,10 @@ dependencies = [
 name = "common-types"
 version = "0.1.0"
 dependencies = [
-<<<<<<< HEAD
- "ethereum-types 0.4.2",
+ "ethereum-types",
  "ethkey",
- "heapsize",
  "hex",
  "inflate",
-=======
- "ethereum-types",
->>>>>>> a0f406e26b5585218c94a8066d5f832dfba3b656
  "keccak-hash",
  "parity-bytes",
  "parity-crypto",

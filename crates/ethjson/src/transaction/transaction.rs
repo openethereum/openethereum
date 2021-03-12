@@ -21,6 +21,7 @@ use common_types::transaction::{
     signature, Action, SignatureComponents, Transaction as CoreTransaction, TypedTransaction,
     UnverifiedTransaction,
 };
+use ethereum_types::H256;
 
 /// Transaction test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -67,7 +68,7 @@ impl From<Transaction> for UnverifiedTransaction {
                 s: t.s.into(),
                 standard_v: signature::extract_standard_v(t.v.into()),
             },
-            hash: 0.into(),
+            hash: H256::zero(),
         }
         .compute_hash()
     }

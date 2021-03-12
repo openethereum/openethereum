@@ -23,12 +23,12 @@ use crate::{
     spec::ForkSpec,
     state::{AccountState, Env},
     uint::Uint,
+    crypto::publickey::Secret
 };
 
 use common_types::transaction::{
     AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction,
 };
-use crypto::publickey::Secret;
 
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};

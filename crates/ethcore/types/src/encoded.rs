@@ -33,7 +33,6 @@ use crate::{
 };
 
 use ethereum_types::{Address, Bloom, H256, U256};
-use crate::{hash::keccak, header::Header as FullHeader};
 use parity_util_mem::MallocSizeOf;
 use rlp::{self, Rlp, RlpStream};
 

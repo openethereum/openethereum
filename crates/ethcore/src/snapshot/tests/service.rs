@@ -364,6 +364,8 @@ fn recover_aborted_recovery() {
         e => panic!("Snapshot restoration must be ongoing ; {:?}", e),
     }
 
+    service.abort_restore();
+
     // Remove the snapshot directory, and restart the restoration
     // It shouldn't have restored any previous blocks
     fs::remove_dir_all(tempdir.path()).unwrap();

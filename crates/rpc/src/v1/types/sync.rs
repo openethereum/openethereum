@@ -175,6 +175,7 @@ pub struct ChainStatus {
 #[cfg(test)]
 mod tests {
     use super::{ChainStatus, Peers, SyncInfo, SyncStatus, TransactionStats};
+    use ethereum_types::H512;
     use serde_json;
     use std::collections::BTreeMap;
 
@@ -229,7 +230,7 @@ mod tests {
         let stats = TransactionStats {
             first_seen: 100,
             propagated_to: map![
-                10.into() => 50
+                H512::from_low_u64_be(10) => 50
             ],
         };
 

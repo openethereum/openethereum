@@ -16,12 +16,13 @@
 
 //! Trace errors.
 
+use parity_util_mem::MallocSizeOf;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::fmt;
 use vm::Error as VmError;
 
 /// Trace evm errors.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, MallocSizeOf)]
 pub enum Error {
     /// `OutOfGas` is returned when transaction execution runs out of gas.
     OutOfGas,

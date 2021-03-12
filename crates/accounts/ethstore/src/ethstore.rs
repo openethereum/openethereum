@@ -24,9 +24,10 @@ use std::{
 
 use account::SafeAccount;
 use accounts_dir::{KeyDirectory, SetKeyError, VaultKey, VaultKeyDirectory};
-use ethkey::{
-    self, Address, ExtendedKeyPair, KeyPair, Message, Password, Public, Secret, Signature,
+use crypto::publickey::{
+    self, Address, ExtendedKeyPair, KeyPair, Message, Public, Secret, Signature,
 };
+use ethkey::Password;
 use json::{self, OpaqueKeyFile, Uuid};
 use presale::PresaleWallet;
 use random::Random;
@@ -554,17 +555,17 @@ impl EthMultiStore {
             Derivation::Hierarchical(path) => {
                 for path_item in path {
                     extended = extended.derive(if path_item.soft {
-                        ethkey::Derivation::Soft(path_item.index)
+                        publickey::Derivation::Soft(path_item.index)
                     } else {
-                        ethkey::Derivation::Hard(path_item.index)
+                        publickey::Derivation::Hard(path_item.index)
                     })?;
                 }
             }
             Derivation::SoftHash(h256) => {
-                extended = extended.derive(ethkey::Derivation::Soft(h256))?;
+                extended = extended.derive(publickey::Derivation::Soft(h256))?;
             }
             Derivation::HardHash(h256) => {
-                extended = extended.derive(ethkey::Derivation::Hard(h256))?;
+                extended = extended.derive(publickey::Derivation::Hard(h256))?;
             }
         }
         Ok(extended)
@@ -615,7 +616,7 @@ impl SimpleSecretStore for EthMultiStore {
         let accounts = self.get_matching(&account_ref, password)?;
         for account in accounts {
             let extended = self.generate(account.crypto.secret(password)?, derivation)?;
-            return Ok(ethkey::public_to_address(extended.public().public()));
+            return Ok(publickey::public_to_address(extended.public().public()));
         }
         Err(Error::InvalidPassword)
     }
@@ -631,7 +632,7 @@ impl SimpleSecretStore for EthMultiStore {
         for account in accounts {
             let extended = self.generate(account.crypto.secret(password)?, derivation)?;
             let secret = extended.secret().as_raw();
-            return Ok(ethkey::sign(&secret, message)?);
+            return Ok(publickey::sign(&secret, message)?);
         }
         Err(Error::InvalidPassword)
     }
@@ -898,14 +899,14 @@ mod tests {
     use self::tempdir::TempDir;
     use super::{EthMultiStore, EthStore};
     use accounts_dir::{KeyDirectory, MemoryDirectory, RootDiskDirectory};
+    use crypto::publickey::{Generator, KeyPair, Random};
     use ethereum_types::H256;
-    use ethkey::{Generator, KeyPair, Random};
     use secret_store::{
         Derivation, SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
     };
 
     fn keypair() -> KeyPair {
-        Random.generate().unwrap()
+        Random.generate()
     }
 
     fn store() -> EthStore {
@@ -1051,6 +1052,7 @@ mod tests {
         let passwd2 = "xzy".into();
         let multi_store = multi_store();
         let keypair = keypair();
+        let message = [1u8; 32].into();
         let address = store
             .insert_account(SecretVaultRef::Root, keypair.secret().clone(), &passwd1)
             .unwrap();
@@ -1073,9 +1075,7 @@ mod tests {
             "First password should work for store."
         );
         assert!(
-            multi_store
-                .sign(&address, &passwd2, &Default::default())
-                .is_ok(),
+            multi_store.sign(&address, &passwd2, &message).is_ok(),
             "Second password should work for second store."
         );
         assert_eq!(multi_store.accounts().unwrap().len(), 1);
@@ -1462,7 +1462,7 @@ mod tests {
                 SecretVaultRef::Root,
                 &address,
                 &"test".into(),
-                Derivation::HardHash(H256::from(0)),
+                Derivation::HardHash(H256::zero()),
             )
             .unwrap();
 
@@ -1470,11 +1470,10 @@ mod tests {
         let accounts = store.accounts().unwrap();
         assert_eq!(accounts.len(), 2);
 
+        let message = [1u8; 32].into();
         // and we can sign with the derived contract
         assert!(
-            store
-                .sign(&derived, &"test".into(), &Default::default())
-                .is_ok(),
+            store.sign(&derived, &"test".into(), &message).is_ok(),
             "Second password should work for second store."
         );
     }

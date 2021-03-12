@@ -35,12 +35,14 @@ use eth_pairings::public_interface::eip2537::{
 };
 use ethereum_types::{H256, U256};
 use ethjson;
-use ethkey::{recover as ec_recover, Signature};
 use keccak_hash::keccak;
 use log::{trace, warn};
 use num::{BigUint, One, Zero};
 use parity_bytes::BytesRef;
-use parity_crypto::digest;
+use parity_crypto::{
+    digest,
+    publickey::{recover_allowing_all_zero_message, Signature, ZeroesAllowedMessage},
+};
 
 /// Native implementation of a built-in contract.
 pub trait Implementation: Send + Sync {
@@ -192,7 +194,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            U256::from_big_endian(&buf[..])
         };
         let base_len_u256 = read_len();
         let exp_len_u256 = read_len();
@@ -210,7 +212,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[(32 - len)..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            U256::from_big_endian(&buf[..])
         };
 
         (base_len_u256, exp_len_u256, exp_low, mod_len_u256)
@@ -829,10 +831,16 @@ impl Implementation for EcRecover {
 
         let s = Signature::from_rsv(&r, &s, bit);
         if s.is_valid() {
-            if let Ok(p) = ec_recover(&s, &hash) {
+            // The builtin allows/requires all-zero messages to be valid to
+            // recover the public key. Use of such messages is disallowed in
+            // `rust-secp256k1` and this is a workaround for that. It is not an
+            // openethereum-level error to fail here; instead we return all
+            // zeroes and let the caller interpret that outcome.
+            let recovery_message = ZeroesAllowedMessage(hash);
+            if let Ok(p) = recover_allowing_all_zero_message(&s, recovery_message) {
                 let r = keccak(p);
                 output.write(0, &[0; 12]);
-                output.write(12, &r[12..r.len()]);
+                output.write(12, &r.as_bytes()[12..]);
             }
         }
 

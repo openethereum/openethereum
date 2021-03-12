@@ -18,16 +18,18 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
+use ethcore_db::KeyValueDB;
 use io::IoHandler;
-use kvdb::KeyValueDB;
 use types::transaction::{
     Condition as TransactionCondition, PendingTransaction, SignedTransaction, TypedTransaction,
     UnverifiedTransaction,
 };
 
 extern crate common_types as types;
+extern crate ethcore_db;
 extern crate ethcore_io as io;
 extern crate kvdb;
+extern crate parity_crypto as crypto;
 extern crate rlp;
 extern crate serde;
 extern crate serde_json;
@@ -237,7 +239,7 @@ impl<T: NodeInfo> Drop for LocalDataStore<T> {
 mod tests {
     use super::NodeInfo;
 
-    use ethkey::{Brain, Generator};
+    use ethkey::Brain;
     use std::sync::Arc;
     use types::transaction::{Condition, PendingTransaction, Transaction, TypedTransaction};
 
@@ -253,7 +255,7 @@ mod tests {
 
     #[test]
     fn twice_empty() {
-        let db = Arc::new(::kvdb_memorydb::create(0));
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
 
         {
             let store = super::create(db.clone(), None, Dummy(vec![]));
@@ -268,7 +270,7 @@ mod tests {
 
     #[test]
     fn with_condition() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Brain::new("abcd".into()).generate();
         let transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = TypedTransaction::Legacy(Transaction::default());
@@ -284,7 +286,7 @@ mod tests {
             })
             .collect();
 
-        let db = Arc::new(::kvdb_memorydb::create(0));
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
 
         {
             // nothing written yet, will write pending.
@@ -305,7 +307,7 @@ mod tests {
 
     #[test]
     fn skips_bad_transactions() {
-        let keypair = Brain::new("abcd".into()).generate().unwrap();
+        let keypair = Brain::new("abcd".into()).generate();
         let mut transactions: Vec<_> = (0..10u64)
             .map(|nonce| {
                 let mut tx = TypedTransaction::Legacy(Transaction::default());
@@ -325,7 +327,7 @@ mod tests {
             PendingTransaction::new(signed, None)
         });
 
-        let db = Arc::new(::kvdb_memorydb::create(0));
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         {
             // nothing written, will write bad.
             let store = super::create(db.clone(), None, Dummy(transactions.clone()));

@@ -17,6 +17,7 @@
 use ansi_term::Colour;
 use bytes::Bytes;
 use cli::{Args, ArgsError};
+use crypto::publickey::{Public, Secret};
 use ethcore::{
     client::VMType,
     miner::{stratum, MinerOptions},
@@ -24,7 +25,6 @@ use ethcore::{
     verification::queue::VerifierSettings,
 };
 use ethereum_types::{Address, H256, U256};
-use ethkey::{Public, Secret};
 use hash::keccak;
 use metrics::MetricsConfiguration;
 use miner::pool;
@@ -810,7 +810,7 @@ impl Configuration {
         ret.public_address = public.map(|p| format!("{}", p));
         ret.use_secret = match self.args.arg_node_key.as_ref().map(|s| {
             s.parse::<Secret>()
-                .or_else(|_| Secret::from_unsafe_slice(&keccak(s)))
+                .or_else(|_| Secret::import_key(keccak(s).as_bytes()))
                 .map_err(|e| format!("Invalid key: {:?}", e))
         }) {
             None => None,
@@ -958,6 +958,7 @@ impl Configuration {
     fn metrics_config(&self) -> Result<MetricsConfiguration, String> {
         let conf = MetricsConfiguration {
             enabled: self.metrics_enabled(),
+            prefix: self.metrics_prefix(),
             interface: self.metrics_interface(),
             port: self.args.arg_ports_shift + self.args.arg_metrics_port,
         };
@@ -1145,6 +1146,10 @@ impl Configuration {
 
     fn metrics_enabled(&self) -> bool {
         self.args.flag_metrics
+    }
+
+    fn metrics_prefix(&self) -> String {
+        self.args.arg_metrics_prefix.clone()
     }
 
     fn secretstore_enabled(&self) -> bool {
@@ -1741,7 +1746,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),
@@ -1762,7 +1767,7 @@ mod tests {
                     ApiSet::List(set) => assert_eq!(set, ApiSet::All.list_apis()),
                     _ => panic!("Incorrect rpc apis"),
                 }
-                // "web3,eth,net,personal,parity,parity_set,traces,parity_accounts");
+                // "web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts");
                 assert_eq!(c.http_conf.hosts, None);
             }
             _ => panic!("Should be Cmd::Run"),

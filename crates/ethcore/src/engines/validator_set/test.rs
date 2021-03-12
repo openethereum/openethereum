@@ -23,13 +23,14 @@ use std::sync::{
 
 use bytes::Bytes;
 use ethereum_types::{Address, H256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use types::{header::Header, BlockNumber};
 
 use super::{SimpleList, ValidatorSet};
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 /// Set used for testing with a single validator.
+#[derive(MallocSizeOf)]
 pub struct TestSet {
     validator: SimpleList,
     last_malicious: Arc<AtomicUsize>,
@@ -52,12 +53,6 @@ impl TestSet {
             last_malicious,
             last_benign,
         }
-    }
-}
-
-impl HeapSizeOf for TestSet {
-    fn heap_size_of_children(&self) -> usize {
-        self.validator.heap_size_of_children()
     }
 }
 

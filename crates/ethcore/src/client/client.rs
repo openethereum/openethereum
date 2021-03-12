@@ -21,7 +21,7 @@ use std::{
     io::{BufRead, BufReader},
     str::{from_utf8, FromStr},
     sync::{
-        atomic::{AtomicBool, AtomicI64, Ordering as AtomicOrdering},
+        atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering as AtomicOrdering},
         Arc, Weak,
     },
     time::{Duration, Instant},
@@ -33,14 +33,14 @@ use blockchain::{
 };
 use bytes::{Bytes, ToPretty};
 use call_contract::CallContract;
+use db::{DBTransaction, DBValue, KeyValueDB};
 use error::Error;
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
-use rand::OsRng;
+use rand::rngs::OsRng;
 use rlp::{PayloadInfo, Rlp};
 use rustc_hex::FromHex;
 use trie::{Trie, TrieFactory, TrieSpec};
@@ -88,7 +88,7 @@ use snapshot::{self, io as snapshot_io, SnapshotClient};
 use spec::Spec;
 use state::{self, State};
 use state_db::StateDB;
-use stats::{prometheus, prometheus_counter, prometheus_gauge, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use trace::{
     self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB,
 };
@@ -209,6 +209,9 @@ pub struct Client {
     /// Database pruning strategy to use for StateDB
     pruning: journaldb::Algorithm,
 
+    /// Don't prune the state we're currently snapshotting
+    snapshotting_at: AtomicU64,
+
     /// Client uses this to store blocks, traces, etc.
     db: RwLock<Arc<dyn BlockChainDB>>,
 
@@ -281,7 +284,7 @@ impl Importer {
     // t_nb 6.0 This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
         // Shortcut out if we know we're incapable of syncing the chain.
-        if !client.enabled.load(AtomicOrdering::Relaxed) {
+        if !client.enabled.load(AtomicOrdering::SeqCst) {
             return 0;
         }
 
@@ -538,7 +541,7 @@ impl Importer {
         {
             trace_time!("import_old_block");
             // verify the block, passing the chain for updating the epoch verifier.
-            let mut rng = OsRng::new()?;
+            let mut rng = OsRng;
             self.ancient_verifier
                 .verify(&mut rng, &unverified.header, &chain)?;
 
@@ -946,6 +949,7 @@ impl Client {
             tracedb,
             engine,
             pruning: config.pruning.clone(),
+            snapshotting_at: AtomicU64::new(0),
             db: RwLock::new(db.clone()),
             state_db: RwLock::new(state_db),
             report: RwLock::new(Default::default()),
@@ -1137,7 +1141,7 @@ impl Client {
         mut state_db: StateDB,
         chain: &BlockChain,
     ) -> Result<(), ::error::Error> {
-        let number = match state_db.journal_db().latest_era() {
+        let latest_era = match state_db.journal_db().latest_era() {
             Some(n) => n,
             None => return Ok(()),
         };
@@ -1152,16 +1156,27 @@ impl Client {
                 break;
             }
             match state_db.journal_db().earliest_era() {
-                Some(era) if era + self.history <= number => {
-                    trace!(target: "client", "Pruning state for ancient era {}", era);
-                    match chain.block_hash(era) {
+                Some(earliest_era) if earliest_era + self.history <= latest_era => {
+                    let freeze_at = self.snapshotting_at.load(AtomicOrdering::SeqCst);
+                    if freeze_at > 0 && freeze_at == earliest_era {
+                        // Note: journal_db().mem_used() can be used for a more accurate memory
+                        // consumption measurement but it can be expensive so sticking with the
+                        // faster `journal_size()` instead.
+                        trace!(target: "pruning", "Pruning is paused at era {} (snapshot under way); earliest era={}, latest era={}, journal_size={} – Not pruning.",
+						       freeze_at, earliest_era, latest_era, state_db.journal_db().journal_size());
+                        break;
+                    }
+                    trace!(target: "client", "Pruning state for ancient era {}", earliest_era);
+                    match chain.block_hash(earliest_era) {
                         Some(ancient_hash) => {
                             let mut batch = DBTransaction::new();
-                            state_db.mark_canonical(&mut batch, era, &ancient_hash)?;
+                            state_db.mark_canonical(&mut batch, earliest_era, &ancient_hash)?;
                             self.db.read().key_value().write_buffered(batch);
                             state_db.journal_db().flush();
                         }
-                        None => debug!(target: "client", "Missing expected hash for block {}", era),
+                        None => {
+                            debug!(target: "client", "Missing expected hash for block {}", earliest_era)
+                        }
                     }
                 }
                 _ => break, // means that every era is kept, no pruning necessary.
@@ -1349,7 +1364,6 @@ impl Client {
         p: &snapshot::Progress,
     ) -> Result<(), EthcoreError> {
         let db = self.state_db.read().journal_db().boxed_clone();
-        let best_block_number = self.chain_info().best_block_number;
         let block_number = self
             .block_number(at)
             .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?;
@@ -1360,19 +1374,23 @@ impl Client {
 
         let history = ::std::cmp::min(self.history, 1000);
 
-        let start_hash = match at {
+        let (snapshot_block_number, start_hash) = match at {
             BlockId::Latest => {
+                let best_block_number = self.chain_info().best_block_number;
                 let start_num = match db.earliest_era() {
                     Some(era) => ::std::cmp::max(era, best_block_number.saturating_sub(history)),
                     None => best_block_number.saturating_sub(history),
                 };
 
-                self.block_hash(BlockId::Number(start_num))
-                    .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?
+                match self.block_hash(BlockId::Number(start_num)) {
+                    Some(h) => (start_num, h),
+                    None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
+                }
             }
-            _ => self
-                .block_hash(at)
-                .ok_or_else(|| snapshot::Error::InvalidStartingBlock(at))?,
+            _ => match self.block_hash(at) {
+                Some(hash) => (block_number, hash),
+                None => return Err(snapshot::Error::InvalidStartingBlock(at).into()),
+            },
         };
 
         let processing_threads = self.config.snapshot.processing_threads;
@@ -1380,15 +1398,23 @@ impl Client {
             .engine
             .snapshot_components()
             .ok_or(snapshot::Error::SnapshotsUnsupported)?;
-        snapshot::take_snapshot(
-            chunker,
-            &self.chain.read(),
-            start_hash,
-            db.as_hash_db(),
-            writer,
-            p,
-            processing_threads,
-        )?;
+        self.snapshotting_at
+            .store(snapshot_block_number, AtomicOrdering::SeqCst);
+        {
+            scopeguard::defer! {{
+                info!(target: "snapshot", "Re-enabling pruning.");
+                self.snapshotting_at.store(0, AtomicOrdering::SeqCst)
+            }};
+            snapshot::take_snapshot(
+                chunker,
+                &self.chain.read(),
+                start_hash,
+                db.as_hash_db(),
+                writer,
+                p,
+                processing_threads,
+            )?;
+        }
         Ok(())
     }
 
@@ -1419,18 +1445,18 @@ impl Client {
     }
 
     fn wake_up(&self) {
-        if !self.liveness.load(AtomicOrdering::Relaxed) {
-            self.liveness.store(true, AtomicOrdering::Relaxed);
+        if !self.liveness.load(AtomicOrdering::SeqCst) {
+            self.liveness.store(true, AtomicOrdering::SeqCst);
             self.notify(|n| n.start());
             info!(target: "mode", "wake_up: Waking.");
         }
     }
 
     fn sleep(&self, force: bool) {
-        if self.liveness.load(AtomicOrdering::Relaxed) {
+        if self.liveness.load(AtomicOrdering::SeqCst) {
             // only sleep if the import queue is mostly empty.
             if force || (self.queue_info().total_queue_size() <= MAX_QUEUE_SIZE_TO_SLEEP_ON) {
-                self.liveness.store(false, AtomicOrdering::Relaxed);
+                self.liveness.store(false, AtomicOrdering::SeqCst);
                 self.notify(|n| n.stop());
                 info!(target: "mode", "sleep: Sleeping.");
             } else {
@@ -1615,8 +1641,8 @@ impl BlockChainReset for Client {
             best_block_hash = current_header.parent_hash();
 
             let (number, hash) = (current_header.number(), current_header.hash());
-            batch.delete(::db::COL_HEADERS, &hash);
-            batch.delete(::db::COL_BODIES, &hash);
+            batch.delete(::db::COL_HEADERS, hash.as_bytes());
+            batch.delete(::db::COL_BODIES, hash.as_bytes());
             Writable::delete::<BlockDetails, H264>(&mut batch, ::db::COL_EXTRA, &hash);
             Writable::delete::<H256, BlockNumberKey>(&mut batch, ::db::COL_EXTRA, &number);
 
@@ -1647,7 +1673,7 @@ impl BlockChainReset for Client {
         best_block_details.children.retain(|h| *h != *last_hash);
         batch.write(::db::COL_EXTRA, &best_block_hash, &best_block_details);
         // update the new best block hash
-        batch.put(::db::COL_EXTRA, b"best", &best_block_hash);
+        batch.put(::db::COL_EXTRA, b"best", best_block_hash.as_bytes());
 
         self.db
             .read()
@@ -2032,13 +2058,13 @@ impl BlockChainClient for Client {
 
     fn disable(&self) {
         self.set_mode(Mode::Off);
-        self.enabled.store(false, AtomicOrdering::Relaxed);
+        self.enabled.store(false, AtomicOrdering::SeqCst);
         self.clear_queue();
     }
 
     fn set_mode(&self, new_mode: Mode) {
         trace!(target: "mode", "Client::set_mode({:?})", new_mode);
-        if !self.enabled.load(AtomicOrdering::Relaxed) {
+        if !self.enabled.load(AtomicOrdering::SeqCst) {
             return;
         }
         {
@@ -2069,7 +2095,7 @@ impl BlockChainClient for Client {
 
     fn set_spec_name(&self, new_spec_name: String) -> Result<(), ()> {
         trace!(target: "mode", "Client::set_spec_name({:?})", new_spec_name);
-        if !self.enabled.load(AtomicOrdering::Relaxed) {
+        if !self.enabled.load(AtomicOrdering::SeqCst) {
             return Err(());
         }
         if let Some(ref h) = *self.exit_handler.lock() {
@@ -2177,7 +2203,7 @@ impl BlockChainClient for Client {
         };
 
         if let Some(after) = after {
-            if let Err(e) = iter.seek(after) {
+            if let Err(e) = iter.seek(after.as_bytes()) {
                 trace!(target: "fatdb", "list_accounts: Couldn't seek the DB: {:?}", e);
             } else {
                 // Position the iterator after the `after` element
@@ -2235,7 +2261,7 @@ impl BlockChainClient for Client {
         };
 
         if let Some(after) = after {
-            if let Err(e) = iter.seek(after) {
+            if let Err(e) = iter.seek(after.as_bytes()) {
                 trace!(target: "fatdb", "list_storage: Couldn't seek the DB: {:?}", e);
             } else {
                 // Position the iterator after the `after` element
@@ -3215,7 +3241,7 @@ impl IoChannelQueue {
     where
         F: Fn(&Client) + Send + Sync + 'static,
     {
-        let queue_size = self.currently_queued.load(AtomicOrdering::Relaxed);
+        let queue_size = self.currently_queued.load(AtomicOrdering::SeqCst);
         if queue_size >= self.limit {
             let err_limit = usize::try_from(self.limit).unwrap_or(usize::max_value());
             bail!("The queue is full ({})", err_limit);
@@ -3236,41 +3262,36 @@ impl IoChannelQueue {
 }
 
 impl PrometheusMetrics for Client {
-    fn prometheus_metrics(&self, r: &mut prometheus::Registry) {
+    fn prometheus_metrics(&self, r: &mut PrometheusRegistry) {
         // gas, tx & blocks
         let report = self.report();
 
         for (key, value) in report.item_sizes.iter() {
-            prometheus_gauge(
-                r,
+            r.register_gauge(
                 &key,
                 format!("Total item number of {}", key).as_str(),
                 *value as i64,
             );
         }
 
-        prometheus_counter(
-            r,
+        r.register_counter(
             "import_gas",
             "Gas processed",
             report.gas_processed.as_u64() as i64,
         );
-        prometheus_counter(
-            r,
+        r.register_counter(
             "import_blocks",
             "Blocks imported",
             report.blocks_imported as i64,
         );
-        prometheus_counter(
-            r,
+        r.register_counter(
             "import_txs",
             "Transactions applied",
             report.transactions_applied as i64,
         );
 
         let state_db = self.state_db.read();
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "statedb_cache_size",
             "State DB cache size",
             state_db.cache_size() as i64,
@@ -3278,32 +3299,27 @@ impl PrometheusMetrics for Client {
 
         // blockchain cache
         let blockchain_cache_info = self.blockchain_cache_info();
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "blockchaincache_block_details",
             "BlockDetails cache size",
             blockchain_cache_info.block_details as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "blockchaincache_block_recipts",
             "Block receipts size",
             blockchain_cache_info.block_receipts as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "blockchaincache_blocks",
             "Blocks cache size",
             blockchain_cache_info.blocks as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "blockchaincache_txaddrs",
             "Transaction addresses cache size",
             blockchain_cache_info.transaction_addresses as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "blockchaincache_size",
             "Total blockchain cache size",
             blockchain_cache_info.total() as i64,
@@ -3321,22 +3337,19 @@ impl PrometheusMetrics for Client {
                     .map(|last| (first, U256::from(last)))
             });
         if let Some((first, last)) = gap {
-            prometheus_gauge(
-                r,
+            r.register_gauge(
                 "chain_warpsync_gap_first",
                 "Warp sync gap, first block",
                 first.as_u64() as i64,
             );
-            prometheus_gauge(
-                r,
+            r.register_gauge(
                 "chain_warpsync_gap_last",
                 "Warp sync gap, last block",
                 last.as_u64() as i64,
             );
         }
 
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "chain_block",
             "Best block number",
             chain.best_block_number as i64,
@@ -3344,14 +3357,12 @@ impl PrometheusMetrics for Client {
 
         // prunning info
         let prunning = self.pruning_info();
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "prunning_earliest_chain",
             "The first block which everything can be served after",
             prunning.earliest_chain as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "prunning_earliest_state",
             "The first block where state requests may be served",
             prunning.earliest_state as i64,
@@ -3359,42 +3370,41 @@ impl PrometheusMetrics for Client {
 
         // queue info
         let queue = self.queue_info();
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "queue_mem_used",
             "Queue heap memory used in bytes",
             queue.mem_used as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "queue_size_total",
             "The total size of the queues",
             queue.total_queue_size() as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "queue_size_unverified",
             "Number of queued items pending verification",
             queue.unverified_queue_size as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "queue_size_verified",
             "Number of verified queued items pending import",
             queue.verified_queue_size as i64,
         );
-        prometheus_gauge(
-            r,
+        r.register_gauge(
             "queue_size_verifying",
             "Number of items being verified",
             queue.verifying_queue_size as i64,
         );
+
+        // database info
+        self.db.read().key_value().prometheus_metrics(r);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use blockchain::{BlockProvider, ExtrasInsert};
+    use ethereum_types::{H160, H256};
     use spec::Spec;
     use test_helpers::generate_dummy_client_with_spec_and_data;
 
@@ -3475,7 +3485,7 @@ mod tests {
     #[test]
     fn should_return_correct_log_index() {
         use super::transaction_receipt;
-        use ethkey::KeyPair;
+        use crypto::publickey::KeyPair;
         use hash::keccak;
         use types::{
             log_entry::{LocalizedLogEntry, LogEntry},
@@ -3484,19 +3494,19 @@ mod tests {
         };
 
         // given
-        let key = KeyPair::from_secret_slice(&keccak("test")).unwrap();
+        let key = KeyPair::from_secret_slice(keccak("test").as_bytes()).unwrap();
         let secret = key.secret();
         let machine = ::ethereum::new_frontier_test_machine();
 
         let block_number = 1;
-        let block_hash = 5.into();
-        let state_root = 99.into();
+        let block_hash = H256::from_low_u64_be(5);
+        let state_root = H256::from_low_u64_be(99);
         let gas_used = 10.into();
         let raw_tx = TypedTransaction::Legacy(Transaction {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 21000.into(),
-            action: Action::Call(10.into()),
+            action: Action::Call(H160::from_low_u64_be(10)),
             value: 0.into(),
             data: vec![],
         });
@@ -3510,12 +3520,12 @@ mod tests {
         };
         let logs = vec![
             LogEntry {
-                address: 5.into(),
+                address: H160::from_low_u64_be(5),
                 topics: vec![],
                 data: vec![],
             },
             LogEntry {
-                address: 15.into(),
+                address: H160::from_low_u64_be(15),
                 topics: vec![],
                 data: vec![],
             },

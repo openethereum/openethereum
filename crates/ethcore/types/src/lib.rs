@@ -35,10 +35,10 @@
 #![warn(unused_extern_crates)]
 
 extern crate ethereum_types;
-extern crate ethkey;
-extern crate heapsize;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;
+extern crate parity_crypto as crypto;
+extern crate parity_util_mem;
 extern crate rlp;
 extern crate serde_repr;
 extern crate unexpected;

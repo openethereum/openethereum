@@ -14,29 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Generator, KeyPair, SECP256K1};
-use rand::os::OsRng;
+//! RPC interface.
 
-/// Randomly generates new keypair, instantiating the RNG each time.
-pub struct Random;
+use std::collections::BTreeMap;
 
-impl Generator for Random {
-    type Error = ::std::io::Error;
+use jsonrpc_core::Result;
+use jsonrpc_derive::rpc;
 
-    fn generate(&mut self) -> Result<KeyPair, Self::Error> {
-        let mut rng = OsRng::new()?;
-        rng.generate().or_else(|void| match void {})
-    }
-}
+/// RPC Interface.
+#[rpc(server)]
+pub trait Rpc {
+    /// Returns supported modules for Geth 1.3.6
+    /// @ignore
+    #[rpc(name = "modules")]
+    fn modules(&self) -> Result<BTreeMap<String, String>>;
 
-impl Generator for OsRng {
-    type Error = ::Void;
-
-    fn generate(&mut self) -> Result<KeyPair, Self::Error> {
-        let (sec, publ) = SECP256K1
-            .generate_keypair(self)
-            .expect("context always created with full capabilities; qed");
-
-        Ok(KeyPair::from_keypair(sec, publ))
-    }
+    /// Returns supported modules for Geth 1.4.0
+    /// @ignore
+    #[rpc(name = "rpc_modules")]
+    fn rpc_modules(&self) -> Result<BTreeMap<String, String>>;
 }

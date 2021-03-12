@@ -71,8 +71,8 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use std::str::FromStr;    
     use crate::upgrade::upgrade_key_location;
+    use std::str::FromStr;
 
     pub use crate::accounts::AccountProvider;
 

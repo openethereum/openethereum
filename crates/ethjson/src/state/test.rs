@@ -18,12 +18,12 @@
 
 use crate::{
     bytes::Bytes,
+    crypto::publickey::Secret,
     hash::{Address, H256},
     maybe::MaybeEmpty,
     spec::ForkSpec,
     state::{AccountState, Env},
     uint::Uint,
-    crypto::publickey::Secret
 };
 
 use common_types::transaction::{

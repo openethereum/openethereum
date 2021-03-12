@@ -13,8 +13,10 @@ ExecStart=/usr/bin/openethereum --config /etc/openethereum/config.toml
 Restart=on-failure
 
 # Specifies which signal to use when killing a service. Defaults to SIGTERM.
-# SIGHUP gives openethereum time to exit cleanly before SIGKILL (default 90s)
-KillSignal=SIGHUP
+# SIGTERM gives openethereum time to exit cleanly (default 90s) before sending SIGKILL
+KillSignal=SIGTERM
+TimeoutStopSec=90
+SendSIGKILL=yes
 
 [Install]
 WantedBy=default.target

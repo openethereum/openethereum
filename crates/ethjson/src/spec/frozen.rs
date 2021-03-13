@@ -156,6 +156,7 @@ pub struct StorageChange {
 /// Key is the block number, and the value is a list of transactions
 /// within that block with the results of their execution. The assumption
 /// is that all values are always sorted by the block number and tx chronologically.
+#[derive(Debug, Deserialize)]
 struct FrozenChainState(BTreeMap<u64, Vec<TransactionTrace>>);
 
 impl Deref for FrozenChainState {
@@ -242,7 +243,7 @@ mod tests {
               ]
         }"#;
 
-        let deserialized = FrozenChainState::from_str(&serialized_block).unwrap();
+        let deserialized: FrozenChainState = serde_json::from_str(&serialized_block).unwrap();
         assert_eq!(deserialized.len(), 1);
 
         let known_block = deserialized.get(&9340615u64);

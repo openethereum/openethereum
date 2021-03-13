@@ -18,8 +18,10 @@
 
 use super::transaction::TypedTxId;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
+use inflate::inflate_bytes;
 use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
+use serde::{Deserialize, Deserializer};
 use std::ops::{Deref, DerefMut};
 
 use crate::{
@@ -28,7 +30,8 @@ use crate::{
 };
 
 /// Transaction outcome store in the receipt.
-#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
+#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize)]
 pub enum TransactionOutcome {
     /// Status and state root are unknown under EIP-98 rules.
     Unknown,
@@ -39,11 +42,13 @@ pub enum TransactionOutcome {
 }
 
 /// Information describing execution of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
+#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize)]
 pub struct LegacyReceipt {
     /// The total gas used in the block following execution of the transaction.
     pub gas_used: U256,
     /// The OR-wide combination of all logs' blooms for this transaction.
+    #[serde(deserialize_with = "deserialize_bloom")]
     pub log_bloom: Bloom,
     /// The logs stemming from this transaction.
     pub logs: Vec<LogEntry>,
@@ -108,7 +113,18 @@ impl LegacyReceipt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
+fn deserialize_bloom<'de, D>(deserializer: D) -> Result<Bloom, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let hexstr = String::deserialize(deserializer)?;
+    let compressed = hex::decode(&hexstr[2..]).unwrap();
+    let bytes = inflate_bytes(&compressed).unwrap();
+    Ok(Bloom::from_slice(&bytes))
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize)]
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
     AccessList(LegacyReceipt),
@@ -299,7 +315,7 @@ pub struct LocalizedReceipt {
 mod tests {
     use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
     use crate::log_entry::LogEntry;
-    use ethereum_types::{H160, H256};
+    use ethereum_types::{Bloom, H160, H256, U256};
     use std::str::FromStr;
 
     #[test]
@@ -391,5 +407,42 @@ mod tests {
         assert_eq!(&encoded[..], &expected[..]);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
+    }
+
+    #[test]
+    fn test_compressed_bloom_deserialization() {
+        let expected_bloom_full_str = concat!(
+            "00000000000000000000000000000000000000000",
+            "0000000000000000000000000000000000000000000",
+            "0000000000000000000000000000000000000000000",
+            "0000010000010000000000008000000000000000000",
+            "0000000000000000000400000000000000000000000",
+            "0000000000001000040000000000000001000000000",
+            "0000000000000008000000000000000000000000000",
+            "0000000000000000000000000000000000000000000",
+            "0000000000000000000000000000000000000000000",
+            "0000102000000000000000000000000000000000000",
+            "0002000040000000000000000000000000000000000",
+            "00000000000000000000000000000000000000000"
+        );
+        let expected: Bloom = Bloom::from_str(&expected_bloom_full_str).unwrap();
+
+        let serialized_receipt = r#"
+        {
+            "gasUsed": "0x0",
+            "logBloom": "0x63a018088011107060cab16088303230382034c20107f9f633326111644258831f0000",
+            "logs": [],
+            "outcome": {
+                "statusCode": 1
+            }
+        }
+        "#;
+
+        let deserialized: LegacyReceipt = serde_json::from_str(serialized_receipt).unwrap();
+
+        assert_eq!(deserialized.gas_used, U256::zero());
+        assert_eq!(deserialized.logs.len(), 0);
+        assert_eq!(deserialized.outcome, TransactionOutcome::StatusCode(1));
+        assert_eq!(deserialized.log_bloom, expected);
     }
 }

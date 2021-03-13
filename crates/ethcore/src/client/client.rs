@@ -1526,41 +1526,13 @@ impl Client {
         }
 
         let state_diff = analytics.state_diffing;
-
-        match (analytics.transaction_tracing, analytics.vm_tracing) {
-            (true, true) => call(
-                state,
-                env_info,
-                machine,
-                state_diff,
-                t,
-                TransactOptions::with_tracing_and_vm_tracing(),
-            ),
-            (true, false) => call(
-                state,
-                env_info,
-                machine,
-                state_diff,
-                t,
-                TransactOptions::with_tracing(),
-            ),
-            (false, true) => call(
-                state,
-                env_info,
-                machine,
-                state_diff,
-                t,
-                TransactOptions::with_vm_tracing(),
-            ),
-            (false, false) => call(
-                state,
-                env_info,
-                machine,
-                state_diff,
-                t,
-                TransactOptions::with_no_tracing(),
-            ),
-        }
+        let transact_options = match (analytics.transaction_tracing, analytics.vm_tracing) {
+            (true, true) => TransactOptions::with_tracing_and_vm_tracing(),
+            (true, false) => TransactOptions::with_tracing(),
+            (false, true) => TransactOptions::with_vm_tracing(),
+            (false, false) => TransactOptions::with_no_tracing(),
+        };
+        call(state, env_info, machine, state_diff, t, transact_options)
     }
 
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {

@@ -19,7 +19,7 @@
 use crate::{bytes::Bytes, BlockNumber};
 use ethereum_types::{Address, Bloom, BloomInput, H256};
 use parity_util_mem::MallocSizeOf;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::ops::Deref;
 
 /// A record of execution for a `LOG` operation.
@@ -42,7 +42,26 @@ pub struct LogEntry {
     /// The topics associated with the `LOG` operation.
     pub topics: Vec<H256>,
     /// The data associated with the `LOG` operation.
+    #[serde(
+        serialize_with = "serialize_bytes",
+        deserialize_with = "deserialize_bytes"
+    )]
     pub data: Bytes,
+}
+
+fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let hexstr = String::deserialize(deserializer)?;
+    Ok(hex::decode(&hexstr[2..]).unwrap())
+}
+
+pub fn serialize_bytes<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    format!("0x{}", hex::encode(bytes)).serialize(serializer)
 }
 
 impl LogEntry {
@@ -102,5 +121,26 @@ mod tests {
             data: vec![],
         };
         assert_eq!(log.bloom(), bloom);
+    }
+
+    #[test]
+    fn test_data_hex_serialize() {
+        let entry = LogEntry {
+            address: Address::zero(),
+            topics: vec![],
+            data: vec![0, 0, 0, 0, 0, 1, 0],
+        };
+        let serialized = serde_json::to_string(&entry).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"address":"0x0000000000000000000000000000000000000000","topics":[],"data":"0x00000000000100"}"#
+        );
+    }
+
+    #[test]
+    fn test_data_hex_deserialize() {
+        let serialized = r#"{"address":"0x0000000000000000000000000000000000000000","topics":[],"data":"0x00000000000100"}"#;
+        let deserialized: LogEntry = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.data, vec![0, 0, 0, 0, 0, 1, 0]);
     }
 }

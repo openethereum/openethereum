@@ -23,6 +23,7 @@ pub mod builtin;
 pub mod clique;
 pub mod engine;
 pub mod ethash;
+pub mod frozen;
 pub mod genesis;
 pub mod instant_seal;
 pub mod null_engine;

@@ -17,12 +17,16 @@
 //! Receipt
 
 use super::transaction::TypedTxId;
+use deflate::{deflate_bytes_conf, Compression};
 use ethereum_types::{Address, Bloom, H160, H256, U256};
 use inflate::inflate_bytes;
 use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
-use serde::{Deserialize, Deserializer};
-use std::ops::{Deref, DerefMut};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    ops::{Deref, DerefMut},
+    result::Result,
+};
 
 use crate::{
     log_entry::{LocalizedLogEntry, LogEntry},
@@ -31,7 +35,7 @@ use crate::{
 
 /// Transaction outcome store in the receipt.
 #[serde(rename_all = "camelCase")]
-#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize, Serialize)]
 pub enum TransactionOutcome {
     /// Status and state root are unknown under EIP-98 rules.
     Unknown,
@@ -43,12 +47,15 @@ pub enum TransactionOutcome {
 
 /// Information describing execution of a transaction.
 #[serde(rename_all = "camelCase")]
-#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf, Deserialize, Serialize)]
 pub struct LegacyReceipt {
     /// The total gas used in the block following execution of the transaction.
     pub gas_used: U256,
     /// The OR-wide combination of all logs' blooms for this transaction.
-    #[serde(deserialize_with = "deserialize_bloom")]
+    #[serde(
+        serialize_with = "serialize_bloom",
+        deserialize_with = "deserialize_bloom"
+    )]
     pub log_bloom: Bloom,
     /// The logs stemming from this transaction.
     pub logs: Vec<LogEntry>,
@@ -111,6 +118,15 @@ impl LegacyReceipt {
         s.append(&self.log_bloom);
         s.append_list(&self.logs);
     }
+}
+
+fn serialize_bloom<S>(bloom: &Bloom, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let compressed_bytes = deflate_bytes_conf(&bloom.as_bytes(), Compression::Best);
+    let compressed_hex = format!("0x{}", hex::encode(&compressed_bytes));
+    compressed_hex.serialize(serializer)
 }
 
 fn deserialize_bloom<'de, D>(deserializer: D) -> Result<Bloom, D::Error>
@@ -407,6 +423,36 @@ mod tests {
         assert_eq!(&encoded[..], &expected[..]);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
         assert_eq!(decoded, r);
+    }
+
+    #[test]
+    fn test_compressed_bloom_serialization() {
+        let receipt = LegacyReceipt {
+            gas_used: U256::zero(),
+            log_bloom: Bloom::from_str(&concat!(
+                "00000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000",
+                "0000010000010000000000008000000000000000000",
+                "0000000000000000000400000000000000000000000",
+                "0000000000001000040000000000000001000000000",
+                "0000000000000008000000000000000000000000000",
+                "0000000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000",
+                "0000102000000000000000000000000000000000000",
+                "0002000040000000000000000000000000000000000",
+                "00000000000000000000000000000000000000000"
+            ))
+            .unwrap(),
+            logs: vec![],
+            outcome: TransactionOutcome::StatusCode(1),
+        };
+
+        let serialized = serde_json::to_string(&receipt).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"gasUsed":"0x0","logBloom":"0x63a018088011107060cab16088303230382034c20107f9f633326111644258831f0000","logs":[],"outcome":{"statusCode":1}}"#
+        );
     }
 
     #[test]

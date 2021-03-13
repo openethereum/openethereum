@@ -443,6 +443,7 @@ dependencies = [
 name = "common-types"
 version = "0.1.0"
 dependencies = [
+ "deflate",
  "ethereum-types",
  "ethkey",
  "hex",
@@ -710,6 +711,15 @@ dependencies = [
  "kernel32-sys",
  "libc",
  "winapi 0.2.8",
+]
+
+[[package]]
+name = "deflate"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af9b8586675d9acbfdf4ee1e260944236825572751d0ec9f8fc6b1c9d468d965"
+dependencies = [
+ "adler32",
 ]
 
 [[package]]

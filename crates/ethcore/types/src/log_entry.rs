@@ -19,13 +19,22 @@
 use crate::{bytes::Bytes, BlockNumber};
 use ethereum_types::{Address, Bloom, BloomInput, H256};
 use parity_util_mem::MallocSizeOf;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
 /// A record of execution for a `LOG` operation.
 #[serde(rename_all = "camelCase")]
 #[derive(
-    Default, Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable, MallocSizeOf, Deserialize,
+    Default,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    RlpEncodable,
+    RlpDecodable,
+    MallocSizeOf,
+    Deserialize,
+    Serialize,
 )]
 pub struct LogEntry {
     /// The address of the contract executing at the point of the `LOG` operation.

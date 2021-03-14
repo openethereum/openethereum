@@ -171,6 +171,10 @@ pub struct CommonParams {
     pub transaction_permission_contract_transition: BlockNumber,
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
+    /// Base fee max change denominator
+    pub base_fee_max_change_denominator: U256,
+    /// Elasticity multiplier
+    pub elasticity_multiplier: U256,
 }
 
 impl CommonParams {
@@ -411,6 +415,8 @@ impl From<ethjson::spec::Params> for CommonParams {
             kip6_transition: p
                 .kip6_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            base_fee_max_change_denominator: U256::default(), //ds todo
+            elasticity_multiplier: U256::default(),           //ds todo
         }
     }
 }

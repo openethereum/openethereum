@@ -46,6 +46,10 @@ pub enum BlockError {
     InvalidSealArity(Mismatch<usize>),
     /// Block has too much gas used.
     TooMuchGasUsed(OutOfBounds<U256>),
+    /// Gas target increased too much from previous block
+    GasTargetTooBig(OutOfBounds<U256>),
+    /// Gas target decreased too much from previous block
+    GasTargetTooSmall(OutOfBounds<U256>),
     /// Uncles hash in header is invalid.
     InvalidUnclesHash(Mismatch<H256>),
     /// An uncle is from a generation too old.
@@ -79,6 +83,8 @@ pub enum BlockError {
     InvalidSeal,
     /// Gas limit header field is invalid.
     InvalidGasLimit(OutOfBounds<U256>),
+    /// Base fee is incorrect; base fee is different from the expected calculated value.
+    IncorrectBaseFee(Mismatch<U256>),
     /// Receipts trie root header field is invalid.
     InvalidReceiptsRoot(Mismatch<H256>),
     /// Timestamp header field is invalid.
@@ -112,6 +118,8 @@ impl fmt::Display for BlockError {
             ExtraDataOutOfBounds(ref oob) => format!("Extra block data too long. {}", oob),
             InvalidSealArity(ref mis) => format!("Block seal in incorrect format: {}", mis),
             TooMuchGasUsed(ref oob) => format!("Block has too much gas used. {}", oob),
+            GasTargetTooBig(ref oob) => format!("Gas target is bigger then expected. {}", oob),
+            GasTargetTooSmall(ref oob) => format!("Gas target is smaller then expected. {}", oob),
             InvalidUnclesHash(ref mis) => format!("Block has invalid uncles hash: {}", mis),
             UncleTooOld(ref oob) => format!("Uncle block is too old. {}", oob),
             UncleIsBrother(ref oob) => format!("Uncle from same generation as block. {}", oob),
@@ -131,6 +139,7 @@ impl fmt::Display for BlockError {
             InvalidProofOfWork(ref oob) => format!("Block has invalid PoW: {}", oob),
             InvalidSeal => "Block has invalid seal.".into(),
             InvalidGasLimit(ref oob) => format!("Invalid gas limit: {}", oob),
+            IncorrectBaseFee(ref mis) => format!("Incorrect base fee: {}", mis),
             InvalidReceiptsRoot(ref mis) => {
                 format!("Invalid receipts trie root in header: {}", mis)
             }

@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{cmp, collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+    cmp::{self, max},
+    collections::BTreeMap,
+    path::Path,
+    sync::Arc,
+};
 
 use ethereum_types::{H256, H64, U256};
 use ethjson;
@@ -30,7 +35,7 @@ use block::ExecutedBlock;
 use engines::{
     self,
     block_reward::{self, BlockRewardContract, RewardKind},
-    Engine,
+    Engine, EthEngine,
 };
 use error::{BlockError, Error};
 use ethash::{self, quick_get_difficulty, slow_hash_block_number, EthashManager, OptimizeFor};
@@ -423,6 +428,40 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
             })));
         }
 
+        if self.schedule(header.number()).eip1559 {
+            // Check if the block changed the gas target too much
+            let max_gas_target: U256 = parent.gas_limit() + parent.gas_limit() / 1024;
+            let min_gas_target: U256 = parent.gas_limit() - parent.gas_limit() / 1024;
+
+            println!("max_gas_target: {}", max_gas_target);
+            println!("min_gas_target: {}", min_gas_target);
+
+            if header.gas_limit() > &max_gas_target {
+                return Err(From::from(BlockError::GasTargetTooBig(OutOfBounds {
+                    min: Some(min_gas_target),
+                    max: Some(max_gas_target),
+                    found: header.gas_limit().clone(),
+                })));
+            }
+
+            if header.gas_limit() < &min_gas_target {
+                return Err(From::from(BlockError::GasTargetTooSmall(OutOfBounds {
+                    min: Some(min_gas_target),
+                    max: Some(max_gas_target),
+                    found: header.gas_limit().clone(),
+                })));
+            }
+
+            // Check if the base fee is correct
+            let expected_base_fee = self.calculate_base_fee(parent);
+            if expected_base_fee != header.base_fee().clone() {
+                return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
+                    expected: expected_base_fee,
+                    found: header.base_fee().clone(),
+                })));
+            };
+        }
+
         Ok(())
     }
 
@@ -525,6 +564,34 @@ impl Ethash {
             }
         }
         target
+    }
+
+    fn calculate_base_fee(&self, parent: &Header) -> U256 {
+        if parent.gas_limit() == &U256::from(0) {
+            panic!("Can't calculate base fee if parent gas target is zero.");
+        }
+        if self.machine.params().base_fee_max_change_denominator == U256::from(0) {
+            panic!("Can't calculate base fee if base fee denominator is zero.");
+        }
+        
+        if parent.gas_used() == parent.gas_limit() {
+            parent.base_fee().clone()
+        } else if parent.gas_used() > parent.gas_limit() {
+            let gas_used_delta = parent.gas_used() - parent.gas_limit();
+            let base_fee_per_gas_delta = max(
+                parent.base_fee() * gas_used_delta
+                    / parent.gas_limit()
+                    / self.machine.params().base_fee_max_change_denominator,
+                U256::from(1),
+            );
+            parent.base_fee() + base_fee_per_gas_delta
+        } else {
+            let gas_used_delta = parent.gas_limit() - parent.gas_used();
+            let base_fee_per_gas_delta = parent.base_fee() * gas_used_delta
+                / parent.gas_limit()
+                / self.machine.params().base_fee_max_change_denominator;
+            max(parent.base_fee() - base_fee_per_gas_delta, U256::from(0))
+        }
     }
 }
 

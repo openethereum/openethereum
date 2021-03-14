@@ -284,7 +284,9 @@ impl Importer {
     // t_nb 6.0 This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
         // Shortcut out if we know we're incapable of syncing the chain.
+        trace!(target: "block_import", "fn import_verified_blocks");
         if !client.enabled.load(AtomicOrdering::SeqCst) {
+            self.block_queue.reset_verification_ready_signal();
             return 0;
         }
 
@@ -306,6 +308,8 @@ impl Importer {
             let _import_lock = self.import_lock.lock();
             let blocks = self.block_queue.drain(max_blocks_to_import);
             if blocks.is_empty() {
+                debug!(target: "block_import", "block_queue is empty");
+                self.block_queue.resignal_verification();
                 return 0;
             }
             trace_time!("import_verified_blocks");
@@ -318,6 +322,13 @@ impl Importer {
 
                 let is_invalid = invalid_blocks.contains(header.parent_hash());
                 if is_invalid {
+                    debug!(
+                        target: "block_import",
+                        "Refusing block #{}({}) with invalid parent {}",
+                        header.number(),
+                        header.hash(),
+                        header.parent_hash()
+                    );
                     invalid_blocks.insert(hash);
                     continue;
                 }
@@ -326,7 +337,7 @@ impl Importer {
                     Ok((closed_block, pending)) => {
                         imported_blocks.push(hash);
                         let transactions_len = closed_block.transactions.len();
-
+                        trace!(target:"block_import","Block #{}({}) check pass",header.number(),header.hash());
                         // t_nb 8.0 commit block to db
                         let route = self.commit_block(
                             closed_block,
@@ -335,6 +346,7 @@ impl Importer {
                             pending,
                             client,
                         );
+                        trace!(target:"block_import","Block #{}({}) commited",header.number(),header.hash());
                         import_results.push(route);
                         client
                             .report
@@ -368,6 +380,7 @@ impl Importer {
 
         {
             if !imported_blocks.is_empty() {
+                trace!(target:"block_import","Imported block, notify rest of system");
                 let route = ChainRoute::from(import_results.as_ref());
 
                 // t_nb 10 Notify miner about new included block.
@@ -396,11 +409,12 @@ impl Importer {
                 });
             }
         }
-
+        trace!(target:"block_import","Flush block to db");
         let db = client.db.read();
         db.key_value().flush().expect("DB flush failed.");
 
         self.block_queue.resignal_verification();
+        trace!(target:"block_import","Resignal verifier");
         imported
     }
 

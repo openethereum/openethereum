@@ -678,6 +678,11 @@ impl<K: Kind> VerificationQueue<K> {
         }
     }
 
+    /// Reset verification ready signal so that it allows other threads to send IoMessage to Client
+    pub fn reset_verification_ready_signal(&self) {
+        self.ready_signal.reset();
+    }
+
     /// Returns true if there is nothing currently in the queue.
     pub fn is_empty(&self) -> bool {
         let v = &self.verification;

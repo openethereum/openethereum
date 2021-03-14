@@ -19,7 +19,6 @@ use crate::{
     bytes::Bytes,
     hash::{Address, Bloom, H256},
 };
-use common_types::log_entry::LogEntry;
 
 /// State test log deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -51,15 +50,5 @@ mod tests {
 		}"#;
         let _deserialized: Log = serde_json::from_str(s).unwrap();
         // TODO: validate all fields
-    }
-}
-
-impl From<Log> for LogEntry {
-    fn from(l: Log) -> Self {
-        LogEntry {
-            address: l.address.into(),
-            topics: l.topics.into_iter().map(Into::into).collect(),
-            data: l.data.into(),
-        }
     }
 }

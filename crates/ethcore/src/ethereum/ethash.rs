@@ -573,7 +573,7 @@ impl Ethash {
         if self.machine.params().base_fee_max_change_denominator == U256::from(0) {
             panic!("Can't calculate base fee if base fee denominator is zero.");
         }
-        
+
         if parent.gas_used() == parent.gas_limit() {
             parent.base_fee().clone()
         } else if parent.gas_used() > parent.gas_limit() {

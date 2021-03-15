@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-#![warn(missing_docs)]
+//! Filter options available in the parity_pendingTransaction endpoint of the JSONRPC API.
+
+#![allow(missing_docs)]
 
 use ethereum_types::{Address, U256};
 
 use pool::VerifiedTransaction;
-use types::transaction::{Action, Transaction};
+use types::transaction::Action;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Deserialize, Serialize)]

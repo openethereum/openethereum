@@ -317,14 +317,14 @@ fn rpc_parity_pending_transactions_with_filter() {
             gas: (i + 0x10).into(),
             gas_price: (i + 0x20).into(),
             nonce: (i + 0x30).into(),
-            action: Action::Call((i + 0x40).into()),
+            action: Action::Call(Address::from_low_u64_be(i + 0x40)),
             data: vec![],
         })
-        .fake_sign((i + 0x50).into());
+        .fake_sign(Address::from_low_u64_be(i + 0x50));
         deps.miner
             .pending_transactions
             .lock()
-            .insert((i + 0x60).into(), tx);
+            .insert(H256::from_low_u64_be(i + 0x60), tx);
     }
 
     let tx = TypedTransaction::Legacy(Transaction {
@@ -335,11 +335,11 @@ fn rpc_parity_pending_transactions_with_filter() {
         action: Action::Create,
         data: vec![0x01, 0x02, 0x03],
     })
-    .fake_sign(0x56.into());
+    .fake_sign(Address::from_low_u64_be(0x56));
     deps.miner
         .pending_transactions
         .lock()
-        .insert(0x66.into(), tx);
+        .insert(H256::from_low_u64_be(0x66), tx);
 
     assert_txs_filtered(
         &io,

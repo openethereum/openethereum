@@ -16,10 +16,9 @@
 
 //! Additional test structures deserialization.
 
-use hash::H256;
+use crate::{hash::H256, uint::Uint};
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read, path::PathBuf};
-use uint::Uint;
 
 /// Blockchain test header deserializer.
 #[derive(Debug, PartialEq, Deserialize)]

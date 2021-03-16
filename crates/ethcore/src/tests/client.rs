@@ -25,9 +25,9 @@ use client::{
     },
     Client, ClientConfig, ImportSealedBlock, PrepareOpenBlock,
 };
+use crypto::publickey::KeyPair;
 use ethereum;
 use ethereum_types::{Address, U256};
-use ethkey::KeyPair;
 use executive::{Executive, TransactOptions};
 use hash::keccak;
 use io::IoChannel;

@@ -19,9 +19,9 @@ use std::sync::Arc;
 
 use accounts::AccountProvider;
 use bytes::Bytes;
+use crypto::publickey::{public_to_address, recover, Signature};
 use eip_712::{hash_structured_data, EIP712};
 use ethereum_types::{Address, H160, H256, H520, U128};
-use ethkey::{public_to_address, recover, Signature};
 use types::transaction::{PendingTransaction, SignedTransaction};
 
 use jsonrpc_core::{
@@ -282,7 +282,7 @@ impl<D: Dispatcher + 'static> Personal for PersonalClient<D> {
 
     fn ec_recover(&self, data: RpcBytes, signature: H520) -> BoxFuture<H160> {
         let signature: H520 = signature.into();
-        let signature = Signature::from_electrum(&signature);
+        let signature = Signature::from_electrum(signature.as_bytes());
         let data: Bytes = data.into();
 
         let hash = eth_data_hash(data);

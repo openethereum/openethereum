@@ -18,13 +18,13 @@
 
 use block::*;
 use client::{BlockChainClient, Client, ClientConfig, *};
+use crypto::publickey::KeyPair;
 use ethereum_types::{Address, U256};
-use ethkey::KeyPair;
 use hash::keccak;
 use io::*;
 use miner::Miner;
 use spec::*;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use test_helpers::{self, get_temp_state_db};
 use trace::{trace::Action::Reward, LocalizedTrace, RewardType};
 use types::{
@@ -73,7 +73,7 @@ fn can_trace_block_and_uncle_reward() {
     let mut last_header = genesis_header.clone();
     last_hashes.push(last_header.hash());
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret_slice(keccak("").as_bytes()).unwrap();
     let author = kp.address();
 
     // Add root block first
@@ -187,7 +187,7 @@ fn can_trace_block_and_uncle_reward() {
     }
 
     let mut uncle = Header::new();
-    let uncle_author: Address = "ef2d6d194084c2de36e0dabfce45d046b37d1106".into();
+    let uncle_author = Address::from_str("ef2d6d194084c2de36e0dabfce45d046b37d1106").unwrap();
     uncle.set_author(uncle_author);
     uncle.set_parent_hash(root_header.hash());
     uncle.set_gas_limit(genesis_gas);

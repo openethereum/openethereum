@@ -108,14 +108,17 @@ use ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
-use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
-use rand::Rng;
+use parking_lot::Mutex;
+use rand::{seq::SliceRandom, Rng};
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
     cmp,
     collections::{BTreeMap, HashMap, HashSet},
-    sync::mpsc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, RwLock as StdRwLock, RwLockWriteGuard as StdRwLockWriteGuard,
+    },
     time::{Duration, Instant},
 };
 use sync_io::SyncIo;
@@ -133,7 +136,7 @@ use self::{
 pub(crate) use self::supplier::SyncSupplier;
 use self::{propagator::SyncPropagator, requester::SyncRequester};
 
-known_heap_size!(0, PeerInfo);
+malloc_size_of_is_0!(PeerInfo);
 
 /// Possible errors during packet's processing
 #[derive(Debug, Display)]
@@ -377,15 +380,17 @@ impl PeerInfo {
 #[cfg(not(test))]
 pub mod random {
     use rand;
-    pub fn new() -> rand::ThreadRng {
+    pub fn new() -> rand::rngs::ThreadRng {
         rand::thread_rng()
     }
 }
 #[cfg(test)]
 pub mod random {
-    use rand::{self, SeedableRng};
-    pub fn new() -> rand::XorShiftRng {
-        rand::XorShiftRng::from_seed([0, 1, 2, 3])
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    const RNG_SEED: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    pub fn new() -> XorShiftRng {
+        XorShiftRng::from_seed(RNG_SEED)
     }
 }
 
@@ -398,8 +403,10 @@ pub type Peers = HashMap<PeerId, PeerInfo>;
 pub struct ChainSyncApi {
     /// Priority tasks queue
     priority_tasks: Mutex<mpsc::Receiver<PriorityTask>>,
+    /// Gate for executing only one priority timer.
+    priority_tasks_gate: AtomicBool,
     /// The rest of sync data
-    sync: RwLock<ChainSync>,
+    sync: StdRwLock<ChainSync>,
 }
 
 impl ChainSyncApi {
@@ -411,31 +418,33 @@ impl ChainSyncApi {
         priority_tasks: mpsc::Receiver<PriorityTask>,
     ) -> Self {
         ChainSyncApi {
-            sync: RwLock::new(ChainSync::new(config, chain, fork_filter)),
+            sync: StdRwLock::new(ChainSync::new(config, chain, fork_filter)),
             priority_tasks: Mutex::new(priority_tasks),
+            priority_tasks_gate: AtomicBool::new(false),
         }
     }
 
     /// Gives `write` access to underlying `ChainSync`
-    pub fn write(&self) -> RwLockWriteGuard<ChainSync> {
-        self.sync.write()
+    pub fn write(&self) -> StdRwLockWriteGuard<ChainSync> {
+        self.sync.write().unwrap()
     }
 
     /// Returns info about given list of peers
     pub fn peer_info(&self, ids: &[PeerId]) -> Vec<Option<PeerInfoDigest>> {
-        let sync = self.sync.read();
+        let sync = self.sync.read().unwrap();
         ids.iter().map(|id| sync.peer_info(id)).collect()
     }
 
     /// Returns synchonization status
     pub fn status(&self) -> SyncStatus {
-        self.sync.read().status()
+        self.sync.read().unwrap().status()
     }
 
     /// Returns transactions propagation statistics
     pub fn transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
         self.sync
             .read()
+            .unwrap()
             .transactions_stats()
             .iter()
             .map(|(hash, stats)| (*hash, stats.into()))
@@ -449,7 +458,7 @@ impl ChainSyncApi {
 
     /// Process the queue with requests, that were delayed with response.
     pub fn process_delayed_requests(&self, io: &mut dyn SyncIo) {
-        let requests = self.sync.write().retrieve_delayed_requests();
+        let requests = self.sync.write().unwrap().retrieve_delayed_requests();
         if !requests.is_empty() {
             debug!(target: "sync", "Processing {} delayed requests", requests.len());
             for (peer_id, packet_id, packet_data) in requests {
@@ -480,6 +489,14 @@ impl ChainSyncApi {
             }
         }
 
+        if self
+            .priority_tasks_gate
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+
         // deadline to get the task from the queue
         let deadline = Instant::now() + ::api::PRIORITY_TIMER_INTERVAL;
         let mut work = || {
@@ -489,9 +506,8 @@ impl ChainSyncApi {
                 tasks.recv_timeout(left).ok()?
             };
             task.starting();
-            // wait for the sync lock until deadline,
-            // note we might drop the task here if we won't manage to acquire the lock.
-            let mut sync = self.sync.try_write_until(deadline)?;
+            // wait for the sync lock
+            let mut sync = self.sync.write().unwrap();
             // since we already have everything let's use a different deadline
             // to do the rest of the job now, so that previous work is not wasted.
             let deadline = Instant::now() + PRIORITY_TASK_DEADLINE;
@@ -538,6 +554,7 @@ impl ChainSyncApi {
         // Process as many items as we can until the deadline is reached.
         loop {
             if work().is_none() {
+                self.priority_tasks_gate.store(false, Ordering::SeqCst);
                 return;
             }
         }
@@ -615,7 +632,7 @@ impl ChainSync {
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
-        random::new().shuffle(&mut peers);
+        peers.shuffle(&mut random::new());
         peers.truncate(count);
         peers
     }
@@ -1014,8 +1031,9 @@ impl ChainSync {
                     self.active_peers.len(), peers.len(), self.peers.len()
                 );
 
-                random::new().shuffle(&mut peers); // TODO (#646): sort by rating
+                peers.shuffle(&mut random::new()); // TODO (#646): sort by rating
                                                    // prefer peers with higher protocol version
+
                 peers.sort_by(|&(_, ref v1), &(_, ref v2)| v1.cmp(v2));
 
                 for (peer_id, _) in peers {
@@ -1282,7 +1300,7 @@ impl ChainSync {
         };
         trace!(target: "sync", "Sending status to {}, protocol version {}", peer, protocol);
 
-        let mut packet = rlp04::RlpStream::new();
+        let mut packet = RlpStream::new();
         packet.begin_unbounded_list();
         let chain = io.chain().chain_info();
         packet.append(&(protocol as u32));
@@ -1295,7 +1313,7 @@ impl ChainSync {
         if warp_protocol {
             let manifest = io.snapshot_service().manifest();
             let block_number = manifest.as_ref().map_or(0, |m| m.block_number);
-            let manifest_hash = manifest.map_or(H256::new(), |m| keccak(m.into_rlp()));
+            let manifest_hash = manifest.map_or(H256::default(), |m| keccak(m.into_rlp()));
             packet.append(&primitive_types07::H256(manifest_hash.0));
             packet.append(&block_number);
         }
@@ -1506,7 +1524,6 @@ pub mod tests {
         miner::{MinerService, PendingOrdering},
     };
     use ethereum_types::{Address, H256, U256};
-    use ethkey;
     use network::PeerId;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
@@ -1543,7 +1560,7 @@ pub mod tests {
         let mut rlp = RlpStream::new_list(5);
         for _ in 0..5 {
             let mut hash_d_rlp = RlpStream::new_list(2);
-            let hash: H256 = H256::from(0u64);
+            let hash: H256 = H256::from_low_u64_be(0u64);
             let diff: U256 = U256::from(1u64);
             hash_d_rlp.append(&hash);
             hash_d_rlp.append(&diff);
@@ -1705,7 +1722,7 @@ pub mod tests {
     #[test]
     fn should_add_transactions_to_queue() {
         fn sender(tx: &UnverifiedTransaction) -> Address {
-            ethkey::public_to_address(&tx.recover_public().unwrap())
+            crypto::publickey::public_to_address(&tx.recover_public().unwrap())
         }
 
         // given

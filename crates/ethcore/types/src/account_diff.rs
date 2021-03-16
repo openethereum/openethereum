@@ -16,7 +16,7 @@
 
 //! Diff between two accounts.
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 use ethereum_types::{H256, U256};
 use std::{cmp::*, collections::BTreeMap, fmt};
 
@@ -120,17 +120,17 @@ impl AccountDiff {
 
 // TODO: refactor into something nicer.
 fn interpreted_hash(u: &H256) -> String {
-    if u <= &H256::from(0xffffffff) {
+    if u <= &H256::from_low_u64_be(0xffffffff) {
         format!(
             "{} = 0x{:x}",
-            U256::from(&**u).low_u32(),
-            U256::from(&**u).low_u32()
+            U256::from(u.as_bytes()).low_u32(),
+            U256::from(u.as_bytes()).low_u32()
         )
-    } else if u <= &H256::from(u64::max_value()) {
+    } else if u <= &H256::from_low_u64_be(u64::max_value()) {
         format!(
             "{} = 0x{:x}",
-            U256::from(&**u).low_u64(),
-            U256::from(&**u).low_u64()
+            U256::from(u.as_bytes()).low_u64(),
+            U256::from(u.as_bytes()).low_u64()
         )
     //	} else if u <= &H256::from("0xffffffffffffffffffffffffffffffffffffffff") {
     //		format!("@{}", Address::from(u))
@@ -141,7 +141,7 @@ fn interpreted_hash(u: &H256) -> String {
 
 impl fmt::Display for AccountDiff {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use bytes::ToPretty;
+        use crate::bytes::ToPretty;
 
         match self.nonce {
             Diff::Born(ref x) => write!(f, "  non {}", x)?,

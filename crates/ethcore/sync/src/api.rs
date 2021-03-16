@@ -15,6 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
+use crypto::publickey::Secret;
 use devp2p::NetworkService;
 use network::{
     client_version::ClientVersion, ConnectionFilter, Error, ErrorKind,
@@ -38,7 +39,6 @@ use ethcore::{
     snapshot::SnapshotService,
 };
 use ethereum_types::{H256, H512, U256, U64};
-use ethkey::Secret;
 use io::TimerToken;
 use network::IpFilter;
 use parking_lot::{Mutex, RwLock};

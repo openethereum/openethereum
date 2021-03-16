@@ -16,10 +16,12 @@
 
 //! State test transaction deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
-use uint::Uint;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    uint::Uint,
+};
 
 /// State test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -44,13 +46,14 @@ pub struct Transaction {
 
 #[cfg(test)]
 mod tests {
+    use super::Transaction;
     use serde_json;
-    use state::Transaction;
 
     #[test]
     fn transaction_deserialization() {
         let s = r#"{
 			"data" : "",
+			"accessLists": null,
 			"gasLimit" : "0x2dc6c0",
 			"gasPrice" : "0x01",
 			"nonce" : "0x00",

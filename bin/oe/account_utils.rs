@@ -16,11 +16,12 @@
 
 use std::sync::Arc;
 
+use crypto::publickey;
 use dir::Directories;
-use ethereum_types::Address;
+use ethereum_types::{Address, H160};
 use ethkey::Password;
 
-use params::{AccountsConfig, SpecType};
+use crate::params::{AccountsConfig, SpecType};
 
 #[cfg(not(feature = "accounts"))]
 mod accounts {
@@ -70,9 +71,10 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use upgrade::upgrade_key_location;
+    use crate::upgrade::upgrade_key_location;
+    use std::str::FromStr;
 
-    pub use accounts::AccountProvider;
+    pub use crate::accounts::AccountProvider;
 
     /// Pops along with error messages when a password is missing or invalid.
     const VERIFY_PASSWORD_HINT: &str = "Make sure valid password is present in files passed using `--password` or in the configuration file.";
@@ -85,7 +87,7 @@ mod accounts {
         cfg: AccountsConfig,
         passwords: &[Password],
     ) -> Result<AccountProvider, String> {
-        use accounts::AccountProviderSettings;
+        use crate::accounts::AccountProviderSettings;
         use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 
         let path = dirs.keys_path(data_dir);
@@ -103,7 +105,8 @@ mod accounts {
                 | SpecType::Goerli
                 | SpecType::Sokol
                 | SpecType::Dev => vec![],
-                _ => vec!["00a329c0648769a73afac7f9381e08fb43dbea72".into()],
+                _ => vec![H160::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
+                    .expect("the string is valid hex; qed")],
             },
         };
 
@@ -216,9 +219,11 @@ mod accounts {
     }
 
     fn insert_dev_account(account_provider: &AccountProvider) {
-        let secret: ethkey::Secret =
-            "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7".into();
-        let dev_account = ethkey::KeyPair::from_secret(secret.clone())
+        let secret = publickey::Secret::from_str(
+            "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
+        )
+        .expect("Valid account;qed");
+        let dev_account = publickey::KeyPair::from_secret(secret.clone())
             .expect("Valid secret produces valid key;qed");
         if !account_provider.has_account(dev_account.address()) {
             match account_provider.insert_account(secret, &Password::from(String::new())) {

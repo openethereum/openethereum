@@ -28,7 +28,7 @@ use std::{
 
 use bytes::Bytes;
 use hash::keccak;
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::Rlp;
 use triehash::ordered_trie_root;
 use unexpected::{Mismatch, OutOfBounds};
@@ -44,6 +44,7 @@ use verification::queue::kind::blocks::Unverified;
 use time_utils::CheckedSystemTime;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
+#[derive(MallocSizeOf)]
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
@@ -53,14 +54,6 @@ pub struct PreverifiedBlock {
     pub uncles: Vec<Header>,
     /// Block bytes
     pub bytes: Bytes,
-}
-
-impl HeapSizeOf for PreverifiedBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.bytes.heap_size_of_children()
-    }
 }
 
 /// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
@@ -524,10 +517,10 @@ mod tests {
     use super::*;
 
     use blockchain::{BlockDetails, BlockReceipts, TransactionAddress};
+    use crypto::publickey::{Generator, Random};
     use engines::EthEngine;
     use error::{BlockError::*, ErrorKind};
-    use ethereum_types::{BloomRef, H256, U256};
-    use ethkey::{Generator, Random};
+    use ethereum_types::{Address, BloomRef, H256, U256};
     use hash::keccak;
     use rlp;
     use spec::{CommonParams, Spec};
@@ -771,7 +764,7 @@ mod tests {
         good.set_timestamp(40);
         good.set_number(10);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
 
         let tr1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
@@ -794,7 +787,7 @@ mod tests {
         .sign(keypair.secret(), None);
 
         let tr3 = TypedTransaction::Legacy(Transaction {
-            action: Action::Call(0x0.into()),
+            action: Action::Call(Address::from_low_u64_be(0x0)),
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
@@ -871,7 +864,7 @@ mod tests {
         bad_header.set_transactions_root(eip86_transactions_root.clone());
         bad_header.set_uncles_hash(good_uncles_hash.clone());
         match basic_test(&create_test_block_with_data(&bad_header, &eip86_transactions, &good_uncles), engine) {
-			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &::ethkey::Error::InvalidSignature.into() => (),
+			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &crypto::publickey::Error::InvalidSignature.into() => (),
 			e => panic!("Block verification failed.\nExpected: Transaction Error (Invalid Signature)\nGot: {:?}", e),
 		}
 
@@ -1102,8 +1095,8 @@ mod tests {
 
     #[test]
     fn dust_protection() {
+        use crypto::publickey::{Generator, Random};
         use engines::NullEngine;
-        use ethkey::{Generator, Random};
         use machine::EthereumMachine;
         use types::transaction::{Action, Transaction};
 
@@ -1114,7 +1107,7 @@ mod tests {
         let mut header = Header::default();
         header.set_number(1);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let bad_transactions: Vec<_> = (0..3)
             .map(|i| {
                 TypedTransaction::Legacy(Transaction {

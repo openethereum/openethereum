@@ -48,8 +48,8 @@ use v1::{
         Transaction, TransactionStats,
     },
 };
-use Host;
 use version::version_data;
+use Host;
 
 /// Parity implementation.
 pub struct ParityClient<C, M>

@@ -128,8 +128,8 @@ pub trait ClientCapabilities {
     /// if this version can handle requests for a large number of block bodies.
     fn can_handle_large_requests(&self) -> bool;
 
-    /// Service transactions are specific to parity. Query if this version
-    /// accepts them.
+    /// Service transactions are specific to parity and nethermind. Query if
+    /// this version accepts them.
     fn accepts_service_transaction(&self) -> bool;
 }
 
@@ -146,7 +146,7 @@ impl ClientCapabilities for ClientVersion {
         match self {
             ClientVersion::ParityClient(_) => true,
             ClientVersion::ParityUnknownFormat(_) => true,
-            ClientVersion::Other(_) => false,
+            ClientVersion::Other(client_id) => is_nethermind(client_id),
         }
     }
 }
@@ -154,6 +154,10 @@ impl ClientCapabilities for ClientVersion {
 fn is_parity(client_id: &str) -> bool {
     client_id.starts_with(LEGACY_CLIENT_ID_PREFIX)
         || client_id.starts_with(CURRENT_CLIENT_ID_PREFIX)
+}
+
+fn is_nethermind(client_id: &str) -> bool {
+    client_id.starts_with("Nethermind")
 }
 
 /// Parse known parity formats. Recognizes either a short format with four fields
@@ -531,6 +535,17 @@ pub mod tests {
             ClientVersion::from("Parity-Ethereum/ABCDEFGH/v2.7.3/linux/rustc")
                 .accepts_service_transaction()
         );
+        assert!(
+            ClientVersion::from("OpenEthereum//v3.2.0/x86_64-linux-gnu/rustc1.49.0")
+                .accepts_service_transaction()
+        );
+        assert!(
+            ClientVersion::from("OpenEthereum/ABCDEFGH").accepts_service_transaction()
+        );
+        assert!(
+            ClientVersion::from("Nethermind/v1.10.37-0-068e5c399-20210311/X64-Linux/5.0.4")
+                .accepts_service_transaction()
+        )
     }
 
     #[test]

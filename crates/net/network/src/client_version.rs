@@ -539,9 +539,7 @@ pub mod tests {
             ClientVersion::from("OpenEthereum//v3.2.0/x86_64-linux-gnu/rustc1.49.0")
                 .accepts_service_transaction()
         );
-        assert!(
-            ClientVersion::from("OpenEthereum/ABCDEFGH").accepts_service_transaction()
-        );
+        assert!(ClientVersion::from("OpenEthereum/ABCDEFGH").accepts_service_transaction());
         assert!(
             ClientVersion::from("Nethermind/v1.10.37-0-068e5c399-20210311/X64-Linux/5.0.4")
                 .accepts_service_transaction()

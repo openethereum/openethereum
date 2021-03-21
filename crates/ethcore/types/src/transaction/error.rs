@@ -16,8 +16,8 @@
 
 use std::{error, fmt};
 
+use crate::crypto;
 use ethereum_types::U256;
-use ethkey;
 use rlp;
 use unexpected::OutOfBounds;
 
@@ -88,8 +88,8 @@ pub enum Error {
     TransactionTypeNotEnabled,
 }
 
-impl From<ethkey::Error> for Error {
-    fn from(err: ethkey::Error) -> Self {
+impl From<crypto::publickey::Error> for Error {
+    fn from(err: crypto::publickey::Error) -> Self {
         Error::InvalidSignature(format!("{}", err))
     }
 }

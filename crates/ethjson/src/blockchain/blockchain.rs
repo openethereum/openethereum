@@ -16,10 +16,12 @@
 
 //! Blockchain deserialization.
 
-use blockchain::{block::Block, header::Header, state::State};
-use bytes::Bytes;
-use hash::H256;
-use spec::{Ethereum, ForkSpec, Genesis, Seal};
+use crate::{
+    blockchain::{block::Block, header::Header, state::State},
+    bytes::Bytes,
+    hash::H256,
+    spec::{Ethereum, ForkSpec, Genesis, Seal},
+};
 
 /// Json Block test possible engine kind.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -93,7 +95,7 @@ impl BlockChain {
 
 #[cfg(test)]
 mod tests {
-    use blockchain::blockchain::BlockChain;
+    use crate::blockchain::blockchain::BlockChain;
     use serde_json;
 
     #[test]

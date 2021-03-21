@@ -16,12 +16,14 @@
 
 //! View onto transaction rlp
 
-use crate::transaction::{signature, TypedTxId};
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    transaction::{signature, TypedTxId},
+    views::ViewRlp,
+};
 
-use super::ViewRlp;
-use bytes::Bytes;
 use ethereum_types::{H256, U256};
-use hash::keccak;
 use rlp::Rlp;
 
 /// View onto transaction rlp. Assumption is this is part of block.

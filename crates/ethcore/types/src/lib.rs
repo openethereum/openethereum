@@ -34,21 +34,15 @@
 #![allow(missing_docs)]
 #![warn(unused_extern_crates)]
 
-extern crate ethereum_types;
-extern crate ethjson;
-extern crate ethkey;
-extern crate heapsize;
-extern crate keccak_hash as hash;
-extern crate parity_bytes as bytes;
-extern crate rlp;
-extern crate serde_repr;
-extern crate unexpected;
+pub use keccak_hash as hash;
+pub use parity_bytes as bytes;
+pub use parity_crypto as crypto;
 
 #[macro_use]
 extern crate rlp_derive;
 
 #[cfg(test)]
-extern crate rustc_hex;
+pub use rustc_hex;
 
 #[macro_use]
 pub mod views;

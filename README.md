@@ -297,9 +297,9 @@ Caching, Importing Blocks, and Block Information
 
 In addition to the OpenEthereum client, there are additional tools in this repository available:
 
-- [evmbin](./evmbin) - OpenEthereum EVM Implementation.
-- [ethstore](./accounts/ethstore) - OpenEthereum Key Management.
-- [ethkey](./accounts/ethkey) - OpenEthereum Keys Generator.
+- [evmbin](./bin/evmbin) - OpenEthereum EVM Implementation.
+- [ethstore](./crates/accounts/ethstore) - OpenEthereum Key Management.
+- [ethkey](./crates/accounts/ethkey) - OpenEthereum Keys Generator.
 
 The following tools are available in a separate repository:
 - [ethabi](https://github.com/openethereum/ethabi) - OpenEthereum Encoding of Function Calls. [Docs here](https://crates.io/crates/ethabi)

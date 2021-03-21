@@ -16,7 +16,7 @@
 
 //! Snapshot manifest type definition
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 use ethereum_types::H256;
 use rlp::{DecoderError, Rlp, RlpStream};
 

@@ -32,9 +32,9 @@ use snapshot::{Error, ManifestData, Progress};
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
+use db::KeyValueDB;
 use ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
-use kvdb::KeyValueDB;
 use rlp::{Rlp, RlpStream};
 use types::{
     encoded, header::Header, ids::BlockId, receipt::TypedReceipt, transaction::TypedTransaction,

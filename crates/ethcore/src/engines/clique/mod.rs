@@ -68,13 +68,13 @@ use std::{
 use super::signer::EngineSigner;
 use block::ExecutedBlock;
 use client::{traits::ForceUpdateSealing, BlockId, EngineClient};
+use crypto::publickey::Signature;
 use engines::{
     clique::util::{extract_signers, recover_creator},
     Engine, EngineError, Seal, SealingState,
 };
 use error::{BlockError, Error};
 use ethereum_types::{Address, H160, H256, H64, U256};
-use ethkey::Signature;
 use hash::KECCAK_EMPTY_LIST_RLP;
 use itertools::Itertools;
 use lru_cache::LruCache;
@@ -590,7 +590,7 @@ impl Engine<EthereumMachine> for Clique {
 
         if is_checkpoint && *header.author() != NULL_AUTHOR {
             return Err(EngineError::CliqueWrongAuthorCheckpoint(Mismatch {
-                expected: 0.into(),
+                expected: H160::zero(),
                 found: *header.author(),
             }))?;
         }
@@ -603,8 +603,8 @@ impl Engine<EthereumMachine> for Clique {
             }))?
         }
 
-        let mixhash: H256 = seal_fields[0].into();
-        let nonce: H64 = seal_fields[1].into();
+        let mixhash = H256::from_slice(seal_fields[0]);
+        let nonce = H64::from_slice(seal_fields[1]);
 
         // Nonce must be 0x00..0 or 0xff..f
         if nonce != NONCE_DROP_VOTE && nonce != NONCE_AUTH_VOTE {

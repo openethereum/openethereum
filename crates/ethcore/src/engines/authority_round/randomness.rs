@@ -70,12 +70,12 @@
 //! https://github.com/poanetwork/posdao-contracts/blob/4fddb108993d4962951717b49222327f3d94275b/contracts/RandomAuRa.sol
 
 use bytes::Bytes;
+use crypto::publickey::{ecies, Error as CryptoError};
 use derive_more::Display;
 use engines::signer::EngineSigner;
 use ethabi::Hash;
 use ethabi_contract::use_contract;
 use ethereum_types::{Address, H256, U256};
-use ethkey::{crypto::ecies, Error as CryptoError};
 use hash::keccak;
 use log::{debug, error};
 use rand::Rng;
@@ -216,8 +216,7 @@ impl RandomnessPhase {
                 let number: RandNumber = rng.gen();
                 let number_hash: Hash = keccak(number.0);
                 let public = signer.public().ok_or(PhaseError::MissingPublicKey)?;
-                let cipher = ecies::encrypt(&public, &number_hash.0, &number.0)
-                    .map_err(CryptoError::from)?;
+                let cipher = ecies::encrypt(&public, number_hash.as_bytes(), number.as_bytes())?;
 
                 debug!(target: "engine", "Randomness contract: committing {}.", number_hash);
                 // Return the call data for the transaction that commits the hash and the encrypted number.

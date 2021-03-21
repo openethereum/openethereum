@@ -191,11 +191,11 @@ fn rpc_parity_remove_transaction() {
         nonce: 1.into(),
         gas_price: 0x9184e72a000u64.into(),
         gas: 0x76c0.into(),
-        action: Action::Call(5.into()),
+        action: Action::Call(Address::from_low_u64_be(5)),
         value: 0x9184e72au64.into(),
         data: vec![],
     });
-    let signed = tx.fake_sign(2.into());
+    let signed = tx.fake_sign(Address::from_low_u64_be(2));
     let hash = signed.hash();
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_removeTransaction", "params":[""#

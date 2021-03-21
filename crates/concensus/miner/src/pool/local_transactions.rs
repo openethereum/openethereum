@@ -254,8 +254,8 @@ impl txpool::Listener<Transaction> for LocalTransactionsList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crypto::publickey::{Generator, Random};
     use ethereum_types::U256;
-    use ethkey::{Generator, Random};
     use txpool::Listener;
     use types::transaction;
 
@@ -339,7 +339,7 @@ mod tests {
     }
 
     fn new_tx<T: Into<U256>>(nonce: T) -> Arc<Transaction> {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let signed = transaction::TypedTransaction::Legacy(transaction::Transaction {
             action: transaction::Action::Create,
             value: U256::from(100),

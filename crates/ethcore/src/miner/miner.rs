@@ -29,7 +29,11 @@ use ethcore_miner::work_notify::NotifyWork;
 use ethcore_miner::{
     gas_pricer::GasPricer,
     local_accounts::LocalAccounts,
-    pool::{self, PrioritizationStrategy, QueueStatus, TransactionQueue, VerifiedTransaction},
+    pool::{
+        self,
+        transaction_filter::{match_filter, TransactionFilter},
+        PrioritizationStrategy, QueueStatus, TransactionQueue, VerifiedTransaction,
+    },
     service_transaction_checker::ServiceTransactionChecker,
 };
 use ethereum_types::{Address, H256, U256};
@@ -1147,10 +1151,11 @@ impl miner::MinerService for Miner {
         }
     }
 
-    fn ready_transactions<C>(
+    fn ready_transactions_filtered<C>(
         &self,
         chain: &C,
         max_len: usize,
+        filter: Option<TransactionFilter>,
         ordering: miner::PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
@@ -1164,16 +1169,20 @@ impl miner::MinerService for Miner {
             // those transactions are valid and will just be ready to be included in next block.
             let nonce_cap = None;
 
-            self.transaction_queue.pending(
-                CachedNonceClient::new(chain, &self.nonce_cache),
-                pool::PendingSettings {
-                    block_number: chain_info.best_block_number,
-                    current_timestamp: chain_info.best_block_timestamp,
-                    nonce_cap,
-                    max_len,
-                    ordering,
-                },
-            )
+            let client = CachedNonceClient::new(chain, &self.nonce_cache);
+            let settings = pool::PendingSettings {
+                block_number: chain_info.best_block_number,
+                current_timestamp: chain_info.best_block_timestamp,
+                nonce_cap,
+                max_len,
+                ordering,
+            };
+
+            if let Some(ref f) = filter {
+                self.transaction_queue.pending_filtered(client, settings, f)
+            } else {
+                self.transaction_queue.pending(client, settings)
+            }
         };
 
         let from_pending = || {
@@ -1187,6 +1196,7 @@ impl miner::MinerService for Miner {
                                 signed.clone(),
                             )
                         })
+                        .filter(|tx| match_filter(&filter, tx))
                         .map(Arc::new)
                         .take(max_len)
                         .collect()
@@ -1558,7 +1568,7 @@ mod tests {
 
     use super::*;
     use accounts::AccountProvider;
-    use ethkey::{Generator, Random};
+    use crypto::publickey::{Generator, Random};
     use hash::keccak;
     use rustc_hex::FromHex;
     use types::BlockNumber;
@@ -1639,7 +1649,7 @@ mod tests {
     }
 
     fn transaction_with_chain_id(chain_id: u64) -> SignedTransaction {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::zero(),
@@ -1692,7 +1702,7 @@ mod tests {
 
         // when new block is imported
         let client = generate_dummy_client(2);
-        let imported = [0.into()];
+        let imported = [H256::zero()];
         let empty = &[];
         miner.chain_new_blocks(&*client, &imported, empty, &imported, empty, false);
 
@@ -1772,7 +1782,7 @@ mod tests {
     #[test]
     fn should_treat_unfamiliar_locals_selectively() {
         // given
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let client = TestBlockChainClient::default();
         let mut local_accounts = ::std::collections::HashSet::new();
         local_accounts.insert(keypair.address());
@@ -1973,7 +1983,7 @@ mod tests {
         let addr = tap.insert_account(keccak("1").into(), &"".into()).unwrap();
         let client = generate_dummy_client_with_spec(spec);
         let engine_signer = Box::new((tap.clone(), addr, "".into()));
-        let msg = Default::default();
+        let msg = [1u8; 32].into();
         assert!(client.engine().sign(msg).is_err());
 
         // should set engine signer and miner author

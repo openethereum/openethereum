@@ -38,11 +38,9 @@
 //! }
 //! ```
 
-use super::{StepDuration, ValidatorSet};
-use bytes::Bytes;
-use hash::Address;
+use super::{BlockReward, StepDuration, ValidatorSet};
+use crate::{bytes::Bytes, hash::Address, uint::Uint};
 use std::collections::BTreeMap;
-use uint::Uint;
 
 /// Authority params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -63,7 +61,7 @@ pub struct AuthorityRoundParams {
     /// Whether transitions should be immediate.
     pub immediate_transitions: Option<bool>,
     /// Reward per block in wei.
-    pub block_reward: Option<Uint>,
+    pub block_reward: Option<BlockReward>,
     /// Block at which the block reward contract should start being used. This option allows one to
     /// add a single block reward contract transition and is compatible with the multiple address
     /// option `block_reward_contract_transitions` below.
@@ -116,14 +114,20 @@ pub struct AuthorityRound {
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::{H160, U256};
-    use hash::Address;
-    use serde_json;
-    use spec::{
-        authority_round::AuthorityRound, step_duration::StepDuration, validator_set::ValidatorSet,
+    use std::collections::BTreeMap;
+
+    use super::BlockReward;
+    use crate::{
+        hash::Address,
+        spec::{
+            authority_round::AuthorityRound, step_duration::StepDuration,
+            validator_set::ValidatorSet,
+        },
+        uint::Uint,
     };
+    use ethereum_types::{H160, U256};
+    use serde_json;
     use std::str::FromStr;
-    use uint::Uint;
 
     #[test]
     fn authority_round_deserialization() {
@@ -156,9 +160,9 @@ mod tests {
         );
         assert_eq!(
             deserialized.params.validators,
-            ValidatorSet::List(vec![Address(H160::from(
-                "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
-            ))])
+            ValidatorSet::List(vec![Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            )])
         );
         assert_eq!(deserialized.params.start_step, Some(Uint(U256::from(24))));
         assert_eq!(deserialized.params.immediate_transitions, None);
@@ -198,6 +202,41 @@ mod tests {
         assert_eq!(
             deserialized.params.block_gas_limit_contract_transitions,
             Some(expected_bglc.to_vec().into_iter().collect())
+        );
+    }
+
+    #[test]
+    fn authority_round_deserialization_multi_block() {
+        let s = r#"{
+			"params": {
+				"stepDuration": "0x02",
+				"validators": {
+					"contract" : "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
+				},
+				"blockReward": {
+                    "0": 5000000,
+                    "100": 150
+                }
+			}
+		}"#;
+
+        let deserialized: AuthorityRound = serde_json::from_str(s).unwrap();
+        assert_eq!(
+            deserialized.params.step_duration,
+            StepDuration::Single(Uint(U256::from(0x02)))
+        );
+        assert_eq!(
+            deserialized.params.validators,
+            ValidatorSet::Contract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
+        );
+        let mut rewards: BTreeMap<Uint, Uint> = BTreeMap::new();
+        rewards.insert(Uint(U256::from(0)), Uint(U256::from(5000000)));
+        rewards.insert(Uint(U256::from(100)), Uint(U256::from(150)));
+        assert_eq!(
+            deserialized.params.block_reward,
+            Some(BlockReward::Multi(rewards))
         );
     }
 }

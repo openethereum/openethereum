@@ -81,12 +81,16 @@ impl<M: Machine> Engine<M> for InstantSeal<M> {
             // Return a regular seal if the given block is _higher_ than
             // the last sealed one
             if block_number > last_sealed_block {
-                let prev_last_sealed_block = self.last_sealed_block.compare_and_swap(
-                    last_sealed_block,
-                    block_number,
-                    Ordering::SeqCst,
-                );
-                if prev_last_sealed_block == last_sealed_block {
+                if self
+                    .last_sealed_block
+                    .compare_exchange(
+                        last_sealed_block,
+                        block_number,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
                     return Seal::Regular(Vec::new());
                 }
             }

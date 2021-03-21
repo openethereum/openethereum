@@ -56,6 +56,7 @@ use client::{
     traits::{ForceUpdateSealing, TransactionRequest},
     EngineClient,
 };
+use crypto::publickey::{self, Signature};
 use engines::{
     block_reward,
     block_reward::{BlockRewardContract, RewardKind},
@@ -63,15 +64,15 @@ use engines::{
 };
 use error::{BlockError, Error, ErrorKind};
 use ethereum_types::{Address, H256, H520, U128, U256};
-use ethjson;
-use ethkey::{self, Signature};
+
+use ethjson::{self, uint::Uint};
 use hash::keccak;
 use io::{IoContext, IoHandler, IoService, TimerToken};
 use itertools::{self, Itertools};
 use lru_cache::LruCache;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::{Mutex, RwLock};
-use rand::OsRng;
+use rand::rngs::OsRng;
 use rlp::{encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use time_utils::CheckedSystemTime;
 use types::{
@@ -108,7 +109,7 @@ pub struct AuthorityRoundParams {
     /// Immediate transitions.
     pub immediate_transitions: bool,
     /// Block reward in base units.
-    pub block_reward: U256,
+    pub block_reward: BTreeMap<BlockNumber, U256>,
     /// Block reward contract addresses with their associated starting block numbers.
     pub block_reward_contract_transitions: BTreeMap<u64, BlockRewardContract>,
     /// Number of accepted uncles transition block.
@@ -217,7 +218,33 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             validate_score_transition: p.validate_score_transition.map_or(0, Into::into),
             validate_step_transition: p.validate_step_transition.map_or(0, Into::into),
             immediate_transitions: p.immediate_transitions.unwrap_or(false),
-            block_reward: p.block_reward.map_or_else(Default::default, Into::into),
+            block_reward: p.block_reward.map_or_else(
+                || {
+                    let mut ret = BTreeMap::new();
+                    ret.insert(0, U256::zero());
+                    ret
+                },
+                |reward| match reward {
+                    ethjson::spec::BlockReward::Single(reward) => {
+                        let mut ret = BTreeMap::new();
+                        ret.insert(0, reward.into());
+                        ret
+                    }
+                    ethjson::spec::BlockReward::Multi(mut multi) => {
+                        if multi.is_empty() {
+                            panic!("No block rewards are found in config");
+                        }
+                        // add block reward from genesis and put reward to zero.
+                        multi
+                            .entry(Uint(U256::from(0)))
+                            .or_insert(Uint(U256::from(0)));
+                        multi
+                            .into_iter()
+                            .map(|(block, reward)| (block.into(), reward.into()))
+                            .collect()
+                    }
+                },
+            ),
             block_reward_contract_transitions: br_transitions,
             maximum_uncle_count_transition: p.maximum_uncle_count_transition.map_or(0, Into::into),
             maximum_uncle_count: p.maximum_uncle_count.map_or(0, Into::into),
@@ -530,14 +557,14 @@ impl EmptyStep {
         let message = keccak(empty_step_rlp(self.step, &self.parent_hash));
         let correct_proposer = step_proposer(validators, &self.parent_hash, self.step);
 
-        ethkey::verify_address(&correct_proposer, &self.signature.into(), &message)
+        publickey::verify_address(&correct_proposer, &self.signature.into(), &message)
             .map_err(|e| e.into())
     }
 
     fn author(&self) -> Result<Address, Error> {
         let message = keccak(empty_step_rlp(self.step, &self.parent_hash));
-        let public = ethkey::recover(&self.signature.into(), &message)?;
-        Ok(ethkey::public_to_address(&public))
+        let public = publickey::recover(&self.signature.into(), &message)?;
+        Ok(publickey::public_to_address(&public))
     }
 
     fn sealed(&self) -> SealedEmptyStep {
@@ -635,7 +662,7 @@ pub struct AuthorityRound {
     empty_steps: Mutex<BTreeSet<EmptyStep>>,
     epoch_manager: Mutex<EpochManager>,
     immediate_transitions: bool,
-    block_reward: U256,
+    block_reward: BTreeMap<BlockNumber, U256>,
     block_reward_contract_transitions: BTreeMap<u64, BlockRewardContract>,
     maximum_uncle_count_transition: u64,
     maximum_uncle_count: usize,
@@ -750,7 +777,7 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
 fn header_seal_hash(header: &Header, empty_steps_rlp: Option<&[u8]>) -> H256 {
     match empty_steps_rlp {
         Some(empty_steps_rlp) => {
-            let mut message = header.bare_hash().to_vec();
+            let mut message = header.bare_hash().as_bytes().to_vec();
             message.extend_from_slice(empty_steps_rlp);
             keccak(message)
         }
@@ -884,7 +911,7 @@ fn verify_external(
         };
 
         let header_seal_hash = header_seal_hash(header, empty_steps_rlp);
-        !ethkey::verify_address(&correct_proposer, &proposer_signature, &header_seal_hash)?
+        !publickey::verify_address(&correct_proposer, &proposer_signature, &header_seal_hash)?
     };
 
     if is_invalid_proposer {
@@ -1283,7 +1310,7 @@ impl AuthorityRound {
         let phase = randomness::RandomnessPhase::load(&contract, our_addr)
             .map_err(|err| EngineError::Custom(format!("Randomness error in load(): {:?}", err)))?;
         let data = match phase
-            .advance(&contract, &mut OsRng::new()?, signer.as_ref())
+            .advance(&contract, &mut OsRng, signer.as_ref())
             .map_err(|err| {
                 EngineError::Custom(format!("Randomness error in advance(): {:?}", err))
             })? {
@@ -1603,7 +1630,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
         // first check to avoid generating signature most of the time
-        // (but there's still a race to the `compare_and_swap`)
+        // (but there's still a race to the `compare_exchange`)
         if !self.step.can_propose.load(AtomicOrdering::SeqCst) {
             trace!(target: "engine", "Aborting seal generation. Can't propose.");
             return Seal::None;
@@ -1661,7 +1688,8 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 if self
                     .step
                     .can_propose
-                    .compare_and_swap(true, false, AtomicOrdering::SeqCst)
+                    .compare_exchange(true, false, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+                    .is_ok()
                 {
                     self.generate_empty_step(header.parent_hash());
                 }
@@ -1682,11 +1710,12 @@ impl Engine<EthereumMachine> for AuthorityRound {
             )) {
                 trace!(target: "engine", "generate_seal: Issuing a block for step {}.", step);
 
-                // only issue the seal if we were the first to reach the compare_and_swap.
+                // only issue the seal if we were the first to reach the compare_exchange.
                 if self
                     .step
                     .can_propose
-                    .compare_and_swap(true, false, AtomicOrdering::SeqCst)
+                    .compare_exchange(true, false, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+                    .is_ok()
                 {
                     // we can drop all accumulated empty step messages that are
                     // older than the parent step since we're including them in
@@ -1700,7 +1729,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
                     }
 
                     let mut fields =
-                        vec![encode(&step), encode(&(&H520::from(signature) as &[u8]))];
+                        vec![encode(&step), encode(&(H520::from(signature).as_bytes()))];
 
                     if let Some(empty_steps_rlp) = empty_steps_rlp {
                         fields.push(empty_steps_rlp);
@@ -1793,6 +1822,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
         }
 
         let author = *block.header.author();
+        let number = block.header.number();
         beneficiaries.push((author, RewardKind::Author));
 
         let block_reward_contract_transition = self
@@ -1807,9 +1837,19 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 .map(|(author, amount)| (author, RewardKind::External, amount))
                 .collect()
         } else {
+            let (_, reward) = self
+                .block_reward
+                .iter()
+                .rev()
+                .find(|&(block, _)| *block <= number)
+                .expect(
+                    "Current block's reward is not found; this indicates a chain config error; qed",
+                );
+            let reward = *reward;
+
             beneficiaries
                 .into_iter()
-                .map(|(author, reward_kind)| (author, reward_kind, self.block_reward))
+                .map(|(author, reward_kind)| (author, reward_kind, reward))
                 .collect()
         };
 
@@ -2187,7 +2227,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
             .signer
             .read()
             .as_ref()
-            .ok_or(ethkey::Error::InvalidAddress)?
+            .ok_or(publickey::Error::InvalidAddress)?
             .sign(hash)?)
     }
 
@@ -2270,6 +2310,7 @@ mod tests {
     };
     use accounts::AccountProvider;
     use block::*;
+    use crypto::publickey::Signature;
     use engines::{
         block_reward::BlockRewardContract,
         validator_set::{SimpleList, TestSet},
@@ -2279,7 +2320,6 @@ mod tests {
     use ethabi_contract::use_contract;
     use ethereum_types::{Address, H256, H520, U256};
     use ethjson;
-    use ethkey::Signature;
     use hash::keccak;
     use miner::{Author, MinerService};
     use rlp::encode;
@@ -2850,7 +2890,7 @@ mod tests {
     fn set_empty_steps_seal(
         header: &mut Header,
         step: u64,
-        block_signature: &ethkey::Signature,
+        block_signature: &crypto::publickey::Signature,
         empty_steps: &[SealedEmptyStep],
     ) {
         header.set_seal(vec![
@@ -3202,7 +3242,7 @@ mod tests {
 
         // empty step with invalid step
         let empty_steps = vec![SealedEmptyStep {
-            signature: 0.into(),
+            signature: H520::zero(),
             step: 2,
         }];
         set_empty_steps_seal(&mut header, 2, &signature, &empty_steps);
@@ -3214,7 +3254,7 @@ mod tests {
 
         // empty step with invalid signature
         let empty_steps = vec![SealedEmptyStep {
-            signature: 0.into(),
+            signature: H520::zero(),
             step: 1,
         }];
         set_empty_steps_seal(&mut header, 2, &signature, &empty_steps);
@@ -3428,7 +3468,7 @@ mod tests {
             p.maximum_empty_steps = 0;
         });
 
-        let parent_hash: H256 = 1.into();
+        let parent_hash = H256::from_low_u64_be(1);
         let signature = H520::default();
         let step = |step: u64| EmptyStep {
             step,

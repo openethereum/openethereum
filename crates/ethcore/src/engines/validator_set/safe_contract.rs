@@ -707,8 +707,8 @@ mod tests {
         traits::{EngineClient, ForceUpdateSealing},
         BlockInfo, ChainInfo, ImportBlock,
     };
+    use crypto::publickey::Secret;
     use ethereum_types::Address;
-    use ethkey::Secret;
     use hash::keccak;
     use miner::{self, MinerService};
     use rustc_hex::FromHex;

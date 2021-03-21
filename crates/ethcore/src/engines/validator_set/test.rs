@@ -23,7 +23,7 @@ use std::sync::{
 
 use bytes::Bytes;
 use ethereum_types::{Address, H256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use types::{header::Header, BlockNumber};
 
 use super::{SimpleList, SystemCall, ValidatorSet};
@@ -31,7 +31,7 @@ use error::Error as EthcoreError;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 /// Set used for testing with a single validator.
-#[derive(Clone)]
+#[derive(Clone, MallocSizeOf)]
 pub struct TestSet {
     validator: SimpleList,
     last_malicious: Arc<AtomicUsize>,
@@ -69,12 +69,6 @@ impl TestSet {
     #[allow(dead_code)]
     pub fn last_benign(&self) -> usize {
         self.last_benign.load(AtomicOrdering::SeqCst)
-    }
-}
-
-impl HeapSizeOf for TestSet {
-    fn heap_size_of_children(&self) -> usize {
-        self.validator.heap_size_of_children()
     }
 }
 

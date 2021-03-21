@@ -16,9 +16,11 @@
 
 //! Database utilities and definitions.
 
-use kvdb::{DBTransaction, KeyValueDB};
+use kvdb::DBTransaction;
+use kvdb_rocksdb::Database;
 use parking_lot::RwLock;
-use std::{collections::HashMap, hash::Hash, ops::Deref};
+use stats::{PrometheusMetrics, PrometheusRegistry};
+use std::{collections::HashMap, hash::Hash, io::Read};
 
 use rlp;
 
@@ -82,7 +84,7 @@ where
 /// Should be used to get database key associated with given value.
 pub trait Key<T> {
     /// The db key associated with this value.
-    type Target: Deref<Target = [u8]>;
+    type Target: AsRef<[u8]>;
 
     /// Returns db key.
     fn key(&self) -> Self::Target;
@@ -94,13 +96,13 @@ pub trait Writable {
     fn write<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>, value: &T)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Deletes key from the databse.
     fn delete<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Writes the value into the database and updates the cache.
     fn write_with_cache<K, T, R>(
@@ -113,7 +115,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         self.write(col, &key, &value);
         match policy {
@@ -136,7 +138,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         match policy {
             CacheUpdatePolicy::Overwrite => {
@@ -164,7 +166,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         match policy {
             CacheUpdatePolicy::Overwrite => {
@@ -195,7 +197,7 @@ pub trait Readable {
     fn read<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> Option<T>
     where
         T: rlp::Decodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Returns value for given key either in cache or in database.
     fn read_with_cache<K, T, C>(&self, col: Option<u32>, cache: &RwLock<C>, key: &K) -> Option<T>
@@ -244,13 +246,13 @@ pub trait Readable {
     /// Returns true if given value exists.
     fn exists<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> bool
     where
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Returns true if given value exists either in cache or in database.
     fn exists_with_cache<K, T, R, C>(&self, col: Option<u32>, cache: &RwLock<C>, key: &K) -> bool
     where
         K: Eq + Hash + Key<T, Target = R>,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
         C: Cache<K, T>,
     {
         {
@@ -268,46 +270,240 @@ impl Writable for DBTransaction {
     fn write<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>, value: &T)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.put(col, &key.key(), &rlp::encode(value));
+        self.put(col, key.key().as_ref(), &rlp::encode(value));
     }
 
     fn delete<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.delete(col, &key.key());
+        self.delete(col, key.key().as_ref());
     }
 }
 
-impl<KVDB: KeyValueDB + ?Sized> Readable for KVDB {
+impl<KVDB: kvdb::KeyValueDB + ?Sized> Readable for KVDB {
     fn read<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> Option<T>
     where
         T: rlp::Decodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.get(col, &key.key())
-            .expect(&format!("db get failed, key: {:?}", &key.key() as &[u8]))
+        self.get(col, key.key().as_ref())
+            .expect(&format!("db get failed, key: {:?}", key.key().as_ref()))
             .map(|v| rlp::decode(&v).expect("decode db value failed"))
     }
 
     fn exists<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> bool
     where
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        let result = self.get(col, &key.key());
+        let result = self.get(col, key.key().as_ref());
 
         match result {
             Ok(v) => v.is_some(),
             Err(err) => {
                 panic!(
                     "db get failed, key: {:?}, err: {:?}",
-                    &key.key() as &[u8],
+                    key.key().as_ref(),
                     err
                 );
             }
+        }
+    }
+}
+
+/// Database with enabled statistics
+pub struct DatabaseWithMetrics {
+    db: Database,
+    reads: std::sync::atomic::AtomicI64,
+    writes: std::sync::atomic::AtomicI64,
+    bytes_read: std::sync::atomic::AtomicI64,
+    bytes_written: std::sync::atomic::AtomicI64,
+}
+
+impl DatabaseWithMetrics {
+    /// Create a new instance
+    pub fn new(db: Database) -> Self {
+        Self {
+            db,
+            reads: std::sync::atomic::AtomicI64::new(0),
+            writes: std::sync::atomic::AtomicI64::new(0),
+            bytes_read: std::sync::atomic::AtomicI64::new(0),
+            bytes_written: std::sync::atomic::AtomicI64::new(0),
+        }
+    }
+}
+
+/// Ethcore definition of a KeyValueDB with embeeded metrics
+pub trait KeyValueDB: kvdb::KeyValueDB + PrometheusMetrics {}
+
+impl kvdb::KeyValueDB for DatabaseWithMetrics {
+    fn get(&self, col: Option<u32>, key: &[u8]) -> std::io::Result<Option<kvdb::DBValue>> {
+        let res = self.db.get(col, key);
+        let count = res
+            .as_ref()
+            .map_or(0, |y| y.as_ref().map_or(0, |x| x.bytes().count()));
+
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.bytes_read
+            .fetch_add(count as i64, std::sync::atomic::Ordering::Relaxed);
+
+        res
+    }
+    fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {
+        let res = self.db.get_by_prefix(col, prefix);
+        let count = res.as_ref().map_or(0, |x| x.bytes().count());
+
+        self.reads
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.bytes_read
+            .fetch_add(count as i64, std::sync::atomic::Ordering::Relaxed);
+
+        res
+    }
+    fn write_buffered(&self, transaction: DBTransaction) {
+        let mut count = 0;
+        for op in &transaction.ops {
+            count += match op {
+                kvdb::DBOp::Insert { value, .. } => value.bytes().count(),
+                _ => 0,
+            };
+        }
+
+        self.writes.fetch_add(
+            transaction.ops.len() as i64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        self.bytes_written
+            .fetch_add(count as i64, std::sync::atomic::Ordering::Relaxed);
+
+        self.db.write_buffered(transaction)
+    }
+    fn write(&self, transaction: DBTransaction) -> std::io::Result<()> {
+        let mut count = 0;
+        for op in &transaction.ops {
+            count += match op {
+                kvdb::DBOp::Insert { value, .. } => value.bytes().count(),
+                _ => 0,
+            };
+        }
+
+        self.bytes_written
+            .fetch_add(count as i64, std::sync::atomic::Ordering::Relaxed);
+        self.writes.fetch_add(
+            transaction.ops.len() as i64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        self.db.write(transaction)
+    }
+    fn flush(&self) -> std::io::Result<()> {
+        self.db.flush()
+    }
+
+    fn iter<'a>(
+        &'a self,
+        col: Option<u32>,
+    ) -> Box<(dyn Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a)> {
+        kvdb::KeyValueDB::iter(&self.db, col)
+    }
+
+    fn iter_from_prefix<'a>(
+        &'a self,
+        col: Option<u32>,
+        prefix: &'a [u8],
+    ) -> Box<dyn Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+        self.db.iter_from_prefix(col, prefix)
+    }
+
+    fn restore(&self, new_db: &str) -> std::io::Result<()> {
+        self.db.restore(new_db)
+    }
+}
+
+impl KeyValueDB for DatabaseWithMetrics {}
+
+impl PrometheusMetrics for DatabaseWithMetrics {
+    fn prometheus_metrics(&self, p: &mut PrometheusRegistry) {
+        p.register_counter(
+            "kvdb_reads",
+            "db reads",
+            self.reads.load(std::sync::atomic::Ordering::Relaxed) as i64,
+        );
+        p.register_counter(
+            "kvdb_writes",
+            "db writes",
+            self.writes.load(std::sync::atomic::Ordering::Relaxed) as i64,
+        );
+        p.register_counter(
+            "kvdb_bytes_read",
+            "db bytes_reads",
+            self.bytes_read.load(std::sync::atomic::Ordering::Relaxed) as i64,
+        );
+        p.register_counter(
+            "kvdb_bytes_written",
+            "db bytes_written",
+            self.bytes_written
+                .load(std::sync::atomic::Ordering::Relaxed) as i64,
+        );
+    }
+}
+
+/// InMemory with disabled statistics
+pub struct InMemoryWithMetrics {
+    db: kvdb_memorydb::InMemory,
+}
+
+impl kvdb::KeyValueDB for InMemoryWithMetrics {
+    fn get(&self, col: Option<u32>, key: &[u8]) -> std::io::Result<Option<kvdb::DBValue>> {
+        self.db.get(col, key)
+    }
+    fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {
+        self.db.get_by_prefix(col, prefix)
+    }
+    fn write_buffered(&self, transaction: DBTransaction) {
+        self.db.write_buffered(transaction)
+    }
+    fn write(&self, transaction: DBTransaction) -> std::io::Result<()> {
+        self.db.write(transaction)
+    }
+    fn flush(&self) -> std::io::Result<()> {
+        self.db.flush()
+    }
+
+    fn iter<'a>(
+        &'a self,
+        col: Option<u32>,
+    ) -> Box<(dyn Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a)> {
+        kvdb::KeyValueDB::iter(&self.db, col)
+    }
+
+    fn iter_from_prefix<'a>(
+        &'a self,
+        col: Option<u32>,
+        prefix: &'a [u8],
+    ) -> Box<dyn Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+        self.db.iter_from_prefix(col, prefix)
+    }
+
+    fn restore(&self, new_db: &str) -> std::io::Result<()> {
+        self.db.restore(new_db)
+    }
+}
+
+impl PrometheusMetrics for InMemoryWithMetrics {
+    fn prometheus_metrics(&self, _: &mut PrometheusRegistry) {}
+}
+
+impl KeyValueDB for InMemoryWithMetrics {}
+
+impl InMemoryWithMetrics {
+    /// Create new instance
+    pub fn create(num_cols: u32) -> Self {
+        Self {
+            db: kvdb_memorydb::create(num_cols),
         }
     }
 }

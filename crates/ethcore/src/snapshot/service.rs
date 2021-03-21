@@ -516,7 +516,8 @@ impl Service {
     pub fn take_snapshot(&self, client: &Client, num: u64) -> Result<(), Error> {
         if self
             .taking_snapshot
-            .compare_and_swap(false, true, Ordering::SeqCst)
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
         {
             info!(
                 "Skipping snapshot at #{} as another one is currently in-progress.",
@@ -529,45 +530,49 @@ impl Service {
             .store(num as usize, Ordering::SeqCst);
 
         info!("Taking snapshot at #{}", num);
-        self.progress.reset();
+        {
+            scopeguard::defer! {{
+                self.taking_snapshot.store(false, Ordering::SeqCst);
+            }}
+            self.progress.reset();
 
-        let temp_dir = self.temp_snapshot_dir();
-        let snapshot_dir = self.snapshot_dir();
+            let temp_dir = self.temp_snapshot_dir();
+            let snapshot_dir = self.snapshot_dir();
 
-        let _ = fs::remove_dir_all(&temp_dir);
+            let _ = fs::remove_dir_all(&temp_dir);
 
-        let writer = LooseWriter::new(temp_dir.clone())?;
+            let writer = LooseWriter::new(temp_dir.clone())?;
 
-        let guard = Guard::new(temp_dir.clone());
-        let res = client.take_snapshot(writer, BlockId::Number(num), &self.progress);
-        self.taking_snapshot.store(false, Ordering::SeqCst);
-        if let Err(e) = res {
-            if client.chain_info().best_block_number >= num + client.pruning_history() {
-                // The state we were snapshotting was pruned before we could finish.
-                info!("Periodic snapshot failed: block state pruned. Run with a longer `--pruning-history` or with `--no-periodic-snapshot`");
-                return Err(e);
-            } else {
-                return Err(e);
+            let guard = Guard::new(temp_dir.clone());
+            let res = client.take_snapshot(writer, BlockId::Number(num), &self.progress);
+            if let Err(e) = res {
+                if client.chain_info().best_block_number >= num + client.pruning_history() {
+                    // The state we were snapshotting was pruned before we could finish.
+                    info!("Periodic snapshot failed: block state pruned. Run with a longer `--pruning-history` or with `--no-periodic-snapshot`");
+                    return Err(e);
+                } else {
+                    return Err(e);
+                }
             }
+
+            info!("Finished taking snapshot at #{}", num);
+
+            let mut reader = self.reader.write();
+
+            // destroy the old snapshot reader.
+            *reader = None;
+
+            if snapshot_dir.exists() {
+                fs::remove_dir_all(&snapshot_dir)?;
+            }
+
+            fs::rename(temp_dir, &snapshot_dir)?;
+
+            *reader = Some(LooseReader::new(snapshot_dir)?);
+
+            guard.disarm();
+            Ok(())
         }
-
-        info!("Finished taking snapshot at #{}", num);
-
-        let mut reader = self.reader.write();
-
-        // destroy the old snapshot reader.
-        *reader = None;
-
-        if snapshot_dir.exists() {
-            fs::remove_dir_all(&snapshot_dir)?;
-        }
-
-        fs::rename(temp_dir, &snapshot_dir)?;
-
-        *reader = Some(LooseReader::new(snapshot_dir)?);
-
-        guard.disarm();
-        Ok(())
     }
 
     /// Initialize the restoration synchronously.
@@ -766,7 +771,7 @@ impl Service {
             | Err(Error(SnapshotErrorKind::Snapshot(SnapshotError::RestorationAborted), _)) => (),
             Err(e) => {
                 warn!("Encountered error during snapshot restoration: {}", e);
-                *self.restoration.lock() = None;
+                *restoration = None;
                 *self.status.lock() = RestorationStatus::Failed;
                 let _ = fs::remove_dir_all(self.restoration_dir());
             }

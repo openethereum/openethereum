@@ -211,9 +211,9 @@ mod tests {
         traits::{ForceUpdateSealing, TransactionRequest},
         BlockChainClient, BlockInfo, ChainInfo, ImportBlock,
     };
+    use crypto::publickey::Secret;
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
-    use ethkey::Secret;
     use hash::keccak;
     use miner::{self, MinerService};
     use spec::Spec;

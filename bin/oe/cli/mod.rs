@@ -475,6 +475,10 @@ usage! {
             "--metrics",
             "Enable prometheus metrics (only full client).",
 
+            ARG arg_metrics_prefix: (String) = "", or |c: &Config| c.metrics.as_ref()?.prefix.clone(),
+            "--metrics-prefix=[prefix]",
+            "Prepend the specified prefix to the exported metrics names.",
+
             ARG arg_metrics_port: (u16) = 3000u16, or |c: &Config| c.metrics.as_ref()?.port.clone(),
             "--metrics-port=[PORT]",
             "Specify the port portion of the metrics server.",
@@ -922,6 +926,7 @@ struct Ipc {
 #[serde(deny_unknown_fields)]
 struct Metrics {
     enable: Option<bool>,
+    prefix: Option<String>,
     port: Option<u16>,
     interface: Option<String>,
 }
@@ -1338,6 +1343,7 @@ mod tests {
 
                 // METRICS
                 flag_metrics: false,
+                arg_metrics_prefix: "".into(),
                 arg_metrics_port: 3000u16,
                 arg_metrics_interface: "local".into(),
 
@@ -1542,6 +1548,7 @@ mod tests {
                 }),
                 metrics: Some(Metrics {
                     enable: Some(true),
+                    prefix: Some("oe".to_string()),
                     interface: Some("local".to_string()),
                     port: Some(4000),
                 }),

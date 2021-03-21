@@ -18,8 +18,8 @@ use bytes::Bytes;
 use ethcore::verification::queue::kind::blocks::Unverified;
 use ethereum_types::H256;
 use hash::{keccak, KECCAK_EMPTY_LIST_RLP, KECCAK_NULL_RLP};
-use heapsize::HeapSizeOf;
 use network;
+use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use triehash_ethereum::ordered_trie_root;
@@ -28,18 +28,12 @@ use types::{
     transaction::{TypedTransaction, UnverifiedTransaction},
 };
 
-known_heap_size!(0, HeaderId);
+malloc_size_of_is_0!(HeaderId);
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, MallocSizeOf)]
 pub struct SyncHeader {
     pub bytes: Bytes,
     pub header: BlockHeader,
-}
-
-impl HeapSizeOf for SyncHeader {
-    fn heap_size_of_children(&self) -> usize {
-        self.bytes.heap_size_of_children() + self.header.heap_size_of_children()
-    }
 }
 
 impl SyncHeader {
@@ -53,6 +47,7 @@ impl SyncHeader {
     }
 }
 
+#[derive(MallocSizeOf)]
 pub struct SyncBody {
     pub transactions_bytes: Bytes,
     pub transactions: Vec<UnverifiedTransaction>,
@@ -86,27 +81,13 @@ impl SyncBody {
     }
 }
 
-impl HeapSizeOf for SyncBody {
-    fn heap_size_of_children(&self) -> usize {
-        self.transactions_bytes.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.uncles_bytes.heap_size_of_children()
-            + self.uncles.heap_size_of_children()
-    }
-}
-
 /// Block data with optional body.
+#[derive(MallocSizeOf)]
 struct SyncBlock {
     header: SyncHeader,
     body: Option<SyncBody>,
     receipts: Option<Bytes>,
     receipts_root: H256,
-}
-
-impl HeapSizeOf for SyncBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children() + self.body.heap_size_of_children()
-    }
 }
 
 fn unverified_from_sync(header: SyncHeader, body: Option<SyncBody>) -> Unverified {
@@ -588,7 +569,7 @@ impl BlockCollection {
                 (None, receipt_root)
             }
         } else {
-            (None, H256::new())
+            (None, H256::default())
         };
 
         self.parents.insert(*info.header.parent_hash(), hash);

@@ -31,7 +31,6 @@
 		"eip1706Transition": "0x52efd1",
 		"eip1884Transition": "0x52efd1",
 		"eip2028Transition": "0x52efd1",
-		"eip2315Transition": "0x7e8270",
 		"eip2929Transition": "0x7e8270",
 		"eip2930Transition": "0x7e8270",
 		"gasLimitBoundDivisor": "0x400",

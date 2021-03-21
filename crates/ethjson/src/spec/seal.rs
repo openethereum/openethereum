@@ -16,9 +16,7 @@
 
 //! Spec seal deserialization.
 
-use bytes::Bytes;
-use hash::*;
-use uint::Uint;
+use crate::{bytes::Bytes, hash::*, uint::Uint};
 
 /// Ethereum seal.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -70,12 +68,15 @@ pub enum Seal {
 
 #[cfg(test)]
 mod tests {
-    use bytes::Bytes;
+    use crate::{
+        bytes::Bytes,
+        hash::*,
+        spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal},
+        uint::Uint,
+    };
     use ethereum_types::{H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
-    use hash::*;
     use serde_json;
-    use spec::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal};
-    use uint::Uint;
+    use std::str::FromStr;
 
     #[test]
     fn seal_deserialization() {
@@ -108,10 +109,13 @@ mod tests {
         assert_eq!(
             deserialized[0],
             Seal::Ethereum(Ethereum {
-                nonce: H64(Eth64::from("0x0000000000000042")),
-                mix_hash: H256(Eth256::from(
-                    "0x1000000000000000000000000000000000000000000000000000000000000001"
-                ))
+                nonce: H64(Eth64::from_str("0000000000000042").unwrap()),
+                mix_hash: H256(
+                    Eth256::from_str(
+                        "1000000000000000000000000000000000000000000000000000000000000001"
+                    )
+                    .unwrap()
+                )
             })
         );
 
@@ -128,14 +132,14 @@ mod tests {
         // [2]
         assert_eq!(deserialized[2], Seal::AuthorityRound(AuthorityRoundSeal {
 			step: Uint(U256::from(0x0)),
-			signature: H520(Eth520::from("0x2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"))
+			signature: H520(Eth520::from_str("2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002").unwrap())
 		}));
 
         // [3]
         assert_eq!(deserialized[3], Seal::Tendermint(TendermintSeal {
 			round: Uint(U256::from(0x3)),
-			proposal: H520(Eth520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003")),
-			precommits: vec![H520(Eth520::from("0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"))]
+			proposal: H520(Eth520::from_str("3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003").unwrap()),
+			precommits: vec![H520(Eth520::from_str("4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004").unwrap())]
 		}));
     }
 }

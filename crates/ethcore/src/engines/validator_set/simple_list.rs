@@ -16,7 +16,7 @@
 
 use ethereum_types::{Address, H256};
 /// Preconfigured validator list.
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 
 use super::{SystemCall, ValidatorSet};
 use bytes::Bytes;
@@ -25,7 +25,7 @@ use machine::{AuxiliaryData, Call, EthereumMachine};
 use types::{header::Header, BlockNumber};
 
 /// Validator set containing a known set of addresses.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, MallocSizeOf)]
 pub struct SimpleList {
     validators: Vec<Address>,
 }
@@ -57,12 +57,6 @@ impl From<Vec<Address>> for SimpleList {
         SimpleList {
             validators: validators,
         }
-    }
-}
-
-impl HeapSizeOf for SimpleList {
-    fn heap_size_of_children(&self) -> usize {
-        self.validators.heap_size_of_children()
     }
 }
 

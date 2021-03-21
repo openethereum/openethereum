@@ -72,7 +72,7 @@ impl From<::ethjson::spec::EthashParams> for EthashExtensions {
                 .map_or(u64::max_value(), Into::into),
             dao_hardfork_beneficiary: p
                 .dao_hardfork_beneficiary
-                .map_or_else(Address::new, Into::into),
+                .map_or_else(Address::default, Into::into),
             dao_hardfork_accounts: p
                 .dao_hardfork_accounts
                 .unwrap_or_else(Vec::new)
@@ -232,7 +232,7 @@ impl EthereumMachine {
                 block,
                 params.eip210_contract_address,
                 params.eip210_contract_gas,
-                Some(parent_hash.to_vec()),
+                Some(parent_hash.as_bytes().to_vec()),
             )?;
         }
         Ok(())
@@ -546,12 +546,15 @@ fn round_block_gas_limit(gas_limit: U256, lower_limit: U256, upper_limit: U256) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_types::H160;
+    use std::str::FromStr;
 
     fn get_default_ethash_extensions() -> EthashExtensions {
         EthashExtensions {
             homestead_transition: 1150000,
             dao_hardfork_transition: u64::max_value(),
-            dao_hardfork_beneficiary: "0000000000000000000000000000000000000001".into(),
+            dao_hardfork_beneficiary: H160::from_str("0000000000000000000000000000000000000001")
+                .unwrap(),
             dao_hardfork_accounts: Vec::new(),
         }
     }
@@ -576,7 +579,7 @@ mod tests {
         assert_eq!(
             res,
             Err(transaction::Error::InvalidSignature(
-                "Crypto error (Invalid EC signature)".into()
+                "invalid EC signature".into()
             ))
         );
     }

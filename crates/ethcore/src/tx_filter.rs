@@ -455,9 +455,10 @@ mod test {
             IoChannel::disconnected(),
         )
         .unwrap();
-        let key1 = KeyPair::from_secret(Secret::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000001",
-        ).unwrap())
+        let key1 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+        )
         .unwrap();
 
         // The only difference to version 2 is that the contract now knows the transaction's gas price and data.

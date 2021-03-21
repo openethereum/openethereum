@@ -22,6 +22,5 @@ mod db;
 
 pub mod cache_manager;
 pub mod keys;
-pub use kvdb::{DBTransaction, DBValue};
 
 pub use self::db::*;

@@ -27,7 +27,6 @@ rlp = { version = "0.4.6" }
 rlp_compress = { path = "../../util/rlp-compress" }
 rlp_derive = { path = "../../util/rlp-derive" }
 triehash-ethereum = { version = "0.2",  path = "../../util/triehash-ethereum" }
-stats = { path = "../../util/stats" }
 
 [dev-dependencies]
 env_logger = "0.5"

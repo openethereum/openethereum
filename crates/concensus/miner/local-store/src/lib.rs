@@ -18,15 +18,14 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
-use ethcore_db::KeyValueDB;
 use io::IoHandler;
+use kvdb::KeyValueDB;
 use types::transaction::{
     Condition as TransactionCondition, PendingTransaction, SignedTransaction, TypedTransaction,
     UnverifiedTransaction,
 };
 
 extern crate common_types as types;
-extern crate ethcore_db;
 extern crate ethcore_io as io;
 extern crate kvdb;
 extern crate parity_crypto as crypto;
@@ -255,7 +254,7 @@ mod tests {
 
     #[test]
     fn twice_empty() {
-        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
+        let db = Arc::new(::kvdb_memorydb::create(0));
 
         {
             let store = super::create(db.clone(), None, Dummy(vec![]));
@@ -286,7 +285,7 @@ mod tests {
             })
             .collect();
 
-        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
+        let db = Arc::new(::kvdb_memorydb::create(0));
 
         {
             // nothing written yet, will write pending.
@@ -327,7 +326,7 @@ mod tests {
             PendingTransaction::new(signed, None)
         });
 
-        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
+        let db = Arc::new(::kvdb_memorydb::create(0));
         {
             // nothing written, will write bad.
             let store = super::create(db.clone(), None, Dummy(transactions.clone()));

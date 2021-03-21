@@ -23,10 +23,10 @@ use std::{
 };
 
 use super::error_negatively_reference_hash;
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
+use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
@@ -88,7 +88,7 @@ impl OverlayDB {
     /// Create a new instance of OverlayDB with an anonymous temporary database.
     #[cfg(test)]
     pub fn new_temp() -> OverlayDB {
-        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
+        let backing = Arc::new(::kvdb_memorydb::create(0));
         Self::new(backing, None)
     }
 

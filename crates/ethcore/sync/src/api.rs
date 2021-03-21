@@ -42,7 +42,7 @@ use ethereum_types::{H256, H512, U256, U64};
 use io::TimerToken;
 use network::IpFilter;
 use parking_lot::{Mutex, RwLock};
-use stats::{PrometheusMetrics, PrometheusRegistry};
+use stats::{prometheus, prometheus_counter, prometheus_gauge, PrometheusMetrics};
 
 use std::{
     net::{AddrParseError, SocketAddr},
@@ -323,11 +323,11 @@ impl SyncProvider for EthSync {
 }
 
 impl PrometheusMetrics for EthSync {
-    fn prometheus_metrics(&self, r: &mut PrometheusRegistry) {
+    fn prometheus_metrics(&self, r: &mut prometheus::Registry) {
         let scalar = |b| if b { 1i64 } else { 0i64 };
         let sync_status = self.status();
 
-        r.register_gauge(
+        prometheus_gauge(r,
 			"sync_status",
 			"WaitingPeers(0), SnapshotManifest(1), SnapshotData(2), SnapshotWaiting(3), Blocks(4), Idle(5), Waiting(6), NewBlocks(7)", 
 			match self.eth_handler.sync.status().state {
@@ -342,50 +342,59 @@ impl PrometheusMetrics for EthSync {
         });
 
         for (key, value) in sync_status.item_sizes.iter() {
-            r.register_gauge(
+            prometheus_gauge(
+                r,
                 &key,
                 format!("Total item number of {}", key).as_str(),
                 *value as i64,
             );
         }
 
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "net_peers",
             "Total number of connected peers",
             sync_status.num_peers as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "net_active_peers",
             "Total number of active peers",
             sync_status.num_active_peers as i64,
         );
-        r.register_counter(
+        prometheus_counter(
+            r,
             "sync_blocks_recieved",
             "Number of blocks downloaded so far",
             sync_status.blocks_received as i64,
         );
-        r.register_counter(
+        prometheus_counter(
+            r,
             "sync_blocks_total",
             "Total number of blocks for the sync process",
             sync_status.blocks_total as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "sync_blocks_highest",
             "Highest block number in the download queue",
             sync_status.highest_block_number.unwrap_or(0) as i64,
         );
 
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_download_active",
             "1 if downloading snapshots",
             scalar(sync_status.is_snapshot_syncing()),
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_download_chunks",
             "Snapshot chunks",
             sync_status.num_snapshot_chunks as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_download_chunks_done",
             "Snapshot chunks downloaded",
             sync_status.snapshot_chunks_done as i64,
@@ -399,7 +408,8 @@ impl PrometheusMetrics for EthSync {
             .manifest_block()
             .unwrap_or((0, H256::zero()));
 
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_create_block",
             "First block of the current snapshot creation",
             if let CreationStatus::Ongoing { block_number } = creation {
@@ -408,7 +418,8 @@ impl PrometheusMetrics for EthSync {
                 0
             },
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_restore_block",
             "First block of the current snapshot restoration",
             if let RestorationStatus::Ongoing { block_number, .. } = restoration {
@@ -417,7 +428,8 @@ impl PrometheusMetrics for EthSync {
                 0
             },
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "snapshot_manifest_block",
             "First block number of the present snapshot",
             manifest_block_num as i64,

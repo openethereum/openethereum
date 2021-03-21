@@ -33,12 +33,12 @@ use blockchain::{
 };
 use bytes::{Bytes, ToPretty};
 use call_contract::CallContract;
-use db::{DBTransaction, DBValue, KeyValueDB};
 use error::Error;
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
+use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
 use rand::rngs::OsRng;
 use rlp::{PayloadInfo, Rlp};
@@ -88,7 +88,7 @@ use snapshot::{self, io as snapshot_io, SnapshotClient};
 use spec::Spec;
 use state::{self, State};
 use state_db::StateDB;
-use stats::{PrometheusMetrics, PrometheusRegistry};
+use stats::{prometheus, prometheus_counter, prometheus_gauge, PrometheusMetrics};
 use trace::{
     self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB,
 };
@@ -3276,36 +3276,41 @@ impl IoChannelQueue {
 }
 
 impl PrometheusMetrics for Client {
-    fn prometheus_metrics(&self, r: &mut PrometheusRegistry) {
+    fn prometheus_metrics(&self, r: &mut prometheus::Registry) {
         // gas, tx & blocks
         let report = self.report();
 
         for (key, value) in report.item_sizes.iter() {
-            r.register_gauge(
+            prometheus_gauge(
+                r,
                 &key,
                 format!("Total item number of {}", key).as_str(),
                 *value as i64,
             );
         }
 
-        r.register_counter(
+        prometheus_counter(
+            r,
             "import_gas",
             "Gas processed",
             report.gas_processed.as_u64() as i64,
         );
-        r.register_counter(
+        prometheus_counter(
+            r,
             "import_blocks",
             "Blocks imported",
             report.blocks_imported as i64,
         );
-        r.register_counter(
+        prometheus_counter(
+            r,
             "import_txs",
             "Transactions applied",
             report.transactions_applied as i64,
         );
 
         let state_db = self.state_db.read();
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "statedb_cache_size",
             "State DB cache size",
             state_db.cache_size() as i64,
@@ -3313,27 +3318,32 @@ impl PrometheusMetrics for Client {
 
         // blockchain cache
         let blockchain_cache_info = self.blockchain_cache_info();
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "blockchaincache_block_details",
             "BlockDetails cache size",
             blockchain_cache_info.block_details as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "blockchaincache_block_recipts",
             "Block receipts size",
             blockchain_cache_info.block_receipts as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "blockchaincache_blocks",
             "Blocks cache size",
             blockchain_cache_info.blocks as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "blockchaincache_txaddrs",
             "Transaction addresses cache size",
             blockchain_cache_info.transaction_addresses as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "blockchaincache_size",
             "Total blockchain cache size",
             blockchain_cache_info.total() as i64,
@@ -3351,19 +3361,22 @@ impl PrometheusMetrics for Client {
                     .map(|last| (first, U256::from(last)))
             });
         if let Some((first, last)) = gap {
-            r.register_gauge(
+            prometheus_gauge(
+                r,
                 "chain_warpsync_gap_first",
                 "Warp sync gap, first block",
                 first.as_u64() as i64,
             );
-            r.register_gauge(
+            prometheus_gauge(
+                r,
                 "chain_warpsync_gap_last",
                 "Warp sync gap, last block",
                 last.as_u64() as i64,
             );
         }
 
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "chain_block",
             "Best block number",
             chain.best_block_number as i64,
@@ -3371,12 +3384,14 @@ impl PrometheusMetrics for Client {
 
         // prunning info
         let prunning = self.pruning_info();
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "prunning_earliest_chain",
             "The first block which everything can be served after",
             prunning.earliest_chain as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "prunning_earliest_state",
             "The first block where state requests may be served",
             prunning.earliest_state as i64,
@@ -3384,34 +3399,36 @@ impl PrometheusMetrics for Client {
 
         // queue info
         let queue = self.queue_info();
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "queue_mem_used",
             "Queue heap memory used in bytes",
             queue.mem_used as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "queue_size_total",
             "The total size of the queues",
             queue.total_queue_size() as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "queue_size_unverified",
             "Number of queued items pending verification",
             queue.unverified_queue_size as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "queue_size_verified",
             "Number of verified queued items pending import",
             queue.verified_queue_size as i64,
         );
-        r.register_gauge(
+        prometheus_gauge(
+            r,
             "queue_size_verifying",
             "Number of items being verified",
             queue.verifying_queue_size as i64,
         );
-
-        // database info
-        self.db.read().key_value().prometheus_metrics(r);
     }
 }
 

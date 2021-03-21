@@ -1,3 +1,7 @@
+## OpenEthereum v3.2.1
+
+Hot fix issue, related to initial sync:
+* Initial sync gets stuck. (#318)
 ## OpenEthereum v3.2.0
 
 Bug fixes:

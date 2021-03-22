@@ -158,6 +158,8 @@ impl From<DecoderError> for PacketProcessError {
 
 /// 64 version of Ethereum protocol.
 pub const ETH_PROTOCOL_VERSION_64: (u8, u8) = (64, 0x11);
+/// 63 version of Ethereum protocol.
+pub const ETH_PROTOCOL_VERSION_63: (u8, u8) = (63, 0x11);
 /// 1 version of OpenEthereum protocol and the packet count.
 pub const PAR_PROTOCOL_VERSION_1: (u8, u8) = (1, 0x15);
 /// 2 version of OpenEthereum protocol (consensus messages added).
@@ -1308,8 +1310,9 @@ impl ChainSync {
         packet.append(&primitive_types07::U256(chain.total_difficulty.0));
         packet.append(&primitive_types07::H256(chain.best_block_hash.0));
         packet.append(&primitive_types07::H256(chain.genesis_hash.0));
-        packet.append(&self.fork_filter.current(io.chain()));
-
+        if eth_protocol_version >= ETH_PROTOCOL_VERSION_64.0 {
+            packet.append(&self.fork_filter.current(io.chain()));
+        }
         if warp_protocol {
             let manifest = io.snapshot_service().manifest();
             let block_number = manifest.as_ref().map_or(0, |m| m.block_number);

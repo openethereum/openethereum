@@ -22,8 +22,8 @@ use blockchain::{
     BlockChain, BlockChainDB, BlockChainDBHandler, Config as BlockChainConfig, ExtrasInsert,
 };
 use blooms_db;
-use crypto::publickey::KeyPair;
 use bytes::Bytes;
+use crypto::publickey::KeyPair;
 use ethereum_types::{Address, H256, U256};
 use evm::Factory as EvmFactory;
 use hash::keccak;

@@ -8,7 +8,7 @@ use hyper::{service::service_fn_ok, Body, Method, Request, Response, Server, Sta
 
 use stats::{
     prometheus::{self, Encoder},
-    PrometheusRegistry, PrometheusMetrics,
+    PrometheusMetrics, PrometheusRegistry,
 };
 
 #[derive(Debug, Clone, PartialEq)]

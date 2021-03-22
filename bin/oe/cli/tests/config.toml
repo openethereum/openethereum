@@ -36,6 +36,7 @@ apis = ["rpc", "eth"]
 enable = true
 interface = "local"
 port = 4000
+prefix = "oe"
 
 
 [secretstore]

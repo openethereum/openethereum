@@ -32,7 +32,8 @@ use std::{
 
 use chain::{
     fork_filter::ForkFilterApi, ChainSyncApi, SyncState, SyncStatus as EthSyncStatus,
-    ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
+    ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_1,
+    PAR_PROTOCOL_VERSION_2,
 };
 use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
@@ -563,7 +564,7 @@ impl ChainNotify for EthSync {
             .register_protocol(
                 self.eth_handler.clone(),
                 self.subprotocol_name,
-                &[ETH_PROTOCOL_VERSION_64],
+                &[ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64],
             )
             .unwrap_or_else(|e| warn!("Error registering ethereum protocol: {:?}", e));
         // register the warp sync subprotocol

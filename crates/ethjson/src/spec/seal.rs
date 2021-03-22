@@ -77,7 +77,6 @@ mod tests {
     use ethereum_types::{H256 as Eth256, H520 as Eth520, H64 as Eth64, U256};
     use serde_json;
     use std::str::FromStr;
-    use uint::Uint;
 
     #[test]
     fn seal_deserialization() {

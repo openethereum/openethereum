@@ -76,7 +76,7 @@ use miner::{self, Miner, MinerService};
 use spec::Spec;
 use state::StateInfo;
 use state_db::StateDB;
-use stats::{prometheus, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use trace::LocalizedTrace;
 use verification::queue::{kind::blocks::Unverified, QueueInfo};
 

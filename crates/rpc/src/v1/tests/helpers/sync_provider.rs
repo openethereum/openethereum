@@ -19,7 +19,7 @@
 use ethereum_types::{H256, H512};
 use network::client_version::ClientVersion;
 use parking_lot::RwLock;
-use stats::{prometheus, PrometheusMetrics};
+use stats::{PrometheusMetrics, PrometheusRegistry};
 use std::collections::BTreeMap;
 use sync::{EthProtocolInfo, PeerInfo, SyncProvider, SyncState, SyncStatus, TransactionStats};
 

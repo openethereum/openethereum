@@ -474,17 +474,6 @@ impl TransactionRequest {
         }
     }
 
-    /// Creates a request to create a new contract, with the specified bytecode.
-    pub fn create(data: Bytes) -> TransactionRequest {
-        TransactionRequest {
-            action: Action::Create,
-            data,
-            gas: None,
-            gas_price: None,
-            nonce: None,
-        }
-    }
-
     /// Sets a gas limit. If this is not specified, a sensible default is used.
     pub fn gas(mut self, gas: U256) -> TransactionRequest {
         self.gas = Some(gas);

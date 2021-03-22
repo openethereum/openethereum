@@ -54,7 +54,7 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {
     fn description(&self) -> &str {
-        "Crypto error"
+        format!("{:?}", &self)
     }
 }
 

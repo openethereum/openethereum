@@ -131,3 +131,6 @@ members = [
 	"bin/evmbin",
 	"bin/chainspec"
 ]
+
+[patch.crates-io]
+kvdb-rocksdb = { git = "https://github.com/rakita/parity-common.git", package="kvdb-rocksdb", branch="rocksdb_v091_wal" }

@@ -71,7 +71,7 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use crate::upgrade::upgrade_key_location;
+    use crate::{ethereum_types::H256, upgrade::upgrade_key_location};
     use std::str::FromStr;
 
     pub use crate::accounts::AccountProvider;
@@ -198,7 +198,8 @@ mod accounts {
                 engine_signer,
                 password.clone(),
             );
-            if signer.sign(Default::default()).is_ok() {
+            // sign dummy msg to check if password and account can be used.
+            if signer.sign(H256::from_low_u64_be(1)).is_ok() {
                 author = Some(::ethcore::miner::Author::Sealer(Box::new(signer)));
             }
         }

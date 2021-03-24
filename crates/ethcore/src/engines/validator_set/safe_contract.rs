@@ -459,7 +459,7 @@ impl ValidatorSet for ValidatorSafeContract {
                 while match self.transact(data.clone(), nonce) {
                     Ok(()) => false,
                     Err(EthcoreError(
-                        EthcoreErrorKind::Transaction(transaction::Error::AlreadyImported),
+                        EthcoreErrorKind::Transaction(transaction::Error::Old),
                         _,
                     )) => true,
                     Err(err) => {

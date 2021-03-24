@@ -232,6 +232,7 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
                     client.chain_info().best_block_hash == blockchain.best_block.into()
                         && post_state_success,
                 );
+                client.shutdown()
             }
         }
 

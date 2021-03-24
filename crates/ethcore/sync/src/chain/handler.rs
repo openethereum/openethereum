@@ -42,8 +42,8 @@ use super::sync_packet::{
 
 use super::{
     BlockSet, ChainSync, ForkConfirmation, PacketProcessError, PeerAsking, PeerInfo, SyncRequester,
-    SyncState, ETH_PROTOCOL_VERSION_64, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES, PAR_PROTOCOL_VERSION_1,
-    PAR_PROTOCOL_VERSION_2,
+    SyncState, ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES,
+    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
 
 /// The Chain Sync Handler: handles responses from peers
@@ -669,7 +669,7 @@ impl SyncHandler {
             .next()
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
-        let _eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer_id);
+        let eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer_id);
         let warp_protocol_version = io.protocol_version(PAR_PROTOCOL, peer_id);
         let warp_protocol = warp_protocol_version != 0;
 
@@ -691,13 +691,17 @@ impl SyncHandler {
             .next()
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
-        let forkid_validation_error = {
-            let fork_id = rlp04::Rlp::new(r.as_raw()).val_at(5)?;
-            r_iter.next().ok_or(rlp::DecoderError::RlpIsTooShort)?;
+        let forkid_validation_error = if eth_protocol_version >= ETH_PROTOCOL_VERSION_64.0 {
+            let fork_id = r_iter
+                .next()
+                .ok_or(rlp::DecoderError::RlpIsTooShort)?
+                .as_val()?;
             sync.fork_filter
                 .is_compatible(io.chain(), fork_id)
                 .err()
                 .map(|e| (fork_id, e))
+        } else {
+            None
         };
         let snapshot_hash = if warp_protocol {
             Some(
@@ -786,7 +790,9 @@ impl SyncHandler {
             || (warp_protocol
                 && (peer.protocol_version < PAR_PROTOCOL_VERSION_1.0
                     || peer.protocol_version > PAR_PROTOCOL_VERSION_2.0))
-            || (!warp_protocol && peer.protocol_version != ETH_PROTOCOL_VERSION_64.0)
+            || (!warp_protocol
+                && (peer.protocol_version < ETH_PROTOCOL_VERSION_63.0
+                    || peer.protocol_version > ETH_PROTOCOL_VERSION_64.0))
         {
             trace!(target: "sync", "Peer {} unsupported eth protocol ({})", peer_id, peer.protocol_version);
             return Err(DownloaderImportError::Invalid);

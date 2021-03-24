@@ -20,7 +20,7 @@ use kvdb::DBTransaction;
 use kvdb_rocksdb::Database;
 use parking_lot::RwLock;
 use stats::{PrometheusMetrics, PrometheusRegistry};
-use std::{collections::HashMap, hash::Hash, io::Read, ops::Deref};
+use std::{collections::HashMap, hash::Hash, io::Read};
 
 use rlp;
 
@@ -84,7 +84,7 @@ where
 /// Should be used to get database key associated with given value.
 pub trait Key<T> {
     /// The db key associated with this value.
-    type Target: Deref<Target = [u8]>;
+    type Target: AsRef<[u8]>;
 
     /// Returns db key.
     fn key(&self) -> Self::Target;
@@ -96,13 +96,13 @@ pub trait Writable {
     fn write<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>, value: &T)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Deletes key from the databse.
     fn delete<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Writes the value into the database and updates the cache.
     fn write_with_cache<K, T, R>(
@@ -115,7 +115,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         self.write(col, &key, &value);
         match policy {
@@ -138,7 +138,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         match policy {
             CacheUpdatePolicy::Overwrite => {
@@ -166,7 +166,7 @@ pub trait Writable {
     ) where
         K: Key<T, Target = R> + Hash + Eq,
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
         match policy {
             CacheUpdatePolicy::Overwrite => {
@@ -197,7 +197,7 @@ pub trait Readable {
     fn read<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> Option<T>
     where
         T: rlp::Decodable,
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Returns value for given key either in cache or in database.
     fn read_with_cache<K, T, C>(&self, col: Option<u32>, cache: &RwLock<C>, key: &K) -> Option<T>
@@ -246,13 +246,13 @@ pub trait Readable {
     /// Returns true if given value exists.
     fn exists<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> bool
     where
-        R: Deref<Target = [u8]>;
+        R: AsRef<[u8]>;
 
     /// Returns true if given value exists either in cache or in database.
     fn exists_with_cache<K, T, R, C>(&self, col: Option<u32>, cache: &RwLock<C>, key: &K) -> bool
     where
         K: Eq + Hash + Key<T, Target = R>,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
         C: Cache<K, T>,
     {
         {
@@ -270,17 +270,17 @@ impl Writable for DBTransaction {
     fn write<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>, value: &T)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.put(col, &key.key(), &rlp::encode(value));
+        self.put(col, key.key().as_ref(), &rlp::encode(value));
     }
 
     fn delete<T, R>(&mut self, col: Option<u32>, key: &dyn Key<T, Target = R>)
     where
         T: rlp::Encodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.delete(col, &key.key());
+        self.delete(col, key.key().as_ref());
     }
 }
 
@@ -288,25 +288,25 @@ impl<KVDB: kvdb::KeyValueDB + ?Sized> Readable for KVDB {
     fn read<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> Option<T>
     where
         T: rlp::Decodable,
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        self.get(col, &key.key())
-            .expect(&format!("db get failed, key: {:?}", &key.key() as &[u8]))
+        self.get(col, key.key().as_ref())
+            .expect(&format!("db get failed, key: {:?}", key.key().as_ref()))
             .map(|v| rlp::decode(&v).expect("decode db value failed"))
     }
 
     fn exists<T, R>(&self, col: Option<u32>, key: &dyn Key<T, Target = R>) -> bool
     where
-        R: Deref<Target = [u8]>,
+        R: AsRef<[u8]>,
     {
-        let result = self.get(col, &key.key());
+        let result = self.get(col, key.key().as_ref());
 
         match result {
             Ok(v) => v.is_some(),
             Err(err) => {
                 panic!(
                     "db get failed, key: {:?}, err: {:?}",
-                    &key.key() as &[u8],
+                    key.key().as_ref(),
                     err
                 );
             }

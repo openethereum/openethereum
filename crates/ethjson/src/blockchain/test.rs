@@ -16,7 +16,7 @@
 
 //! Blockchain test deserializer.
 
-use blockchain::blockchain::BlockChain;
+use crate::blockchain::blockchain::BlockChain;
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};
 

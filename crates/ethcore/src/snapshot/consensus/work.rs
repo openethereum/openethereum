@@ -35,7 +35,7 @@ use bytes::Bytes;
 use db::KeyValueDB;
 use engines::EthEngine;
 use ethereum_types::H256;
-use rand::OsRng;
+use rand::rngs::OsRng;
 use rlp::{Rlp, RlpStream};
 use snapshot::{block::AbridgedBlock, Error, ManifestData, Progress};
 use types::encoded;
@@ -242,7 +242,7 @@ impl PowRebuilder {
         Ok(PowRebuilder {
             chain: chain,
             db: db,
-            rng: OsRng::new()?,
+            rng: OsRng,
             disconnected: Vec::new(),
             best_number: manifest.block_number,
             best_hash: manifest.block_hash,

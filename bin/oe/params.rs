@@ -16,6 +16,13 @@
 
 use std::{collections::HashSet, fmt, fs, num::NonZeroU32, str, time::Duration};
 
+use crate::{
+    miner::{
+        gas_price_calibrator::{GasPriceCalibrator, GasPriceCalibratorOptions},
+        gas_pricer::GasPricer,
+    },
+    user_defaults::UserDefaults,
+};
 use ethcore::{
     client::Mode,
     ethereum,
@@ -24,13 +31,8 @@ use ethcore::{
 use ethereum_types::{Address, U256};
 use fetch::Client as FetchClient;
 use journaldb::Algorithm;
-use miner::{
-    gas_price_calibrator::{GasPriceCalibrator, GasPriceCalibratorOptions},
-    gas_pricer::GasPricer,
-};
 use parity_runtime::Executor;
 use parity_version::version_data;
-use user_defaults::UserDefaults;
 
 use crate::configuration;
 
@@ -374,8 +376,8 @@ pub fn mode_switch_to_bool(
 #[cfg(test)]
 mod tests {
     use super::{tracing_switch_to_bool, Pruning, ResealPolicy, SpecType, Switch};
+    use crate::user_defaults::UserDefaults;
     use journaldb::Algorithm;
-    use user_defaults::UserDefaults;
 
     #[test]
     fn test_spec_type_parsing() {

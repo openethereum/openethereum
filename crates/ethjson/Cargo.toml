@@ -2,10 +2,16 @@
 description = "Parity Ethereum JSON Deserialization"
 name = "ethjson"
 version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+authors = [
+  "Gnosis Ltd <openethereum@gnosis.io>",
+  "Parity Technologies <admin@parity.io>"
+  ]
 
 [dependencies]
-ethereum-types = "0.4"
+common-types = { path = "../ethcore/types", features = ["test-helpers"] }
+parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
+ethereum-types = "0.9.2"
 rustc-hex = "1.0"
 serde = "1.0"
 serde_json = "1.0"

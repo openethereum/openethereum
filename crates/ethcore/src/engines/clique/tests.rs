@@ -18,10 +18,10 @@
 
 use super::*;
 use block::*;
+use crypto::publickey::{KeyPair, Secret};
 use engines::Engine;
 use error::{Error, ErrorKind};
 use ethereum_types::{Address, H256};
-use ethkey::{KeyPair, Secret};
 use state_db::StateDB;
 use test_helpers::get_temp_state_db;
 
@@ -72,10 +72,10 @@ impl CliqueTester {
         let mut extra_data = vec![0; VANITY_LENGTH];
 
         for &signer in SIGNER_TAGS.iter() {
-            let secret = Secret::from(H256::from(signer as u64));
+            let secret = Secret::from(H256::from_low_u64_be(signer as u64));
             let keypair = KeyPair::from_secret(secret).unwrap();
             if initial_signers.contains(&signer) {
-                extra_data.extend(&*keypair.address());
+                extra_data.extend(keypair.address().as_bytes());
             }
             signers.insert(signer, keypair);
         }
@@ -167,7 +167,7 @@ impl CliqueTester {
             CliqueBlockType::Checkpoint => {
                 let signers = self.clique.state(&last_header).unwrap().signers().clone();
                 for signer in signers {
-                    extra_data.extend(&*signer);
+                    extra_data.extend(signer.as_bytes());
                 }
             }
             CliqueBlockType::Vote(v) => seal = v.as_rlp(),
@@ -203,7 +203,8 @@ impl CliqueTester {
             b.header.set_difficulty(difficulty);
             b.header.set_seal(seal);
 
-            let sign = ethkey::sign(self.signers[&signer].secret(), &b.header.hash()).unwrap();
+            let sign =
+                crypto::publickey::sign(self.signers[&signer].secret(), &b.header.hash()).unwrap();
             let mut extra_data = b.header.extra_data().clone();
             extra_data.extend_from_slice(&*sign);
             b.header.set_extra_data(extra_data);

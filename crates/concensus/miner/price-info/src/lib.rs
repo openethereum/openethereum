@@ -207,11 +207,11 @@ mod test {
         // when
         let bb = b.clone();
         price_info.get(move |_| {
-            bb.store(true, Ordering::Relaxed);
+            bb.store(true, Ordering::SeqCst);
         });
 
         // then
-        assert_eq!(b.load(Ordering::Relaxed), false);
+        assert_eq!(b.load(Ordering::SeqCst), false);
     }
 
     #[test]
@@ -225,10 +225,10 @@ mod test {
         // when
         let bb = b.clone();
         price_info.get(move |_| {
-            bb.store(true, Ordering::Relaxed);
+            bb.store(true, Ordering::SeqCst);
         });
 
         // then
-        assert_eq!(b.load(Ordering::Relaxed), false);
+        assert_eq!(b.load(Ordering::SeqCst), false);
     }
 }

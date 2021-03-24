@@ -21,7 +21,7 @@ use memmap::MmapMut;
 use parking_lot::Mutex;
 use seed_compute::SeedHashCompute;
 
-use shared::{epoch, get_cache_size, to_hex, Node, ETHASH_CACHE_ROUNDS, NODE_BYTES, NODE_DWORDS};
+use shared::{epoch, get_cache_size, to_hex, Node, ETHASH_CACHE_ROUNDS, NODE_BYTES};
 
 use std::{
     borrow::Cow,
@@ -318,27 +318,22 @@ impl AsRef<[Node]> for NodeCache {
 // out. It counts as a read and causes all writes afterwards to be elided. Yes, really. I know, I
 // want to refactor this to use less `unsafe` as much as the next rustacean.
 unsafe fn initialize_memory(memory: *mut Node, num_nodes: usize, ident: &H256) {
-    let dst = memory as *mut u8;
+    // We use raw pointers here, see above
+    let dst = slice::from_raw_parts_mut(memory as *mut u8, NODE_BYTES);
 
     debug_assert_eq!(ident.len(), 32);
-    keccak_512::unchecked(dst, NODE_BYTES, ident.as_ptr(), ident.len());
+    keccak_512::write(&ident[..], dst);
 
     for i in 1..num_nodes {
         // We use raw pointers here, see above
-        let dst = memory.offset(i as _) as *mut u8;
-        let src = memory.offset(i as isize - 1) as *mut u8;
-
-        keccak_512::unchecked(dst, NODE_BYTES, src, NODE_BYTES);
+        let dst = slice::from_raw_parts_mut(memory.offset(i as _) as *mut u8, NODE_BYTES);
+        let src = slice::from_raw_parts(memory.offset(i as isize - 1) as *mut u8, NODE_BYTES);
+        keccak_512::write(src, dst);
     }
 
     // Now this is initialized, we can treat it as a slice.
     let nodes: &mut [Node] = slice::from_raw_parts_mut(memory, num_nodes);
 
-    // For `unroll!`, see below. If the literal in `unroll!` is not the same as the RHS here then
-    // these have got out of sync! Don't let this happen!
-    debug_assert_eq!(NODE_DWORDS, 8);
-
-    // This _should_ get unrolled by the compiler, since it's not using the loop variable.
     for _ in 0..ETHASH_CACHE_ROUNDS {
         for i in 0..num_nodes {
             let data_idx = (num_nodes - 1 + i) % num_nodes;
@@ -348,11 +343,8 @@ unsafe fn initialize_memory(memory: *mut Node, num_nodes: usize, ident: &H256) {
                 let mut data: Node = nodes.get_unchecked(data_idx).clone();
                 let rhs: &Node = nodes.get_unchecked(idx);
 
-                unroll! {
-                    for w in 0..8 {
-                        *data.as_dwords_mut().get_unchecked_mut(w) ^=
-                            *rhs.as_dwords().get_unchecked(w);
-                    }
+                for (a, b) in data.as_dwords_mut().iter_mut().zip(rhs.as_dwords()) {
+                    *a ^= *b;
                 }
 
                 data

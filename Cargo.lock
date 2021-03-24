@@ -203,26 +203,21 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.54.0"
+version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66c0bb6167449588ff70803f4127f0684f9063097eca5016f37eb52b92c2cf36"
+checksum = "fd4865004a46a0aafb2a0a5eb19d3c9fc46ee5f063a6cfc605c69ac9ecf5263d"
 dependencies = [
  "bitflags 1.2.1",
  "cexpr",
- "cfg-if 0.1.10",
  "clang-sys",
- "clap",
- "env_logger 0.7.1",
  "lazy_static",
  "lazycell",
- "log",
  "peeking_take_while",
  "proc-macro2 1.0.20",
  "quote 1.0.7",
  "regex 1.3.9",
  "rustc-hash",
  "shlex",
- "which",
 ]
 
 [[package]]
@@ -446,13 +441,13 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "0.29.3"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe6837df1d5cba2397b835c8530f51723267e16abbf83892e9e5af4f0e5dd10a"
+checksum = "f54d78e30b388d4815220c8dd03fea5656b6c6d32adb59e89061552a102f8da1"
 dependencies = [
  "glob",
  "libc",
- "libloading",
+ "libloading 0.7.0",
 ]
 
 [[package]]
@@ -892,19 +887,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex 1.3.9",
- "termcolor",
-]
-
-[[package]]
 name = "error-chain"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1026,7 +1008,7 @@ dependencies = [
  "criterion 0.2.11",
  "crossbeam-utils 0.6.6",
  "eip-152",
- "env_logger 0.5.13",
+ "env_logger",
  "error-chain",
  "ethabi",
  "ethabi-contract",
@@ -1123,7 +1105,7 @@ dependencies = [
  "ansi_term 0.11.0",
  "blooms-db",
  "common-types",
- "env_logger 0.5.13",
+ "env_logger",
  "ethcore-db",
  "ethereum-types",
  "ethkey",
@@ -1221,7 +1203,7 @@ dependencies = [
  "ansi_term 0.10.2",
  "arrayvec 0.4.12",
  "atty",
- "env_logger 0.5.13",
+ "env_logger",
  "lazy_static",
  "log",
  "parking_lot 0.11.1",
@@ -1235,7 +1217,7 @@ version = "1.12.0"
 dependencies = [
  "ansi_term 0.10.2",
  "common-types",
- "env_logger 0.5.13",
+ "env_logger",
  "error-chain",
  "ethabi",
  "ethabi-contract",
@@ -1292,7 +1274,7 @@ dependencies = [
  "ansi_term 0.10.2",
  "assert_matches",
  "bytes 0.4.12",
- "env_logger 0.5.13",
+ "env_logger",
  "error-chain",
  "ethcore-io",
  "ethcore-network",
@@ -1345,7 +1327,7 @@ dependencies = [
 name = "ethcore-stratum"
 version = "1.12.0"
 dependencies = [
- "env_logger 0.5.13",
+ "env_logger",
  "ethereum-types",
  "jsonrpc-core",
  "jsonrpc-tcp-server",
@@ -1363,7 +1345,7 @@ dependencies = [
  "common-types",
  "derive_more",
  "enum_primitive",
- "env_logger 0.5.13",
+ "env_logger",
  "ethcore",
  "ethcore-io",
  "ethcore-network",
@@ -1462,7 +1444,7 @@ name = "ethkey-cli"
 version = "0.1.0"
 dependencies = [
  "docopt",
- "env_logger 0.5.13",
+ "env_logger",
  "ethkey",
  "panic_hook",
  "parity-crypto",
@@ -1503,7 +1485,7 @@ version = "0.1.1"
 dependencies = [
  "dir",
  "docopt",
- "env_logger 0.5.13",
+ "env_logger",
  "ethstore",
  "num_cpus",
  "panic_hook",
@@ -1542,7 +1524,7 @@ dependencies = [
  "common-types",
  "criterion 0.3.0",
  "docopt",
- "env_logger 0.5.13",
+ "env_logger",
  "ethcore",
  "ethereum-types",
  "ethjson",
@@ -1674,7 +1656,7 @@ checksum = "03d47dad3685eceed8488986cad3d5027165ea5edb164331770e2059555f10a5"
 dependencies = [
  "lazy_static",
  "libc",
- "libloading",
+ "libloading 0.5.2",
  "winapi 0.3.8",
 ]
 
@@ -2201,7 +2183,7 @@ checksum = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
 name = "journaldb"
 version = "0.2.0"
 dependencies = [
- "env_logger 0.5.13",
+ "env_logger",
  "ethereum-types",
  "fastmap",
  "hash-db",
@@ -2392,7 +2374,7 @@ dependencies = [
 [[package]]
 name = "kvdb-rocksdb"
 version = "0.9.1"
-source = "git+https://github.com/rakita/parity-common.git?branch=rocksdb_v091_wal#2e7f5ee96aaa0452b9b2b9bcab30f630fbe2f818"
+source = "git+https://github.com/rakita/parity-common.git?branch=rocksdb_v091_wal#70f98d410bbc9d75c3d9e9ddbb92bff869bbe252"
 dependencies = [
  "fs-swap",
  "kvdb",
@@ -2448,10 +2430,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "librocksdb-sys"
-version = "6.11.4"
+name = "libloading"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb5b56f651c204634b936be2f92dbb42c36867e00ff7fe2405591f3b9fa66f09"
+checksum = "6f84d96438c15fcd6c3f244c8fce01d1e2b9c6b5623e9c711dc9286d8fc92d6a"
+dependencies = [
+ "cfg-if 1.0.0",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "librocksdb-sys"
+version = "6.17.3"
+source = "git+https://github.com/rust-rocksdb/rust-rocksdb.git?rev=bc59596#bc59596da15867510133d60822e615ef6e3a1ca4"
 dependencies = [
  "bindgen",
  "cc",
@@ -4013,8 +4004,7 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d83c02c429044d58474eaf5ae31e062d0de894e21125b47437ec0edc1397e6"
+source = "git+https://github.com/rust-rocksdb/rust-rocksdb.git?rev=bc59596#bc59596da15867510133d60822e615ef6e3a1ca4"
 dependencies = [
  "libc",
  "librocksdb-sys",
@@ -5237,7 +5227,7 @@ name = "wasm"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "env_logger 0.5.13",
+ "env_logger",
  "ethereum-types",
  "libc",
  "log",
@@ -5277,15 +5267,6 @@ checksum = "c10fa4212003ba19a564f25cd8ab572c6791f99a03cc219c13ed35ccab00de0e"
 dependencies = [
  "untrusted",
  "webpki",
-]
-
-[[package]]
-name = "which"
-version = "3.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d011071ae14a2f6671d0b74080ae0cd8ebf3a6f8c9589a2cd45f23126fe29724"
-dependencies = [
- "libc",
 ]
 
 [[package]]

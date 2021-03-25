@@ -243,5 +243,6 @@ fn can_trace_block_and_uncle_reward() {
 
     // Test1. Check block filter
     let traces = client.block_traces(BlockId::Number(3));
+    client.shutdown();
     assert_eq!(traces.unwrap().len(), 3);
 }

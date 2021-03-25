@@ -1131,17 +1131,20 @@ impl ChainSync {
 					}
 
 					// Only ask for old blocks if the peer has an equal or higher difficulty
-					let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
-
+                    let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
+                    // check queue fullness
+                    let ancient_block_fullness = io.chain().ancient_block_queue_fullness();
 					if force || equal_or_higher_difficulty {
                         let mut is_complete = false;
 						if let Some(old_blocks) = self.old_blocks.as_mut() {
-                            if let Some(request) = old_blocks.request_blocks(peer_id, io, num_active_peers) {
-                                SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
-                                return;
+                            // check if ancient queue can take more request or not.
+                            if ancient_block_fullness < 0.8 {
+                                if let Some(request) = old_blocks.request_blocks(peer_id, io, num_active_peers) {
+                                    SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
+                                    return;
+                                }
+                                is_complete = old_blocks.is_complete();
                             }
-                            is_complete = old_blocks.is_complete();
-
                         }
                         if is_complete { // if old_blocks is in complete state, set it to None.
                             self.old_blocks = None;

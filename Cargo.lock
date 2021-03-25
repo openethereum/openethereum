@@ -1007,6 +1007,7 @@ dependencies = [
  "common-types",
  "criterion 0.2.11",
  "crossbeam-utils 0.6.6",
+ "derive_more",
  "eip-152",
  "env_logger",
  "error-chain",

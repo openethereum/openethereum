@@ -40,7 +40,7 @@ use types::{
     pruning_info::PruningInfo,
     receipt::LocalizedReceipt,
     trace_filter::Filter as TraceFilter,
-    transaction::{self, LocalizedTransaction, SignedTransaction},
+    transaction::{self, Action, LocalizedTransaction, SignedTransaction},
     BlockNumber,
 };
 use vm::LastHashes;
@@ -427,14 +427,70 @@ pub trait BlockChainClient:
     /// Returns information about pruning/data availability.
     fn pruning_info(&self) -> PruningInfo;
 
-    /// Schedule state-altering transaction to be executed on the next pending block.
-    fn transact_contract(&self, address: Address, data: Bytes) -> Result<(), transaction::Error>;
+    /// Returns a transaction signed with the key configured in the engine signer.
+    fn create_transaction(
+        &self,
+        tx_request: TransactionRequest,
+    ) -> Result<SignedTransaction, transaction::Error>;
+
+    /// Schedule state-altering transaction to be executed on the next pending
+    /// block with the given gas and nonce parameters.
+    fn transact(&self, tx_request: TransactionRequest) -> Result<(), transaction::Error>;
 
     /// Get the address of the registry itself.
     fn registrar_address(&self) -> Option<Address>;
 
     /// Returns true, if underlying import queue is processing possible fork at the moment
     fn is_processing_fork(&self) -> bool;
+}
+
+/// The data required for a `Client` to create a transaction.
+///
+/// Gas limit, gas price, or nonce can be set explicitly, e.g. to create service
+/// transactions with zero gas price, or sequences of transactions with consecutive nonces.
+/// Added for AuRa needs.
+pub struct TransactionRequest {
+    /// Transaction action
+    pub action: Action,
+    /// Transaction data
+    pub data: Bytes,
+    /// Transaction gas usage
+    pub gas: Option<U256>,
+    /// Transaction gas price
+    pub gas_price: Option<U256>,
+    /// Transaction nonce
+    pub nonce: Option<U256>,
+}
+
+impl TransactionRequest {
+    /// Creates a request to call a contract at `address` with the specified call data.
+    pub fn call(address: Address, data: Bytes) -> TransactionRequest {
+        TransactionRequest {
+            action: Action::Call(address),
+            data,
+            gas: None,
+            gas_price: None,
+            nonce: None,
+        }
+    }
+
+    /// Sets a gas limit. If this is not specified, a sensible default is used.
+    pub fn gas(mut self, gas: U256) -> TransactionRequest {
+        self.gas = Some(gas);
+        self
+    }
+
+    /// Sets a gas price. If this is not specified or `None`, a sensible default is used.
+    pub fn gas_price<T: Into<Option<U256>>>(mut self, gas_price: T) -> TransactionRequest {
+        self.gas_price = gas_price.into();
+        self
+    }
+
+    /// Sets a nonce. If this is not specified, the appropriate latest nonce for the author is used.
+    pub fn nonce(mut self, nonce: U256) -> TransactionRequest {
+        self.nonce = Some(nonce);
+        self
+    }
 }
 
 /// Provides `reopen_block` method

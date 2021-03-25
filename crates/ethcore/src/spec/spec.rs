@@ -1062,6 +1062,12 @@ impl Spec {
         load_bundled!("test/constructor")
     }
 
+    /// Create a new Spec with Autority Round randomness contract
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_round_randomness_contract() -> Spec {
+        load_bundled!("test/authority_round_randomness_contract")
+    }
+
     /// Create a new Spec with AuthorityRound consensus which does internal sealing (not
     /// requiring work).
     /// Accounts with secrets keccak("0") and keccak("1") are the validators.

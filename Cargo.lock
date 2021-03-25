@@ -3919,7 +3919,7 @@ dependencies = [
 [[package]]
 name = "reth-util"
 version = "0.1.0"
-source = "git+http://github.com/gnosis/reth-util?branch=main#6beefe7adf2f9f5ac30ccec5b515338d41086d03"
+source = "git+https://github.com/gnosis/reth.git?rev=573e128#573e128487d5651f301e21faa97fc8e80f91dee8"
 
 [[package]]
 name = "ring"

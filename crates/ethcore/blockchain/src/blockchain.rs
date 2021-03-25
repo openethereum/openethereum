@@ -41,7 +41,6 @@ use common_types::{
     views::{BlockView, HeaderView},
     BlockNumber,
 };
-use db::{DBTransaction, KeyValueDB};
 use ethcore_db::{
     self as db,
     cache_manager::CacheManager,
@@ -50,6 +49,7 @@ use ethcore_db::{
 };
 use ethereum_types::{Bloom, BloomRef, H256, U256};
 use itertools::Itertools;
+use kvdb::{DBTransaction, KeyValueDB};
 use log::{info, trace, warn};
 use parity_bytes::Bytes;
 use parity_util_mem::{allocators::new_malloc_size_ops, MallocSizeOf};
@@ -57,7 +57,6 @@ use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
-use stats::PrometheusMetrics;
 
 use crate::{
     best_block::{BestAncientBlock, BestBlock},
@@ -67,7 +66,7 @@ use crate::{
 };
 
 /// Database backing `BlockChain`.
-pub trait BlockChainDB: Send + Sync + PrometheusMetrics {
+pub trait BlockChainDB: Send + Sync {
     /// Generic key value store.
     fn key_value(&self) -> &Arc<dyn KeyValueDB>;
 
@@ -723,14 +722,9 @@ impl BlockChain {
         {
             let best_block_number = bc.best_block.read().header.number();
             // Fetch first and best ancient block details
-            let raw_first = bc
-                .db
-                .key_value()
-                .get(db::COL_EXTRA, b"first")
-                .expect(
-                    "Low level database error when fetching 'first' block. Some issue with disk?",
-                )
-                .map(|v| v.into_vec());
+            let raw_first = bc.db.key_value().get(db::COL_EXTRA, b"first").expect(
+                "Low level database error when fetching 'first' block. Some issue with disk?",
+            );
             let mut best_ancient = bc.db.key_value().get(db::COL_EXTRA, b"ancient")
 				.expect("Low level database error when fetching 'best ancient' block. Some issue with disk?")
 				.map(|h| H256::from_slice(&h));
@@ -1175,7 +1169,7 @@ impl BlockChain {
         let iter = self
             .db
             .key_value()
-            .iter_from_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
+            .iter_with_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
         EpochTransitionIter {
             chain: self,
             prefix_iter: iter,
@@ -1969,9 +1963,6 @@ mod tests {
             &self.trace_blooms
         }
     }
-    impl PrometheusMetrics for TestBlockChainDB {
-        fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
-    }
 
     /// Creates new test instance of `BlockChainDB`
     pub fn new_db() -> Arc<dyn BlockChainDB> {
@@ -1983,9 +1974,7 @@ mod tests {
             trace_blooms: blooms_db::Database::open(trace_blooms_dir.path()).unwrap(),
             _blooms_dir: blooms_dir,
             _trace_blooms_dir: trace_blooms_dir,
-            key_value: Arc::new(ethcore_db::InMemoryWithMetrics::create(
-                ethcore_db::NUM_COLUMNS.unwrap(),
-            )),
+            key_value: Arc::new(kvdb_memorydb::create(ethcore_db::NUM_COLUMNS)),
         };
 
         Arc::new(db)

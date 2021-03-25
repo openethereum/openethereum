@@ -18,10 +18,10 @@
 
 use std::{io, sync::Arc};
 
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::{AsHashDB, HashDB};
 use keccak_hasher::KeccakHasher;
+use kvdb::{self, DBTransaction, DBValue};
 use std::collections::{BTreeMap, HashMap};
 
 /// expose keys of a hashDB for debugging or tests (slow).
@@ -86,14 +86,17 @@ pub trait JournalDB: KeyedHashDB {
     }
 
     /// Get backing database.
-    fn backing(&self) -> &Arc<dyn KeyValueDB>;
+    fn backing(&self) -> &Arc<dyn kvdb::KeyValueDB>;
 
     /// Clear internal strucutres. This should called after changes have been written
     /// to the backing strage
     fn flush(&self) {}
 
     /// Consolidate all the insertions and deletions in the given memory overlay.
-    fn consolidate(&mut self, overlay: ::memory_db::MemoryDB<KeccakHasher, DBValue>);
+    fn consolidate(
+        &mut self,
+        overlay: ::memory_db::MemoryDB<KeccakHasher, memory_db::HashKey<KeccakHasher>, DBValue>,
+    );
 
     /// Commit all changes in a single batch
     #[cfg(test)]

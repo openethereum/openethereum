@@ -797,6 +797,10 @@ usage! {
             "--num-verifiers=[INT]",
             "Amount of verifier threads to use or to begin with, if verifier auto-scaling is enabled.",
 
+            ARG arg_db_max_wal_size: (Option<u32>) = None, or |c: &Config| c.footprint.as_ref()?.db_max_wal_size.clone(),
+            "--db-max-wal-size=[MB]",
+            "Set database maximum total write ahead log size, if omitted database uses its own heuristics to detetermine the value.",
+
         ["Import/export Options"]
             FLAG flag_no_seal_check: (bool) = false, or |_| None,
             "--no-seal-check",
@@ -1017,6 +1021,7 @@ struct Footprint {
     fat_db: Option<String>,
     scale_verifiers: Option<bool>,
     num_verifiers: Option<usize>,
+    db_max_wal_size: Option<u32>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1419,6 +1424,7 @@ mod tests {
                 arg_fat_db: "auto".into(),
                 flag_scale_verifiers: true,
                 arg_num_verifiers: Some(6),
+                arg_db_max_wal_size: None,
 
                 // -- Import/Export Options
                 arg_export_blocks_from: "1".into(),
@@ -1622,6 +1628,7 @@ mod tests {
                     fat_db: Some("off".into()),
                     scale_verifiers: Some(false),
                     num_verifiers: None,
+                    db_max_wal_size: None
                 }),
                 snapshots: Some(Snapshots {
                     enable: Some(false),

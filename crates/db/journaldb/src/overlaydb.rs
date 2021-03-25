@@ -23,10 +23,10 @@ use std::{
 };
 
 use super::error_negatively_reference_hash;
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
-use hash_db::HashDB;
+use hash_db::{HashDB, Prefix, EMPTY_PREFIX};
 use keccak_hasher::KeccakHasher;
+use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
@@ -40,9 +40,9 @@ use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 /// queries have an immediate effect in terms of these functions.
 #[derive(Clone)]
 pub struct OverlayDB {
-    overlay: MemoryDB<KeccakHasher, DBValue>,
+    overlay: MemoryDB<KeccakHasher, HashKey<KeccakHasher>, DBValue>,
     backing: Arc<dyn KeyValueDB>,
-    column: Option<u32>,
+    column: u32,
 }
 
 struct Payload {
@@ -68,7 +68,7 @@ impl Decodable for Payload {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let payload = Payload {
             count: rlp.val_at(0)?,
-            value: DBValue::from_slice(rlp.at(1)?.data()?),
+            value: rlp.at(1)?.data()?.to_vec(),
         };
 
         Ok(payload)
@@ -77,7 +77,7 @@ impl Decodable for Payload {
 
 impl OverlayDB {
     /// Create a new instance of OverlayDB given a `backing` database.
-    pub fn new(backing: Arc<dyn KeyValueDB>, col: Option<u32>) -> OverlayDB {
+    pub fn new(backing: Arc<dyn KeyValueDB>, col: u32) -> OverlayDB {
         OverlayDB {
             overlay: ::new_memory_db(),
             backing: backing,
@@ -88,8 +88,8 @@ impl OverlayDB {
     /// Create a new instance of OverlayDB with an anonymous temporary database.
     #[cfg(test)]
     pub fn new_temp() -> OverlayDB {
-        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
-        Self::new(backing, None)
+        let backing = Arc::new(::kvdb_memorydb::create(1));
+        Self::new(backing, 0)
     }
 
     /// Commit all operations in a single batch.
@@ -143,7 +143,9 @@ impl OverlayDB {
 
     /// Get the number of references that would be committed.
     pub fn commit_refs(&self, key: &H256) -> i32 {
-        self.overlay.raw(key).map_or(0, |(_, refs)| refs)
+        self.overlay
+            .raw(key, EMPTY_PREFIX)
+            .map_or(0, |(_, refs)| refs)
     }
 
     /// Get the refs and value of the given key.
@@ -198,10 +200,10 @@ impl crate::KeyedHashDB for OverlayDB {
 }
 
 impl HashDB<KeccakHasher, DBValue> for OverlayDB {
-    fn get(&self, key: &H256) -> Option<DBValue> {
+    fn get(&self, key: &H256, prefix: Prefix) -> Option<DBValue> {
         // return ok if positive; if negative, check backing - might be enough references there to make
         // it positive again.
-        let k = self.overlay.raw(key);
+        let k = self.overlay.raw(key, prefix);
         let memrc = {
             if let Some((d, rc)) = k {
                 if rc > 0 {
@@ -226,10 +228,10 @@ impl HashDB<KeccakHasher, DBValue> for OverlayDB {
         }
     }
 
-    fn contains(&self, key: &H256) -> bool {
+    fn contains(&self, key: &H256, prefix: Prefix) -> bool {
         // return ok if positive; if negative, check backing - might be enough references there to make
         // it positive again.
-        let k = self.overlay.raw(key);
+        let k = self.overlay.raw(key, prefix);
         match k {
             Some((_, rc)) if rc > 0 => true,
             _ => {
@@ -244,117 +246,117 @@ impl HashDB<KeccakHasher, DBValue> for OverlayDB {
         }
     }
 
-    fn insert(&mut self, value: &[u8]) -> H256 {
-        self.overlay.insert(value)
+    fn insert(&mut self, prefix: Prefix, value: &[u8]) -> H256 {
+        self.overlay.insert(prefix, value)
     }
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        self.overlay.emplace(key, value);
+    fn emplace(&mut self, key: H256, prefix: Prefix, value: DBValue) {
+        self.overlay.emplace(key, prefix, value);
     }
-    fn remove(&mut self, key: &H256) {
-        self.overlay.remove(key);
+    fn remove(&mut self, key: &H256, prefix: Prefix) {
+        self.overlay.remove(key, prefix);
     }
 }
 
 #[test]
 fn overlaydb_revert() {
     let mut m = OverlayDB::new_temp();
-    let foo = m.insert(b"foo"); // insert foo.
+    let foo = m.insert(EMPTY_PREFIX, b"foo"); // insert foo.
     let mut batch = m.backing.transaction();
     m.commit_to_batch(&mut batch).unwrap(); // commit - new operations begin here...
     m.backing.write(batch).unwrap();
-    let bar = m.insert(b"bar"); // insert bar.
-    m.remove(&foo); // remove foo.
-    assert!(!m.contains(&foo)); // foo is gone.
-    assert!(m.contains(&bar)); // bar is here.
+    let bar = m.insert(EMPTY_PREFIX, b"bar"); // insert bar.
+    m.remove(&foo, EMPTY_PREFIX); // remove foo.
+    assert!(!m.contains(&foo, EMPTY_PREFIX)); // foo is gone.
+    assert!(m.contains(&bar, EMPTY_PREFIX)); // bar is here.
     m.revert(); // revert the last two operations.
-    assert!(m.contains(&foo)); // foo is here.
-    assert!(!m.contains(&bar)); // bar is gone.
+    assert!(m.contains(&foo, EMPTY_PREFIX)); // foo is here.
+    assert!(!m.contains(&bar, EMPTY_PREFIX)); // bar is gone.
 }
 
 #[test]
 fn overlaydb_overlay_insert_and_remove() {
     let mut trie = OverlayDB::new_temp();
-    let h = trie.insert(b"hello world");
-    assert_eq!(trie.get(&h).unwrap(), DBValue::from_slice(b"hello world"));
-    trie.remove(&h);
-    assert_eq!(trie.get(&h), None);
+    let h = trie.insert(EMPTY_PREFIX, b"hello world");
+    assert_eq!(trie.get(&h, EMPTY_PREFIX).unwrap(), b"hello world".to_vec());
+    trie.remove(&h, EMPTY_PREFIX);
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
 }
 
 #[test]
 fn overlaydb_backing_insert_revert() {
     let mut trie = OverlayDB::new_temp();
-    let h = trie.insert(b"hello world");
-    assert_eq!(trie.get(&h).unwrap(), DBValue::from_slice(b"hello world"));
+    let h = trie.insert(EMPTY_PREFIX, b"hello world");
+    assert_eq!(trie.get(&h, EMPTY_PREFIX).unwrap(), b"hello world".to_vec());
     trie.commit().unwrap();
-    assert_eq!(trie.get(&h).unwrap(), DBValue::from_slice(b"hello world"));
+    assert_eq!(trie.get(&h, EMPTY_PREFIX).unwrap(), b"hello world".to_vec());
     trie.revert();
-    assert_eq!(trie.get(&h).unwrap(), DBValue::from_slice(b"hello world"));
+    assert_eq!(trie.get(&h, EMPTY_PREFIX).unwrap(), b"hello world".to_vec());
 }
 
 #[test]
 fn overlaydb_backing_remove() {
     let mut trie = OverlayDB::new_temp();
-    let h = trie.insert(b"hello world");
+    let h = trie.insert(EMPTY_PREFIX, b"hello world");
     trie.commit().unwrap();
-    trie.remove(&h);
-    assert_eq!(trie.get(&h), None);
+    trie.remove(&h, EMPTY_PREFIX);
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
     trie.commit().unwrap();
-    assert_eq!(trie.get(&h), None);
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
     trie.revert();
-    assert_eq!(trie.get(&h), None);
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
 }
 
 #[test]
 fn overlaydb_backing_remove_revert() {
     let mut trie = OverlayDB::new_temp();
-    let h = trie.insert(b"hello world");
+    let h = trie.insert(EMPTY_PREFIX, b"hello world");
     trie.commit().unwrap();
-    trie.remove(&h);
-    assert_eq!(trie.get(&h), None);
+    trie.remove(&h, EMPTY_PREFIX);
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
     trie.revert();
-    assert_eq!(trie.get(&h).unwrap(), DBValue::from_slice(b"hello world"));
+    assert_eq!(trie.get(&h, EMPTY_PREFIX).unwrap(), b"hello world".to_vec());
 }
 
 #[test]
 fn overlaydb_negative() {
     let mut trie = OverlayDB::new_temp();
-    let h = trie.insert(b"hello world");
+    let h = trie.insert(EMPTY_PREFIX, b"hello world");
     trie.commit().unwrap();
-    trie.remove(&h);
-    trie.remove(&h); //bad - sends us into negative refs.
-    assert_eq!(trie.get(&h), None);
+    trie.remove(&h, EMPTY_PREFIX);
+    trie.remove(&h, EMPTY_PREFIX); //bad - sends us into negative refs.
+    assert_eq!(trie.get(&h, EMPTY_PREFIX), None);
     assert!(trie.commit().is_err());
 }
 
 #[test]
 fn overlaydb_complex() {
     let mut trie = OverlayDB::new_temp();
-    let hfoo = trie.insert(b"foo");
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
-    let hbar = trie.insert(b"bar");
-    assert_eq!(trie.get(&hbar).unwrap(), DBValue::from_slice(b"bar"));
+    let hfoo = trie.insert(EMPTY_PREFIX, b"foo");
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
+    let hbar = trie.insert(EMPTY_PREFIX, b"bar");
+    assert_eq!(trie.get(&hbar, EMPTY_PREFIX).unwrap(), b"bar".to_vec());
     trie.commit().unwrap();
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
-    assert_eq!(trie.get(&hbar).unwrap(), DBValue::from_slice(b"bar"));
-    trie.insert(b"foo"); // two refs
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
+    assert_eq!(trie.get(&hbar, EMPTY_PREFIX).unwrap(), b"bar".to_vec());
+    trie.insert(EMPTY_PREFIX, b"foo"); // two refs
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
     trie.commit().unwrap();
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
-    assert_eq!(trie.get(&hbar).unwrap(), DBValue::from_slice(b"bar"));
-    trie.remove(&hbar); // zero refs - delete
-    assert_eq!(trie.get(&hbar), None);
-    trie.remove(&hfoo); // one ref - keep
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
+    assert_eq!(trie.get(&hbar, EMPTY_PREFIX).unwrap(), b"bar".to_vec());
+    trie.remove(&hbar, EMPTY_PREFIX); // zero refs - delete
+    assert_eq!(trie.get(&hbar, EMPTY_PREFIX), None);
+    trie.remove(&hfoo, EMPTY_PREFIX); // one ref - keep
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
     trie.commit().unwrap();
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
-    trie.remove(&hfoo); // zero ref - would delete, but...
-    assert_eq!(trie.get(&hfoo), None);
-    trie.insert(b"foo"); // one ref - keep after all.
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
+    trie.remove(&hfoo, EMPTY_PREFIX); // zero ref - would delete, but...
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX), None);
+    trie.insert(EMPTY_PREFIX, b"foo"); // one ref - keep after all.
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
     trie.commit().unwrap();
-    assert_eq!(trie.get(&hfoo).unwrap(), DBValue::from_slice(b"foo"));
-    trie.remove(&hfoo); // zero ref - delete
-    assert_eq!(trie.get(&hfoo), None);
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX).unwrap(), b"foo".to_vec());
+    trie.remove(&hfoo, EMPTY_PREFIX); // zero ref - delete
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX), None);
     trie.commit().unwrap(); //
-    assert_eq!(trie.get(&hfoo), None);
+    assert_eq!(trie.get(&hfoo, EMPTY_PREFIX), None);
 }

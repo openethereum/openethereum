@@ -21,7 +21,7 @@ use bytes::Bytes;
 use ethereum_types::{H256, U256};
 use ethtrie::{TrieDB, TrieDBMut};
 use hash::{KECCAK_EMPTY, KECCAK_NULL_RLP};
-use hash_db::HashDB;
+use hash_db::{HashDB, EMPTY_PREFIX};
 use rlp::{Rlp, RlpStream};
 use snapshot::{Error, Progress};
 use std::{collections::HashSet, sync::atomic::Ordering};
@@ -97,7 +97,7 @@ pub fn to_fat_rlps(
                 .append(&CodeState::Hash.raw())
                 .append(&acc.code_hash);
         } else {
-            match acct_db.get(&acc.code_hash) {
+            match acct_db.get(&acc.code_hash, EMPTY_PREFIX) {
                 Some(c) => {
                     used_code.insert(acc.code_hash.clone());
                     account_stream.append(&CodeState::Inline.raw()).append(&&*c);
@@ -183,7 +183,7 @@ pub fn from_fat_rlp(
         CodeState::Empty => (KECCAK_EMPTY, None),
         CodeState::Inline => {
             let code: Bytes = rlp.val_at(3)?;
-            let code_hash = acct_db.insert(&code);
+            let code_hash = acct_db.insert(EMPTY_PREFIX, &code);
 
             (code_hash, Some(code))
         }
@@ -228,8 +228,7 @@ mod tests {
 
     use ethereum_types::{Address, H256};
     use hash::{keccak, KECCAK_EMPTY, KECCAK_NULL_RLP};
-    use hash_db::HashDB;
-    use kvdb::DBValue;
+    use hash_db::{HashDB, EMPTY_PREFIX};
     use rlp::Rlp;
 
     use std::collections::HashSet;
@@ -377,14 +376,15 @@ mod tests {
 
         let code_hash = {
             let mut acct_db = AccountDBMut::new(db.as_hash_db_mut(), &addr1);
-            acct_db.insert(b"this is definitely code")
+            acct_db.insert(EMPTY_PREFIX, b"this is definitely code")
         };
 
         {
             let mut acct_db = AccountDBMut::new(db.as_hash_db_mut(), &addr2);
             acct_db.emplace(
                 code_hash.clone(),
-                DBValue::from_slice(b"this is definitely code"),
+                EMPTY_PREFIX,
+                b"this is definitely code".to_vec(),
             );
         }
 

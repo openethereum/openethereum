@@ -97,6 +97,7 @@ pub fn start_prometheus_metrics(
     };
     let state = Arc::new(Mutex::new(state));
     let conf = Arc::new(conf.to_owned());
+
     let server = Server::bind(&addr)
         .serve(move || {
             // This is the `Service` that will handle the connection.

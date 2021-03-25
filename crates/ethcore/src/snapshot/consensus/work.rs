@@ -32,9 +32,9 @@ use std::{
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
-use db::KeyValueDB;
 use engines::EthEngine;
 use ethereum_types::H256;
+use kvdb::KeyValueDB;
 use rand::rngs::OsRng;
 use rlp::{Rlp, RlpStream};
 use snapshot::{block::AbridgedBlock, Error, ManifestData, Progress};
@@ -348,7 +348,7 @@ impl Rebuilder for PowRebuilder {
                     false,
                 );
             }
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
             self.chain.commit();
 
             parent_hash = block.header.hash();
@@ -387,7 +387,7 @@ impl Rebuilder for PowRebuilder {
             },
         );
 
-        self.db.write_buffered(batch);
+        self.db.write(batch)?;
         Ok(())
     }
 }

@@ -168,11 +168,7 @@ fn decode_first_proof(rlp: &Rlp) -> Result<(Header, Vec<DBValue>), ::error::Erro
     let state_items = rlp
         .at(1)?
         .iter()
-        .map(|x| {
-            let mut val = DBValue::new();
-            val.append_slice(x.data()?);
-            Ok(val)
-        })
+        .map(|x| Ok(x.data()?.to_vec()))
         .collect::<Result<_, ::error::Error>>()?;
 
     Ok((header, state_items))

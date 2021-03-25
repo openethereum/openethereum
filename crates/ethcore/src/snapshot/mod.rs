@@ -35,12 +35,12 @@ use engines::EthEngine;
 use types::{header::Header, ids::BlockId};
 
 use bytes::Bytes;
-use db::{DBValue, KeyValueDB};
 use ethereum_types::H256;
 use ethtrie::{TrieDB, TrieDBMut};
-use hash_db::HashDB;
+use hash_db::{HashDB, EMPTY_PREFIX};
 use journaldb::{self, Algorithm, JournalDB};
 use keccak_hasher::KeccakHasher;
+use kvdb::{DBValue, KeyValueDB};
 use num_cpus;
 use parking_lot::Mutex;
 use rlp::{Rlp, RlpStream};
@@ -477,7 +477,7 @@ impl StateRebuilder {
                 .unwrap_or_else(Vec::new)
             {
                 let mut db = AccountDBMut::from_hash(self.db.as_hash_db_mut(), addr_hash);
-                db.emplace(code_hash, DBValue::from_slice(&code));
+                db.emplace(code_hash, EMPTY_PREFIX, code.to_vec());
             }
 
             self.known_code.insert(code_hash, first_with);
@@ -505,7 +505,7 @@ impl StateRebuilder {
         let mut batch = backing.transaction();
         // Drain the transaction overlay and put the data into the batch.
         self.db.inject(&mut batch)?;
-        backing.write_buffered(batch);
+        backing.write(batch)?;
         Ok(())
     }
 
@@ -520,7 +520,7 @@ impl StateRebuilder {
 
         let mut batch = self.db.backing().transaction();
         self.db.journal_under(&mut batch, era, &id)?;
-        self.db.backing().write_buffered(batch);
+        self.db.backing().write(batch)?;
 
         Ok(self.db)
     }
@@ -576,11 +576,15 @@ fn rebuild_accounts(
                             Some(&first_with) => {
                                 // if so, load it from the database.
                                 let code = AccountDB::from_hash(db, first_with)
-                                    .get(&code_hash)
+                                    .get(&code_hash, EMPTY_PREFIX)
                                     .ok_or_else(|| Error::MissingCode(vec![first_with]))?;
 
                                 // and write it again under a different mangled key
-                                AccountDBMut::from_hash(db, hash).emplace(code_hash, code);
+                                AccountDBMut::from_hash(db, hash).emplace(
+                                    code_hash,
+                                    EMPTY_PREFIX,
+                                    code,
+                                );
                             }
                             // if not, queue it up to be filled later
                             None => status.missing_code.push((hash, code_hash)),

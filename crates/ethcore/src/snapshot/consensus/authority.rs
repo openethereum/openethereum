@@ -32,9 +32,9 @@ use snapshot::{Error, ManifestData, Progress};
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
-use db::KeyValueDB;
 use ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
+use kvdb::KeyValueDB;
 use rlp::{Rlp, RlpStream};
 use types::{
     encoded, header::Header, ids::BlockId, receipt::TypedReceipt, transaction::TypedTransaction,
@@ -340,7 +340,7 @@ impl Rebuilder for ChunkRebuilder {
                 verified.header.number(),
                 verified.epoch_transition,
             );
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
 
             trace!(target: "snapshot", "Verified epoch transition for epoch at block {}", verified.header.number());
         }
@@ -378,7 +378,7 @@ impl Rebuilder for ChunkRebuilder {
                 true,
                 false,
             );
-            self.db.write_buffered(batch);
+            self.db.write(batch)?;
 
             self.warp_target = Some(block.header);
         }

@@ -19,7 +19,6 @@
 #[macro_use]
 extern crate log;
 
-extern crate ethcore_db;
 extern crate ethereum_types;
 extern crate fastmap;
 extern crate hash_db;
@@ -148,9 +147,9 @@ impl fmt::Display for Algorithm {
 
 /// Create a new `JournalDB` trait object over a generic key-value database.
 pub fn new(
-    backing: Arc<dyn ethcore_db::KeyValueDB>,
+    backing: Arc<dyn kvdb::KeyValueDB>,
     algorithm: Algorithm,
-    col: Option<u32>,
+    col: u32,
 ) -> Box<dyn JournalDB> {
     match algorithm {
         Algorithm::Archive => Box::new(archivedb::ArchiveDB::new(backing, col)),
@@ -178,7 +177,11 @@ fn error_negatively_reference_hash(hash: &ethereum_types::H256) -> io::Error {
     )
 }
 
-pub fn new_memory_db() -> memory_db::MemoryDB<keccak_hasher::KeccakHasher, kvdb::DBValue> {
+pub fn new_memory_db() -> memory_db::MemoryDB<
+    keccak_hasher::KeccakHasher,
+    memory_db::HashKey<keccak_hasher::KeccakHasher>,
+    kvdb::DBValue,
+> {
     memory_db::MemoryDB::from_null_node(&rlp::NULL_RLP, rlp::NULL_RLP.as_ref().into())
 }
 

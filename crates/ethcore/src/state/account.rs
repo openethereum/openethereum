@@ -21,7 +21,7 @@ use error::Error;
 use ethereum_types::{Address, BigEndianHash, H256, U256};
 use ethtrie::{Result as TrieResult, SecTrieDB, TrieDB, TrieFactory};
 use hash::{keccak, KECCAK_EMPTY, KECCAK_NULL_RLP};
-use hash_db::HashDB;
+use hash_db::{HashDB, EMPTY_PREFIX};
 use keccak_hasher::KeccakHasher;
 use kvdb::DBValue;
 use lru_cache::LruCache;
@@ -395,10 +395,10 @@ impl Account {
             return Some(self.code_cache.clone());
         }
 
-        match db.get(&self.code_hash) {
+        match db.get(&self.code_hash, EMPTY_PREFIX) {
             Some(x) => {
                 self.code_size = Some(x.len());
-                self.code_cache = Arc::new(x.into_vec());
+                self.code_cache = Arc::new(x);
                 Some(self.code_cache.clone())
             }
             _ => {
@@ -434,7 +434,7 @@ impl Account {
         );
         self.code_size.is_some()
             || if self.code_hash != KECCAK_EMPTY {
-                match db.get(&self.code_hash) {
+                match db.get(&self.code_hash, EMPTY_PREFIX) {
                     Some(x) => {
                         self.code_size = Some(x.len());
                         true
@@ -564,7 +564,8 @@ impl Account {
             (true, false) => {
                 db.emplace(
                     self.code_hash.clone(),
-                    DBValue::from_slice(&*self.code_cache),
+                    EMPTY_PREFIX,
+                    self.code_cache.to_vec(),
                 );
                 self.code_size = Some(self.code_cache.len());
                 self.code_filth = Filth::Clean;

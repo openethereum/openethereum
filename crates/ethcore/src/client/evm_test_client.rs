@@ -25,6 +25,7 @@ use executive;
 use factory::{self, Factories};
 use journaldb;
 use kvdb::{self, KeyValueDB};
+use kvdb_memorydb;
 use pod_state;
 use spec;
 use state;
@@ -171,7 +172,7 @@ impl<'a> EvmTestClient<'a> {
     fn factories(trie_spec: trie::TrieSpec) -> Factories {
         Factories {
             vm: factory::VmFactory::new(VMType::Interpreter, 5 * 1024),
-            trie: trie::TrieFactory::new(trie_spec),
+            trie: trie::TrieFactory::new(trie_spec, ethtrie::Layout),
             accountdb: Default::default(),
         }
     }
@@ -180,9 +181,7 @@ impl<'a> EvmTestClient<'a> {
         spec: &'a spec::Spec,
         factories: &Factories,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
-            db::NUM_COLUMNS.expect("We use column-based DB; qed"),
-        ));
+        let db = Arc::new(kvdb_memorydb::create(db::NUM_COLUMNS));
         let journal_db =
             journaldb::new(db.clone(), journaldb::Algorithm::EarlyMerge, db::COL_STATE);
         let mut state_db = state_db::StateDB::new(journal_db, 5 * 1024 * 1024);
@@ -210,9 +209,7 @@ impl<'a> EvmTestClient<'a> {
         factories: &Factories,
         pod_state: pod_state::PodState,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
-            db::NUM_COLUMNS.expect("We use column-based DB; qed"),
-        ));
+        let db = Arc::new(kvdb_memorydb::create(db::NUM_COLUMNS));
         let journal_db =
             journaldb::new(db.clone(), journaldb::Algorithm::EarlyMerge, db::COL_STATE);
         let state_db = state_db::StateDB::new(journal_db, 5 * 1024 * 1024);

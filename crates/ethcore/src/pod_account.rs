@@ -19,9 +19,9 @@
 use bytes::Bytes;
 use ethereum_types::{BigEndianHash, H256, U256};
 use ethjson;
-use ethtrie::RlpCodec;
+use ethtrie::Layout;
 use hash::keccak;
-use hash_db::HashDB;
+use hash_db::{HashDB, EMPTY_PREFIX};
 use itertools::Itertools;
 use keccak_hasher::KeccakHasher;
 use kvdb::DBValue;
@@ -95,11 +95,11 @@ impl PodAccount {
     pub fn insert_additional(
         &self,
         db: &mut dyn HashDB<KeccakHasher, DBValue>,
-        factory: &TrieFactory<KeccakHasher, RlpCodec>,
+        factory: &TrieFactory<Layout>,
     ) {
         match self.code {
             Some(ref c) if !c.is_empty() => {
-                db.insert(c);
+                db.insert(EMPTY_PREFIX, c);
             }
             _ => {}
         }

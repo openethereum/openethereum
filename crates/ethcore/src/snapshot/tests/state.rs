@@ -19,6 +19,7 @@
 extern crate rand_xorshift;
 
 use hash::{keccak, KECCAK_NULL_RLP};
+use hash_db::EMPTY_PREFIX;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use super::helpers::StateProducer;
@@ -87,11 +88,8 @@ fn snap_and_restore() {
 
     let db_path = tempdir.path().join("db");
     let db = {
-        let new_db = Database::open(&db_cfg, &db_path.to_string_lossy()).unwrap();
-        let new_db_with_metrics: Arc<dyn ethcore_db::KeyValueDB> =
-            Arc::new(ethcore_db::DatabaseWithMetrics::new(new_db));
-        let mut rebuilder =
-            StateRebuilder::new(new_db_with_metrics.clone(), Algorithm::OverlayRecent);
+        let new_db = Arc::new(Database::open(&db_cfg, &db_path.to_string_lossy()).unwrap());
+        let mut rebuilder = StateRebuilder::new(new_db.clone(), Algorithm::OverlayRecent);
         let reader = PackedReader::new(&snap_file).unwrap().unwrap();
 
         let flag = AtomicBool::new(true);
@@ -106,7 +104,7 @@ fn snap_and_restore() {
         assert_eq!(rebuilder.state_root(), state_root);
         rebuilder.finalize(1000, H256::default()).unwrap();
 
-        new_db_with_metrics
+        new_db
     };
 
     let new_db = journaldb::new(db, Algorithm::OverlayRecent, ::db::COL_STATE);
@@ -115,8 +113,8 @@ fn snap_and_restore() {
 
     for key in keys.keys() {
         assert_eq!(
-            old_db.get(&key).unwrap(),
-            new_db.as_hash_db().get(&key).unwrap()
+            old_db.get(&key, EMPTY_PREFIX).unwrap(),
+            new_db.as_hash_db().get(&key, EMPTY_PREFIX).unwrap()
         );
     }
 }
@@ -149,7 +147,7 @@ fn get_code_from_prev_chunk() {
 
     let mut make_chunk = |acc, hash| {
         let mut db = journaldb::new_memory_db();
-        AccountDBMut::from_hash(&mut db, hash).insert(&code[..]);
+        AccountDBMut::from_hash(&mut db, hash).insert(EMPTY_PREFIX, &code[..]);
         let p = Progress::default();
         let fat_rlp = account::to_fat_rlps(
             &hash,
@@ -171,11 +169,10 @@ fn get_code_from_prev_chunk() {
 
     let tempdir = TempDir::new("").unwrap();
     let db_cfg = DatabaseConfig::with_columns(::db::NUM_COLUMNS);
-    let new_db = Database::open(&db_cfg, tempdir.path().to_str().unwrap()).unwrap();
-    let new_db_with_metrics = Arc::new(db::DatabaseWithMetrics::new(new_db));
+    let new_db = Arc::new(Database::open(&db_cfg, tempdir.path().to_str().unwrap()).unwrap());
+
     {
-        let mut rebuilder =
-            StateRebuilder::new(new_db_with_metrics.clone(), Algorithm::OverlayRecent);
+        let mut rebuilder = StateRebuilder::new(new_db.clone(), Algorithm::OverlayRecent);
         let flag = AtomicBool::new(true);
 
         rebuilder.feed(&chunk1, &flag).unwrap();
@@ -184,11 +181,7 @@ fn get_code_from_prev_chunk() {
         rebuilder.finalize(1000, H256::random()).unwrap();
     }
 
-    let state_db = journaldb::new(
-        new_db_with_metrics,
-        Algorithm::OverlayRecent,
-        ::db::COL_STATE,
-    );
+    let state_db = journaldb::new(new_db, Algorithm::OverlayRecent, ::db::COL_STATE);
     assert_eq!(state_db.earliest_era(), Some(1000));
 }
 
@@ -227,10 +220,8 @@ fn checks_flag() {
     let tempdir = TempDir::new("").unwrap();
     let db_path = tempdir.path().join("db");
     {
-        let new_db = Database::open(&db_cfg, &db_path.to_string_lossy()).unwrap();
-        let new_db_with_metrics = Arc::new(db::DatabaseWithMetrics::new(new_db));
-        let mut rebuilder =
-            StateRebuilder::new(new_db_with_metrics.clone(), Algorithm::OverlayRecent);
+        let new_db = Arc::new(Database::open(&db_cfg, &db_path.to_string_lossy()).unwrap());
+        let mut rebuilder = StateRebuilder::new(new_db.clone(), Algorithm::OverlayRecent);
         let reader = PackedReader::new(&snap_file).unwrap().unwrap();
 
         let flag = AtomicBool::new(false);

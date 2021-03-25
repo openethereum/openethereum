@@ -432,6 +432,7 @@ impl Configuration {
                 no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
                 max_round_blocks_to_import: self.args.arg_max_round_blocks_to_import,
                 metrics_conf,
+                db_max_wal_size: self.args.arg_db_max_wal_size,
             };
             Cmd::Run(run_cmd)
         };
@@ -1071,6 +1072,10 @@ impl Configuration {
         self.interface(&self.args.arg_metrics_interface)
     }
 
+    fn metrics_prefix(&self) -> String {
+        self.args.arg_metrics_prefix.clone()
+    }
+
     fn secretstore_interface(&self) -> String {
         self.interface(&self.args.arg_secretstore_interface)
     }
@@ -1153,10 +1158,6 @@ impl Configuration {
 
     fn metrics_enabled(&self) -> bool {
         self.args.flag_metrics
-    }
-
-    fn metrics_prefix(&self) -> String {
-        self.args.arg_metrics_prefix.clone()
     }
 
     fn secretstore_enabled(&self) -> bool {
@@ -1566,6 +1567,7 @@ mod tests {
             no_persistent_txqueue: false,
             max_round_blocks_to_import: 1,
             metrics_conf: MetricsConfiguration::default(),
+            db_max_wal_size: None,
         };
         expected.secretstore_conf.enabled = cfg!(feature = "secretstore");
         expected.secretstore_conf.http_enabled = cfg!(feature = "secretstore");

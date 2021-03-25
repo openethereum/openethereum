@@ -24,8 +24,7 @@ use self::{
 };
 use blooms_db;
 use ethcore::client::ClientConfig;
-use ethcore_db::KeyValueDB;
-use stats::PrometheusMetrics;
+use kvdb::KeyValueDB;
 use std::{fs, io, path::Path, sync::Arc};
 
 mod blooms;
@@ -52,10 +51,6 @@ impl BlockChainDB for AppDB {
     fn trace_blooms(&self) -> &blooms_db::Database {
         &self.trace_blooms
     }
-}
-
-impl PrometheusMetrics for AppDB {
-    fn prometheus_metrics(&self, _: &mut stats::PrometheusRegistry) {}
 }
 
 /// Open a secret store DB using the given secret store data path. The DB path is one level beneath the data path.
@@ -106,11 +101,8 @@ pub fn open_database(
     fs::create_dir_all(&blooms_path)?;
     fs::create_dir_all(&trace_blooms_path)?;
 
-    let db = Database::open(&config, client_path)?;
-    let db_with_metrics = ethcore_db::DatabaseWithMetrics::new(db);
-
     let db = AppDB {
-        key_value: Arc::new(db_with_metrics),
+        key_value: Arc::new(Database::open(&config, client_path)?),
         blooms: blooms_db::Database::open(blooms_path)?,
         trace_blooms: blooms_db::Database::open(trace_blooms_path)?,
     };

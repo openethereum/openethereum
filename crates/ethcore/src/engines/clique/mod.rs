@@ -38,8 +38,8 @@
 ///
 /// 1. Set a signer using `Engine::set_signer()`. If a miner account was set up through
 ///    a config file or CLI flag `MinerService::set_author()` will eventually set the signer
-/// 2. We check that the engine seals internally through `Clique::seals_internally()`
-///    Note: This is always true for Clique
+/// 2. We check that the engine is ready for sealing through `Clique::sealing_state()`
+///    Note: This is always `SealingState::Ready` for Clique
 /// 3. Calling `Clique::new()` will spawn a `StepService` thread. This thread will call `Engine::step()`
 ///    periodically. Internally, the Clique `step()` function calls `Client::update_sealing()`, which is
 ///    what makes and seals a block.
@@ -71,7 +71,7 @@ use client::{traits::ForceUpdateSealing, BlockId, EngineClient};
 use crypto::publickey::Signature;
 use engines::{
     clique::util::{extract_signers, recover_creator},
-    Engine, EngineError, Seal,
+    Engine, EngineError, Seal, SealingState,
 };
 use error::{BlockError, Error};
 use ethereum_types::{Address, H160, H256, H64, U256};
@@ -476,8 +476,8 @@ impl Engine<EthereumMachine> for Clique {
     }
 
     /// Clique doesn't require external work to seal, so we always return true here.
-    fn seals_internally(&self) -> Option<bool> {
-        Some(true)
+    fn sealing_state(&self) -> SealingState {
+        SealingState::Ready
     }
 
     /// Returns if we are ready to seal, the real sealing (signing extra_data) is actually done in `on_seal_block()`.
@@ -766,9 +766,14 @@ impl Engine<EthereumMachine> for Clique {
         }
     }
 
-    fn set_signer(&self, signer: Box<dyn EngineSigner>) {
-        trace!(target: "engine", "set_signer: {}", signer.address());
-        *self.signer.write() = Some(signer);
+    fn set_signer(&self, signer: Option<Box<dyn EngineSigner>>) {
+        let mut current_signer = self.signer.write();
+        if let Some(signer) = signer.as_ref() {
+            trace!(target: "engine", "set_signer: {:?}", signer.address());
+        } else if let Some(signer) = &*current_signer {
+            trace!(target: "engine", "set_signer: cleared; previous signer: {:?})", signer.address());
+        }
+        *current_signer = signer;
     }
 
     fn register_client(&self, client: Weak<dyn EngineClient>) {

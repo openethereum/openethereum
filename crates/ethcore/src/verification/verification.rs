@@ -83,7 +83,16 @@ pub fn verify_block_basic(
         }
     }
 
-    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
+    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura)
+    if let Some(gas_limit) = engine.gas_limit_override(&block.header) {
+        if *block.header.gas_limit() != gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(gas_limit),
+                max: Some(gas_limit),
+                found: *block.header.gas_limit(),
+            })));
+        }
+    }
 
     // t_nb 4.7 for every transaction call engine.verify_transaction_basic
     for t in &block.transactions {
@@ -358,25 +367,26 @@ pub fn verify_header_params(
             found: *header.gas_used(),
         })));
     }
-    let min_gas_limit = engine.params().min_gas_limit;
-    if header.gas_limit() < &min_gas_limit {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas_limit),
-            max: None,
-            found: *header.gas_limit(),
-        })));
-    }
-    if let Some(limit) = engine.maximum_gas_limit() {
-        if header.gas_limit() > &limit {
-            return Err(From::from(::error::BlockError::InvalidGasLimit(
-                OutOfBounds {
+    if engine.gas_limit_override(header).is_none() {
+        let min_gas_limit = engine.min_gas_limit();
+        if header.gas_limit() < &min_gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas_limit),
+                max: None,
+                found: *header.gas_limit(),
+            })));
+        }
+        if let Some(limit) = engine.maximum_gas_limit() {
+            if header.gas_limit() > &limit {
+                return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                     min: None,
                     max: Some(limit),
                     found: *header.gas_limit(),
-                },
-            )));
+                })));
+            }
         }
     }
+
     let maximum_extra_data_size = engine.maximum_extra_data_size();
     if header.number() != 0 && header.extra_data().len() > maximum_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
@@ -435,8 +445,6 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         "Parent hash should already have been verified; qed"
     );
 
-    let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
-
     if !engine.is_timestamp_valid(header.timestamp(), parent.timestamp()) {
         let now = SystemTime::now();
         let min = CheckedSystemTime::checked_add(
@@ -468,15 +476,18 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         .into());
     }
 
-    let parent_gas_limit = *parent.gas_limit();
-    let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
-    let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
-    if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas),
-            max: Some(max_gas),
-            found: *header.gas_limit(),
-        })));
+    if engine.gas_limit_override(header).is_none() {
+        let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
+        let parent_gas_limit = *parent.gas_limit();
+        let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
+        let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
+        if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas),
+                max: Some(max_gas),
+                found: *header.gas_limit(),
+            })));
+        }
     }
 
     Ok(())
@@ -740,7 +751,7 @@ mod tests {
             // that's an invalid transaction list rlp
             let invalid_transactions = vec![vec![0u8]];
             header.set_transactions_root(ordered_trie_root(&invalid_transactions));
-            header.set_gas_limit(engine.params().min_gas_limit);
+            header.set_gas_limit(engine.min_gas_limit());
             rlp.append(&header);
             rlp.append_list::<Vec<u8>, _>(&invalid_transactions);
             rlp.append_raw(&rlp::EMPTY_LIST_RLP, 1);
@@ -759,7 +770,7 @@ mod tests {
         let spec = Spec::new_test();
         let engine = &*spec.engine;
 
-        let min_gas_limit = engine.params().min_gas_limit;
+        let min_gas_limit = engine.min_gas_limit();
         good.set_gas_limit(min_gas_limit);
         good.set_timestamp(40);
         good.set_number(10);

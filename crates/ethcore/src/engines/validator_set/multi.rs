@@ -25,6 +25,7 @@ use types::{header::Header, ids::BlockId, BlockNumber};
 
 use super::{SystemCall, ValidatorSet};
 use client::EngineClient;
+use error::Error as EthcoreError;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 type BlockNumberLookup =
@@ -45,6 +46,15 @@ impl Multi {
             sets: set_map,
             block_number: RwLock::new(Box::new(move |_| Err("No client!".into()))),
         }
+    }
+
+    fn map_children<T, F>(&self, header: &Header, mut func: F) -> Result<T, EthcoreError>
+    where
+        F: FnMut(&dyn ValidatorSet, bool) -> Result<T, EthcoreError>,
+    {
+        let (set_block, set) = self.correct_set_by_number(header.number());
+        let first = set_block == header.number();
+        func(set, first)
     }
 
     fn correct_set(&self, id: BlockId) -> Option<&dyn ValidatorSet> {
@@ -81,16 +91,31 @@ impl ValidatorSet for Multi {
             .unwrap_or_else(|| Box::new(|_, _| Err("No validator set for given ID.".into())))
     }
 
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        header: &Header,
+        call: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError> {
+        self.map_children(header, &mut |set: &dyn ValidatorSet, first| {
+            set.generate_engine_transactions(first, header, call)
+        })
+    }
+    fn on_close_block(&self, header: &Header, address: &Address) -> Result<(), EthcoreError> {
+        self.map_children(header, &mut |set: &dyn ValidatorSet, _first| {
+            set.on_close_block(header, address)
+        })
+    }
+
     fn on_epoch_begin(
         &self,
         _first: bool,
         header: &Header,
         call: &mut SystemCall,
-    ) -> Result<(), ::error::Error> {
-        let (set_block, set) = self.correct_set_by_number(header.number());
-        let first = set_block == header.number();
-
-        set.on_epoch_begin(first, header, call)
+    ) -> Result<(), EthcoreError> {
+        self.map_children(header, &mut |set: &dyn ValidatorSet, first| {
+            set.on_epoch_begin(first, header, call)
+        })
     }
 
     fn genesis_epoch_data(&self, header: &Header, call: &Call) -> Result<Vec<u8>, String> {
@@ -182,7 +207,10 @@ impl ValidatorSet for Multi {
 #[cfg(test)]
 mod tests {
     use accounts::AccountProvider;
-    use client::{traits::ForceUpdateSealing, BlockChainClient, BlockInfo, ChainInfo, ImportBlock};
+    use client::{
+        traits::{ForceUpdateSealing, TransactionRequest},
+        BlockChainClient, BlockInfo, ChainInfo, ImportBlock,
+    };
     use crypto::publickey::Secret;
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
@@ -190,7 +218,7 @@ mod tests {
     use miner::{self, MinerService};
     use spec::Spec;
     use std::{collections::BTreeMap, sync::Arc};
-    use test_helpers::{generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data};
+    use test_helpers::generate_dummy_client_with_spec;
     use types::{header::Header, ids::BlockId};
     use verification::queue::kind::blocks::Unverified;
 
@@ -216,7 +244,10 @@ mod tests {
         let signer = Box::new((tap.clone(), v1, "".into()));
         client.miner().set_author(miner::Author::Sealer(signer));
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 0);
@@ -227,7 +258,10 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 1);
         // This time v0 is wrong.
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 1);
@@ -237,14 +271,16 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 2);
         // v1 is still good.
         client
-            .transact_contract(Default::default(), Default::default())
+            .transact(TransactionRequest::call(
+                Default::default(),
+                Default::default(),
+            ))
             .unwrap();
         ::client::EngineClient::update_sealing(&*client, ForceUpdateSealing::No);
         assert_eq!(client.chain_info().best_block_number, 3);
 
         // Check syncing.
-        let sync_client =
-            generate_dummy_client_with_spec_and_data(Spec::new_validator_multi, 0, 0, &[]);
+        let sync_client = generate_dummy_client_with_spec(Spec::new_validator_multi);
         sync_client
             .engine()
             .register_client(Arc::downgrade(&sync_client) as _);

@@ -89,6 +89,10 @@ pub enum EngineError {
     InsufficientProof(String),
     /// Failed system call.
     FailedSystemCall(String),
+    /// Failed to decode the result of a system call.
+    SystemCallResultDecoding(String),
+    /// The result of a system call is invalid.
+    SystemCallResultInvalid(String),
     /// Malformed consensus message.
     MalformedMessage(String),
     /// Requires client ref, but none registered.
@@ -153,6 +157,12 @@ impl fmt::Display for EngineError {
             BadSealFieldSize(ref oob) => format!("Seal field has an unexpected length: {}", oob),
             InsufficientProof(ref msg) => format!("Insufficient validation proof: {}", msg),
             FailedSystemCall(ref msg) => format!("Failed to make system call: {}", msg),
+            SystemCallResultDecoding(ref msg) => {
+                format!("Failed to decode the result of a system call: {}", msg)
+            }
+            SystemCallResultInvalid(ref msg) => {
+                format!("The result of a system call is invalid: {}", msg)
+            }
             MalformedMessage(ref msg) => format!("Received malformed consensus message: {}", msg),
             RequiresClient => format!("Call requires client but none registered"),
             RequiresSigner => format!("Call requires signer but none registered"),
@@ -178,6 +188,17 @@ pub enum Seal {
     Regular(Vec<Bytes>),
     /// Engine does not generate seal for this block right now.
     None,
+}
+
+/// The type of sealing the engine is currently able to perform.
+#[derive(Debug, PartialEq, Eq)]
+pub enum SealingState {
+    /// The engine is ready to seal a block.
+    Ready,
+    /// The engine can't seal at the moment, and no block should be prepared and queued.
+    NotReady,
+    /// The engine does not seal internally.
+    External,
 }
 
 /// A system-calling closure. Enacts calls on a block's state from the system address.
@@ -329,11 +350,9 @@ pub trait Engine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// None means that it requires external input (e.g. PoW) to seal a block.
-    /// Some(true) means the engine is currently prime for seal generation (i.e. node is the current validator).
-    /// Some(false) means that the node might seal internally but is not qualified now.
-    fn seals_internally(&self) -> Option<bool> {
-        None
+    /// Returns the engine's current sealing state.
+    fn sealing_state(&self) -> SealingState {
+        SealingState::External
     }
 
     /// Called in `miner.chain_new_blocks` if the engine wishes to `update_sealing`
@@ -449,7 +468,7 @@ pub trait Engine<M: Machine>: Sync + Send {
     }
 
     /// Register a component which signs consensus messages.
-    fn set_signer(&self, _signer: Box<dyn EngineSigner>) {}
+    fn set_signer(&self, _signer: Option<Box<dyn EngineSigner>>) {}
 
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, M::Error> {
@@ -504,6 +523,24 @@ pub trait Engine<M: Machine>: Sync + Send {
     /// Returns author should used when executing tx's for this block.
     fn executive_author(&self, header: &Header) -> Result<Address, Error> {
         Ok(*header.author())
+    }
+
+    /// Returns a list of transactions for a new block if we are the author.
+    ///
+    /// This is called when the miner prepares a new block that this node will author and seal. It returns a list of
+    /// transactions that will be added to the block before any other transactions from the queue.
+    /// Added for AuRa needs.
+    fn generate_engine_transactions(
+        &self,
+        _block: &ExecutedBlock,
+    ) -> Result<Vec<SignedTransaction>, Error> {
+        Ok(Vec::new())
+    }
+
+    /// Overrides the block gas limit. Whenever this returns `Some` for a header, the next block's gas limit must be
+    /// exactly that value. used by AuRa engine.
+    fn gas_limit_override(&self, _header: &Header) -> Option<U256> {
+        None
     }
 }
 
@@ -609,6 +646,11 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     ) -> Result<UnverifiedTransaction, transaction::Error> {
         let schedule = self.schedule(best_block_number);
         self.machine().decode_transaction(transaction, &schedule)
+    }
+
+    /// The configured minimum gas limit. Used by AuRa Engine.
+    fn min_gas_limit(&self) -> U256 {
+        self.params().min_gas_limit
     }
 }
 

@@ -16,8 +16,9 @@
 
 //! A signer used by Engines which need to sign messages.
 
-use crypto::publickey::{self, Signature};
+use crypto::publickey::{self, ecies, Error, Public, Signature};
 use ethereum_types::{Address, H256};
+//TODO dr
 
 /// Everything that an Engine needs to sign messages.
 pub trait EngineSigner: Send + Sync {
@@ -26,6 +27,12 @@ pub trait EngineSigner: Send + Sync {
 
     /// Signing address
     fn address(&self) -> Address;
+
+    /// Decrypt a message that was encrypted to this signer's key.
+    fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error>;
+
+    /// The signer's public key, if available.
+    fn public(&self) -> Option<Public>;
 }
 
 /// Creates a new `EngineSigner` from given key pair.
@@ -42,6 +49,14 @@ impl EngineSigner for Signer {
 
     fn address(&self) -> Address {
         self.0.address()
+    }
+
+    fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error> {
+        ecies::decrypt(self.0.secret(), auth_data, cipher).map_err(From::from)
+    }
+
+    fn public(&self) -> Option<Public> {
+        Some(*self.0.public())
     }
 }
 
@@ -77,6 +92,19 @@ mod test_signer {
 
         fn address(&self) -> Address {
             self.1
+        }
+
+        fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error> {
+            self.0
+                .decrypt(self.1, None, auth_data, cipher)
+                .map_err(|e| {
+                    warn!("Unable to decrypt message: {:?}", e);
+                    Error::InvalidMessage
+                })
+        }
+
+        fn public(&self) -> Option<Public> {
+            self.0.account_public(self.1, &self.2).ok()
         }
     }
 }

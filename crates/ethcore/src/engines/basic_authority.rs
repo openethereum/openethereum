@@ -20,7 +20,7 @@ use super::validator_set::{new_validator_set, SimpleList, ValidatorSet};
 use block::*;
 use client::EngineClient;
 use crypto::publickey::{self, Signature};
-use engines::{signer::EngineSigner, ConstructedVerifier, Engine, EngineError, Seal};
+use engines::{signer::EngineSigner, ConstructedVerifier, Engine, EngineError, Seal, SealingState};
 use error::{BlockError, Error};
 use ethereum_types::{H256, H520};
 use ethjson;
@@ -104,8 +104,12 @@ impl Engine<EthereumMachine> for BasicAuthority {
         1
     }
 
-    fn seals_internally(&self) -> Option<bool> {
-        Some(self.signer.read().is_some())
+    fn sealing_state(&self) -> SealingState {
+        if self.signer.read().is_some() {
+            SealingState::Ready
+        } else {
+            SealingState::NotReady
+        }
     }
 
     /// Attempt to seal the block internally.
@@ -197,8 +201,8 @@ impl Engine<EthereumMachine> for BasicAuthority {
         self.validators.register_client(client);
     }
 
-    fn set_signer(&self, signer: Box<dyn EngineSigner>) {
-        *self.signer.write() = Some(signer);
+    fn set_signer(&self, signer: Option<Box<dyn EngineSigner>>) {
+        *self.signer.write() = signer;
     }
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
@@ -223,7 +227,7 @@ impl Engine<EthereumMachine> for BasicAuthority {
 mod tests {
     use accounts::AccountProvider;
     use block::*;
-    use engines::Seal;
+    use engines::{Seal, SealingState};
     use ethereum_types::H520;
     use hash::keccak;
     use spec::Spec;
@@ -269,7 +273,7 @@ mod tests {
 
         let spec = new_test_authority();
         let engine = &*spec.engine;
-        engine.set_signer(Box::new((Arc::new(tap), addr, "".into())));
+        engine.set_signer(Some(Box::new((Arc::new(tap), addr, "".into()))));
         let genesis_header = spec.genesis_header();
         let db = spec
             .ensure_db_good(get_temp_state_db(), &Default::default())
@@ -296,13 +300,15 @@ mod tests {
     }
 
     #[test]
-    fn seals_internally() {
+    fn sealing_state() {
         let tap = AccountProvider::transient_provider();
         let authority = tap.insert_account(keccak("").into(), &"".into()).unwrap();
 
         let engine = new_test_authority().engine;
-        assert!(!engine.seals_internally().unwrap());
-        engine.set_signer(Box::new((Arc::new(tap), authority, "".into())));
-        assert!(engine.seals_internally().unwrap());
+        assert_eq!(SealingState::NotReady, engine.sealing_state());
+        engine.set_signer(Some(Box::new((Arc::new(tap), authority, "".into()))));
+        assert_eq!(SealingState::Ready, engine.sealing_state());
+        engine.set_signer(None);
+        assert_eq!(SealingState::NotReady, engine.sealing_state());
     }
 }

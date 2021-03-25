@@ -77,6 +77,7 @@ using_queue = { path = "../concensus/miner/using-queue" }
 vm = { path = "../vm/vm" }
 walkdir = "2.3"
 wasm = { path = "../vm/wasm" }
+derive_more = "0.99"
 scopeguard = "1.1.0"
 
 [dev-dependencies]

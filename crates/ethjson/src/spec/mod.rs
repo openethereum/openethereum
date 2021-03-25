@@ -30,6 +30,7 @@ pub mod params;
 pub mod seal;
 pub mod spec;
 pub mod state;
+pub mod step_duration;
 pub mod validator_set;
 
 pub use self::{
@@ -47,5 +48,6 @@ pub use self::{
     seal::{AuthorityRoundSeal, Ethereum, Seal, TendermintSeal},
     spec::{ForkSpec, Spec},
     state::State,
+    step_duration::StepDuration,
     validator_set::ValidatorSet,
 };

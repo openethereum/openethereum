@@ -63,17 +63,20 @@ use ansi_term::Colour;
 use block::{enact_verified, ClosedBlock, Drain, LockedBlock, OpenBlock, SealedBlock};
 use call_contract::RegistryInfo;
 use client::{
-    ancient_import::AncientVerifier, bad_blocks, traits::ForceUpdateSealing, AccountData,
-    BadBlocks, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainReset, BlockId,
-    BlockInfo, BlockProducer, BroadcastProposalBlock, Call, CallAnalytics, ChainInfo,
-    ChainMessageType, ChainNotify, ChainRoute, ClientConfig, ClientIoMessage, EngineInfo,
-    ImportBlock, ImportExportBlocks, ImportSealedBlock, IoClient, Mode, NewBlocks, Nonce,
-    PrepareOpenBlock, ProvingBlockChainClient, PruningInfo, ReopenBlock, ScheduleInfo,
-    SealedBlockImporter, StateClient, StateInfo, StateOrBlock, TraceFilter, TraceId, TransactionId,
-    TransactionInfo, UncleId,
+    ancient_import::AncientVerifier,
+    bad_blocks,
+    traits::{ForceUpdateSealing, TransactionRequest},
+    AccountData, BadBlocks, Balance, BlockChain as BlockChainTrait, BlockChainClient,
+    BlockChainReset, BlockId, BlockInfo, BlockProducer, BroadcastProposalBlock, Call,
+    CallAnalytics, ChainInfo, ChainMessageType, ChainNotify, ChainRoute, ClientConfig,
+    ClientIoMessage, EngineInfo, ImportBlock, ImportExportBlocks, ImportSealedBlock, IoClient,
+    Mode, NewBlocks, Nonce, PrepareOpenBlock, ProvingBlockChainClient, PruningInfo, ReopenBlock,
+    ScheduleInfo, SealedBlockImporter, StateClient, StateInfo, StateOrBlock, TraceFilter, TraceId,
+    TransactionId, TransactionInfo, UncleId,
 };
 use engines::{
-    epoch::PendingTransition, EngineError, EpochTransition, EthEngine, ForkChoice, MAX_UNCLE_AGE,
+    epoch::PendingTransition, EngineError, EpochTransition, EthEngine, ForkChoice, SealingState,
+    MAX_UNCLE_AGE,
 };
 use error::{
     BlockError, CallError, Error, Error as EthcoreError, ErrorKind as EthcoreErrorKind,
@@ -2663,31 +2666,46 @@ impl BlockChainClient for Client {
         }
     }
 
-    fn transact_contract(&self, address: Address, data: Bytes) -> Result<(), transaction::Error> {
+    fn create_transaction(
+        &self,
+        TransactionRequest {
+            action,
+            data,
+            gas,
+            gas_price,
+            nonce,
+        }: TransactionRequest,
+    ) -> Result<SignedTransaction, transaction::Error> {
         let authoring_params = self.importer.miner.authoring_params();
         let service_transaction_checker = self.importer.miner.service_transaction_checker();
         let gas_price = if let Some(checker) = service_transaction_checker {
             match checker.check_address(self, authoring_params.author) {
                 Ok(true) => U256::zero(),
-                _ => self.importer.miner.sensible_gas_price(),
+                _ => gas_price.unwrap_or_else(|| self.importer.miner.sensible_gas_price()),
             }
         } else {
             self.importer.miner.sensible_gas_price()
         };
         let transaction = TypedTransaction::Legacy(transaction::Transaction {
-            nonce: self.latest_nonce(&authoring_params.author),
-            action: Action::Call(address),
-            gas: self.importer.miner.sensible_gas_limit(),
+            nonce: nonce.unwrap_or_else(|| self.latest_nonce(&authoring_params.author)),
+            action,
+            gas: gas.unwrap_or_else(|| self.importer.miner.sensible_gas_limit()),
             gas_price,
             value: U256::zero(),
-            data: data,
+            data,
         });
         let chain_id = self.engine.signing_chain_id(&self.latest_env_info());
         let signature = self
             .engine
             .sign(transaction.signature_hash(chain_id))
             .map_err(|e| transaction::Error::InvalidSignature(e.to_string()))?;
-        let signed = SignedTransaction::new(transaction.with_signature(signature, chain_id))?;
+        Ok(SignedTransaction::new(
+            transaction.with_signature(signature, chain_id),
+        )?)
+    }
+
+    fn transact(&self, tx_request: TransactionRequest) -> Result<(), transaction::Error> {
+        let signed = self.create_transaction(tx_request)?;
         self.importer
             .miner
             .import_own_transaction(self, signed.into())
@@ -2940,7 +2958,7 @@ impl ImportSealedBlock for Client {
             &[],
             route.enacted(),
             route.retracted(),
-            self.engine.seals_internally().is_some(),
+            self.engine.sealing_state() != SealingState::External,
         );
         self.notify(|notify| {
             notify.new_blocks(NewBlocks::new(
@@ -3633,8 +3651,13 @@ mod tests {
 
     #[test]
     fn should_mark_finalization_correctly_for_parent() {
-        let client =
-            generate_dummy_client_with_spec_and_data(Spec::new_test_with_finality, 2, 0, &[]);
+        let client = generate_dummy_client_with_spec_and_data(
+            Spec::new_test_with_finality,
+            2,
+            0,
+            &[],
+            false,
+        );
         let chain = client.chain();
 
         let block1_details = chain.block_hash(1).and_then(|h| chain.block_details(&h));

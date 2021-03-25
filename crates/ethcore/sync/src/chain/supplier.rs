@@ -450,11 +450,11 @@ mod test {
                 .collect()
         }
 
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Nothing);
         let blocks: Vec<_> = (0..100)
             .map(|i| {
-                (&client as &dyn BlockChainClient)
+                (&*client as &dyn BlockChainClient)
                     .block(BlockId::Number(i as BlockNumber))
                     .map(|b| b.into_inner())
                     .unwrap()
@@ -468,7 +468,7 @@ mod test {
 
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let io = TestIo::new(&mut client, &ss, &queue, None);
+        let io = TestIo::new(&*client, &ss, &queue, None);
 
         let unknown: H256 = H256::default();
         let result = SyncSupplier::return_block_headers(
@@ -563,7 +563,7 @@ mod test {
         let large_num_blocks = 50;
         let tx_per_block = 100;
 
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(large_num_blocks, EachBlockWith::Transactions(tx_per_block));
 
         let mut small_rlp_request = RlpStream::new_list(small_num_blocks);
@@ -582,7 +582,7 @@ mod test {
 
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let io = TestIo::new(&mut client, &ss, &queue, None);
+        let io = TestIo::new(&*client, &ss, &queue, None);
 
         let small_result =
             SyncSupplier::return_block_bodies(&io, &Rlp::new(&small_rlp_request.out()), 0);
@@ -600,10 +600,10 @@ mod test {
 
     #[test]
     fn return_receipts_empty() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let io = TestIo::new(&mut client, &ss, &queue, None);
+        let io = TestIo::new(&*client, &ss, &queue, None);
 
         let result = SyncSupplier::return_receipts(&io, &Rlp::new(&[0xc0]), 0);
 
@@ -612,11 +612,11 @@ mod test {
 
     #[test]
     fn return_receipts() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let queue = RwLock::new(VecDeque::new());
-        let sync = dummy_sync_with_peer(H256::default(), &client);
+        let sync = dummy_sync_with_peer(H256::default(), &*client);
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
 
         let mut receipt_list = RlpStream::new_list(4);
         receipt_list.append(

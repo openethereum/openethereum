@@ -29,7 +29,7 @@ use blockchain::{BlockReceipts, TreeRoute};
 use bytes::Bytes;
 use crypto::publickey::{Generator, Random};
 use db::{COL_STATE, NUM_COLUMNS};
-use ethcore_miner::pool::VerifiedTransaction;
+use ethcore_miner::pool::{VerifiedTransaction};
 use ethereum_types::{Address, H256, U256};
 use ethtrie;
 use hash::keccak;
@@ -71,7 +71,7 @@ use error::{Error, EthcoreResult};
 use executed::CallError;
 use executive::Executed;
 use journaldb;
-use miner::{self, Miner, MinerService};
+use miner::{self, Miner, MinerPoolClient, MinerService, MinerTxpool};
 use spec::Spec;
 use state::StateInfo;
 use state_db::StateDB;
@@ -112,7 +112,7 @@ pub struct TestBlockChainClient {
     /// Block queue size.
     pub queue_size: AtomicUsize,
     /// Miner
-    pub miner: Arc<Miner>,
+    pub miner: RwLock<Option<Arc<Miner>>>,
     /// Spec
     pub spec: Spec,
     /// Timestamp assigned to latest sealed block
@@ -144,38 +144,43 @@ pub enum EachBlockWith {
     UncleAndTransaction,
 }
 
-impl Default for TestBlockChainClient {
-    fn default() -> Self {
-        TestBlockChainClient::new()
-    }
-}
-
 impl TestBlockChainClient {
     /// Creates new test client.
-    pub fn new() -> Self {
+    pub fn new() -> Arc<Self> {
         Self::new_with_extra_data(Bytes::new())
     }
 
+    /// Set miner 
+    pub fn set_miner(&self, miner: Arc<Miner>) {
+        *self.miner.write() = Some(miner.clone());
+    }
+
+    /// Get miner
+    pub fn miner(&self) -> Arc<Miner> {
+        self.miner.read().clone().unwrap()
+    }
+
     /// Creates new test client with specified extra data for each block
-    pub fn new_with_extra_data(extra_data: Bytes) -> Self {
+    pub fn new_with_extra_data(extra_data: Bytes) -> Arc<Self> {
         let spec = Spec::new_test();
         TestBlockChainClient::new_with_spec_and_extra(spec, extra_data)
     }
 
     /// Create test client with custom spec.
-    pub fn new_with_spec(spec: Spec) -> Self {
+    pub fn new_with_spec(spec: Spec) -> Arc<Self> {
         TestBlockChainClient::new_with_spec_and_extra(spec, Bytes::new())
     }
 
     /// Create test client with custom spec and extra data.
-    pub fn new_with_spec_and_extra(spec: Spec, extra_data: Bytes) -> Self {
+    pub fn new_with_spec_and_extra(spec: Spec, extra_data: Bytes) -> Arc<Self> {
         let genesis_block = spec.genesis_block();
         let genesis_hash = spec.genesis_header().hash();
 
-        let mut client = TestBlockChainClient {
+        let mut miner = Miner::new_for_tests(&spec, None);
+        let client = Arc::new(TestBlockChainClient {
             blocks: RwLock::new(HashMap::new()),
             numbers: RwLock::new(HashMap::new()),
-            genesis_hash: H256::default(),
+            genesis_hash: genesis_hash,
             extra_data: extra_data,
             last_hash: RwLock::new(H256::default()),
             difficulty: RwLock::new(spec.genesis_header().difficulty().clone()),
@@ -187,7 +192,7 @@ impl TestBlockChainClient {
             receipts: RwLock::new(HashMap::new()),
             logs: RwLock::new(Vec::new()),
             queue_size: AtomicUsize::new(0),
-            miner: Arc::new(Miner::new_for_tests(&spec, None)),
+            miner: RwLock::new(None), //new(Miner::new_for_tests(&spec, None)),
             spec: spec,
             latest_block_timestamp: RwLock::new(10_000_000),
             ancient_block: RwLock::new(None),
@@ -196,13 +201,14 @@ impl TestBlockChainClient {
             history: RwLock::new(None),
             disabled: AtomicBool::new(false),
             error_on_logs: RwLock::new(None),
-        };
+        });
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
 
         // insert genesis hash.
-        client.blocks.get_mut().insert(genesis_hash, genesis_block);
-        client.numbers.get_mut().insert(0, genesis_hash);
-        *client.last_hash.get_mut() = genesis_hash;
-        client.genesis_hash = genesis_hash;
+        client.blocks.write().insert(genesis_hash, genesis_block);
+        client.numbers.write().insert(0, genesis_hash);
+        *client.last_hash.write() = genesis_hash;
         client
     }
 
@@ -350,7 +356,7 @@ impl TestBlockChainClient {
     }
 
     /// Get block hash with `delta` as offset from the most recent blocks.
-    pub fn block_hash_delta_minus(&mut self, delta: usize) -> H256 {
+    pub fn block_hash_delta_minus(&self, delta: usize) -> H256 {
         let blocks_read = self.numbers.read();
         let index = blocks_read.len() - delta;
         blocks_read[&index].clone()
@@ -384,8 +390,8 @@ impl TestBlockChainClient {
         self.set_balance(signed_tx.sender(), 10_000_000_000_000_000_000u64.into());
         let hash = signed_tx.hash();
         let res = self
-            .miner
-            .import_external_transactions(self, vec![signed_tx.into()]);
+            .miner()
+            .import_external_transactions(vec![signed_tx.into()]);
         let res = res.into_iter().next().unwrap();
         assert!(res.is_ok());
         hash
@@ -738,6 +744,8 @@ impl BadBlocks for TestBlockChainClient {
     }
 }
 
+impl MinerPoolClient for TestBlockChainClient {}
+
 impl BlockChainClient for TestBlockChainClient {
     fn replay(&self, _id: TransactionId, _analytics: CallAnalytics) -> Result<Executed, CallError> {
         self.execution_result.read().clone().unwrap()
@@ -998,8 +1006,8 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn transactions_to_propagate(&self) -> Vec<Arc<VerifiedTransaction>> {
-        self.miner
-            .ready_transactions(self, 4096, miner::PendingOrdering::Priority)
+        self.miner()
+            .ready_transactions(4096, miner::PendingOrdering::Priority)
     }
 
     fn signing_chain_id(&self) -> Option<u64> {
@@ -1051,7 +1059,7 @@ impl BlockChainClient for TestBlockChainClient {
     ) -> Result<SignedTransaction, transaction::Error> {
         let transaction = TypedTransaction::Legacy(Transaction {
             nonce: nonce
-                .unwrap_or_else(|| self.latest_nonce(&self.miner.authoring_params().author)),
+                .unwrap_or_else(|| self.latest_nonce(&self.miner().authoring_params().author)),
             action,
             gas: gas.unwrap_or(self.spec.gas_limit),
             gas_price: gas_price.unwrap_or_else(U256::zero),
@@ -1069,7 +1077,7 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn transact(&self, tx_request: TransactionRequest) -> Result<(), transaction::Error> {
         let signed = self.create_transaction(tx_request)?;
-        self.miner.import_own_transaction(self, signed.into())
+        self.miner().import_own_transaction(signed.into())
     }
 
     fn registrar_address(&self) -> Option<Address> {
@@ -1084,7 +1092,7 @@ impl IoClient for TestBlockChainClient {
             .into_iter()
             .filter_map(|bytes| TypedTransaction::decode(&bytes).ok())
             .collect();
-        self.miner.import_external_transactions(self, txs);
+        self.miner().import_external_transactions(txs);
     }
 
     fn ancient_block_queue_fullness(&self) -> f32 {
@@ -1120,17 +1128,7 @@ impl ProvingBlockChainClient for TestBlockChainClient {
 
 impl super::traits::EngineClient for TestBlockChainClient {
     fn update_sealing(&self, force: ForceUpdateSealing) {
-        self.miner.update_sealing(self, force)
-    }
-
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
-        let import = self
-            .miner
-            .submit_seal(block_hash, seal)
-            .and_then(|block| self.import_sealed_block(block));
-        if let Err(err) = import {
-            warn!(target: "poa", "Wrong internal seal submission! {:?}", err);
-        }
+        self.miner().update_sealing(force)
     }
 
     fn broadcast_consensus_message(&self, _message: Bytes) {}

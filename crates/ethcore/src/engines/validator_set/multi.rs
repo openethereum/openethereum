@@ -215,7 +215,7 @@ mod tests {
     use engines::{validator_set::ValidatorSet, EpochChange};
     use ethereum_types::Address;
     use hash::keccak;
-    use miner::{self, MinerService};
+    use miner::{self, MinerRPC};
     use spec::Spec;
     use std::{collections::BTreeMap, sync::Arc};
     use test_helpers::generate_dummy_client_with_spec;

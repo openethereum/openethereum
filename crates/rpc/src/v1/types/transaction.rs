@@ -16,13 +16,15 @@
 
 use std::sync::Arc;
 
-use ethcore::{contract_address, CreateContractAddress};
 use ethereum_types::{H160, H256, H512, U256, U64};
 use miner;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
-use types::transaction::{
-    Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
-    TypedTxId,
+use types::{
+    contract_address::{contract_address, CreateContractAddress},
+    transaction::{
+        Action, LocalizedTransaction, PendingTransaction, SignedTransaction, TypedTransaction,
+        TypedTxId,
+    },
 };
 use v1::types::{AccessList, Bytes, TransactionCondition};
 

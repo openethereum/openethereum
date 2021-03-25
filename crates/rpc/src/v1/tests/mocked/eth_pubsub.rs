@@ -38,14 +38,14 @@ const DURATION_ZERO: Duration = Duration::from_millis(0);
 fn should_subscribe_to_new_heads() {
     // given
     let el = Runtime::with_thread_count(1);
-    let mut client = TestBlockChainClient::new();
+    let client = TestBlockChainClient::new();
     // Insert some blocks
     client.add_blocks(3, EachBlockWith::Nothing);
     let h3 = client.block_hash_delta_minus(1);
     let h2 = client.block_hash_delta_minus(2);
     let h1 = client.block_hash_delta_minus(3);
 
-    let pubsub = EthPubSubClient::new_test(Arc::new(client), el.executor());
+    let pubsub = EthPubSubClient::new_test(client, el.executor());
     let handler = pubsub.handler().upgrade().unwrap();
     let pubsub = pubsub.to_delegate();
 
@@ -123,7 +123,7 @@ fn should_subscribe_to_logs() {
 
     // given
     let el = Runtime::with_thread_count(1);
-    let mut client = TestBlockChainClient::new();
+    let client = TestBlockChainClient::new();
     // Insert some blocks
     client.add_blocks(1, EachBlockWith::Transaction);
     let h1 = client.block_hash_delta_minus(1);
@@ -148,7 +148,7 @@ fn should_subscribe_to_logs() {
         transaction_log_index: 0,
     }]);
 
-    let pubsub = EthPubSubClient::new_test(Arc::new(client), el.executor());
+    let pubsub = EthPubSubClient::new_test(client, el.executor());
     let handler = pubsub.handler().upgrade().unwrap();
     let pubsub = pubsub.to_delegate();
 
@@ -218,7 +218,7 @@ fn should_subscribe_to_pending_transactions() {
     let el = Runtime::with_thread_count(1);
     let client = TestBlockChainClient::new();
 
-    let pubsub = EthPubSubClient::new_test(Arc::new(client), el.executor());
+    let pubsub = EthPubSubClient::new_test(client, el.executor());
     let handler = pubsub.handler().upgrade().unwrap();
     let pubsub = pubsub.to_delegate();
 
@@ -273,7 +273,7 @@ fn should_return_unimplemented() {
     // given
     let el = Runtime::with_thread_count(1);
     let client = TestBlockChainClient::new();
-    let pubsub = EthPubSubClient::new_test(Arc::new(client), el.executor());
+    let pubsub = EthPubSubClient::new_test(client, el.executor());
     let pubsub = pubsub.to_delegate();
 
     let mut io = MetaIoHandler::default();

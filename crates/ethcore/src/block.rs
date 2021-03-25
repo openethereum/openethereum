@@ -55,6 +55,21 @@ use types::{
     transaction::{Error as TransactionError, SignedTransaction},
 };
 
+
+/// Block internals used as interface to get data on any block type that we have.
+/// Currently only used by Miner for pending block and for TestMiner.
+pub trait BlockInternals {
+    /// get transaction
+    fn transactions(&self) -> &[SignedTransaction];
+    /// get header
+    fn header(&self) -> &Header;
+    /// get uncles
+    fn uncles(&self) -> &[Header];
+    /// get receipts if block is executed
+    fn receipts(&self) -> Option<&[TypedReceipt]>;
+
+}
+
 /// Block that is ready for transactions to be added.
 ///
 /// It's a bit like a Vec<Transaction>, except that whenever a transaction is pushed, we execute it and
@@ -72,6 +87,24 @@ pub struct OpenBlock<'x> {
 pub struct ClosedBlock {
     block: ExecutedBlock,
     unclosed_state: State<StateDB>,
+}
+
+impl BlockInternals for ClosedBlock {
+    fn transactions(&self) -> &[SignedTransaction] {
+        &self.block.transactions
+    }
+
+    fn header(&self) -> &Header {
+        &self.block.header
+    }
+
+    fn uncles(&self) -> &[Header] {
+        &self.block.uncles
+    }
+
+    fn receipts(&self) -> Option<&[TypedReceipt]> {
+        Some(&self.receipts)
+    }
 }
 
 /// Just like `ClosedBlock` except that we can't reopen it and it's faster.

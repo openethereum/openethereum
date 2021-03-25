@@ -63,7 +63,7 @@ impl NonceCache {
 }
 
 /// Blockchain accesss for transaction pool.
-pub struct PoolClient<'a, C: 'a> {
+pub struct PoolClient<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> {
     chain: &'a C,
     cached_nonces: CachedNonceClient<'a, C>,
     engine: &'a dyn EthEngine,
@@ -72,10 +72,10 @@ pub struct PoolClient<'a, C: 'a> {
     service_transaction_checker: Option<&'a ServiceTransactionChecker>,
 }
 
-impl<'a, C: 'a> Clone for PoolClient<'a, C> {
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> Clone for PoolClient<'a, C> {
     fn clone(&self) -> Self {
         PoolClient {
-            chain: self.chain,
+            chain: self.chain.clone(),
             cached_nonces: self.cached_nonces.clone(),
             engine: self.engine,
             accounts: self.accounts.clone(),
@@ -85,9 +85,7 @@ impl<'a, C: 'a> Clone for PoolClient<'a, C> {
     }
 }
 
-impl<'a, C: 'a> PoolClient<'a, C>
-where
-    C: BlockInfo + CallContract,
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> PoolClient<'a, C>
 {
     /// Creates new client given chain, nonce cache, accounts and service transaction verifier.
     pub fn new(
@@ -99,7 +97,7 @@ where
     ) -> Self {
         let best_block_header = chain.best_block_header();
         PoolClient {
-            chain,
+            chain: chain,
             cached_nonces: CachedNonceClient::new(chain, cache),
             engine,
             accounts,
@@ -124,13 +122,13 @@ where
     }
 }
 
-impl<'a, C: 'a> fmt::Debug for PoolClient<'a, C> {
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> fmt::Debug for PoolClient<'a, C> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "PoolClient")
     }
 }
 
-impl<'a, C: 'a> pool::client::Client for PoolClient<'a, C>
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> pool::client::Client for PoolClient<'a, C>
 where
     C: miner::TransactionVerifierClient + Sync,
 {
@@ -200,30 +198,28 @@ where
     }
 }
 
-impl<'a, C: 'a> NonceClient for PoolClient<'a, C>
-where
-    C: Nonce + Sync,
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> NonceClient for PoolClient<'a, C>
 {
     fn account_nonce(&self, address: &Address) -> U256 {
         self.cached_nonces.account_nonce(address)
     }
 }
 
-pub(crate) struct CachedNonceClient<'a, C: 'a> {
+pub(crate) struct CachedNonceClient<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> {
     client: &'a C,
     cache: &'a NonceCache,
 }
 
-impl<'a, C: 'a> Clone for CachedNonceClient<'a, C> {
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> Clone for CachedNonceClient<'a, C> {
     fn clone(&self) -> Self {
         CachedNonceClient {
-            client: self.client,
+            client: self.client.clone(),
             cache: self.cache,
         }
     }
 }
 
-impl<'a, C: 'a> fmt::Debug for CachedNonceClient<'a, C> {
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> fmt::Debug for CachedNonceClient<'a, C> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("CachedNonceClient")
             .field("cache", &self.cache.nonces.read().len())
@@ -232,15 +228,13 @@ impl<'a, C: 'a> fmt::Debug for CachedNonceClient<'a, C> {
     }
 }
 
-impl<'a, C: 'a> CachedNonceClient<'a, C> {
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> CachedNonceClient<'a, C> {
     pub fn new(client: &'a C, cache: &'a NonceCache) -> Self {
         CachedNonceClient { client, cache }
     }
 }
 
-impl<'a, C: 'a> NonceClient for CachedNonceClient<'a, C>
-where
-    C: Nonce + Sync,
+impl<'a, C: 'a+BlockInfo + CallContract+ Nonce+Sync+Send+?Sized> NonceClient for CachedNonceClient<'a, C>
 {
     fn account_nonce(&self, address: &Address) -> U256 {
         if let Some(nonce) = self.cache.nonces.read().get(address) {

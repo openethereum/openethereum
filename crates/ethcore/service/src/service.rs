@@ -47,6 +47,12 @@ pub struct ClientService {
 
 impl ClientService {
     /// Start the `ClientService`.
+    pub fn set_miner(&self, miner: Arc<Miner>) {
+        self.client.set_miner(miner.clone());
+        miner.set_io_channel(self.io_service.channel());
+        miner.set_in_chain_checker(&self.client.clone());
+    }
+
     pub fn start(
         config: ClientConfig,
         spec: &Spec,
@@ -54,7 +60,6 @@ impl ClientService {
         snapshot_path: &Path,
         restoration_db_handler: Box<dyn BlockChainDBHandler>,
         _ipc_path: &Path,
-        miner: Arc<Miner>,
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start("Client")?;
 
@@ -69,11 +74,8 @@ impl ClientService {
             config,
             &spec,
             blockchain_db.clone(),
-            miner.clone(),
             io_service.channel(),
         )?;
-        miner.set_io_channel(io_service.channel());
-        miner.set_in_chain_checker(&client.clone());
 
         let snapshot_params = SnapServiceParams {
             engine: spec.engine.clone(),
@@ -235,12 +237,12 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, thread, time};
+    use std::{thread, time};
 
     use tempdir::TempDir;
 
     use super::*;
-    use ethcore::{client::ClientConfig, miner::Miner, spec::Spec, test_helpers};
+    use ethcore::{client::ClientConfig, spec::Spec, test_helpers};
     use ethcore_db::NUM_COLUMNS;
     use kvdb_rocksdb::{CompactionProfile, DatabaseConfig};
 
@@ -268,7 +270,6 @@ mod tests {
             &snapshot_path,
             restoration_db_handler,
             tempdir.path(),
-            Arc::new(Miner::new_for_tests(&spec, None)),
         );
         assert!(service.is_ok());
         drop(service.unwrap());

@@ -20,7 +20,7 @@ use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
     client::{BlockChainClient, Call, StateClient},
-    miner::{self, MinerService, TransactionFilter},
+    miner::{self, MinerPoolClient, MinerService, TransactionFilter},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
 };
@@ -31,7 +31,7 @@ use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use stats::PrometheusMetrics;
 use sync::{ManageNetwork, SyncProvider};
-use types::ids::BlockId;
+use types::{ids::BlockId, receipt::RichReceipt};
 use v1::{
     helpers::{
         self,
@@ -69,7 +69,7 @@ where
 
 impl<C, M> ParityClient<C, M>
 where
-    C: BlockChainClient + PrometheusMetrics,
+    C: MinerPoolClient + PrometheusMetrics,
 {
     /// Creates new `ParityClient`.
     pub fn new(
@@ -100,8 +100,8 @@ where
 impl<C, M, S> Parity for ParityClient<C, M>
 where
     S: StateInfo + 'static,
-    C: miner::BlockChainClient
-        + BlockChainClient
+    C: BlockChainClient
+        + MinerPoolClient
         + PrometheusMetrics
         + StateClient<State = S>
         + Call<State = S>
@@ -270,7 +270,6 @@ where
         filter: Option<TransactionFilter>,
     ) -> Result<Vec<Transaction>> {
         let ready_transactions = self.miner.ready_transactions_filtered(
-            &*self.client,
             limit.unwrap_or_else(usize::max_value),
             filter,
             miner::PendingOrdering::Priority,
@@ -320,7 +319,7 @@ where
     }
 
     fn next_nonce(&self, address: H160) -> BoxFuture<U256> {
-        Box::new(future::ok(self.miner.next_nonce(&*self.client, &address)))
+        Box::new(future::ok(self.miner.next_nonce(&address)))
     }
 
     fn mode(&self) -> Result<String> {
@@ -363,7 +362,7 @@ where
             let info = self.client.chain_info();
             let header = try_bf!(self
                 .miner
-                .pending_block_header(info.best_block_number)
+                .pending(info.best_block_number, |b| b.header().clone())
                 .ok_or_else(errors::unknown_block));
 
             (header.encoded(), None)
@@ -399,7 +398,10 @@ where
                 let info = self.client.chain_info();
                 let receipts = try_bf!(self
                     .miner
-                    .pending_receipts(info.best_block_number)
+                    .pending(
+                        info.best_block_number,
+                        |b| RichReceipt::from_ordinary_types(b.transactions(), b.receipts().unwrap())
+                    )
                     .ok_or_else(errors::unknown_block));
                 return Box::new(future::ok(receipts.into_iter().map(Into::into).collect()));
             }
@@ -431,7 +433,7 @@ where
                 .ok_or_else(errors::state_pruned)?;
             let header = self
                 .miner
-                .pending_block_header(info.best_block_number)
+                .pending(info.best_block_number, |b| b.header().clone())
                 .ok_or_else(errors::state_pruned)?;
 
             (state, header)

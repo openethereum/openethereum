@@ -63,14 +63,17 @@ fn restored_is_equivalent() {
     let blockchain_db = restoration.open(&client_db).unwrap();
 
     let spec = Spec::new_null();
+    
+    let mut miner = ::miner::Miner::new_for_tests(&spec, None);
     let client2 = Client::new(
         Default::default(),
         &spec,
         blockchain_db,
-        Arc::new(::miner::Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client2.clone());
+    client2.set_miner(Arc::new(miner));
 
     let service_params = ServiceParams {
         engine: spec.engine.clone(),
@@ -226,14 +229,17 @@ fn keep_ancient_blocks() {
     // Initialize the Client
     let db_config = DatabaseConfig::with_columns(::db::NUM_COLUMNS);
     let client_db = new_temp_db(&tempdir.path());
+    let mut miner = ::miner::Miner::new_for_tests(&spec, None);  
     let client2 = Client::new(
         ClientConfig::default(),
         &spec,
         client_db,
-        Arc::new(::miner::Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client2.clone());
+    client2.set_miner(Arc::new(miner));
+
 
     // Add some ancient blocks
     for block_number in 1..50 {
@@ -310,14 +316,18 @@ fn recover_aborted_recovery() {
     let tempdir = TempDir::new("oe_snapshot").unwrap();
     let db_config = DatabaseConfig::with_columns(::db::NUM_COLUMNS);
     let client_db = new_db();
+    
+    let mut miner = ::miner::Miner::new_for_tests(&spec, None);
     let client2 = Client::new(
         Default::default(),
         &spec,
         client_db,
-        Arc::new(::miner::Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client2.clone());
+    client2.set_miner(Arc::new(miner));
+
     let service_params = ServiceParams {
         engine: spec.engine.clone(),
         genesis_block: spec.genesis_block(),

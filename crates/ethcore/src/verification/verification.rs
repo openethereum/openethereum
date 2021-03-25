@@ -713,7 +713,7 @@ mod tests {
         // additions that need access to state (tx filter in specific)
         // no existing tests need access to test, so having this not function
         // is fine.
-        let client = ::client::TestBlockChainClient::default();
+        let client = ::client::TestBlockChainClient::new();
         let parent = bc
             .block_header_data(header.parent_hash())
             .ok_or(BlockError::UnknownParent(*header.parent_hash()))?
@@ -729,7 +729,7 @@ mod tests {
         let full_params = FullFamilyParams {
             block: &block,
             block_provider: bc as &dyn BlockProvider,
-            client: &client,
+            client: &*client,
         };
         verify_block_family(&block.header, &parent, engine, Some(full_params))
     }

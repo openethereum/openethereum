@@ -38,7 +38,7 @@ struct Tester {
 }
 
 fn io() -> Tester {
-    let client = Arc::new(TestBlockChainClient::new());
+    let client = TestBlockChainClient::new();
     *client.traces.write() = Some(vec![LocalizedTrace {
         action: Action::Call(Call {
             from: Address::from_low_u64_be(0xf),

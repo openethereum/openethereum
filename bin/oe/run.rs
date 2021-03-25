@@ -43,7 +43,7 @@ use ansi_term::Colour;
 use dir::{DatabaseDirectories, Directories};
 use ethcore::{
     client::{BlockChainClient, BlockInfo, Client, DatabaseCompactionProfile, Mode, VMType},
-    miner::{self, stratum, Miner, MinerOptions, MinerService},
+    miner::{self, stratum, Miner, MinerOptions, MinerRPC, MinerTxpool},
     snapshot::{self, SnapshotConfiguration},
     verification::queue::VerifierSettings,
 };
@@ -275,7 +275,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     let txpool_size = cmd.miner_options.pool_limits.max_count;
     // create miner
-    let miner = Arc::new(Miner::new(
+    let mut miner = Miner::new(
         cmd.miner_options,
         cmd.gas_pricer_conf
             .to_gas_pricer(fetch.clone(), runtime.executor()),
@@ -284,7 +284,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             cmd.miner_extras.local_accounts,
             account_utils::miner_local_accounts(account_provider.clone()),
         ),
-    ));
+    );
     miner.set_author(miner::Author::External(cmd.miner_extras.author));
     miner.set_gas_range_target(cmd.miner_extras.gas_range_target);
     miner.set_extra_data(cmd.miner_extras.extra_data);
@@ -354,10 +354,11 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         &snapshot_path,
         restoration_db_handler,
         &cmd.dirs.ipc_path(),
-        miner.clone(),
     )
     .map_err(|e| format!("Client service error: {:?}", e))?;
-
+    miner.set_pool_client(service.client());
+    let miner = Arc::new(miner);
+    service.set_miner(miner.clone());
     let connection_filter_address = spec.params().node_permission_contract;
     // drop the spec to free up genesis state.
     let forks = spec.hard_forks.clone();
@@ -404,7 +405,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         match store.pending_transactions() {
             Ok(pending) => {
                 for pending_tx in pending {
-                    if let Err(e) = miner.import_own_transaction(&*client, pending_tx) {
+                    if let Err(e) = miner.import_own_transaction(pending_tx) {
                         warn!("Error importing saved transaction: {}", e)
                     }
                 }

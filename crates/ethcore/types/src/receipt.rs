@@ -21,9 +21,12 @@ use ethereum_types::{Address, Bloom, H160, H256, U256};
 use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
+//use vm::vm::C
 
 use crate::{
+    contract_address::{contract_address, CreateContractAddress},
     log_entry::{LocalizedLogEntry, LogEntry},
+    transaction::{Action, SignedTransaction},
     BlockNumber,
 };
 
@@ -260,6 +263,64 @@ pub struct RichReceipt {
     pub to: Option<H160>,
     /// Sender
     pub from: H160,
+}
+
+impl RichReceipt {
+    pub fn new(
+        prev_gas: U256,
+        index: usize,
+        tx: &SignedTransaction,
+        receipt: &TypedReceipt,
+    ) -> RichReceipt {
+        RichReceipt {
+            from: tx.sender(),
+            to: match tx.tx().action {
+                Action::Create => None,
+                Action::Call(ref address) => Some(*address),
+            },
+            transaction_hash: tx.hash(),
+            transaction_type: tx.tx_type(),
+            transaction_index: index,
+            cumulative_gas_used: receipt.gas_used,
+            gas_used: receipt.gas_used - prev_gas,
+            contract_address: match tx.tx().action {
+                Action::Call(_) => None,
+                Action::Create => {
+                    let sender = tx.sender();
+                    Some(
+                        contract_address(
+                            CreateContractAddress::FromSenderAndNonce,
+                            &sender,
+                            &tx.tx().nonce,
+                            &tx.tx().data,
+                        )
+                        .0,
+                    )
+                }
+            },
+            logs: receipt.logs.clone(),
+            log_bloom: receipt.log_bloom,
+            outcome: receipt.outcome.clone(),
+        }
+    }
+
+    pub fn from_ordinary_types(
+        tx: &[SignedTransaction],
+        receipts: &[TypedReceipt],
+    ) -> Vec<RichReceipt> {
+        tx.iter()
+            .enumerate()
+            .map(|(index, tx)| {
+                let prev_gas = if index == 0 {
+                    Default::default()
+                } else {
+                    receipts[index - 1].gas_used
+                };
+                let receipt = &receipts[index];
+                RichReceipt::new(prev_gas, index, tx, receipt)
+            })
+            .collect()
+    }
 }
 
 /// Receipt with additional info.

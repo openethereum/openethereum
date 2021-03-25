@@ -73,7 +73,7 @@ impl TransactionFilter {
     }
 
     /// Check if transaction is allowed at given block.
-    pub fn transaction_allowed<C: BlockInfo + CallContract>(
+    pub fn transaction_allowed<C: BlockInfo + CallContract+ ?Sized>(
         &self,
         parent_hash: &H256,
         block_number: BlockNumber,
@@ -211,15 +211,19 @@ mod test {
         let db = test_helpers::new_db();
         let tempdir = TempDir::new("").unwrap();
         let spec = Spec::load(&tempdir.path(), spec_data.as_bytes()).unwrap();
+        
+        let mut miner = Miner::new_for_tests(&spec, None);
 
         let client = Client::new(
             ClientConfig::default(),
             &spec,
             db,
-            Arc::new(Miner::new_for_tests(&spec, None)),
             IoChannel::disconnected(),
         )
         .unwrap();
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
+
         let key1 = KeyPair::from_secret(
             Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
                 .unwrap(),
@@ -447,14 +451,17 @@ mod test {
         let tempdir = TempDir::new("").unwrap();
         let spec = Spec::load(&tempdir.path(), spec_data.as_bytes()).unwrap();
 
+        
+        let mut miner = Miner::new_for_tests(&spec, None);
         let client = Client::new(
             ClientConfig::default(),
             &spec,
             db,
-            Arc::new(Miner::new_for_tests(&spec, None)),
             IoChannel::disconnected(),
         )
         .unwrap();
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
         let key1 = KeyPair::from_secret(
             Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
                 .unwrap(),
@@ -515,14 +522,17 @@ mod test {
         let tempdir = TempDir::new("").unwrap();
         let spec = Spec::load(&tempdir.path(), spec_data.as_bytes()).unwrap();
 
+        let mut miner = Miner::new_for_tests(&spec, None);
         let client = Client::new(
             ClientConfig::default(),
             &spec,
             db,
-            Arc::new(Miner::new_for_tests(&spec, None)),
             IoChannel::disconnected(),
         )
         .unwrap();
+        
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
         let key1 = KeyPair::from_secret(
             Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
                 .unwrap(),

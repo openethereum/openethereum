@@ -38,7 +38,7 @@ pub struct ServiceTransactionChecker {
 
 impl ServiceTransactionChecker {
     /// Checks if given address in tx is whitelisted to send service transactions.
-    pub fn check<C: CallContract + RegistryInfo>(
+    pub fn check<C: CallContract + RegistryInfo+ ?Sized>(
         &self,
         client: &C,
         tx: &SignedTransaction,
@@ -53,7 +53,7 @@ impl ServiceTransactionChecker {
     }
 
     /// Checks if given address is whitelisted to send service transactions.
-    pub fn check_address<C: CallContract + RegistryInfo>(
+    pub fn check_address<C: CallContract + RegistryInfo+ ?Sized>(
         &self,
         client: &C,
         sender: Address,
@@ -83,7 +83,7 @@ impl ServiceTransactionChecker {
     }
 
     /// Refresh certified addresses cache
-    pub fn refresh_cache<C: CallContract + RegistryInfo>(
+    pub fn refresh_cache<C: CallContract + RegistryInfo+?Sized>(
         &self,
         client: &C,
     ) -> Result<bool, String> {
@@ -112,7 +112,7 @@ impl ServiceTransactionChecker {
         }
     }
 
-    fn call_contract<C: CallContract + RegistryInfo>(
+    fn call_contract<C: CallContract + RegistryInfo+ ?Sized>(
         &self,
         client: &C,
         contract_address: Address,

@@ -41,6 +41,7 @@ use types::{
     encoded,
     filter::Filter as EthcoreFilter,
     header::Header,
+    receipt::RichReceipt,
     transaction::{LocalizedTransaction, SignedTransaction, TypedTransaction},
     BlockNumber as EthBlockNumber,
 };
@@ -104,7 +105,7 @@ impl Default for EthClientOptions {
 /// Eth rpc implementation.
 pub struct EthClient<C, SN: ?Sized, S: ?Sized, M, EM>
 where
-    C: miner::BlockChainClient + BlockChainClient,
+    C: miner::MinerPoolClient + BlockChainClient,
     SN: SnapshotService,
     S: SyncProvider,
     M: MinerService,
@@ -156,7 +157,7 @@ enum PendingTransactionId {
 
 impl<C, SN: ?Sized, S: ?Sized, M, EM, T: StateInfo + 'static> EthClient<C, SN, S, M, EM>
 where
-    C: miner::BlockChainClient
+    C: miner::MinerPoolClient
         + BlockChainClient
         + StateClient<State = T>
         + Call<State = T>
@@ -204,8 +205,14 @@ where
         let (block, difficulty, extra, is_pending) = match id {
             BlockNumberOrId::Number(BlockNumber::Pending) => {
                 let info = self.client.chain_info();
-                match self.miner.pending_block(info.best_block_number) {
-                    Some(pending_block) => {
+                match self
+                    .miner
+                    .pending(info.best_block_number, |b| types::block::Block {
+                        header: b.header().clone(),
+                        transactions: b.transactions().iter().cloned().map(Into::into).collect(),
+                        uncles: b.uncles().to_vec(),
+                    }) {
+                    Some(block) => {
                         warn!("`Pending` is deprecated and may be removed in future versions.");
 
                         let difficulty = {
@@ -213,10 +220,10 @@ where
                                 .client
                                 .block_total_difficulty(BlockId::Latest)
                                 .expect("blocks in chain have details; qed");
-                            let pending_difficulty = self
-                                .miner
-                                .pending_block_header(info.best_block_number)
-                                .map(|header| *header.difficulty());
+                            let pending_difficulty =
+                                self.miner.pending(info.best_block_number, |b| {
+                                    b.header().difficulty().clone()
+                                });
 
                             if let Some(difficulty) = pending_difficulty {
                                 difficulty + latest_difficulty
@@ -225,10 +232,10 @@ where
                             }
                         };
 
-                        let extra = self.client.engine().extra_info(&pending_block.header);
+                        let extra = self.client.engine().extra_info(&block.header);
 
                         (
-                            Some(encoded::Block::new(pending_block.rlp_bytes())),
+                            Some(encoded::Block::new(block.rlp_bytes())),
                             Some(difficulty),
                             Some(extra),
                             true,
@@ -323,21 +330,11 @@ where
 
             PendingTransactionId::Location(PendingOrBlock::Pending, index) => {
                 let info = self.client.chain_info();
-                let pending_block = match self.miner.pending_block(info.best_block_number) {
-                    Some(block) => block,
-                    None => return Ok(None),
-                };
-
-                // Implementation stolen from `extract_transaction_at_index`
-                let transaction = pending_block
-                    .transactions
-                    .get(index)
-                    // Verify if transaction signature is correct.
-                    .and_then(|tx| SignedTransaction::new(tx.clone()).ok())
-                    .map(|signed_tx| {
+                let tx = self.miner.pending(info.best_block_number, |b| {
+                    b.transactions().get(index).cloned().map(|signed_tx| {
                         let (signed, sender, _) = signed_tx.deconstruct();
-                        let block_hash = pending_block.header.hash();
-                        let block_number = pending_block.header.number();
+                        let block_hash = b.header().hash();
+                        let block_number = b.header().number();
                         let transaction_index = index;
                         let cached_sender = Some(sender);
 
@@ -349,9 +346,8 @@ where
                             cached_sender,
                         }
                     })
-                    .map(Transaction::from_localized);
-
-                Ok(transaction)
+                }).flatten().map(Transaction::from_localized);
+                Ok(tx)
             }
         }
     }
@@ -366,36 +362,17 @@ where
             } => {
                 let info = self.client.chain_info();
 
-                let pending_block = match self.miner.pending_block(info.best_block_number) {
-                    Some(block) => block,
+                let (uncle,difficulty,extra_info) = match self.miner.pending(info.best_block_number, |b| {
+                    let uncle = b.uncles().get(position).cloned()?;
+                    let diffuculty = b.header().difficulty().clone();
+                    let extra_info = self.client.engine().extra_info(b.header());
+                    Some((uncle,diffuculty,extra_info))
+                }).flatten() {
+                    Some(t) => t,
                     None => return Ok(None),
                 };
 
-                let uncle = match pending_block.uncles.get(position) {
-                    Some(uncle) => uncle.clone(),
-                    None => return Ok(None),
-                };
-
-                let difficulty = {
-                    let latest_difficulty = self
-                        .client
-                        .block_total_difficulty(BlockId::Latest)
-                        .expect("blocks in chain have details; qed");
-                    let pending_difficulty = self
-                        .miner
-                        .pending_block_header(info.best_block_number)
-                        .map(|header| *header.difficulty());
-
-                    if let Some(difficulty) = pending_difficulty {
-                        difficulty + latest_difficulty
-                    } else {
-                        latest_difficulty
-                    }
-                };
-
-                let extra = self.client.engine().extra_info(&pending_block.header);
-
-                (uncle, difficulty, extra)
+                (uncle, difficulty, extra_info)
             }
 
             PendingUncleId {
@@ -496,7 +473,13 @@ where
         let best_block_number = self.client.chain_info().best_block_number;
         let (maybe_state, maybe_header) = self.miner.pending_state(best_block_number).map_or_else(
             || (None, None),
-            |s| (Some(s), self.miner.pending_block_header(best_block_number)),
+            |s| {
+                (
+                    Some(s),
+                    self.miner
+                        .pending(best_block_number, |b| b.header().clone()),
+                )
+            },
         );
 
         match (maybe_state, maybe_header) {
@@ -513,7 +496,11 @@ pub fn pending_logs<M>(miner: &M, best_block: EthBlockNumber, filter: &EthcoreFi
 where
     M: MinerService,
 {
-    let receipts = miner.pending_receipts(best_block).unwrap_or_default();
+    let receipts = miner
+        .pending(best_block, |b| {
+            RichReceipt::from_ordinary_types(&b.transactions(), &b.receipts().unwrap())
+        })
+        .unwrap_or_default();
 
     receipts
         .into_iter()
@@ -569,7 +556,7 @@ const MAX_QUEUE_SIZE_TO_MINE_ON: usize = 4; // because uncles go back 6.
 
 impl<C, SN: ?Sized, S: ?Sized, M, EM, T: StateInfo + 'static> Eth for EthClient<C, SN, S, M, EM>
 where
-    C: miner::BlockChainClient
+    C: miner::MinerPoolClient
         + StateClient<State = T>
         + ProvingBlockChainClient
         + Call<State = T>
@@ -804,12 +791,12 @@ where
 
     fn block_transaction_count_by_number(&self, num: BlockNumber) -> BoxFuture<Option<U256>> {
         Box::new(future::done(match num {
-            BlockNumber::Pending => Ok(Some(
-                self.miner
-                    .pending_transaction_hashes(&*self.client)
-                    .len()
-                    .into(),
-            )),
+            BlockNumber::Pending => Ok(self
+                .miner
+                .pending(self.client.chain_info().best_block_number, |b| {
+                    b.transactions().len()
+                })
+                .map(U256::from)),
             _ => {
                 let trx_count = self
                     .client
@@ -929,7 +916,25 @@ where
 
     fn transaction_receipt(&self, hash: H256) -> BoxFuture<Option<Receipt>> {
         let best_block = self.client.chain_info().best_block_number;
-        if let Some(receipt) = self.miner.pending_receipt(best_block, &hash) {
+        if let Some(receipt) = self
+            .miner
+            .pending(best_block, |b| {
+                b.transactions()
+                    .iter()
+                    .enumerate()
+                    .find(|(_, tx)| tx.hash() == hash)
+                    .map(|(index, tx)| {
+                        let prev_gas = if index == 0 {
+                            Default::default()
+                        } else {
+                            b.receipts().unwrap()[index - 1].gas_used
+                        };
+                        let receipt = &b.receipts().unwrap()[index];
+                        RichReceipt::new(prev_gas, index, tx, receipt)
+                    })
+            })
+            .flatten()
+        {
             return Box::new(future::ok(Some(receipt.into())));
         }
 
@@ -1047,7 +1052,7 @@ where
             return Err(errors::no_author());
         }
 
-        let work = self.miner.work_package(&*self.client).ok_or_else(|| {
+        let work = self.miner.work_package().ok_or_else(|| {
             warn!(target: "miner", "Cannot give work package - engine seals internally.");
             errors::no_work_required()
         })?;

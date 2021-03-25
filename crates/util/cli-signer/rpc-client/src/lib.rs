@@ -83,6 +83,7 @@ mod tests {
         let _ = authcodes.generate_new();
         authcodes.to_file(&authcodes.path).unwrap();
 
+        println!("Auth:{:?}",authcodes.path);
         let connect = Rpc::connect(&format!("ws://127.0.0.1:{}", port), &authcodes.path);
 
         let _ = connect.map(|conn| assert!(conn.is_ok())).wait();

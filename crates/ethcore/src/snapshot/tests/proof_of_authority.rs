@@ -21,6 +21,7 @@ use std::{cell::RefCell, str::FromStr, sync::Arc};
 use accounts::AccountProvider;
 use client::{BlockChainClient, ChainInfo, Client};
 use crypto::publickey::Secret;
+use miner::{MinerRPC, MinerTxpool};
 use snapshot::tests::helpers as snapshot_helpers;
 use spec::Spec;
 use tempdir::TempDir;
@@ -104,7 +105,7 @@ fn make_chain(
     {
         // push a block with given number, signed by one of the signers, with given transactions.
         let push_block = |signers: &[Address], n, txs: Vec<SignedTransaction>| {
-            use miner::{self, MinerService};
+            use miner::{self};
 
             let idx = n as usize % signers.len();
             trace!(target: "snapshot", "Pushing block #{}, {} txs, author={}",
@@ -114,7 +115,7 @@ fn make_chain(
             client.miner().set_author(miner::Author::Sealer(signer));
             client
                 .miner()
-                .import_external_transactions(&*client, txs.into_iter().map(Into::into).collect());
+                .import_external_transactions(txs.into_iter().map(Into::into).collect());
 
             client.engine().step();
 

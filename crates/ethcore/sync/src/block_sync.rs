@@ -824,10 +824,10 @@ mod tests {
         let mut downloader = BlockDownloader::new(BlockSet::NewBlocks, &genesis_hash, 0);
         downloader.state = State::ChainHead;
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         // Valid headers sequence.
         let valid_headers = [
@@ -893,10 +893,10 @@ mod tests {
     fn import_headers_in_blocks_state() {
         ::env_logger::try_init().ok();
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         let mut headers = Vec::with_capacity(3);
         let parent_hash = H256::random();
@@ -943,10 +943,10 @@ mod tests {
     fn import_bodies() {
         ::env_logger::try_init().ok();
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         // Import block headers.
         let mut headers = Vec::with_capacity(4);
@@ -1025,10 +1025,10 @@ mod tests {
     fn import_receipts() {
         ::env_logger::try_init().ok();
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         // Import block headers.
         let mut headers = Vec::with_capacity(4);
@@ -1101,10 +1101,10 @@ mod tests {
         let mut downloader = BlockDownloader::new(BlockSet::NewBlocks, &genesis_hash, 0);
         downloader.state = State::ChainHead;
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         let heads = [
             spec.genesis_header(),
@@ -1141,10 +1141,10 @@ mod tests {
         let mut downloader = BlockDownloader::new(BlockSet::NewBlocks, &genesis_hash, 0);
         downloader.state = State::ChainHead;
 
-        let mut chain = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
-        let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
+        let mut io = TestIo::new(&*client, &snapshot_service, &queue, None);
 
         let heads = [spec.genesis_header()];
 

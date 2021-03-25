@@ -1527,7 +1527,7 @@ pub mod tests {
     use bytes::Bytes;
     use ethcore::{
         client::{BlockChainClient, BlockInfo, ChainInfo, EachBlockWith, TestBlockChainClient},
-        miner::{MinerService, PendingOrdering},
+        miner::{MinerRPC, MinerService, MinerTxpool, PendingOrdering},
     };
     use ethereum_types::{Address, H256, U256};
     use network::PeerId;
@@ -1659,9 +1659,9 @@ pub mod tests {
 
     #[test]
     fn finds_lagging_peers() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
-        let sync = dummy_sync_with_peer(client.block_hash_delta_minus(10), &client);
+        let sync = dummy_sync_with_peer(client.block_hash_delta_minus(10), &*client);
         let chain_info = client.chain_info();
 
         let lagging_peers = sync.get_lagging_peers(&chain_info);
@@ -1671,17 +1671,17 @@ pub mod tests {
 
     #[test]
     fn calculates_tree_for_lagging_peer() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(15, EachBlockWith::Uncle);
 
         let start = client.block_hash_delta_minus(4);
         let end = client.block_hash_delta_minus(2);
 
         // wrong way end -> start, should be None
-        let rlp = ChainSync::create_new_hashes_rlp(&client, &end, &start);
+        let rlp = ChainSync::create_new_hashes_rlp(&*client, &end, &start);
         assert!(rlp.is_none());
 
-        let rlp = ChainSync::create_new_hashes_rlp(&client, &start, &end).unwrap();
+        let rlp = ChainSync::create_new_hashes_rlp(&*client, &start, &end).unwrap();
         // size of three rlp encoded hash-difficulty
         assert_eq!(107, rlp.len());
     }
@@ -1689,13 +1689,13 @@ pub mod tests {
     // on_peer_new_hashes in our code as well
     #[test]
     fn hashes_rlp_mutually_acceptable() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
         let chain_info = client.chain_info();
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&* client, &ss, &queue, None);
 
         let peers = sync.get_lagging_peers(&chain_info);
         SyncPropagator::propagate_new_hashes(&mut sync, &chain_info, &mut io, &peers);
@@ -1709,13 +1709,13 @@ pub mod tests {
     // on_peer_new_block  in our code as well
     #[test]
     fn block_rlp_mutually_acceptable() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
         let chain_info = client.chain_info();
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&* client, &ss, &queue, None);
 
         let peers = sync.get_lagging_peers(&chain_info);
         SyncPropagator::propagate_blocks(&mut sync, &chain_info, &mut io, &[], &peers);
@@ -1732,11 +1732,11 @@ pub mod tests {
         }
 
         // given
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(98, EachBlockWith::Uncle);
         client.add_blocks(1, EachBlockWith::UncleAndTransaction);
         client.add_blocks(1, EachBlockWith::Transaction);
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
 
         let good_blocks = vec![client.block_hash_delta_minus(2)];
         let retracted_blocks = vec![client.block_hash_delta_minus(1)];
@@ -1753,15 +1753,15 @@ pub mod tests {
         {
             let queue = RwLock::new(VecDeque::new());
             let ss = TestSnapshotService::new();
-            let mut io = TestIo::new(&mut client, &ss, &queue, None);
+            let mut io = TestIo::new(&* client, &ss, &queue, None);
             io.chain
-                .miner
-                .chain_new_blocks(io.chain, &[], &[], &[], &good_blocks, false);
+                .miner()
+                .chain_new_blocks(&[], &[], &[], &good_blocks, false);
             sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[], &[]);
             assert_eq!(
                 io.chain
-                    .miner
-                    .ready_transactions(io.chain, 10, PendingOrdering::Priority)
+                    .miner()
+                    .ready_transactions(10, PendingOrdering::Priority)
                     .len(),
                 1
             );
@@ -1774,9 +1774,8 @@ pub mod tests {
         {
             let queue = RwLock::new(VecDeque::new());
             let ss = TestSnapshotService::new();
-            let mut io = TestIo::new(&client, &ss, &queue, None);
-            io.chain.miner.chain_new_blocks(
-                io.chain,
+            let mut io = TestIo::new(&*client, &ss, &queue, None);
+            io.chain.miner().chain_new_blocks(
                 &[],
                 &[],
                 &good_blocks,
@@ -1789,8 +1788,8 @@ pub mod tests {
         // then
         assert_eq!(
             client
-                .miner
-                .ready_transactions(&client, 10, PendingOrdering::Priority)
+                .miner()
+                .ready_transactions(10, PendingOrdering::Priority)
                 .len(),
             1
         );
@@ -1799,26 +1798,26 @@ pub mod tests {
     #[test]
     fn should_not_add_transactions_to_queue_if_not_synced() {
         // given
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(98, EachBlockWith::Uncle);
         client.add_blocks(1, EachBlockWith::UncleAndTransaction);
         client.add_blocks(1, EachBlockWith::Transaction);
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
 
         let good_blocks = vec![client.block_hash_delta_minus(2)];
         let retracted_blocks = vec![client.block_hash_delta_minus(1)];
 
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
 
         // when
         sync.chain_new_blocks(&mut io, &[], &[], &[], &good_blocks, &[], &[]);
-        assert_eq!(io.chain.miner.queue_status().status.transaction_count, 0);
+        assert_eq!(io.chain.miner().queue_status().status.transaction_count, 0);
         sync.chain_new_blocks(&mut io, &[], &[], &good_blocks, &retracted_blocks, &[], &[]);
 
         // then
-        let status = io.chain.miner.queue_status();
+        let status = io.chain.miner().queue_status();
         assert_eq!(status.status.transaction_count, 0);
     }
 }

@@ -25,6 +25,8 @@ use return_data::ReturnData;
 use schedule::Schedule;
 use std::sync::Arc;
 
+pub use ethjson::types::contract_address::{contract_address, CreateContractAddress};
+
 #[derive(Debug)]
 /// Result of externalities create function.
 pub enum ContractCreateResult {
@@ -50,17 +52,6 @@ pub enum MessageCallResult {
     /// Returned when message call was reverted.
     /// Contains gas left and output data.
     Reverted(U256, ReturnData),
-}
-
-/// Specifies how an address is calculated for a new contract.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum CreateContractAddress {
-    /// Address is calculated from sender and nonce. pWASM `create` scheme.
-    FromSenderAndNonce,
-    /// Address is calculated from sender, salt and code hash. pWASM `create2` scheme and EIP-1014 CREATE2 scheme.
-    FromSenderSaltAndCodeHash(H256),
-    /// Address is calculated from code hash and sender. Used by pwasm create ext.
-    FromSenderAndCodeHash,
 }
 
 /// Externalities interface for EVMs

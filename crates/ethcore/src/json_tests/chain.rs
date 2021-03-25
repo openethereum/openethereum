@@ -193,14 +193,18 @@ pub fn json_chain_test<H: FnMut(&str, HookType)>(
                 }
                 config.history = 8;
                 config.queue.verifier_settings.num_verifiers = 1;
+                let mut miner = Miner::new_for_tests(&spec, None);
                 let client = Client::new(
                     config,
                     &spec,
                     db,
-                    Arc::new(Miner::new_for_tests(&spec, None)),
                     IoChannel::disconnected(),
                 )
                 .expect("Failed to instantiate a new Client");
+                
+                miner.set_pool_client(client.clone());
+                client.set_miner(Arc::new(miner));
+                
 
                 for b in blockchain.blocks_rlp() {
                     let bytes_len = b.len();

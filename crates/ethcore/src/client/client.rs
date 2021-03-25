@@ -57,7 +57,7 @@ use types::{
     },
     BlockNumber,
 };
-use vm::{EnvInfo, LastHashes};
+use vm::{contract_address, CreateContractAddress, EnvInfo, LastHashes, Schedule};
 
 use ansi_term::Colour;
 use block::{enact_verified, ClosedBlock, Drain, LockedBlock, OpenBlock, SealedBlock};
@@ -82,10 +82,10 @@ use error::{
     BlockError, CallError, Error, Error as EthcoreError, ErrorKind as EthcoreErrorKind,
     EthcoreResult, ExecutionError, ImportErrorKind, QueueErrorKind,
 };
-use executive::{contract_address, Executed, Executive, TransactOptions};
+use executive::{Executed, Executive, TransactOptions};
 use factory::{Factories, VmFactory};
 use io::IoChannel;
-use miner::{Miner, MinerService};
+use miner::{Miner, MinerPoolClient, MinerService, MinerTxpool};
 use snapshot::{self, io as snapshot_io, SnapshotClient};
 use spec::Spec;
 use state::{self, State};
@@ -100,7 +100,6 @@ use verification::{
     queue::kind::{blocks::Unverified, BlockLike},
     BlockQueue, PreverifiedBlock, Verifier,
 };
-use vm::Schedule;
 // re-export
 pub use blockchain::CacheSize as BlockChainCacheSize;
 use db::{keys::BlockDetails, Readable, Writable};
@@ -180,7 +179,7 @@ struct Importer {
     pub block_queue: BlockQueue,
 
     /// Handles block sealing
-    pub miner: Arc<Miner>,
+    pub miner: RwLock<Option<Arc<Miner>>>,
 
     /// Ancient block verifier: import an ancient sequence of blocks in order from a starting epoch
     pub ancient_verifier: AncientVerifier,
@@ -262,7 +261,6 @@ impl Importer {
         config: &ClientConfig,
         engine: Arc<dyn EthEngine>,
         message_channel: IoChannel<ClientIoMessage>,
-        miner: Arc<Miner>,
     ) -> Result<Importer, EthcoreError> {
         let block_queue = BlockQueue::new(
             config.queue.clone(),
@@ -275,11 +273,19 @@ impl Importer {
             import_lock: Mutex::new(()),
             verifier: verification::new(config.verifier_type.clone()),
             block_queue,
-            miner,
+            miner: RwLock::new(None),
             ancient_verifier: AncientVerifier::new(engine.clone()),
             engine,
             bad_blocks: Default::default(),
         })
+    }
+
+    pub fn set_miner(&self, miner: Arc<Miner>) {
+        *self.miner.write() = Some(miner.clone());
+    }
+
+    pub fn miner(&self) -> Arc<Miner> {
+        self.miner.read().clone().unwrap()
     }
 
     // t_nb 6.0 This is triggered by a message coming from a block queue when the block is ready for insertion
@@ -386,8 +392,7 @@ impl Importer {
 
                 // t_nb 10 Notify miner about new included block.
                 if !has_more_blocks_to_import {
-                    self.miner.chain_new_blocks(
-                        client,
+                    self.miner().chain_new_blocks(
                         &imported_blocks,
                         &invalid_blocks,
                         route.enacted(),
@@ -873,13 +878,16 @@ impl Importer {
 }
 
 impl Client {
+    /// set miner to importer.
+    pub fn set_miner(&self, miner: Arc<Miner>) {
+        self.importer.set_miner(miner);
+    }
     /// Create a new client with given parameters.
     /// The database is assumed to have been initialized with the correct columns.
     pub fn new(
         config: ClientConfig,
         spec: &Spec,
         db: Arc<dyn BlockChainDB>,
-        miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, ::error::Error> {
         let trie_spec = match config.fat_db {
@@ -945,7 +953,7 @@ impl Client {
             _ => true,
         };
 
-        let importer = Importer::new(&config, engine.clone(), message_channel.clone(), miner)?;
+        let importer = Importer::new(&config, engine.clone(), message_channel.clone())?;
 
         let registrar_address = engine
             .additional_params()
@@ -1261,7 +1269,7 @@ impl Client {
     /// Get shared miner reference.
     #[cfg(test)]
     pub fn miner(&self) -> Arc<Miner> {
-        self.importer.miner.clone()
+        self.importer.miner.read().clone().unwrap()
     }
 
     #[cfg(test)]
@@ -1660,7 +1668,7 @@ impl snapshot::DatabaseRestore for Client {
         let mut state_db = self.state_db.write();
         let mut chain = self.chain.write();
         let mut tracedb = self.tracedb.write();
-        self.importer.miner.clear();
+        self.importer.miner().clear();
         let db = self.db.write();
         db.restore(new_db)?;
 
@@ -2072,6 +2080,8 @@ impl BadBlocks for Client {
         self.importer.bad_blocks.bad_blocks()
     }
 }
+
+impl MinerPoolClient for Client {}
 
 impl BlockChainClient for Client {
     fn replay(&self, id: TransactionId, analytics: CallAnalytics) -> Result<Executed, CallError> {
@@ -2636,8 +2646,8 @@ impl BlockChainClient for Client {
             )
         };
         self.importer
-            .miner
-            .ready_transactions(self, max_len, ::miner::PendingOrdering::Priority)
+            .miner()
+            .ready_transactions(max_len, ::miner::PendingOrdering::Priority)
     }
 
     fn signing_chain_id(&self) -> Option<u64> {
@@ -2676,20 +2686,20 @@ impl BlockChainClient for Client {
             nonce,
         }: TransactionRequest,
     ) -> Result<SignedTransaction, transaction::Error> {
-        let authoring_params = self.importer.miner.authoring_params();
-        let service_transaction_checker = self.importer.miner.service_transaction_checker();
+        let authoring_params = self.importer.miner().authoring_params();
+        let service_transaction_checker = self.importer.miner().service_transaction_checker();
         let gas_price = if let Some(checker) = service_transaction_checker {
             match checker.check_address(self, authoring_params.author) {
                 Ok(true) => U256::zero(),
-                _ => gas_price.unwrap_or_else(|| self.importer.miner.sensible_gas_price()),
+                _ => gas_price.unwrap_or_else(|| self.importer.miner().sensible_gas_price()),
             }
         } else {
-            self.importer.miner.sensible_gas_price()
+            self.importer.miner().sensible_gas_price()
         };
         let transaction = TypedTransaction::Legacy(transaction::Transaction {
             nonce: nonce.unwrap_or_else(|| self.latest_nonce(&authoring_params.author)),
             action,
-            gas: gas.unwrap_or_else(|| self.importer.miner.sensible_gas_limit()),
+            gas: gas.unwrap_or_else(|| self.importer.miner().sensible_gas_limit()),
             gas_price,
             value: U256::zero(),
             data,
@@ -2706,9 +2716,7 @@ impl BlockChainClient for Client {
 
     fn transact(&self, tx_request: TransactionRequest) -> Result<(), transaction::Error> {
         let signed = self.create_transaction(tx_request)?;
-        self.importer
-            .miner
-            .import_own_transaction(self, signed.into())
+        self.importer.miner().import_own_transaction(signed.into())
     }
 
     fn registrar_address(&self) -> Option<Address> {
@@ -2738,10 +2746,7 @@ impl IoClient for Client {
                     notify.transactions_received(&txs, peer_id);
                 });
 
-                client
-                    .importer
-                    .miner
-                    .import_external_transactions(client, txs);
+                client.importer.miner().import_external_transactions(txs);
             })
             .unwrap_or_else(|e| {
                 debug!(target: "client", "Ignoring {} transactions: {}", len, e);
@@ -2952,8 +2957,7 @@ impl ImportSealedBlock for Client {
             route
         };
         let route = ChainRoute::from([route].as_ref());
-        self.importer.miner.chain_new_blocks(
-            self,
+        self.importer.miner().chain_new_blocks(
             &[hash],
             &[],
             route.enacted(),
@@ -3004,18 +3008,7 @@ impl ::miner::BlockChainClient for Client {}
 
 impl super::traits::EngineClient for Client {
     fn update_sealing(&self, force: ForceUpdateSealing) {
-        self.importer.miner.update_sealing(self, force)
-    }
-
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
-        let import = self
-            .importer
-            .miner
-            .submit_seal(block_hash, seal)
-            .and_then(|block| self.import_sealed_block(block));
-        if let Err(err) = import {
-            warn!(target: "poa", "Wrong internal seal submission! {:?}", err);
-        }
+        self.importer.miner().update_sealing(force)
     }
 
     fn broadcast_consensus_message(&self, message: Bytes) {
@@ -3220,7 +3213,7 @@ impl ImportExportBlocks for Client {
 /// Returns `LocalizedReceipt` given `LocalizedTransaction`
 /// and a vector of receipts from given block up to transaction index.
 fn transaction_receipt(
-    machine: &::machine::EthereumMachine,
+    _machine: &::machine::EthereumMachine,
     mut tx: LocalizedTransaction,
     receipt: TypedReceipt,
     prior_gas_used: U256,
@@ -3252,7 +3245,7 @@ fn transaction_receipt(
             Action::Call(_) => None,
             Action::Create => Some(
                 contract_address(
-                    machine.create_address_scheme(block_number),
+                    CreateContractAddress::FromSenderAndNonce,
                     &sender,
                     &tx.tx().nonce,
                     &tx.tx().data,

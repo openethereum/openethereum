@@ -52,7 +52,7 @@ impl Dependencies {
     pub fn new() -> Self {
         Dependencies {
             miner: Arc::new(TestMinerService::default()),
-            client: Arc::new(TestBlockChainClient::default()),
+            client: TestBlockChainClient::new(),
             sync: Arc::new(TestSyncProvider::new(Config {
                 network_id: 3,
                 num_peers: 120,
@@ -322,9 +322,9 @@ fn rpc_parity_pending_transactions_with_filter() {
         })
         .fake_sign(Address::from_low_u64_be(i + 0x50));
         deps.miner
-            .pending_transactions
-            .lock()
-            .insert(H256::from_low_u64_be(i + 0x60), tx);
+            .pending_block
+            .lock().transactions
+            .push(tx);
     }
 
     let tx = TypedTransaction::Legacy(Transaction {
@@ -337,9 +337,9 @@ fn rpc_parity_pending_transactions_with_filter() {
     })
     .fake_sign(Address::from_low_u64_be(0x56));
     deps.miner
-        .pending_transactions
-        .lock()
-        .insert(H256::from_low_u64_be(0x66), tx);
+        .pending_block
+        .lock().transactions
+        .push(tx);
 
     assert_txs_filtered(
         &io,

@@ -39,9 +39,13 @@ pub use action_params::{ActionParams, ActionValue, ParamsType};
 pub use call_type::CallType;
 pub use env_info::{EnvInfo, LastHashes};
 pub use error::{Error, ExecTrapError, ExecTrapResult, Result, TrapError, TrapKind, TrapResult};
-pub use ext::{ContractCreateResult, CreateContractAddress, Ext, MessageCallResult};
+pub use ext::{
+    contract_address, ContractCreateResult, CreateContractAddress, Ext, MessageCallResult,
+};
 pub use return_data::{GasLeft, ReturnData};
 pub use schedule::{CleanDustMode, Schedule, WasmCosts};
+
+//pub use
 
 /// Virtual Machine interface
 pub trait Exec {

@@ -403,16 +403,23 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
         for _ in 0..n {
             let chain = TestBlockChainClient::new();
             let ss = Arc::new(TestSnapshotService::new());
-            let sync = ChainSync::new(config.clone(), &chain, ForkFilterApi::new_dummy(&chain));
-            net.peers.push(Arc::new(EthPeer {
+            let sync = ChainSync::new(config.clone(), &*chain, ForkFilterApi::new_dummy(&*chain));
+            let mut miner = Miner::new_for_tests(&Spec::new_test(), None);
+            miner.set_pool_client(chain.clone());
+            let miner = Arc::new(miner);
+            chain.set_miner(miner.clone());
+
+            let ethpeer = Arc::new(EthPeer {
                 sync: StdRwLock::new(sync),
                 snapshot_service: ss,
-                chain: Arc::new(chain),
-                miner: Arc::new(Miner::new_for_tests(&Spec::new_test(), None)),
+                chain: chain.clone(),
+                miner,
                 queue: RwLock::new(VecDeque::new()),
                 io_queue: RwLock::new(VecDeque::new()),
                 new_blocks_queue: RwLock::new(VecDeque::new()),
-            }));
+            });
+
+            net.peers.push(ethpeer);
         }
         net
     }
@@ -441,15 +448,17 @@ impl TestNet<EthPeer<EthcoreClient>> {
 
     pub fn add_peer_with_private_config(&mut self, config: SyncConfig, spec: Spec) {
         let channel = IoChannel::disconnected();
-        let miner = Arc::new(Miner::new_for_tests(&spec, None));
+        let mut miner = Miner::new_for_tests(&spec, None);
         let client = EthcoreClient::new(
             ClientConfig::default(),
             &spec,
             test_helpers::new_db(),
-            miner.clone(),
             channel.clone(),
         )
         .unwrap();
+        miner.set_pool_client(client.clone());
+        let miner = Arc::new(miner);
+        client.set_miner(miner.clone());
 
         let ss = Arc::new(TestSnapshotService::new());
         let sync = ChainSync::new(config, &*client, ForkFilterApi::new_dummy(&*client));

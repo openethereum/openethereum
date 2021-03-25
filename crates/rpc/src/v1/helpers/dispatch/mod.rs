@@ -87,7 +87,7 @@ use std::{fmt::Debug, ops::Deref, sync::Arc};
 
 use bytes::Bytes;
 use crypto::publickey::Signature;
-use ethcore::{client::BlockChainClient, miner::MinerService};
+use ethcore::{client::BlockChainClient, miner::{MinerPoolClient, MinerService}};
 use ethereum_types::{Address, H256, H520, U256};
 use ethkey::Password;
 use hash::keccak;
@@ -387,7 +387,7 @@ pub fn eth_data_hash(mut data: Bytes) -> H256 {
 /// Extract the default gas price from a client and miner.
 pub fn default_gas_price<C, M>(client: &C, miner: &M, percentile: usize) -> U256
 where
-    C: BlockChainClient,
+    C: MinerPoolClient+BlockChainClient,
     M: MinerService,
 {
     client

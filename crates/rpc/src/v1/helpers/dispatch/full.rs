@@ -76,16 +76,16 @@ impl<C, M> Clone for FullDispatcher<C, M> {
     }
 }
 
-impl<C: miner::BlockChainClient, M: MinerService> FullDispatcher<C, M> {
+impl<C: miner::BlockChainClient+miner::MinerPoolClient, M: MinerService> FullDispatcher<C, M> {
     fn state_nonce(&self, from: &Address) -> U256 {
-        self.miner.next_nonce(&*self.client, from)
+        self.miner.next_nonce(from)
     }
 
     /// Post transaction to the network.
     ///
     /// If transaction is trusted we are more likely to assume it is coming from a local account.
     pub fn dispatch_transaction(
-        client: &C,
+        _client: &C,
         miner: &M,
         signed_transaction: PendingTransaction,
         trusted: bool,
@@ -96,13 +96,13 @@ impl<C: miner::BlockChainClient, M: MinerService> FullDispatcher<C, M> {
         // it as local or not. Nodes with public RPC interfaces will want these transactions to be treated like
         // external transactions.
         miner
-            .import_claimed_local_transaction(client, signed_transaction, trusted)
+            .import_claimed_local_transaction(signed_transaction, trusted)
             .map_err(errors::transaction)
             .map(|_| hash)
     }
 }
 
-impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
+impl<C: miner::MinerPoolClient+miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
     for FullDispatcher<C, M>
 {
     fn fill_optional_fields(

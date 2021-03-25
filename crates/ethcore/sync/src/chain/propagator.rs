@@ -377,13 +377,13 @@ mod tests {
 
     #[test]
     fn sends_new_hashes_to_lagging_peer() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
         let chain_info = client.chain_info();
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
 
         let peers = sync.get_lagging_peers(&chain_info);
         let peer_count =
@@ -399,13 +399,13 @@ mod tests {
 
     #[test]
     fn sends_latest_block_to_lagging_peer() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
         let chain_info = client.chain_info();
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         let peers = sync.get_lagging_peers(&chain_info);
         let peer_count =
             SyncPropagator::propagate_blocks(&mut sync, &chain_info, &mut io, &[], &peers);
@@ -420,14 +420,14 @@ mod tests {
 
     #[test]
     fn sends_sealed_block() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
         let hash = client.block_hash(BlockId::Number(99)).unwrap();
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(5), &*client);
         let chain_info = client.chain_info();
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         let peers = sync.get_lagging_peers(&chain_info);
         let peer_count = SyncPropagator::propagate_blocks(
             &mut sync,
@@ -447,14 +447,14 @@ mod tests {
 
     #[test]
     fn sends_proposed_block() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(2, EachBlockWith::Uncle);
         let queue = RwLock::new(VecDeque::new());
         let block = client.block(BlockId::Latest).unwrap().into_inner();
         let mut sync = ChainSync::new(
             SyncConfig::default(),
-            &client,
-            ForkFilterApi::new_dummy(&client),
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
         );
         sync.peers.insert(
             0,
@@ -480,7 +480,7 @@ mod tests {
             },
         );
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         SyncPropagator::propagate_proposed_blocks(&mut sync, &mut io, &[block]);
 
         // 1 message should be sent
@@ -491,13 +491,13 @@ mod tests {
 
     #[test]
     fn propagates_transactions() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         client.insert_transaction_to_queue();
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &*client);
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         let peer_count = SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
         // Try to propagate same transactions for the second time
         let peer_count2 = SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
@@ -518,13 +518,13 @@ mod tests {
 
     #[test]
     fn does_not_propagate_new_transactions_after_new_block() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         client.insert_transaction_to_queue();
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &*client);
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         let peer_count = SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
         io.chain.insert_transaction_to_queue();
         // New block import should not trigger propagation.
@@ -541,18 +541,18 @@ mod tests {
 
     #[test]
     fn does_not_fail_for_no_peers() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         client.insert_transaction_to_queue();
         // Sync with no peers
         let mut sync = ChainSync::new(
             SyncConfig::default(),
-            &client,
-            ForkFilterApi::new_dummy(&client),
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
         );
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         let peer_count = SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
         sync.chain_new_blocks(&mut io, &[], &[], &[], &[], &[], &[]);
         // Try to propagate same transactions for the second time
@@ -565,15 +565,15 @@ mod tests {
 
     #[test]
     fn propagates_transactions_without_alternating() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         client.insert_transaction_to_queue();
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &*client);
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
         // should sent some
         {
-            let mut io = TestIo::new(&mut client, &ss, &queue, None);
+            let mut io = TestIo::new(&*client, &ss, &queue, None);
             let peer_count =
                 SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
             assert_eq!(1, io.packets.len());
@@ -582,7 +582,7 @@ mod tests {
         // Insert some more
         client.insert_transaction_to_queue();
         let (peer_count2, peer_count3) = {
-            let mut io = TestIo::new(&mut client, &ss, &queue, None);
+            let mut io = TestIo::new(&*client, &ss, &queue, None);
             // Propagate new transactions
             let peer_count2 =
                 SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
@@ -604,13 +604,13 @@ mod tests {
 
     #[test]
     fn should_maintain_transations_propagation_stats() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.add_blocks(100, EachBlockWith::Uncle);
         client.insert_transaction_to_queue();
-        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &client);
+        let mut sync = dummy_sync_with_peer(client.block_hash_delta_minus(1), &*client);
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
         SyncPropagator::propagate_new_transactions(&mut sync, &mut io, || true);
 
         let stats = sync.transactions_stats();
@@ -623,17 +623,17 @@ mod tests {
 
     #[test]
     fn should_propagate_service_transaction_to_selected_peers_only() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         client.insert_transaction_with_gas_price_to_queue(U256::zero());
         let block_hash = client.block_hash_delta_minus(1);
         let mut sync = ChainSync::new(
             SyncConfig::default(),
-            &client,
-            ForkFilterApi::new_dummy(&client),
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
         );
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
 
         // when peer#1 is Geth
         insert_dummy_peer(&mut sync, 1, block_hash);
@@ -664,18 +664,18 @@ mod tests {
 
     #[test]
     fn should_propagate_service_transaction_is_sent_as_separate_message() {
-        let mut client = TestBlockChainClient::new();
+        let client = TestBlockChainClient::new();
         let tx1_hash = client.insert_transaction_to_queue();
         let tx2_hash = client.insert_transaction_with_gas_price_to_queue(U256::zero());
         let block_hash = client.block_hash_delta_minus(1);
         let mut sync = ChainSync::new(
             SyncConfig::default(),
-            &client,
-            ForkFilterApi::new_dummy(&client),
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
         );
         let queue = RwLock::new(VecDeque::new());
         let ss = TestSnapshotService::new();
-        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+        let mut io = TestIo::new(&*client, &ss, &queue, None);
 
         // when peer#1 is OpenEthereum, accepting service transactions
         insert_dummy_peer(&mut sync, 1, block_hash);

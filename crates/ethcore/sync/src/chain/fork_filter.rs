@@ -71,7 +71,7 @@ mod tests {
         let client = TestBlockChainClient::new_with_spec(spec);
 
         assert_eq!(
-            ForkFilterApi::new(&client, spec_forks).inner,
+            ForkFilterApi::new(&*client, spec_forks).inner,
             ForkFilter::new(
                 0,
                 primitive_types07::H256::from_slice(&genesis_hash.0),

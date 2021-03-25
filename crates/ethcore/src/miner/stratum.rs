@@ -30,9 +30,11 @@ use ethcore_miner::work_notify::NotifyWork;
 use ethcore_stratum::PushWorkHandler;
 use ethcore_stratum::{Error as StratumServiceError, JobDispatcher, Stratum as StratumService};
 use ethereum_types::{H256, H64, U256};
-use miner::{Miner, MinerService};
+use miner::{Miner};
 use parking_lot::Mutex;
 use rlp::encode;
+
+use super::MinerRPC;
 
 /// Configures stratum server options.
 #[derive(Debug, PartialEq, Clone)]
@@ -127,9 +129,9 @@ impl JobDispatcher for StratumJobDispatcher {
     }
 
     fn job(&self) -> Option<String> {
-        self.with_core(|client, miner| {
+        self.with_core(|_client, miner| {
             miner
-                .work_package(&*client)
+                .work_package()
                 .map(|(pow_hash, number, _timestamp, difficulty)| {
                     self.payload(pow_hash, difficulty, number)
                 })

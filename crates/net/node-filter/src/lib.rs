@@ -121,14 +121,18 @@ mod test {
         let spec = Spec::load(&tempdir.path(), &data[..]).unwrap();
         let client_db = test_helpers::new_db();
 
+        
+        let mut miner = Miner::new_for_tests(&spec, None);
         let client = Client::new(
             ClientConfig::default(),
             &spec,
             client_db,
-            Arc::new(Miner::new_for_tests(&spec, None)),
             IoChannel::disconnected(),
         )
         .unwrap();
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
+
         let filter = NodeFilter::new(
             Arc::downgrade(&client) as Weak<dyn BlockChainClient>,
             contract_addr,

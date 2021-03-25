@@ -56,7 +56,7 @@ use types::{
     transaction::{self, SignedTransaction, UnverifiedTransaction},
     BlockNumber,
 };
-use vm::{ActionValue, CallType, CreateContractAddress, EnvInfo, Schedule};
+use vm::{ActionValue, CallType, EnvInfo, Schedule};
 
 use block::ExecutedBlock;
 use bytes::Bytes;
@@ -592,11 +592,6 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     /// The network ID that transactions should be signed with.
     fn signing_chain_id(&self, env_info: &EnvInfo) -> Option<u64> {
         self.machine().signing_chain_id(env_info)
-    }
-
-    /// Returns new contract address generation scheme at given block number.
-    fn create_address_scheme(&self, number: BlockNumber) -> CreateContractAddress {
-        self.machine().create_address_scheme(number)
     }
 
     // t_nb 5.3.1 Verify a particular transaction is valid.

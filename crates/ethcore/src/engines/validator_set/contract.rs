@@ -223,7 +223,7 @@ mod tests {
     use ethabi::FunctionOutputDecoder;
     use ethereum_types::{Address, H520};
     use hash::keccak;
-    use miner::{self, MinerService};
+    use miner::{self, MinerRPC};
     use rlp::encode;
     use rustc_hex::FromHex;
     use spec::Spec;

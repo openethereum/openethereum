@@ -152,16 +152,18 @@ where
     let test_spec = test_spec();
     let client_db = new_db();
 
-    let miner = Miner::new_for_tests_force_sealing(&test_spec, None, force_sealing);
+    let mut miner = Miner::new_for_tests_force_sealing(&test_spec, None, force_sealing);
 
     let client = Client::new(
         ClientConfig::default(),
         &test_spec,
         client_db,
-        Arc::new(miner),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
+
     let test_engine = &*test_spec.engine;
 
     let mut db = test_spec
@@ -313,14 +315,17 @@ pub fn get_test_client_with_blocks(blocks: Vec<Bytes>) -> Arc<Client> {
     let test_spec = Spec::new_test();
     let client_db = new_db();
 
+    let mut miner = Miner::new_for_tests(&test_spec, None);
+
     let client = Client::new(
         ClientConfig::default(),
         &test_spec,
         client_db,
-        Arc::new(Miner::new_for_tests(&test_spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
 
     for block in blocks {
         if let Err(e) = client.import_block(Unverified::from_rlp(block).unwrap()) {

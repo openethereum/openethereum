@@ -31,7 +31,7 @@ use ethereum_types::{Address, U256};
 use executive::{Executive, TransactOptions};
 use hash::keccak;
 use io::IoChannel;
-use miner::{Miner, MinerService, PendingOrdering};
+use miner::{Miner, MinerTxpool, PendingOrdering};
 use rustc_hex::ToHex;
 use spec::Spec;
 use state::{self, CleanupMode, State, StateInfo};
@@ -56,14 +56,16 @@ fn imports_from_empty() {
     let db = test_helpers::new_db();
     let spec = Spec::new_test();
 
+    let mut miner = Miner::new_for_tests(&spec, None);
     let client = Client::new(
         ClientConfig::default(),
         &spec,
         db,
-        Arc::new(Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
     client.import_verified_blocks();
     client.flush_queue();
 }
@@ -74,14 +76,16 @@ fn should_return_registrar() {
     let tempdir = TempDir::new("").unwrap();
     let spec = ethereum::new_morden(&tempdir.path().to_owned());
 
+    let mut miner = Miner::new_for_tests(&spec, None);
     let client = Client::new(
         ClientConfig::default(),
         &spec,
         db,
-        Arc::new(Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
     let params = client.additional_params();
     let address = &params["registrar"];
 
@@ -94,14 +98,16 @@ fn imports_good_block() {
     let db = test_helpers::new_db();
     let spec = Spec::new_test();
 
+    let mut miner = Miner::new_for_tests(&spec, None);
     let client = Client::new(
         ClientConfig::default(),
         &spec,
         db,
-        Arc::new(Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
     let good_block = get_good_dummy_block();
     if client
         .import_block(Unverified::from_rlp(good_block).unwrap())
@@ -121,14 +127,18 @@ fn query_none_block() {
     let db = test_helpers::new_db();
     let spec = Spec::new_test();
 
+    let mut miner = Miner::new_for_tests(&spec, None);
+
     let client = Client::new(
         ClientConfig::default(),
         &spec,
         db,
-        Arc::new(Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
+
     let non_existant = client.block_header(BlockId::Number(188));
     assert!(non_existant.is_none());
 }
@@ -314,14 +324,17 @@ fn change_history_size() {
     config.history = 2;
     let address = Address::random();
     {
+        let mut miner = Miner::new_for_tests(&test_spec, None);
         let client = Client::new(
             ClientConfig::default(),
             &test_spec,
             db.clone(),
-            Arc::new(Miner::new_for_tests(&test_spec, None)),
             IoChannel::disconnected(),
         )
         .unwrap();
+
+        miner.set_pool_client(client.clone());
+        client.set_miner(Arc::new(miner));
 
         for _ in 0..20 {
             let mut b = client
@@ -346,14 +359,18 @@ fn change_history_size() {
     }
     let mut config = ClientConfig::default();
     config.history = 10;
+    
+    let mut miner = Miner::new_for_tests(&test_spec, None);
     let client = Client::new(
         config,
         &test_spec,
         db,
-        Arc::new(Miner::new_for_tests(&test_spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
+    
     assert_eq!(client.state().balance(&address).unwrap(), 100.into());
 }
 
@@ -389,18 +406,18 @@ fn does_not_propagate_delayed_transactions() {
 
     client
         .miner()
-        .import_own_transaction(&*client, tx0)
+        .import_own_transaction(tx0)
         .unwrap();
     client
         .miner()
-        .import_own_transaction(&*client, tx1)
+        .import_own_transaction(tx1)
         .unwrap();
     assert_eq!(0, client.transactions_to_propagate().len());
     assert_eq!(
         0,
         client
             .miner()
-            .ready_transactions(&*client, 10, PendingOrdering::Priority)
+            .ready_transactions(10, PendingOrdering::Priority)
             .len()
     );
     push_blocks_to_client(&client, 53, 2, 2);
@@ -410,7 +427,7 @@ fn does_not_propagate_delayed_transactions() {
         2,
         client
             .miner()
-            .ready_transactions(&*client, 10, PendingOrdering::Priority)
+            .ready_transactions(10, PendingOrdering::Priority)
             .len()
     );
 }

@@ -47,8 +47,7 @@ struct SignerTester {
 }
 
 fn blockchain_client() -> Arc<TestBlockChainClient> {
-    let client = TestBlockChainClient::new();
-    Arc::new(client)
+    TestBlockChainClient::new()
 }
 
 fn accounts_provider() -> Arc<AccountProvider> {

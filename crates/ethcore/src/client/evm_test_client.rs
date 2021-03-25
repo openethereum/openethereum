@@ -20,7 +20,7 @@ use client;
 use db;
 use ethereum_types::{H160, H256, U256};
 use ethtrie;
-use evm::{FinalizationResult, VMType};
+use evm::{CreateContractAddress, FinalizationResult, VMType};
 use executive;
 use factory::{self, Factories};
 use journaldb;
@@ -298,11 +298,7 @@ impl<'a> EvmTestClient<'a> {
             tracer,
             vm_tracer,
         );
-        let scheme = self
-            .spec
-            .engine
-            .machine()
-            .create_address_scheme(env_info.number);
+        let scheme = CreateContractAddress::FromSenderAndNonce;
 
         // Touch the coinbase at the end of the test to simulate
         // miner reward.
@@ -347,7 +343,7 @@ impl<'a> EvmTestClient<'a> {
                 logs: result.receipt.logs.clone(),
                 contract_address: if let transaction::Action::Create = transaction.tx().action {
                     Some(
-                        executive::contract_address(
+                        vm::contract_address(
                             scheme,
                             &transaction.sender(),
                             &transaction.tx().nonce,

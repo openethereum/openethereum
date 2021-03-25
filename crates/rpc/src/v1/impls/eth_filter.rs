@@ -96,7 +96,22 @@ where
     }
 
     fn pending_transaction_hashes(&self) -> BTreeSet<H256> {
-        self.miner.pending_transaction_hashes(&*self.client)
+        // TODO implement option. PendingSet
+        // Get a set of all pending transaction hashes.
+        // Depending on the settings may look in transaction pool or only in pending block.
+
+        // This will break this config
+        /*--relay-set=[SET]
+        Set of transactions to relay. SET may be: cheap - Relay any transaction in the queue (this may include invalid
+        transactions); strict - Relay only executed transactions (this guarantees we don't relay invalid transactions,
+        but means we relay nothing if not mining); lenient - Same as strict when mining, and cheap when not. (default:
+        cheap)*/
+
+        self.miner
+            .pending(self.client.chain_info().best_block_number, |b| {
+                b.transactions().iter().map(|tx| tx.hash()).collect()
+            })
+            .unwrap_or(BTreeSet::new())
     }
 
     fn logs(&self, filter: EthcoreFilter) -> BoxFuture<Vec<Log>> {

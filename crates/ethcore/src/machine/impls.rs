@@ -32,7 +32,7 @@ use types::{
     BlockNumber,
 };
 use vm::{
-    AccessList, ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo, ParamsType,
+    AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType,
     Schedule,
 };
 
@@ -391,11 +391,6 @@ impl EthereumMachine {
         }
     }
 
-    /// Returns new contract address generation scheme at given block number.
-    pub fn create_address_scheme(&self, _number: BlockNumber) -> CreateContractAddress {
-        CreateContractAddress::FromSenderAndNonce
-    }
-
     /// Verify a particular transaction is valid, regardless of order.
     pub fn verify_transaction_unordered(
         &self,
@@ -429,7 +424,7 @@ impl EthereumMachine {
     }
 
     /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo + CallContract>(
+    pub fn verify_transaction<C: BlockInfo + CallContract + ?Sized>(
         &self,
         t: &SignedTransaction,
         parent: &Header,

@@ -16,13 +16,12 @@
 
 //! Transaction Execution environment.
 use bytes::{Bytes, BytesRef};
-use ethereum_types::{Address, H256, U256, U512};
+use ethereum_types::{Address, U256, U512};
 use evm::{CallType, FinalizationResult, Finalize};
 use executed::ExecutionError;
 pub use executed::{Executed, ExecutionResult};
 use externalities::*;
 use factory::VmFactory;
-use hash::keccak;
 use machine::EthereumMachine as Machine;
 use state::{Backend as StateBackend, CleanupMode, State, Substate};
 use std::{cmp, convert::TryFrom, sync::Arc};
@@ -30,8 +29,8 @@ use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction, TypedTransaction};
 use vm::{
-    self, AccessList, ActionParams, ActionValue, CleanDustMode, CreateContractAddress, EnvInfo,
-    ResumeCall, ResumeCreate, ReturnData, Schedule, TrapError,
+    self, contract_address, AccessList, ActionParams, ActionValue, CleanDustMode,
+    CreateContractAddress, EnvInfo, ResumeCall, ResumeCreate, ReturnData, Schedule, TrapError,
 };
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -43,41 +42,6 @@ const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(ethereum_types::H160
 #[cfg(not(any(test, feature = "test-helpers")))]
 /// Precompile that can never be prunned from state trie (none)
 const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = None;
-
-/// Returns new address created from address, nonce, and code hash
-pub fn contract_address(
-    address_scheme: CreateContractAddress,
-    sender: &Address,
-    nonce: &U256,
-    code: &[u8],
-) -> (Address, Option<H256>) {
-    use rlp::RlpStream;
-
-    match address_scheme {
-        CreateContractAddress::FromSenderAndNonce => {
-            let mut stream = RlpStream::new_list(2);
-            stream.append(sender);
-            stream.append(nonce);
-            (From::from(keccak(stream.as_raw())), None)
-        }
-        CreateContractAddress::FromSenderSaltAndCodeHash(salt) => {
-            let code_hash = keccak(code);
-            let mut buffer = [0u8; 1 + 20 + 32 + 32];
-            buffer[0] = 0xff;
-            &mut buffer[1..(1 + 20)].copy_from_slice(&sender[..]);
-            &mut buffer[(1 + 20)..(1 + 20 + 32)].copy_from_slice(&salt[..]);
-            &mut buffer[(1 + 20 + 32)..].copy_from_slice(&code_hash[..]);
-            (From::from(keccak(&buffer[..])), Some(code_hash))
-        }
-        CreateContractAddress::FromSenderAndCodeHash => {
-            let code_hash = keccak(code);
-            let mut buffer = [0u8; 20 + 32];
-            &mut buffer[..20].copy_from_slice(&sender[..]);
-            &mut buffer[20..].copy_from_slice(&code_hash[..]);
-            (From::from(keccak(&buffer[..])), Some(code_hash))
-        }
-    }
-}
 
 /// Convert a finalization result into a VM message call result.
 pub fn into_message_call_result(result: vm::Result<FinalizationResult>) -> vm::MessageCallResult {
@@ -1227,7 +1191,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let (result, output) = match t.tx().action {
             Action::Create => {
                 let (new_address, code_hash) = contract_address(
-                    self.machine.create_address_scheme(self.info.number),
+                    CreateContractAddress::FromSenderAndNonce,
                     &sender,
                     &nonce,
                     &t.tx().data,

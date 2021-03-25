@@ -2321,7 +2321,7 @@ mod tests {
     use ethereum_types::{Address, H256, H520, U256};
     use ethjson;
     use hash::keccak;
-    use miner::{Author, MinerService};
+    use miner::{Author, MinerRPC};
     use rlp::encode;
     use spec::Spec;
     use std::{

@@ -24,7 +24,7 @@ use std::{cmp, sync::Arc};
 use trace::{Tracer, VMTracer};
 use types::transaction::UNSIGNED_SENDER;
 use vm::{
-    self, AccessList, ActionParams, ActionValue, CallType, ContractCreateResult,
+    self, contract_address, AccessList, ActionParams, ActionValue, CallType, ContractCreateResult,
     CreateContractAddress, EnvInfo, Ext, MessageCallResult, ReturnData, Schedule, TrapKind,
 };
 

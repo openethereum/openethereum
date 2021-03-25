@@ -57,10 +57,6 @@ fn sync_provider() -> Arc<TestSyncProvider> {
     }))
 }
 
-fn miner_service(spec: &Spec) -> Arc<Miner> {
-    Arc::new(Miner::new_for_tests(spec, None))
-}
-
 fn snapshot_service() -> Arc<TestSnapshotService> {
     Arc::new(TestSnapshotService::new())
 }
@@ -120,17 +116,19 @@ impl EthTester {
         let account_provider = account_provider();
         let ap = account_provider.clone();
         let accounts = Arc::new(move || ap.accounts().unwrap_or_default()) as _;
-        let miner_service = miner_service(&spec);
+        let mut miner = Miner::new_for_tests(&spec, None);
         let snapshot_service = snapshot_service();
 
         let client = Client::new(
             config,
             &spec,
             test_helpers::new_db(),
-            miner_service.clone(),
             IoChannel::disconnected(),
         )
         .unwrap();
+        miner.set_pool_client(client.clone());
+        let miner = Arc::new(miner);
+        client.set_miner(miner.clone());
         let sync_provider = sync_provider();
         let external_miner = Arc::new(ExternalMiner::default());
 
@@ -139,7 +137,7 @@ impl EthTester {
             &snapshot_service,
             &sync_provider,
             &accounts,
-            &miner_service,
+            &miner,
             &external_miner,
             EthClientOptions {
                 gas_price_percentile: 50,
@@ -152,7 +150,7 @@ impl EthTester {
         let reservations = Arc::new(Mutex::new(nonce::Reservations::new(runtime.executor())));
 
         let dispatcher =
-            FullDispatcher::new(client.clone(), miner_service.clone(), reservations, 50);
+            FullDispatcher::new(client.clone(), miner.clone(), reservations, 50);
         let signer = Arc::new(dispatch::Signer::new(account_provider.clone())) as _;
         let eth_sign = SigningUnsafeClient::new(&signer, dispatcher);
 
@@ -161,7 +159,7 @@ impl EthTester {
         handler.extend_with(eth_sign.to_delegate());
 
         EthTester {
-            _miner: miner_service,
+            _miner: miner,
             _runtime: runtime,
             _snapshot: snapshot_service,
             accounts: account_provider,

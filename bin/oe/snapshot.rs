@@ -229,6 +229,7 @@ impl SnapshotCommand {
             .open(&client_path)
             .map_err(|e| format!("Failed to open database {:?}", e))?;
 
+        let mut miner = Miner::new_for_tests(&spec, None);
         let service = ClientService::start(
             client_config,
             &spec,
@@ -238,9 +239,10 @@ impl SnapshotCommand {
             &self.dirs.ipc_path(),
             // TODO [ToDr] don't use test miner here
             // (actually don't require miner at all)
-            Arc::new(Miner::new_for_tests(&spec, None)),
         )
         .map_err(|e| format!("Client service error: {:?}", e))?;
+        miner.set_pool_client(service.client());
+        service.set_miner(Arc::new(miner));
 
         Ok(service)
     }

@@ -44,14 +44,17 @@ fn can_trace_block_and_uncle_reward() {
     // Create client
     let mut client_config = ClientConfig::default();
     client_config.tracing.enabled = true;
+
+    let mut miner = Miner::new_for_tests(&spec, None);
     let client = Client::new(
         client_config,
         &spec,
         db,
-        Arc::new(Miner::new_for_tests(&spec, None)),
         IoChannel::disconnected(),
     )
     .unwrap();
+    miner.set_pool_client(client.clone());
+    client.set_miner(Arc::new(miner));
 
     // Create test data:
     // genesis

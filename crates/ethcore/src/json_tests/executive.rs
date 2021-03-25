@@ -20,7 +20,6 @@ use ethereum_types::BigEndianHash;
 use ethjson;
 use ethtrie;
 use evm::Finalize;
-use executive::*;
 use externalities::*;
 use hash::keccak;
 use machine::EthereumMachine as Machine;
@@ -30,8 +29,8 @@ use std::{path::Path, sync::Arc};
 use test_helpers::get_temp_state;
 use trace::{NoopTracer, NoopVMTracer, Tracer, VMTracer};
 use vm::{
-    self, ActionParams, CallType, ContractCreateResult, CreateContractAddress, EnvInfo, Ext,
-    MessageCallResult, ReturnData, Schedule,
+    self, contract_address, ActionParams, CallType, ContractCreateResult, CreateContractAddress,
+    EnvInfo, Ext, MessageCallResult, ReturnData, Schedule,
 };
 
 use super::HookType;

@@ -19,7 +19,7 @@ use crypto::publickey::{KeyPair, Secret};
 use ethcore::{
     client::{ChainInfo, ClientIoMessage},
     engines,
-    miner::{self, MinerService},
+    miner::{self, MinerRPC, MinerTxpool},
     spec::Spec,
 };
 use ethereum_types::{Address, U256};
@@ -83,11 +83,11 @@ fn authority_round() {
     // Trigger block proposal
     net.peer(0)
         .miner
-        .import_own_transaction(&*net.peer(0).chain, new_tx(s0.secret(), 0.into(), chain_id))
+        .import_own_transaction(new_tx(s0.secret(), 0.into(), chain_id))
         .unwrap();
     net.peer(1)
         .miner
-        .import_own_transaction(&*net.peer(1).chain, new_tx(s1.secret(), 0.into(), chain_id))
+        .import_own_transaction(new_tx(s1.secret(), 0.into(), chain_id))
         .unwrap();
     // Sync a block
     net.sync();
@@ -96,11 +96,11 @@ fn authority_round() {
 
     net.peer(0)
         .miner
-        .import_own_transaction(&*net.peer(0).chain, new_tx(s0.secret(), 1.into(), chain_id))
+        .import_own_transaction(new_tx(s0.secret(), 1.into(), chain_id))
         .unwrap();
     net.peer(1)
         .miner
-        .import_own_transaction(&*net.peer(1).chain, new_tx(s1.secret(), 1.into(), chain_id))
+        .import_own_transaction(new_tx(s1.secret(), 1.into(), chain_id))
         .unwrap();
     // Move to next proposer step.
     net.peer(0).chain.engine().step();
@@ -112,11 +112,11 @@ fn authority_round() {
     // Fork the network with equal height.
     net.peer(0)
         .miner
-        .import_own_transaction(&*net.peer(0).chain, new_tx(s0.secret(), 2.into(), chain_id))
+        .import_own_transaction(new_tx(s0.secret(), 2.into(), chain_id))
         .unwrap();
     net.peer(1)
         .miner
-        .import_own_transaction(&*net.peer(1).chain, new_tx(s1.secret(), 2.into(), chain_id))
+        .import_own_transaction(new_tx(s1.secret(), 2.into(), chain_id))
         .unwrap();
     // Let both nodes build one block.
     net.peer(0).chain.engine().step();
@@ -141,11 +141,11 @@ fn authority_round() {
     // Selfish miner
     net.peer(0)
         .miner
-        .import_own_transaction(&*net.peer(0).chain, new_tx(s0.secret(), 3.into(), chain_id))
+        .import_own_transaction(new_tx(s0.secret(), 3.into(), chain_id))
         .unwrap();
     net.peer(1)
         .miner
-        .import_own_transaction(&*net.peer(1).chain, new_tx(s1.secret(), 3.into(), chain_id))
+        .import_own_transaction(new_tx(s1.secret(), 3.into(), chain_id))
         .unwrap();
     // Node 0 is an earlier primary.
     net.peer(0).chain.engine().step();
@@ -159,7 +159,7 @@ fn authority_round() {
     net.peer(1).chain.engine().step();
     net.peer(1)
         .miner
-        .import_own_transaction(&*net.peer(1).chain, new_tx(s1.secret(), 4.into(), chain_id))
+        .import_own_transaction(new_tx(s1.secret(), 4.into(), chain_id))
         .unwrap();
     net.peer(1).chain.engine().step();
     net.peer(1).chain.engine().step();

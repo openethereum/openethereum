@@ -366,8 +366,6 @@ fn recover_aborted_recovery() {
     // abort restoration so that we can delete snapshot root folder
     service.abort_restore();
 
-    service.abort_restore();
-
     // Remove the snapshot directory, and restart the restoration
     // It shouldn't have restored any previous blocks
     fs::remove_dir_all(tempdir.path()).unwrap();

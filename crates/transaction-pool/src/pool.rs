@@ -639,22 +639,28 @@ where
     type Item = Arc<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // iterate through each sender
         loop {
             if let Some(transactions) = self.transactions.as_mut() {
                 if let Some(scores) = self.scores.as_mut() {
-                    if let Some(tx) = transactions.next() {
-                        if let Some(score) = scores.next() {
-                            match self.ready.is_ready(&tx) {
-                                Readiness::Ready => {
-                                    //return transaction with score higher or equal to desired
-                                    if score >= &self.includable_boundary {
-                                        return Some(tx.transaction.clone());
+                    // iterate through each transaction from one sender
+                    loop {
+                        if let Some(tx) = transactions.next() {
+                            if let Some(score) = scores.next() {
+                                match self.ready.is_ready(&tx) {
+                                    Readiness::Ready => {
+                                        //return transaction with score higher or equal to desired
+                                        if score >= &self.includable_boundary {
+                                            return Some(tx.transaction.clone());
+                                        }
+                                    }
+                                    state => {
+                                        trace!("[{:?}] Ignoring {:?} transaction.", tx.hash(), state)
                                     }
                                 }
-                                state => {
-                                    trace!("[{:?}] Ignoring {:?} transaction.", tx.hash(), state)
-                                }
                             }
+                        } else {
+                            break;
                         }
                     }
                 }

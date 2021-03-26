@@ -282,7 +282,7 @@ fn should_construct_pending() {
         }
     );
 
-    //get only includable part of the pending transactions
+    // get only includable part of the pending transactions
     let mut includable = txq
         .pending(NonceReady::default(), U256::from(4));
 
@@ -321,9 +321,9 @@ fn should_skip_staled_pending_transactions() {
     let b = TransactionBuilder::default();
     let mut txq = TestPool::default();
 
-    let tx0 = import(&mut txq, b.tx().nonce(0).gas_price(5).new()).unwrap();
+    let _tx0 = import(&mut txq, b.tx().nonce(0).gas_price(5).new()).unwrap();
     let tx2 = import(&mut txq, b.tx().nonce(2).gas_price(5).new()).unwrap();
-    let tx1 = import(&mut txq, b.tx().nonce(1).gas_price(5).new()).unwrap();
+    let _tx1 = import(&mut txq, b.tx().nonce(1).gas_price(5).new()).unwrap();
 
     // tx0 and tx1 are Stale, tx2 is Ready
     let mut pending = txq.pending(NonceReady::new(2), U256::default());
@@ -372,7 +372,7 @@ fn should_return_unordered_iterator() {
         }
     );
 
-    // when
+    // get all pending transaction in unordered way
     let all: Vec<_> = txq
         .unordered_pending(NonceReady::default(), U256::default())
         .collect();
@@ -401,6 +401,13 @@ fn should_return_unordered_iterator() {
     });
 
     assert!(options.any(|opt| all == opt));
+
+    // get only includable part of the pending transactions in unordered way
+    let includable: Vec<_> = txq
+        .unordered_pending(NonceReady::default(), U256::from(3))
+        .collect();
+    
+    assert_eq!(includable.len(), 4);
 }
 
 #[test]

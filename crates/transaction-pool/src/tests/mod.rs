@@ -453,7 +453,7 @@ fn should_update_scoring_correctly() {
         }
     );
 
-    txq.update_scores(&Address::zero(), ());
+    txq.update_scores(&Address::zero(), helpers::DummyScoringEvent::Penalize);
 
     // when
     let mut current_gas = U256::zero();
@@ -474,10 +474,27 @@ fn should_update_scoring_correctly() {
     assert_eq!(pending.next(), Some(tx7));
     assert_eq!(pending.next(), Some(tx8));
     // penalized transactions
-    assert_eq!(pending.next(), Some(tx0));
-    assert_eq!(pending.next(), Some(tx1));
+    assert_eq!(pending.next(), Some(tx0.clone()));
+    assert_eq!(pending.next(), Some(tx1.clone()));
     assert_eq!(pending.next(), Some(tx2));
     assert_eq!(pending.next(), None);
+
+    // update scores to initial values
+    txq.set_scoring(DummyScoring::default(), helpers::DummyScoringEvent::UpdateScores);
+
+    current_gas = U256::zero();
+    let mut includable = txq
+        .pending(NonceReady::default(), U256::default())
+        .take_while(|tx| {
+            let should_take = tx.gas + current_gas <= limit;
+            if should_take {
+                current_gas = current_gas + tx.gas
+            }
+            should_take
+        });
+
+    assert_eq!(includable.next(), Some(tx0));
+    assert_eq!(includable.next(), Some(tx1));
 }
 
 #[test]

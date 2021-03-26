@@ -20,6 +20,13 @@ use super::Transaction;
 use crate::{pool, scoring, Readiness, Ready, ReplaceTransaction, Scoring, ShouldReplace};
 use ethereum_types::{H160 as Sender, U256};
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum DummyScoringEvent {
+    /// Penalize transactions
+    Penalize,
+    /// Update scores to the gas price
+    UpdateScores,
+}
 #[derive(Debug, Default)]
 pub struct DummyScoring {
     always_insert: bool,
@@ -35,7 +42,7 @@ impl DummyScoring {
 
 impl Scoring<Transaction> for DummyScoring {
     type Score = U256;
-    type Event = ();
+    type Event = DummyScoringEvent;
 
     fn compare(&self, old: &Transaction, new: &Transaction) -> cmp::Ordering {
         old.nonce.cmp(&new.nonce)
@@ -57,18 +64,31 @@ impl Scoring<Transaction> for DummyScoring {
         &self,
         txs: &[pool::Transaction<Transaction>],
         scores: &mut [Self::Score],
-        change: scoring::Change,
+        change: scoring::Change<DummyScoringEvent>,
     ) {
-        if let scoring::Change::Event(_) = change {
-            // In case of event reset all scores to 0
-            for i in 0..txs.len() {
-                scores[i] = 0.into();
+        match change {
+            scoring::Change::Event(event) => {
+                match event {
+                    DummyScoringEvent::Penalize => {
+                        println!("entered");
+                        // In case of penalize reset all scores to 0
+                        for i in 0..txs.len() {
+                            scores[i] = 0.into();
+                        }
+                    }
+                    DummyScoringEvent::UpdateScores => {
+                        // Set to a gas price otherwise
+                        for i in 0..txs.len() {
+                            scores[i] = txs[i].gas_price;
+                        }
+                    }
+                }
             }
-        } else {
-            // Set to a gas price otherwise
-            for i in 0..txs.len() {
-                scores[i] = txs[i].gas_price;
+            scoring::Change::InsertedAt(index) | scoring::Change::ReplacedAt(index) => {
+                scores[index] = txs[index].gas_price;
             }
+            scoring::Change::RemovedAt(_) => {}
+            scoring::Change::Culled(_) => {}
         }
     }
 

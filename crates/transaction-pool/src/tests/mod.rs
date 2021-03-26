@@ -257,7 +257,7 @@ fn should_construct_pending() {
     let tx2 = import(&mut txq, b.tx().nonce(2).new()).unwrap();
     // this transaction doesn't get to the block despite high gas price
     // because of block gas limit and simplistic ordering algorithm.
-    import(&mut txq, b.tx().nonce(3).gas_price(4).new()).unwrap();
+    let tx3 = import(&mut txq, b.tx().nonce(3).gas_price(4).new()).unwrap();
     //gap
     import(&mut txq, b.tx().nonce(5).new()).unwrap();
 
@@ -282,11 +282,21 @@ fn should_construct_pending() {
         }
     );
 
-    // when
+    //get only includable part of the pending transactions
+    let mut includable = txq
+        .pending(NonceReady::default(), U256::from(4));
+
+    assert_eq!(includable.next(), Some(tx0.clone()));
+    assert_eq!(includable.next(), Some(tx1.clone()));
+    assert_eq!(includable.next(), Some(tx8.clone()));
+    assert_eq!(includable.next(), Some(tx3.clone()));
+    assert_eq!(includable.next(), None);
+
+    // get all pending transactions
     let mut current_gas = U256::zero();
     let limit = (21_000 * 8).into();
     let mut pending = txq
-        .pending(NonceReady::default(), U256::default())
+        .pending(NonceReady::default(), U256::from(0))
         .take_while(|tx| {
             let should_take = tx.gas + current_gas <= limit;
             if should_take {

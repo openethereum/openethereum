@@ -615,6 +615,9 @@ where
 ///
 /// NOTE: the transactions are not removed from the queue.
 /// You might remove them later by calling `cull`.
+///
+/// Note: includable_boundary is used to return only the subgroup of pending transaction with score greater or equal
+/// to includable_boundary. If not needed, set includable_boundary to zero.
 pub struct UnorderedIterator<'a, T, R, S>
 where
     T: VerifiedTransaction + 'a,
@@ -668,6 +671,9 @@ where
 /// An iterator over all pending (ready) transactions.
 /// NOTE: the transactions are not removed from the queue.
 /// You might remove them later by calling `cull`.
+///
+/// Note: includable_boundary is used to return only the subgroup of pending transaction with score greater or equal
+/// to includable_boundary. If not needed, set includable_boundary to zero.
 pub struct PendingIterator<'a, T, R, S, L>
 where
     T: VerifiedTransaction + 'a,
@@ -723,10 +729,6 @@ where
                 //return transaction with score higher or equal to desired
                 if best.score >= self.includable_boundary {
                     return Some(best.transaction.transaction);
-                } else {
-                    //since transactions are sorted, once we come to the transaction with the lower score
-                    //than desired, we can skip all the rest
-                    return None;
                 }
             }
 

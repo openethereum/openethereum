@@ -46,6 +46,9 @@ pub trait Eth {
     #[rpc(name = "eth_coinbase")]
     fn author(&self) -> Result<H160>;
 
+	#[rpc(name = "eth_simulateTransaction")]
+	fn simulate_transaction(&self, request: CallRequest) -> Result<U256>;
+
     /// Returns true if client is actively mining new blocks.
     #[rpc(name = "eth_mining")]
     fn is_mining(&self) -> Result<bool>;

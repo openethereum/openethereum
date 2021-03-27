@@ -39,6 +39,7 @@ use miner::external::ExternalMinerService;
 use sync::SyncProvider;
 use types::{
     encoded,
+	call_analytics::{CallAnalytics},
     filter::Filter as EthcoreFilter,
     header::Header,
     transaction::{LocalizedTransaction, SignedTransaction, TypedTransaction},
@@ -586,6 +587,22 @@ where
         let version = self.sync.status().protocol_version.to_owned();
         Ok(format!("{}", version))
     }
+
+	fn simulate_transaction(&self, request: CallRequest) -> Result<U256> {
+		let client = &self.client;
+		let request = CallRequest::into(request);
+		let signed = try_bf!(fake_sign::sign_call(request));
+		let (state, header) = client.latest_state_and_header();
+		let analytics = CallAnalytics {
+			transaction_tracing: true,
+			vm_tracing: true,
+			state_diffing: true,
+		};
+		let maybe_call_result = client.call(&signed, analytics, &mut state, &header);
+		// TODO: fix and handle nicely
+		let inner_result = maybe_call_result.expect("call failed");
+		// ^ here get the state diff and serialize it somehow
+	}
 
     fn syncing(&self) -> Result<SyncStatus> {
         use ethcore::snapshot::RestorationStatus;

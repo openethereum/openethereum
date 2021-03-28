@@ -46,6 +46,8 @@ pub struct Options {
     pub minimal_gas_price: U256,
     /// Current block gas limit.
     pub block_gas_limit: U256,
+    /// Current block base fee. Exists if the EIP 1559 is activated
+    pub block_base_fee: Option<U256>,
     /// Maximal gas limit for a single transaction.
     pub tx_gas_limit: U256,
     /// Skip checks for early rejection, to make sure that local transactions are always imported.
@@ -58,6 +60,7 @@ impl Default for Options {
         Options {
             minimal_gas_price: 0.into(),
             block_gas_limit: U256::max_value(),
+            block_base_fee: None,
             tx_gas_limit: U256::max_value(),
             no_early_reject: false,
         }
@@ -107,6 +110,15 @@ impl Transaction {
             Transaction::Unverified(ref tx) => &tx.tx().gas,
             Transaction::Retracted(ref tx) => &tx.tx().gas,
             Transaction::Local(ref tx) => &tx.tx().gas,
+        }
+    }
+
+    /// Calculate effective miner tip scaled with block_base_fee value
+    pub fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
+        match *self {
+            Transaction::Unverified(ref tx) => tx.effective_tip_scaled(block_base_fee),
+            Transaction::Retracted(ref tx) => tx.effective_tip_scaled(block_base_fee),
+            Transaction::Local(ref tx) => tx.effective_tip_scaled(block_base_fee),
         }
     }
 

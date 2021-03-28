@@ -22,7 +22,7 @@ use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
 use hash::keccak;
 use heapsize::HeapSizeOf;
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::ops::Deref;
+use std::{cmp::min, ops::Deref};
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
@@ -638,6 +638,18 @@ impl TypedTransaction {
         }
     }
 
+    /// Effective tip is scaled with the block_base_fee, in order to NOT have negative values of effective tip
+    pub fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
+        match self {
+            Self::EIP1559Transaction(tx) => min(
+                self.tx().gas_price,
+                tx.max_inclusion_fee_per_gas + block_base_fee,
+            ),
+            Self::AccessList(_) => self.tx().gas_price,
+            Self::Legacy(_) => self.tx().gas_price,
+        }
+    }
+
     fn decode_new(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
         if tx.is_empty() {
             // at least one byte needs to be present
@@ -1219,8 +1231,6 @@ mod tests {
         })
         .null_sign(1);
 
-        println!("transaction {:?}", t);
-
         let res = SignedTransaction::new(t.transaction);
         match res {
             Err(ethkey::Error::InvalidSignature) => {}
@@ -1322,7 +1332,6 @@ mod tests {
                 .expect("decoding tx data failed");
             let signed = SignedTransaction::new(signed).unwrap();
             assert_eq!(signed.sender(), address.into());
-            println!("chainid: {:?}", signed.chain_id());
         };
 
         test_vector("f864808504a817c800825208943535353535353535353535353535353535353535808025a0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116da0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d", "0xf0f6f18bca1b28cd68e4357452947e021241e9ce");

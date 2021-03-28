@@ -183,6 +183,7 @@ impl Default for MinerOptions {
             pool_verification_options: pool::verifier::Options {
                 minimal_gas_price: DEFAULT_MINIMAL_GAS_PRICE.into(),
                 block_gas_limit: U256::max_value(),
+                block_base_fee: None,
                 tx_gas_limit: U256::max_value(),
                 no_early_reject: false,
             },
@@ -321,6 +322,7 @@ impl Miner {
                 pool_verification_options: pool::verifier::Options {
                     minimal_gas_price,
                     block_gas_limit: U256::max_value(),
+                    block_base_fee: None,
                     tx_gas_limit: U256::max_value(),
                     no_early_reject: false,
                 },
@@ -359,7 +361,11 @@ impl Miner {
     /// Updates transaction queue verification limits.
     ///
     /// Limits consist of current block gas limit and minimal gas price.
-    pub fn update_transaction_queue_limits(&self, block_gas_limit: U256) {
+    pub fn update_transaction_queue_limits(
+        &self,
+        block_gas_limit: U256,
+        block_base_fee: Option<U256>,
+    ) {
         trace!(target: "miner", "minimal_gas_price: recalibrating...");
         let txq = self.transaction_queue.clone();
         let mut options = self.options.pool_verification_options.clone();
@@ -367,8 +373,14 @@ impl Miner {
             debug!(target: "miner", "minimal_gas_price: Got gas price! {}", gas_price);
             options.minimal_gas_price = gas_price;
             options.block_gas_limit = block_gas_limit;
+            options.block_base_fee = block_base_fee;
             txq.set_verifier_options(options);
         });
+
+        match block_base_fee {
+            Some(block_base_fee) => self.transaction_queue.update_scoring(block_base_fee),
+            None => (),
+        }
     }
 
     /// Returns ServiceTransactionChecker
@@ -472,11 +484,18 @@ impl Miner {
 
         let client = self.pool_client(chain);
         let engine_params = self.engine.params();
-        let min_tx_gas: U256 = self
-            .engine
-            .schedule(chain_info.best_block_number)
-            .tx_gas
-            .into();
+        let schedule = self.engine.schedule(chain_info.best_block_number);
+        let min_tx_gas: U256 = schedule.tx_gas.into();
+        let gas_limit = if schedule.eip1559 {
+            open_block.header.gas_limit() * engine_params.elasticity_multiplier
+        } else {
+            *open_block.header.gas_limit()
+        };
+        let block_base_fee = if schedule.eip1559 {
+            *chain.best_block_header().base_fee()
+        } else {
+            U256::default()
+        };
         let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
             >= engine_params.dust_protection_transition
         {
@@ -489,11 +508,7 @@ impl Miner {
             usize::max_value()
         } else {
             MAX_SKIPPED_TRANSACTIONS.saturating_add(
-                cmp::min(
-                    *open_block.header.gas_limit() / min_tx_gas,
-                    u64::max_value().into(),
-                )
-                .as_u64() as usize,
+                cmp::min(gas_limit / min_tx_gas, u64::max_value().into()).as_u64() as usize,
             )
         };
 
@@ -505,6 +520,7 @@ impl Miner {
                 nonce_cap,
                 max_len: max_transactions,
                 ordering: miner::PendingOrdering::Priority,
+                includable_boundary: block_base_fee,
             },
         );
 
@@ -1124,6 +1140,7 @@ impl miner::MinerService for Miner {
                     nonce_cap,
                     max_len,
                     ordering,
+                    includable_boundary: U256::default(),
                 },
             )
         };
@@ -1368,7 +1385,13 @@ impl miner::MinerService for Miner {
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
         let gas_limit = *chain.best_block_header().gas_limit();
-        self.update_transaction_queue_limits(gas_limit);
+        let schedule = self.engine.schedule(chain.best_block_header().number());
+        let base_fee = if schedule.eip1559 {
+            Some(*chain.best_block_header().base_fee())
+        } else {
+            None
+        };
+        self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).
         let client = self.pool_client(chain);
@@ -1567,6 +1590,7 @@ mod tests {
                 pool_verification_options: pool::verifier::Options {
                     minimal_gas_price: 0.into(),
                     block_gas_limit: U256::max_value(),
+                    block_base_fee: None,
                     tx_gas_limit: U256::max_value(),
                     no_early_reject: false,
                 },

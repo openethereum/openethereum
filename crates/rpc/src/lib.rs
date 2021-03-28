@@ -92,8 +92,6 @@ extern crate serde_derive;
 
 #[cfg(test)]
 extern crate ethjson;
-#[cfg(test)]
-extern crate transaction_pool as txpool;
 
 #[cfg(test)]
 #[macro_use]

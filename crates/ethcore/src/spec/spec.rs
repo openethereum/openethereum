@@ -415,8 +415,10 @@ impl From<ethjson::spec::Params> for CommonParams {
             kip6_transition: p
                 .kip6_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            base_fee_max_change_denominator: U256::default(), //ds todo
-            elasticity_multiplier: U256::default(),           //ds todo
+            base_fee_max_change_denominator: p
+                .base_fee_max_change_denominator
+                .map_or_else(U256::zero, Into::into),
+            elasticity_multiplier: p.elasticity_multiplier.map_or_else(U256::zero, Into::into),
         }
     }
 }

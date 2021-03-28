@@ -70,6 +70,9 @@ pub struct PendingSettings {
     pub max_len: usize,
     /// Ordering of transactions.
     pub ordering: PendingOrdering,
+    /// Value of score that is a boundary between includable and non-includable transactions
+    /// Before EIP1559 it should be equal to zero, after EIP1559 it should be equal to block_base_fee
+    pub includable_boundary: U256,
 }
 
 impl PendingSettings {
@@ -81,6 +84,7 @@ impl PendingSettings {
             nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
+            includable_boundary: U256::default(),
         }
     }
 }
@@ -118,6 +122,9 @@ pub trait ScoredTransaction {
 
     /// Gets transaction gas price.
     fn gas_price(&self) -> &U256;
+
+    /// Get effective tip scaled with the block_base_fee value.
+    fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256;
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256;
@@ -193,6 +200,11 @@ impl ScoredTransaction for VerifiedTransaction {
     /// Gets transaction gas price.
     fn gas_price(&self) -> &U256 {
         &self.transaction.tx().gas_price
+    }
+
+    /// Get effective tip scaled with the block_base_fee value.
+    fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
+        self.transaction.effective_tip_scaled(block_base_fee)
     }
 
     /// Gets transaction nonce.

@@ -633,9 +633,10 @@ impl Configuration {
 
     fn pool_verification_options(&self) -> Result<pool::verifier::Options, String> {
         Ok(pool::verifier::Options {
-            // NOTE min_gas_price and block_gas_limit will be overwritten right after start.
+            // NOTE min_gas_price,block_gas_limit and block_base_fee will be overwritten right after start.
             minimal_gas_price: U256::from(20_000_000) * 1_000u32,
             block_gas_limit: U256::max_value(),
+            block_base_fee: None,
             tx_gas_limit: match self.args.arg_tx_gas_limit {
                 Some(ref d) => to_u256(d)?,
                 None => U256::max_value(),

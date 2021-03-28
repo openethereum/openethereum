@@ -46,6 +46,7 @@ fn new_queue() -> TransactionQueue {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     )
@@ -64,6 +65,7 @@ fn should_return_correct_nonces_when_dropped_because_of_limit() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -124,6 +126,7 @@ fn should_never_drop_local_transactions_from_different_senders() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -541,6 +544,7 @@ fn should_prefer_current_transactions_when_hitting_the_limit() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -898,6 +902,7 @@ fn should_not_return_transactions_over_nonce_cap() {
             nonce_cap: Some(123.into()),
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
+            includable_boundary: U256::default(),
         },
     );
 
@@ -932,6 +937,7 @@ fn should_return_cached_pending_even_if_unordered_is_requested() {
             nonce_cap: None,
             max_len: 3,
             ordering: PendingOrdering::Unordered,
+            includable_boundary: U256::default(),
         },
     );
 
@@ -960,6 +966,7 @@ fn should_return_unordered_and_not_populate_the_cache() {
             nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Unordered,
+            includable_boundary: U256::default(),
         },
     );
 
@@ -1035,6 +1042,7 @@ fn should_include_local_transaction_to_a_full_pool() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1067,6 +1075,7 @@ fn should_avoid_verifying_transaction_already_in_pool() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1102,6 +1111,7 @@ fn should_avoid_reverifying_recently_rejected_transactions() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1150,6 +1160,7 @@ fn should_reject_early_in_case_gas_price_is_less_than_min_effective() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1192,6 +1203,7 @@ fn should_not_reject_early_in_case_gas_price_is_less_than_min_effective() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: true,
+            block_base_fee: None,
         },
         PrioritizationStrategy::GasPriceOnly,
     );

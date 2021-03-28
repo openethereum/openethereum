@@ -351,6 +351,12 @@ pub fn verify_header_params(
         }
     }
 
+    let gas_limit = if engine.schedule(header.number()).eip1559 {
+        header.gas_limit() * engine.params().elasticity_multiplier
+    } else {
+        *header.gas_limit()
+    };
+
     if header.number() >= From::from(BlockNumber::max_value()) {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
             max: Some(From::from(BlockNumber::max_value())),
@@ -358,28 +364,29 @@ pub fn verify_header_params(
             found: header.number(),
         })));
     }
-    if header.gas_used() > header.gas_limit() {
+
+    if header.gas_used() > &gas_limit {
         return Err(From::from(BlockError::TooMuchGasUsed(OutOfBounds {
-            max: Some(*header.gas_limit()),
+            max: Some(gas_limit),
             min: None,
             found: *header.gas_used(),
         })));
     }
     let min_gas_limit = engine.params().min_gas_limit;
-    if header.gas_limit() < &min_gas_limit {
+    if gas_limit < min_gas_limit {
         return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
             min: Some(min_gas_limit),
             max: None,
-            found: *header.gas_limit(),
+            found: gas_limit,
         })));
     }
     if let Some(limit) = engine.maximum_gas_limit() {
-        if header.gas_limit() > &limit {
+        if gas_limit > limit {
             return Err(From::from(::error::BlockError::InvalidGasLimit(
                 OutOfBounds {
                     min: None,
                     max: Some(limit),
-                    found: *header.gas_limit(),
+                    found: gas_limit,
                 },
             )));
         }

@@ -430,8 +430,8 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
         if self.schedule(header.number()).eip1559 {
             // Check if the block changed the gas target too much
-            let max_gas_target: U256 = parent.gas_limit() + parent.gas_limit() / 1024;
-            let min_gas_target: U256 = parent.gas_limit() - parent.gas_limit() / 1024;
+            let max_gas_target = parent.gas_limit() + parent.gas_limit() / U256::from(1024);
+            let min_gas_target = parent.gas_limit() - parent.gas_limit() / U256::from(1024);
 
             println!("max_gas_target: {}", max_gas_target);
             println!("min_gas_target: {}", min_gas_target);
@@ -454,7 +454,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
             // Check if the base fee is correct
             let expected_base_fee = self.calculate_base_fee(parent);
-            if expected_base_fee != header.base_fee().clone() {
+            if &expected_base_fee != header.base_fee() {
                 return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
                     expected: expected_base_fee,
                     found: header.base_fee().clone(),
@@ -613,7 +613,7 @@ fn ecip1017_eras_block_reward(era_rounds: u64, mut reward: U256, block_number: u
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{new_homestead_test_machine, new_mcip3_test, new_morden},
+        super::{new_homestead_test_machine, new_london_test_machine, new_mcip3_test, new_morden},
         ecip1017_eras_block_reward, Ethash, EthashParams,
     };
     use block::*;
@@ -1073,6 +1073,75 @@ mod tests {
 
         let difficulty = ethash.calculate_difficulty(&header, &parent_header);
         assert_eq!(U256::from(12543204905719u64), difficulty);
+    }
+
+    #[test]
+    fn calculate_base_fee_success() {
+        //ds todo move these tests to json_tests
+
+        let machine = new_london_test_machine();
+        let ethparams = get_default_ethash_params();
+        let tempdir = TempDir::new("").unwrap();
+        let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
+
+        let parent_base_fees = [
+            U256::from(1000000000),
+            U256::from(1000000000),
+            U256::from(1000000000),
+            U256::from(1072671875),
+            U256::from(1059263476),
+            U256::from(1049238967),
+            U256::from(1049238967),
+            U256::from(0),
+            U256::from(1),
+            U256::from(2),
+        ];
+        let parent_gas_used = [
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(9000000),
+            U256::from(10001000),
+            U256::from(0),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+        ];
+        let parent_gas_limit = [
+            U256::from(5000000),
+            U256::from(6000000),
+            U256::from(7000000),
+            U256::from(5000000),
+            U256::from(7000000),
+            U256::from(1000000),
+            U256::from(9000000),
+            U256::from(9000000),
+            U256::from(9000000),
+            U256::from(9000000),
+        ];
+        let expected_base_fee = [
+            U256::from(1125000000),
+            U256::from(1083333333),
+            U256::from(1053571428),
+            U256::from(1179939062),
+            U256::from(1116028649),
+            U256::from(918084097),
+            U256::from(1063811730),
+            U256::from(1),
+            U256::from(2),
+            U256::from(3),
+        ];
+
+        for i in 0..parent_base_fees.len() {
+            let mut parent_header = Header::default();
+            parent_header.set_base_fee(parent_base_fees[i]);
+            parent_header.set_gas_used(parent_gas_used[i]);
+            parent_header.set_gas_limit(parent_gas_limit[i]);
+
+            let base_fee = ethash.calculate_base_fee(&parent_header);
+            assert_eq!(expected_base_fee[i], base_fee);
+        }
     }
 
     #[test]

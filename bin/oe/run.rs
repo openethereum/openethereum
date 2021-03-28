@@ -358,15 +358,22 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     )
     .map_err(|e| format!("Client service error: {:?}", e))?;
 
+    // take handle to client
+    let client = service.client();
+    let schedule = spec.engine.schedule(client.best_block_header().number());
+
     let connection_filter_address = spec.params().node_permission_contract;
     // drop the spec to free up genesis state.
     let forks = spec.hard_forks.clone();
     drop(spec);
 
-    // take handle to client
-    let client = service.client();
-    // Update miners block gas limit
-    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit());
+    // Update miners block gas limit and base_fee
+    let base_fee = if schedule.eip1559 {
+        Some(*client.best_block_header().base_fee())
+    } else {
+        None
+    };
+    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit(), base_fee);
 
     let connection_filter = connection_filter_address.map(|a| {
         Arc::new(NodeFilter::new(

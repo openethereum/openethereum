@@ -84,7 +84,7 @@ impl PendingSettings {
             nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
-            includable_boundary: U256::default(),
+            includable_boundary: Default::default(),
         }
     }
 }

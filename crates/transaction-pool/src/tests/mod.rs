@@ -283,8 +283,7 @@ fn should_construct_pending() {
     );
 
     // get only includable part of the pending transactions
-    let mut includable = txq
-        .pending(NonceReady::default(), U256::from(4));
+    let mut includable = txq.pending(NonceReady::default(), U256::from(4));
 
     assert_eq!(includable.next(), Some(tx0.clone()));
     assert_eq!(includable.next(), Some(tx1.clone()));
@@ -326,7 +325,7 @@ fn should_skip_staled_pending_transactions() {
     let _tx1 = import(&mut txq, b.tx().nonce(1).gas_price(5).new()).unwrap();
 
     // tx0 and tx1 are Stale, tx2 is Ready
-    let mut pending = txq.pending(NonceReady::new(2), U256::default());
+    let mut pending = txq.pending(NonceReady::new(2), Default::default());
 
     // tx0 and tx1 should be skipped, tx2 should be the next Ready
     assert_eq!(pending.next(), Some(tx2));
@@ -374,7 +373,7 @@ fn should_return_unordered_iterator() {
 
     // get all pending transaction in unordered way
     let all: Vec<_> = txq
-        .unordered_pending(NonceReady::default(), U256::default())
+        .unordered_pending(NonceReady::default(), Default::default())
         .collect();
 
     let chain1 = vec![tx0, tx1, tx2, tx3];
@@ -406,7 +405,7 @@ fn should_return_unordered_iterator() {
     let includable: Vec<_> = txq
         .unordered_pending(NonceReady::default(), U256::from(3))
         .collect();
-    
+
     assert_eq!(includable.len(), 4);
 }
 
@@ -459,7 +458,7 @@ fn should_update_scoring_correctly() {
     let mut current_gas = U256::zero();
     let limit = (21_000 * 8).into();
     let mut pending = txq
-        .pending(NonceReady::default(), U256::default())
+        .pending(NonceReady::default(), Default::default())
         .take_while(|tx| {
             let should_take = tx.gas + current_gas <= limit;
             if should_take {
@@ -480,11 +479,14 @@ fn should_update_scoring_correctly() {
     assert_eq!(pending.next(), None);
 
     // update scores to initial values
-    txq.set_scoring(DummyScoring::default(), helpers::DummyScoringEvent::UpdateScores);
+    txq.set_scoring(
+        DummyScoring::default(),
+        helpers::DummyScoringEvent::UpdateScores,
+    );
 
     current_gas = U256::zero();
     let mut includable = txq
-        .pending(NonceReady::default(), U256::default())
+        .pending(NonceReady::default(), Default::default())
         .take_while(|tx| {
             let should_take = tx.gas + current_gas <= limit;
             if should_take {
@@ -513,7 +515,7 @@ fn should_remove_transaction() {
 
     // then
     assert_eq!(txq.light_status().transaction_count, 2);
-    let mut pending = txq.pending(NonceReady::default(), U256::default());
+    let mut pending = txq.pending(NonceReady::default(), Default::default());
     assert_eq!(pending.next(), Some(tx1));
     assert_eq!(pending.next(), None);
 }

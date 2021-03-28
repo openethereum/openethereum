@@ -1284,7 +1284,46 @@ mod tests {
     }
 
     #[test]
+    fn should_encode_decode_eip1559_tx() {
+        use ethkey::{Generator, Random};
+        let key = Random.generate().unwrap();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    nonce: U256::from(42),
+                    gas_price: U256::from(3000),
+                    gas: U256::from(50_000),
+                    value: U256::from(1),
+                    data: b"Hello!".to_vec(),
+                },
+                vec![
+                    (H160::from(10), vec![H256::from(102), H256::from(103)]),
+                    (H160::from(400), vec![]),
+                ],
+            ),
+            max_inclusion_fee_per_gas: U256::from(100),
+        })
+        .sign(&key.secret(), Some(69));
+        let encoded = t.encode();
+
+        let t_new =
+            TypedTransaction::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
+        if t_new.unsigned != t.unsigned {
+            assert!(true, "encoded/decoded tx differs from original");
+        }
+    }
+
+    #[test]
     fn should_decode_access_list_in_rlp() {
+        use rustc_hex::FromHex;
+        let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
+        let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
+            .expect("decoding tx data failed");
+    }
+
+    #[test]
+    fn should_decode_eip1559_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
         let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))

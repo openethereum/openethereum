@@ -494,7 +494,7 @@ impl Miner {
         let block_base_fee = if schedule.eip1559 {
             *chain.best_block_header().base_fee()
         } else {
-            U256::default()
+            Default::default()
         };
         let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
             >= engine_params.dust_protection_transition
@@ -1140,7 +1140,7 @@ impl miner::MinerService for Miner {
                     nonce_cap,
                     max_len,
                     ordering,
-                    includable_boundary: U256::default(),
+                    includable_boundary: Default::default(),
                 },
             )
         };

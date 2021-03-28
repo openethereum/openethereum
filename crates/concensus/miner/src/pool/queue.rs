@@ -359,7 +359,7 @@ impl TransactionQueue {
         let ready = |_tx: &pool::VerifiedTransaction| txpool::Readiness::Ready;
         self.pool
             .read()
-            .unordered_pending(ready, U256::default())
+            .unordered_pending(ready, Default::default())
             .collect()
     }
 
@@ -368,7 +368,7 @@ impl TransactionQueue {
         let ready = |_tx: &pool::VerifiedTransaction| txpool::Readiness::Ready;
         self.pool
             .read()
-            .unordered_pending(ready, U256::default())
+            .unordered_pending(ready, Default::default())
             .map(|tx| tx.hash)
             .collect()
     }
@@ -383,7 +383,7 @@ impl TransactionQueue {
         let ready = ready::OptionalState::new(nonce);
         self.pool
             .read()
-            .unordered_pending(ready, U256::default())
+            .unordered_pending(ready, Default::default())
             .map(|tx| tx.hash)
             .collect()
     }
@@ -551,7 +551,7 @@ impl TransactionQueue {
 
         self.pool
             .read()
-            .pending_from_sender(state_readiness, address, U256::default())
+            .pending_from_sender(state_readiness, address, Default::default())
             .last()
             .map(|tx| tx.signed().tx().nonce.saturating_add(U256::from(1)))
     }

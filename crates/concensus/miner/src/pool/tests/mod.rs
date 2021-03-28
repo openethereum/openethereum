@@ -902,7 +902,7 @@ fn should_not_return_transactions_over_nonce_cap() {
             nonce_cap: Some(123.into()),
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
-            includable_boundary: U256::default(),
+            includable_boundary: Default::default(),
         },
     );
 
@@ -937,7 +937,7 @@ fn should_return_cached_pending_even_if_unordered_is_requested() {
             nonce_cap: None,
             max_len: 3,
             ordering: PendingOrdering::Unordered,
-            includable_boundary: U256::default(),
+            includable_boundary: Default::default(),
         },
     );
 
@@ -966,7 +966,7 @@ fn should_return_unordered_and_not_populate_the_cache() {
             nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Unordered,
-            includable_boundary: U256::default(),
+            includable_boundary: Default::default(),
         },
     );
 

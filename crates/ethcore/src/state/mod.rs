@@ -962,7 +962,7 @@ impl<B: Backend> State<B> {
             }
             TypedTxId::EIP1559Transaction => TypedReceipt::EIP1559Transaction(EIP1559Receipt::new(
                 LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),
-                U256::default(), //ds todo
+                Default::default(), //ds todo
             )),
         };
 

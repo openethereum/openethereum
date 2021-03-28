@@ -655,7 +655,11 @@ where
                                         }
                                     }
                                     state => {
-                                        trace!("[{:?}] Ignoring {:?} transaction.", tx.hash(), state)
+                                        trace!(
+                                            "[{:?}] Ignoring {:?} transaction.",
+                                            tx.hash(),
+                                            state
+                                        )
                                     }
                                 }
                             }

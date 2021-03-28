@@ -154,14 +154,14 @@ impl EIP1559Receipt {
     pub fn rlp_append(&self, s: &mut RlpStream) {
         match self.receipt.outcome {
             TransactionOutcome::Unknown => {
-                s.begin_list(3);
+                s.begin_list(4);
             }
             TransactionOutcome::StateRoot(ref root) => {
-                s.begin_list(4);
+                s.begin_list(5);
                 s.append(root);
             }
             TransactionOutcome::StatusCode(ref status_code) => {
-                s.begin_list(4);
+                s.begin_list(5);
                 s.append(status_code);
             }
         }
@@ -387,7 +387,7 @@ pub struct LocalizedReceipt {
 
 #[cfg(test)]
 mod tests {
-    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt};
+    use super::{EIP1559Receipt, LegacyReceipt, TransactionOutcome, TypedReceipt};
     use log_entry::LogEntry;
 
     #[test]
@@ -439,6 +439,29 @@ mod tests {
                 data: vec![0u8; 32],
             }],
         ));
+        let encoded = r.encode();
+        assert_eq!(&encoded, &expected);
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
+        assert_eq!(decoded, r);
+    }
+
+    #[test]
+    fn test_basic_eip1559() {
+        let expected = ::rustc_hex::FromHex::from_hex("02f90163a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee6483040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let r = TypedReceipt::EIP1559Transaction(EIP1559Receipt {
+            receipt: LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
+            ),
+            effective_gas_price: 100.into(),
+        });
         let encoded = r.encode();
         assert_eq!(&encoded, &expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");

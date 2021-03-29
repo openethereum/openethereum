@@ -171,9 +171,9 @@ pub struct CommonParams {
     pub transaction_permission_contract_transition: BlockNumber,
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
-    /// Base fee max change denominator
+    /// Base fee max change denominator, EIP1559 related
     pub base_fee_max_change_denominator: U256,
-    /// Elasticity multiplier
+    /// Elasticity multiplier, EIP1559 related
     pub elasticity_multiplier: U256,
 }
 

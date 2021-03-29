@@ -1567,7 +1567,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 mod tests {
     use super::*;
     use error::ExecutionError;
-    use ethereum_types::{Address, H256, U256, U512};
+    use ethereum_types::{Address, H160, H256, U256, U512};
     use ethkey::{Generator, Random};
     use evm::{Factory, VMType};
     use machine::EthereumMachine;
@@ -1579,7 +1579,9 @@ mod tests {
         trace, ExecutiveTracer, ExecutiveVMTracer, FlatTrace, MemoryDiff, NoopTracer, NoopVMTracer,
         StorageDiff, Tracer, VMExecutedOperation, VMOperation, VMTrace, VMTracer,
     };
-    use types::transaction::{Action, Transaction, TypedTransaction};
+    use types::transaction::{
+        AccessListTx, Action, EIP1559TransactionTx, Transaction, TypedTransaction,
+    };
     use vm::{ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo};
 
     fn make_frontier_machine(max_depth: usize) -> EthereumMachine {
@@ -1590,6 +1592,12 @@ mod tests {
 
     fn make_byzantium_machine(max_depth: usize) -> EthereumMachine {
         let mut machine = ::ethereum::new_byzantium_test_machine();
+        machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
+        machine
+    }
+
+    fn make_london_machine(max_depth: usize) -> EthereumMachine {
+        let mut machine = ::ethereum::new_london_test_machine();
         machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
         machine
     }
@@ -2603,6 +2611,49 @@ mod tests {
             }
             _ => assert!(false, "Expected block gas limit error."),
         }
+    }
+
+    evm_test! {test_transact_eip1559: test_transact_eip1559_int}
+    fn test_transact_eip1559(factory: Factory) {
+        let keypair = Random.generate().unwrap();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(80_001),
+                    gas_price: U256::zero(),
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (H160::from(10), vec![H256::from(102), H256::from(103)]),
+                    (H160::from(400), vec![]),
+                ],
+            ),
+            max_inclusion_fee_per_gas: Default::default(),
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(17), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts).unwrap()
+        };
+
+        assert_eq!(res.gas, U256::from(80_001));
+        assert_eq!(res.gas_used, U256::from(63973));
     }
 
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}

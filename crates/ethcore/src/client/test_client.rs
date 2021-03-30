@@ -721,7 +721,7 @@ impl StateClient for TestBlockChainClient {
 }
 
 impl EngineInfo for TestBlockChainClient {
-    fn engine(&self) -> &dyn EthEngine {
+    fn engine(&self) -> Arc<dyn EthEngine> {
         unimplemented!()
     }
 }

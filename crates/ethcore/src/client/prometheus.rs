@@ -15,9 +15,9 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::Client;
-use ethereum_types::U256;
 use client::blockchain::BlockChainClient;
 use client::info::ChainInfo;
+use ethereum_types::U256;
 use stats::{PrometheusMetrics, PrometheusRegistry};
 
 impl PrometheusMetrics for Client {

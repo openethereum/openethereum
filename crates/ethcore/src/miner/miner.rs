@@ -58,8 +58,8 @@ use block::{ClosedBlock, SealedBlock};
 use client::{
     info::BlockChain,
     traits::{EngineClient, ForceUpdateSealing},
-    BlockId, BlockProducer, ChainInfo, ClientIoMessage, Nonce, SealedBlockImporter,
-    TransactionId, TransactionInfo,
+    BlockId, BlockProducer, ChainInfo, ClientIoMessage, Nonce, SealedBlockImporter, TransactionId,
+    TransactionInfo,
 };
 use engines::{EngineSigner, EthEngine, Seal, SealingState};
 use error::{Error, ErrorKind};

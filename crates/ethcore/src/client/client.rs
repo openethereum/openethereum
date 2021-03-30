@@ -1726,7 +1726,6 @@ pub fn transaction_receipt(
     }
 }
 
-
 /// Queue some items to be processed by IO client.
 pub struct IoChannelQueue {
     /// Using a *signed* integer for counting currently queued messages since the
@@ -1773,7 +1772,6 @@ impl IoChannelQueue {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

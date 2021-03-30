@@ -20,10 +20,9 @@ use std::{
 };
 
 use client::{
-    traits::{
-        BlockChainClient, BlockChainReset, BlockInfo, ChainInfo, ImportBlock, ImportExportBlocks,
-    },
-    Client, ClientConfig, ImportSealedBlock, PrepareOpenBlock,
+    blockchain::{BlockChainClient, BlockChainReset},
+    info::{BlockInfo, ChainInfo},
+    Client, ClientConfig, ImportBlock, ImportExportBlocks, ImportSealedBlock, PrepareOpenBlock,
 };
 use crypto::publickey::KeyPair;
 use ethereum;
@@ -417,7 +416,7 @@ fn does_not_propagate_delayed_transactions() {
 
 #[test]
 fn transaction_proof() {
-    use client::ProvingBlockChainClient;
+    use client::blockchain::ProvingBlockChainClient;
 
     let client = generate_dummy_client(0);
     let address = Address::random();

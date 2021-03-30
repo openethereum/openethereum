@@ -110,7 +110,7 @@ impl StateClient for TestMinerService {
 }
 
 impl EngineInfo for TestMinerService {
-    fn engine(&self) -> &dyn EthEngine {
+    fn engine(&self) -> Arc<dyn EthEngine> {
         unimplemented!()
     }
 }

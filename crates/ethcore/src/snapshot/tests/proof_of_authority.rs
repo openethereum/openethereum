@@ -19,7 +19,7 @@
 use std::{cell::RefCell, str::FromStr, sync::Arc};
 
 use accounts::AccountProvider;
-use client::{BlockChainClient, ChainInfo, Client};
+use client::{blockchain::BlockChainClient, ChainInfo, Client};
 use crypto::publickey::Secret;
 use snapshot::tests::helpers as snapshot_helpers;
 use spec::Spec;

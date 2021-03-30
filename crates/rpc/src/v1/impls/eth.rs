@@ -28,8 +28,8 @@ use parking_lot::Mutex;
 use ethash::{self, SeedHashCompute};
 use ethcore::{
     client::{
-        BlockChainClient, BlockId, Call, EngineInfo, ProvingBlockChainClient, StateClient,
-        StateInfo, StateOrBlock, TransactionId, UncleId,
+        blockchain::ProvingBlockChainClient, BlockChainClient, BlockId, Call, EngineInfo,
+        StateClient, StateInfo, StateOrBlock, TransactionId, UncleId,
     },
     miner::{self, MinerService},
     snapshot::SnapshotService,

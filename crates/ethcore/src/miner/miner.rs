@@ -56,8 +56,9 @@ use using_queue::{GetAction, UsingQueue};
 
 use block::{ClosedBlock, SealedBlock};
 use client::{
+    info::BlockChain,
     traits::{EngineClient, ForceUpdateSealing},
-    BlockChain, BlockId, BlockProducer, ChainInfo, ClientIoMessage, Nonce, SealedBlockImporter,
+    BlockId, BlockProducer, ChainInfo, ClientIoMessage, Nonce, SealedBlockImporter,
     TransactionId, TransactionInfo,
 };
 use engines::{EngineSigner, EthEngine, Seal, SealingState};

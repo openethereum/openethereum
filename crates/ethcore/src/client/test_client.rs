@@ -59,12 +59,15 @@ use vm::Schedule;
 use block::{ClosedBlock, OpenBlock, SealedBlock};
 use call_contract::{CallContract, RegistryInfo};
 use client::{
+    blockchain::BlockChainClient,
+    blockchain::ProvingBlockChainClient,
+    io::IoClient,
     traits::{ForceUpdateSealing, TransactionRequest},
-    AccountData, BadBlocks, Balance, BlockChain, BlockChainClient, BlockChainInfo, BlockId,
-    BlockInfo, BlockProducer, BlockStatus, BroadcastProposalBlock, Call, CallAnalytics, ChainInfo,
-    EngineInfo, ImportBlock, ImportSealedBlock, IoClient, LastHashes, Mode, Nonce,
-    PrepareOpenBlock, ProvingBlockChainClient, ReopenBlock, ScheduleInfo, SealedBlockImporter,
-    StateClient, StateOrBlock, TraceFilter, TraceId, TransactionId, TransactionInfo, UncleId,
+    AccountData, BadBlocks, Balance, BlockChain, BlockChainInfo, BlockId, BlockInfo, BlockProducer,
+    BlockStatus, BroadcastProposalBlock, Call, CallAnalytics, ChainInfo, EngineInfo, ImportBlock,
+    ImportSealedBlock, LastHashes, Mode, Nonce, PrepareOpenBlock, ReopenBlock, ScheduleInfo,
+    SealedBlockImporter, StateClient, StateOrBlock, TraceFilter, TraceId, TransactionId,
+    TransactionInfo, UncleId,
 };
 use engines::EthEngine;
 use error::{Error, EthcoreResult};

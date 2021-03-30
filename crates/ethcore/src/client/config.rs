@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{
-    fmt::{Display, Error as FmtError, Formatter},
-    str::FromStr,
-};
+use std::str::FromStr;
 
 use journaldb;
 use snapshot::SnapshotConfiguration;
@@ -27,6 +24,8 @@ pub use blockchain::Config as BlockChainConfig;
 pub use evm::VMType;
 pub use std::time::Duration;
 pub use trace::Config as TraceConfig;
+
+use super::Mode;
 
 /// Client state db compaction profile
 #[derive(Debug, PartialEq, Clone)]
@@ -54,32 +53,6 @@ impl FromStr for DatabaseCompactionProfile {
             "ssd" => Ok(DatabaseCompactionProfile::SSD),
             "hdd" => Ok(DatabaseCompactionProfile::HDD),
             _ => Err("Invalid compaction profile given. Expected default/hdd/ssd.".into()),
-        }
-    }
-}
-
-/// Operating mode for the client.
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Mode {
-    /// Always on.
-    Active,
-    /// Goes offline after client is inactive for some (given) time, but
-    /// comes back online after a while of inactivity.
-    Passive(Duration, Duration),
-    /// Goes offline after client is inactive for some (given) time and
-    /// stays inactive.
-    Dark(Duration),
-    /// Always off.
-    Off,
-}
-
-impl Display for Mode {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
-        match *self {
-            Mode::Active => write!(f, "active"),
-            Mode::Passive(..) => write!(f, "passive"),
-            Mode::Dark(..) => write!(f, "dark"),
-            Mode::Off => write!(f, "offline"),
         }
     }
 }

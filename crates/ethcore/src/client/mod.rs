@@ -27,21 +27,30 @@ mod io_message;
 pub mod test_client;
 mod trace;
 
+// client components
+pub mod blockchain;
+pub mod call;
+pub mod importer;
+pub mod info;
+pub mod io;
+pub mod prometheus;
+
 #[cfg(any(test, feature = "test-helpers"))]
 pub use self::evm_test_client::{EvmTestClient, EvmTestError, TransactErr, TransactSuccess};
 #[cfg(any(test, feature = "test-helpers"))]
 pub use self::test_client::{EachBlockWith, TestBlockChainClient};
 pub use self::{
+    blockchain::{BlockChainClient, BlockChainReset},
     chain_notify::{ChainMessageType, ChainNotify, ChainRoute, ChainRouteType, NewBlocks},
     client::*,
-    config::{BlockChainConfig, ClientConfig, DatabaseCompactionProfile, Mode, VMType},
+    config::{BlockChainConfig, ClientConfig, DatabaseCompactionProfile, VMType},
+    info::{BlockChain, BlockInfo, ChainInfo, EngineInfo, ScheduleInfo, TransactionInfo},
+    io::IoClient,
     io_message::ClientIoMessage,
     traits::{
-        AccountData, BadBlocks, Balance, BlockChain, BlockChainClient, BlockChainReset, BlockInfo,
-        BlockProducer, BroadcastProposalBlock, Call, ChainInfo, EngineClient, EngineInfo,
-        ImportBlock, ImportExportBlocks, ImportSealedBlock, IoClient, Nonce, PrepareOpenBlock,
-        ProvingBlockChainClient, ReopenBlock, ScheduleInfo, SealedBlockImporter, StateClient,
-        StateOrBlock, TransactionInfo,
+        AccountData, BadBlocks, Balance, BlockProducer, BroadcastProposalBlock, Call, EngineClient,
+        ImportBlock, ImportExportBlocks, ImportSealedBlock, Nonce, PrepareOpenBlock, ReopenBlock,
+        SealedBlockImporter, StateClient, StateOrBlock,
     },
 };
 pub use state::StateInfo;

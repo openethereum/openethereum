@@ -31,8 +31,7 @@ use crate::{
 use blockchain::{BlockProvider, BlockReceipts, TreeRoute};
 use bytes::Bytes;
 use call_contract::{CallContract, RegistryInfo};
-use client::info::ScheduleInfo;
-use client::traits::Nonce;
+use client::{info::ScheduleInfo, traits::Nonce};
 use db::DBValue;
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, U256};
@@ -40,8 +39,7 @@ use hash::keccak;
 use itertools::Itertools;
 use miner::MinerService;
 use state;
-use trace;
-use trace::Database;
+use trace::{self, Database};
 use trie::Trie;
 use types::{
     basic_account::BasicAccount,

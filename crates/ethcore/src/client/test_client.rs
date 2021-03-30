@@ -59,8 +59,7 @@ use vm::Schedule;
 use block::{ClosedBlock, OpenBlock, SealedBlock};
 use call_contract::{CallContract, RegistryInfo};
 use client::{
-    blockchain::BlockChainClient,
-    blockchain::ProvingBlockChainClient,
+    blockchain::{BlockChainClient, ProvingBlockChainClient},
     io::IoClient,
     traits::{ForceUpdateSealing, TransactionRequest},
     AccountData, BadBlocks, Balance, BlockChain, BlockChainInfo, BlockId, BlockInfo, BlockProducer,

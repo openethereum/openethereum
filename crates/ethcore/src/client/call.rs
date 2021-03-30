@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::client::{Call, Client};
-use crate::executed::CallError;
-use crate::state::State;
+use crate::{
+    client::{Call, Client},
+    executed::CallError,
+    state::State,
+};
 use error::ExecutionError;
 use ethereum_types::U256;
 use evm::EnvInfo;

@@ -28,18 +28,15 @@ use crate::{
     verification::{self, queue::kind::blocks::Unverified, BlockQueue, PreverifiedBlock, Verifier},
 };
 use block::enact_verified;
-use blockchain::BlockProvider;
-use blockchain::{BlockChain, ExtrasInsert, ImportRoute};
-use db::DBTransaction;
-use db::KeyValueDB;
+use blockchain::{BlockChain, BlockProvider, ExtrasInsert, ImportRoute};
+use db::{DBTransaction, KeyValueDB};
 use engines::{epoch::Transition, EngineError, EthEngine};
 use error::EthcoreResult;
 use ethereum_types::{H256, U256};
 use evm::EnvInfo;
 use executive::{Executive, TransactOptions};
 use io::IoChannel;
-use miner::Miner;
-use miner::MinerService;
+use miner::{Miner, MinerService};
 use parking_lot::Mutex;
 use rand::rngs::OsRng;
 use rlp::Rlp;
@@ -49,8 +46,7 @@ use trace::{Database, ImportRequest};
 use types::{
     ancestry_action::AncestryAction,
     encoded,
-    engines::epoch::PendingTransition,
-    engines::ForkChoice,
+    engines::{epoch::PendingTransition, ForkChoice},
     header::{ExtendedHeader, Header},
     ids::BlockId,
     receipt::TypedReceipt,

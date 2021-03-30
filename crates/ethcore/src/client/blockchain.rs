@@ -21,8 +21,7 @@ use super::{
     info::{BlockChain, BlockInfo},
     io::IoClient,
     traits::TransactionRequest,
-    AccountData, BadBlocks, ChainInfo, Executed, ImportBlock, Mode, StateOrBlock, TraceFilter,
-    TransactionInfo,
+    AccountData, BadBlocks, Executed, ImportBlock, Mode, StateOrBlock, TraceFilter,
 };
 
 use crate::{

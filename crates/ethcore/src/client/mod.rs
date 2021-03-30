@@ -27,13 +27,17 @@ mod io_message;
 pub mod test_client;
 mod trace;
 
-// client components
-pub mod blockchain;
-pub mod call;
-pub mod importer;
+// internal client components
+mod call;
+mod importer;
+mod io;
+mod prometheus;
+
+/// types like block, tx, chain info.
 pub mod info;
-pub mod io;
-pub mod prometheus;
+
+/// types describing a blockchain client
+pub mod blockchain;
 
 #[cfg(any(test, feature = "test-helpers"))]
 pub use self::evm_test_client::{EvmTestClient, EvmTestError, TransactErr, TransactSuccess};

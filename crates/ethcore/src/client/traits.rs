@@ -16,44 +16,24 @@
 
 //! Traits implemented by client.
 
-use std::{collections::BTreeMap, sync::Arc};
-
-use blockchain::{BlockReceipts, TreeRoute};
 use bytes::Bytes;
-use call_contract::{CallContract, RegistryInfo};
-use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, U256};
-use evm::Schedule;
-use itertools::Itertools;
-use kvdb::DBValue;
 use types::{
-    basic_account::BasicAccount,
-    block_status::BlockStatus,
-    blockchain_info::BlockChainInfo,
     call_analytics::CallAnalytics,
     data_format::DataFormat,
     encoded,
-    filter::Filter,
     header::Header,
     ids::*,
-    log_entry::LocalizedLogEntry,
-    pruning_info::PruningInfo,
-    receipt::LocalizedReceipt,
-    trace_filter::Filter as TraceFilter,
-    transaction::{self, Action, LocalizedTransaction, SignedTransaction},
+    transaction::{Action, SignedTransaction},
     BlockNumber,
 };
-use vm::LastHashes;
 
 use block::{ClosedBlock, OpenBlock, SealedBlock};
-use client::Mode;
-use engines::EthEngine;
 use error::{Error, EthcoreResult};
 use executed::CallError;
 use executive::Executed;
 use state::StateInfo;
-use trace::LocalizedTrace;
-use verification::queue::{kind::blocks::Unverified, QueueInfo as BlockQueueInfo};
+use verification::queue::kind::blocks::Unverified;
 
 use super::{blockchain::BlockChainClient, ChainInfo};
 

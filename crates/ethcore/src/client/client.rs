@@ -15,7 +15,6 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::{
-    cmp,
     collections::{BTreeMap, HashSet, VecDeque},
     convert::TryFrom,
     fmt::{Display, Error as FmtError, Formatter},
@@ -28,82 +27,53 @@ use std::{
     time::{Duration, Instant},
 };
 
-use blockchain::{
-    BlockChain, BlockChainDB, BlockNumberKey, BlockProvider, BlockReceipts, ExtrasInsert,
-    ImportRoute, TransactionAddress, TreeRoute,
-};
+use ansi_term::Colour;
+use block::{ClosedBlock, OpenBlock, SealedBlock};
+use blockchain::{BlockChain, BlockChainDB, BlockNumberKey, BlockProvider, TransactionAddress};
 use bytes::{Bytes, ToPretty};
-use call_contract::CallContract;
-use db::{DBTransaction, DBValue, KeyValueDB};
-use ethcore_miner::pool::VerifiedTransaction;
+use call_contract::{CallContract, RegistryInfo};
+use client::{
+    blockchain::*, traits::ForceUpdateSealing, AccountData, BadBlocks, Balance, BlockId, BlockInfo,
+    BlockProducer, BroadcastProposalBlock, Call, CallAnalytics, ChainInfo, ChainMessageType,
+    ChainNotify, ChainRoute, ClientConfig, ClientIoMessage, ImportBlock, ImportExportBlocks,
+    ImportSealedBlock, NewBlocks, Nonce, PrepareOpenBlock, ReopenBlock, SealedBlockImporter,
+    StateClient, StateInfo, StateOrBlock, TransactionId,
+};
+use db::DBTransaction;
+use engines::{EpochTransition, EthEngine, SealingState, MAX_UNCLE_AGE};
+use error::{
+    BlockError, CallError, Error, Error as EthcoreError, ErrorKind as EthcoreErrorKind,
+    EthcoreResult, ExecutionError, ImportErrorKind,
+};
 use ethereum_types::{Address, H256, H264, U256};
+use executive::{contract_address, Executed, Executive, TransactOptions};
+use factory::{Factories, VmFactory};
 use hash::keccak;
+use io::IoChannel;
 use itertools::Itertools;
+use miner::{Miner, MinerService};
 use parking_lot::{Mutex, RwLock};
-use rand::rngs::OsRng;
-use rlp::{PayloadInfo, Rlp};
+use rlp::PayloadInfo;
 use rustc_hex::FromHex;
-use trie::{Trie, TrieFactory, TrieSpec};
+use snapshot::{self, io as snapshot_io, SnapshotClient};
+use spec::Spec;
+use state::State;
+use state_db::StateDB;
+use trie::{TrieFactory, TrieSpec};
 use types::{
-    ancestry_action::AncestryAction,
     data_format::DataFormat,
     encoded,
-    filter::Filter,
-    header::{ExtendedHeader, Header},
+    header::Header,
     log_entry::LocalizedLogEntry,
     receipt::{LocalizedReceipt, TypedReceipt},
-    transaction::{
-        self, Action, LocalizedTransaction, SignedTransaction, TypedTransaction,
-        UnverifiedTransaction,
-    },
+    transaction::{self, Action, LocalizedTransaction, SignedTransaction, TypedTransaction},
     BlockNumber,
 };
 use vm::{EnvInfo, LastHashes};
 
-use ansi_term::Colour;
-use block::{enact_verified, ClosedBlock, Drain, LockedBlock, OpenBlock, SealedBlock};
-use call_contract::RegistryInfo;
-use client::{
-    ancient_import::AncientVerifier,
-    bad_blocks,
-    blockchain::*,
-    info::BlockChain as BlockChainTrait,
-    io::IoClient,
-    traits::{ForceUpdateSealing, TransactionRequest},
-    AccountData, BadBlocks, Balance, BlockId, BlockInfo, BlockProducer, BroadcastProposalBlock,
-    Call, CallAnalytics, ChainInfo, ChainMessageType, ChainNotify, ChainRoute, ClientConfig,
-    ClientIoMessage, EngineInfo, ImportBlock, ImportExportBlocks, ImportSealedBlock, NewBlocks,
-    Nonce, PrepareOpenBlock, PruningInfo, ReopenBlock, ScheduleInfo, SealedBlockImporter,
-    StateClient, StateInfo, StateOrBlock, TraceFilter, TraceId, TransactionId, TransactionInfo,
-    UncleId,
-};
-use engines::{
-    epoch::PendingTransition, EngineError, EpochTransition, EthEngine, ForkChoice, SealingState,
-    MAX_UNCLE_AGE,
-};
-use error::{
-    BlockError, CallError, Error, Error as EthcoreError, ErrorKind as EthcoreErrorKind,
-    EthcoreResult, ExecutionError, ImportErrorKind, QueueErrorKind,
-};
-use executive::{contract_address, Executed, Executive, TransactOptions};
-use factory::{Factories, VmFactory};
-use io::IoChannel;
-use miner::{Miner, MinerService};
-use snapshot::{self, io as snapshot_io, SnapshotClient};
-use spec::Spec;
-use state::{self, State};
-use state_db::StateDB;
+use trace::{self, Database as TraceDatabase, TraceDB};
+use verification::queue::kind::{blocks::Unverified, BlockLike};
 
-use trace::{
-    self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB,
-};
-use transaction_ext::Transaction;
-use verification::{
-    self,
-    queue::kind::{blocks::Unverified, BlockLike},
-    BlockQueue, PreverifiedBlock, Verifier,
-};
-use vm::Schedule;
 // re-export
 pub use blockchain::CacheSize as BlockChainCacheSize;
 use db::{keys::BlockDetails, Readable, Writable};
@@ -207,12 +177,13 @@ pub struct Client {
     /// Report on the status of client
     pub report: RwLock<ClientReport>,
 
+    /// todo: refactor into own type
     pub chain: RwLock<Arc<BlockChain>>,
-
+    /// todo: refactor into own type
     pub factories: Factories,
-
+    /// todo: refactor into own type
     pub registrar_address: Option<Address>,
-
+    /// todo: refactor into own type
     pub importer: super::importer::Importer,
 
     /// Flag used to disable the client forever. Not to be confused with `liveness`.
@@ -220,7 +191,7 @@ pub struct Client {
 
     /// Operating mode for the client
     mode: Mutex<Mode>,
-
+    /// todo: refactor into own type
     pub tracedb: RwLock<TraceDB<BlockChain>>,
     engine: Arc<dyn EthEngine>,
 
@@ -232,13 +203,14 @@ pub struct Client {
 
     /// Client uses this to store blocks, traces, etc.
     pub db: RwLock<Arc<dyn BlockChainDB>>,
-
+    /// todo: refactor into own type
     pub state_db: RwLock<StateDB>,
 
     sleep_state: Mutex<SleepState>,
 
     /// Flag changed by `sleep` and `wake_up` methods. Not to be confused with `enabled`.
     liveness: AtomicBool,
+    /// todo: refactor into own type
     pub io_channel: RwLock<IoChannel<ClientIoMessage>>,
 
     /// List of actors to be notified on certain chain events
@@ -249,6 +221,7 @@ pub struct Client {
     /// Ancient blocks import queue
     /// Queued ancient blocks, make sure they are imported in order.
     pub queued_ancient_blocks: Arc<RwLock<HashSet<H256>>>,
+    /// todo: refactor into own type
     pub queued_ancient_blocks_executer: Mutex<Option<ExecutionQueue<(Unverified, Bytes)>>>,
     /// Consensus messages import queue
     pub queue_consensus_message: IoChannelQueue,
@@ -467,24 +440,29 @@ impl Client {
         Ok(client)
     }
 
+    /// true if blockchain is enabled
     pub fn enabled(&self) -> bool {
         self.enabled.load(Ordering::SeqCst)
     }
 
+    /// sets the disabled flag on this blockchain client
     pub fn disable(&self) {
         self.enabled.store(false, Ordering::SeqCst);
     }
 
+    /// a reference to the engine implementation.
     pub fn engine(&self) -> Arc<dyn EthEngine> {
         self.engine.clone()
     }
 
+    /// gets the client operating mode
     pub fn mode(&self) -> Mode {
         let r = self.mode.lock().clone().into();
         trace!(target: "mode", "Asked for mode = {:?}. returning {:?}", &*self.mode.lock(), r);
         r
     }
 
+    /// sets the client operating mode
     pub fn set_mode(&self, new_mode: Mode) {
         trace!(target: "mode", "Client::set_mode({:?})", new_mode);
         if !self.enabled() {
@@ -534,6 +512,7 @@ impl Client {
         self.notify.write().push(Arc::downgrade(&target));
     }
 
+    /// to be refactored out
     pub fn notify<F>(&self, f: F)
     where
         F: Fn(&dyn ChainNotify),
@@ -581,6 +560,7 @@ impl Client {
         })
     }
 
+    /// to be refactored out
     pub fn build_last_hashes(&self, parent_hash: &H256) -> Arc<LastHashes> {
         {
             let hashes = self.last_hashes.read();
@@ -630,7 +610,7 @@ impl Client {
         with_call(&call)
     }
 
-    // t_nb 9.15 prune ancient states until below the memory limit or only the minimum amount remain.
+    /// t_nb 9.15 prune ancient states until below the memory limit or only the minimum amount remain.
     pub fn prune_ancient(
         &self,
         mut state_db: StateDB,
@@ -681,7 +661,7 @@ impl Client {
         Ok(())
     }
 
-    // t_nb 9.14 update last hashes. They are build in step 7.5
+    /// t_nb 9.14 update last hashes. They are build in step 7.5
     pub fn update_last_hashes(&self, parent: &H256, hash: &H256) {
         let mut hashes = self.last_hashes.write();
         if hashes.front().map_or(false, |h| h == parent) {
@@ -918,6 +898,7 @@ impl Client {
         self.history
     }
 
+    /// to be refactored
     pub fn block_hash(chain: &BlockChain, id: BlockId) -> Option<H256> {
         match id {
             BlockId::Hash(hash) => Some(hash),
@@ -927,6 +908,7 @@ impl Client {
         }
     }
 
+    /// to be refactored
     pub fn transaction_address(&self, id: TransactionId) -> Option<TransactionAddress> {
         match id {
             TransactionId::Hash(ref hash) => self.chain.read().transaction_address(hash),
@@ -962,8 +944,8 @@ impl Client {
         }
     }
 
-    // transaction for calling contracts from services like engine.
-    // from the null sender, with 50M gas.
+    /// transaction for calling contracts from services like engine.
+    /// from the null sender, with 50M gas.
     pub fn contract_call_tx(
         &self,
         block_id: BlockId,
@@ -984,6 +966,7 @@ impl Client {
         .fake_sign(from)
     }
 
+    /// to be refactored
     pub fn do_virtual_call(
         machine: &::machine::EthereumMachine,
         env_info: &EnvInfo,
@@ -1058,6 +1041,7 @@ impl Client {
         }
     }
 
+    /// to be refactored
     pub fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
         match *id {
             BlockId::Number(number) => Some(number),
@@ -1737,6 +1721,7 @@ pub struct IoChannelQueue {
 }
 
 impl IoChannelQueue {
+    /// to be refactored
     pub fn new(limit: usize) -> Self {
         let limit = i64::try_from(limit).unwrap_or(i64::max_value());
         IoChannelQueue {
@@ -1744,7 +1729,7 @@ impl IoChannelQueue {
             limit,
         }
     }
-
+    /// to be refactored
     pub fn queue<F>(
         &self,
         channel: &IoChannel<ClientIoMessage>,

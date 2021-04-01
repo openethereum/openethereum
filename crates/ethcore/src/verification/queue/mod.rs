@@ -168,23 +168,6 @@ struct QueueSignal {
 }
 
 impl QueueSignal {
-    fn set_sync(&self) {
-        // Do not signal when we are about to close
-        if self.deleting.load(AtomicOrdering::SeqCst) {
-            return;
-        }
-
-        if self
-            .signalled
-            .compare_exchange(false, true, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
-            .is_ok()
-        {
-            let channel = self.message_channel.lock().clone();
-            if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
-                debug!("Error sending BlockVerified message: {:?}", e);
-            }
-        }
-    }
 
     fn set_async(&self) {
         // Do not signal when we are about to close
@@ -437,9 +420,12 @@ impl<K: Kind> VerificationQueue<K> {
                     }
                 }
             };
-            if is_ready {
+            {
                 // Import the block immediately
-                ready.set_sync();
+                let verified = verification.verified.lock();
+                if !verified.is_empty() {
+                    ready.set_async();
+                }
             }
         }
     }

@@ -17,7 +17,7 @@
 //! Ethereum-like state machine definition.
 
 use std::{
-    cmp,
+    cmp::{self, max},
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
@@ -485,6 +485,43 @@ impl EthereumMachine {
 
         Ok(tx)
     }
+
+    /// Calculates base fee for the block that should be mined next.
+    /// This base fee is calculated based on the parent header (last block in blockchain / best block).
+    ///
+    /// Introduced by EIP1559 to support new market fee mechanism.
+    pub fn calc_base_fee(&self, parent: &Header) -> U256 {
+        // All blocks before (eip1559_transition + 1) have default value of base_fee
+        if parent.number() < self.params().eip1559_transition {
+            return self.params().base_fee_initial_value;
+        }
+
+        if parent.gas_limit() == &U256::zero() {
+            panic!("Can't calculate base fee if parent gas target is zero.");
+        }
+        if self.params().base_fee_max_change_denominator == U256::zero() {
+            panic!("Can't calculate base fee if base fee denominator is zero.");
+        }
+
+        if parent.gas_used() == parent.gas_limit() {
+            parent.base_fee().clone()
+        } else if parent.gas_used() > parent.gas_limit() {
+            let gas_used_delta = parent.gas_used() - parent.gas_limit();
+            let base_fee_per_gas_delta = max(
+                parent.base_fee() * gas_used_delta
+                    / parent.gas_limit()
+                    / self.params().base_fee_max_change_denominator,
+                U256::from(1),
+            );
+            parent.base_fee() + base_fee_per_gas_delta
+        } else {
+            let gas_used_delta = parent.gas_limit() - parent.gas_used();
+            let base_fee_per_gas_delta = parent.base_fee() * gas_used_delta
+                / parent.gas_limit()
+                / self.params().base_fee_max_change_denominator;
+            max(parent.base_fee() - base_fee_per_gas_delta, U256::zero())
+        }
+    }
 }
 
 /// Auxiliary data fetcher for an Ethereum machine. In Ethereum-like machines
@@ -554,6 +591,7 @@ fn round_block_gas_limit(gas_limit: U256, lower_limit: U256, upper_limit: U256) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ethereum::new_london_test_machine;
 
     fn get_default_ethash_extensions() -> EthashExtensions {
         EthashExtensions {
@@ -664,5 +702,69 @@ mod tests {
             U256::from(150_002),
         );
         assert_eq!(*header.gas_limit(), U256::from(150_002));
+    }
+
+    #[test]
+    fn calculate_base_fee_success() {
+        //ds todo move these tests to json_tests
+        let machine = new_london_test_machine();
+        let parent_base_fees = [
+            U256::from(1000000000),
+            U256::from(1000000000),
+            U256::from(1000000000),
+            U256::from(1072671875),
+            U256::from(1059263476),
+            U256::from(1049238967),
+            U256::from(1049238967),
+            U256::from(0),
+            U256::from(1),
+            U256::from(2),
+        ];
+        let parent_gas_used = [
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(9000000),
+            U256::from(10001000),
+            U256::from(0),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+            U256::from(10000000),
+        ];
+        let parent_gas_limit = [
+            U256::from(5000000),
+            U256::from(6000000),
+            U256::from(7000000),
+            U256::from(5000000),
+            U256::from(7000000),
+            U256::from(1000000),
+            U256::from(9000000),
+            U256::from(9000000),
+            U256::from(9000000),
+            U256::from(9000000),
+        ];
+        let expected_base_fee = [
+            U256::from(1125000000),
+            U256::from(1083333333),
+            U256::from(1053571428),
+            U256::from(1179939062),
+            U256::from(1116028649),
+            U256::from(918084097),
+            U256::from(1063811730),
+            U256::from(1),
+            U256::from(2),
+            U256::from(3),
+        ];
+
+        for i in 0..parent_base_fees.len() {
+            let mut parent_header = Header::default();
+            parent_header.set_base_fee(parent_base_fees[i]);
+            parent_header.set_gas_used(parent_gas_used[i]);
+            parent_header.set_gas_limit(parent_gas_limit[i]);
+
+            let base_fee = machine.calc_base_fee(&parent_header);
+            assert_eq!(expected_base_fee[i], base_fee);
+        }
     }
 }

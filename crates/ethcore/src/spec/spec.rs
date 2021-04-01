@@ -421,9 +421,7 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .base_fee_max_change_denominator
                 .map_or_else(U256::zero, Into::into),
             elasticity_multiplier: p.elasticity_multiplier.map_or_else(U256::zero, Into::into),
-            base_fee_initial_value: p
-                .base_fee_initial_value
-                .map_or_else(U256::zero, Into::into),
+            base_fee_initial_value: p.base_fee_initial_value.map_or_else(U256::zero, Into::into),
         }
     }
 }

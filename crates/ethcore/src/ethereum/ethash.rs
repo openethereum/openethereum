@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::{
-    cmp::{self, max},
+    cmp::{self},
     collections::BTreeMap,
     path::Path,
     sync::Arc,
@@ -35,7 +35,7 @@ use block::ExecutedBlock;
 use engines::{
     self,
     block_reward::{self, BlockRewardContract, RewardKind},
-    Engine, EthEngine,
+    Engine,
 };
 use error::{BlockError, Error};
 use ethash::{self, quick_get_difficulty, slow_hash_block_number, EthashManager, OptimizeFor};
@@ -258,10 +258,6 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
     fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
         let difficulty = self.calculate_difficulty(header, parent);
         header.set_difficulty(difficulty);
-    }
-
-    fn calculate_base_fee(&self, parent: &Header) -> U256 {
-        self.calc_base_fee(parent)
     }
 
     /// Apply the block reward on finalisation of the block.
@@ -535,39 +531,6 @@ impl Ethash {
         }
         target
     }
-
-    fn calc_base_fee(&self, parent: &Header) -> U256 {
-        // All blocks before (eip1559_transition + 1) have default value of base_fee
-        if parent.number() < self.machine.params().eip1559_transition {
-            return self.machine.params().base_fee_initial_value;
-        }
-
-        if parent.gas_limit() == &U256::zero() {
-            panic!("Can't calculate base fee if parent gas target is zero.");
-        }
-        if self.machine.params().base_fee_max_change_denominator == U256::zero() {
-            panic!("Can't calculate base fee if base fee denominator is zero.");
-        }
-
-        if parent.gas_used() == parent.gas_limit() {
-            parent.base_fee().clone()
-        } else if parent.gas_used() > parent.gas_limit() {
-            let gas_used_delta = parent.gas_used() - parent.gas_limit();
-            let base_fee_per_gas_delta = max(
-                parent.base_fee() * gas_used_delta
-                    / parent.gas_limit()
-                    / self.machine.params().base_fee_max_change_denominator,
-                U256::from(1),
-            );
-            parent.base_fee() + base_fee_per_gas_delta
-        } else {
-            let gas_used_delta = parent.gas_limit() - parent.gas_used();
-            let base_fee_per_gas_delta = parent.base_fee() * gas_used_delta
-                / parent.gas_limit()
-                / self.machine.params().base_fee_max_change_denominator;
-            max(parent.base_fee() - base_fee_per_gas_delta, U256::zero())
-        }
-    }
 }
 
 fn ecip1017_eras_block_reward(era_rounds: u64, mut reward: U256, block_number: u64) -> (u64, U256) {
@@ -588,7 +551,7 @@ fn ecip1017_eras_block_reward(era_rounds: u64, mut reward: U256, block_number: u
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{new_homestead_test_machine, new_london_test_machine, new_mcip3_test, new_morden},
+        super::{new_homestead_test_machine, new_mcip3_test, new_morden},
         ecip1017_eras_block_reward, Ethash, EthashParams,
     };
     use block::*;
@@ -1048,75 +1011,6 @@ mod tests {
 
         let difficulty = ethash.calculate_difficulty(&header, &parent_header);
         assert_eq!(U256::from(12543204905719u64), difficulty);
-    }
-
-    #[test]
-    fn calculate_base_fee_success() {
-        //ds todo move these tests to json_tests
-
-        let machine = new_london_test_machine();
-        let ethparams = get_default_ethash_params();
-        let tempdir = TempDir::new("").unwrap();
-        let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
-
-        let parent_base_fees = [
-            U256::from(1000000000),
-            U256::from(1000000000),
-            U256::from(1000000000),
-            U256::from(1072671875),
-            U256::from(1059263476),
-            U256::from(1049238967),
-            U256::from(1049238967),
-            U256::from(0),
-            U256::from(1),
-            U256::from(2),
-        ];
-        let parent_gas_used = [
-            U256::from(10000000),
-            U256::from(10000000),
-            U256::from(10000000),
-            U256::from(9000000),
-            U256::from(10001000),
-            U256::from(0),
-            U256::from(10000000),
-            U256::from(10000000),
-            U256::from(10000000),
-            U256::from(10000000),
-        ];
-        let parent_gas_limit = [
-            U256::from(5000000),
-            U256::from(6000000),
-            U256::from(7000000),
-            U256::from(5000000),
-            U256::from(7000000),
-            U256::from(1000000),
-            U256::from(9000000),
-            U256::from(9000000),
-            U256::from(9000000),
-            U256::from(9000000),
-        ];
-        let expected_base_fee = [
-            U256::from(1125000000),
-            U256::from(1083333333),
-            U256::from(1053571428),
-            U256::from(1179939062),
-            U256::from(1116028649),
-            U256::from(918084097),
-            U256::from(1063811730),
-            U256::from(1),
-            U256::from(2),
-            U256::from(3),
-        ];
-
-        for i in 0..parent_base_fees.len() {
-            let mut parent_header = Header::default();
-            parent_header.set_base_fee(parent_base_fees[i]);
-            parent_header.set_gas_used(parent_gas_used[i]);
-            parent_header.set_gas_limit(parent_gas_limit[i]);
-
-            let base_fee = ethash.calc_base_fee(&parent_header);
-            assert_eq!(expected_base_fee[i], base_fee);
-        }
     }
 
     #[test]

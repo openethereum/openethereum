@@ -432,41 +432,6 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
             })));
         }
 
-        if self.schedule(header.number()).eip1559 {
-            // Check if the block changed the gas target too much
-            let gas_limit_bound_divisor = self.params().gas_limit_bound_divisor;
-            let max_gas_target = parent.gas_limit() + parent.gas_limit() / gas_limit_bound_divisor;
-            let min_gas_target = parent.gas_limit() - parent.gas_limit() / gas_limit_bound_divisor;
-
-            println!("max_gas_target: {}", max_gas_target);
-            println!("min_gas_target: {}", min_gas_target);
-
-            if header.gas_limit() > &max_gas_target {
-                return Err(From::from(BlockError::GasTargetTooBig(OutOfBounds {
-                    min: Some(min_gas_target),
-                    max: Some(max_gas_target),
-                    found: *header.gas_limit(),
-                })));
-            }
-
-            if header.gas_limit() < &min_gas_target {
-                return Err(From::from(BlockError::GasTargetTooSmall(OutOfBounds {
-                    min: Some(min_gas_target),
-                    max: Some(max_gas_target),
-                    found: *header.gas_limit(),
-                })));
-            }
-
-            // Check if the base fee is correct
-            let expected_base_fee = self.calc_base_fee(parent);
-            if &expected_base_fee != header.base_fee() {
-                return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
-                    expected: expected_base_fee,
-                    found: *header.base_fee(),
-                })));
-            };
-        }
-
         Ok(())
     }
 
@@ -572,6 +537,11 @@ impl Ethash {
     }
 
     fn calc_base_fee(&self, parent: &Header) -> U256 {
+        // All blocks before (eip1559_transition + 1) have default value of base_fee
+        if parent.number() < self.machine.params().eip1559_transition {
+            return self.machine.params().base_fee_initial_value;
+        }
+
         if parent.gas_limit() == &U256::zero() {
             panic!("Can't calculate base fee if parent gas target is zero.");
         }

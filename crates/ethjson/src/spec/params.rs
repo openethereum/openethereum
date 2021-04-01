@@ -148,6 +148,8 @@ pub struct Params {
     pub base_fee_max_change_denominator: Option<Uint>,
     /// Elasticity multiplier, EIP1559 related
     pub elasticity_multiplier: Option<Uint>,
+    /// Default value for the block base fee, EIP1559 related
+    pub base_fee_initial_value: Option<Uint>,
 }
 
 #[cfg(test)]

@@ -175,6 +175,8 @@ pub struct CommonParams {
     pub base_fee_max_change_denominator: U256,
     /// Elasticity multiplier, EIP1559 related
     pub elasticity_multiplier: U256,
+    /// Default value for the block base fee, EIP1559 related
+    pub base_fee_initial_value: U256,
 }
 
 impl CommonParams {
@@ -419,6 +421,9 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .base_fee_max_change_denominator
                 .map_or_else(U256::zero, Into::into),
             elasticity_multiplier: p.elasticity_multiplier.map_or_else(U256::zero, Into::into),
+            base_fee_initial_value: p
+                .base_fee_initial_value
+                .map_or_else(U256::zero, Into::into),
         }
     }
 }

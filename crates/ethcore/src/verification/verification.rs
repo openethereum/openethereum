@@ -497,6 +497,17 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         })));
     }
 
+    // Check base fee only if parent header is EIP1559 header
+    if engine.schedule(parent.number()).eip1559 {
+        let expected_base_fee = engine.calculate_base_fee(parent);
+        if &expected_base_fee != header.base_fee() {
+            return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
+                expected: expected_base_fee,
+                found: *header.base_fee(),
+            })));
+        };
+    }
+
     Ok(())
 }
 

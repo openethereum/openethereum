@@ -251,7 +251,7 @@ impl<C: Client> txpool::Verifier<Transaction>
                         "[{:?}] Rejected tx early, cause it doesn't have any chance to get to the pool: (gas price: {} < {})",
                         hash,
                         tx.gas_price(),
-                        vtx.transaction.tx().gas_price,
+                        vtx.transaction.tx().gas_price, // ds todo fix
                     );
                     return Err(transaction::Error::TooCheapToReplace {
                         prev: Some(vtx.transaction.tx().gas_price),

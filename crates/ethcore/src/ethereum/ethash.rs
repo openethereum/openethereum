@@ -260,6 +260,10 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
         header.set_difficulty(difficulty);
     }
 
+    fn calculate_base_fee(&self, parent: &Header) -> U256 {
+        self.calc_base_fee(parent)
+    }
+
     /// Apply the block reward on finalisation of the block.
     /// This assumes that all uncles are valid uncles (i.e. of at least one generation before the current).
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
@@ -430,8 +434,9 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
         if self.schedule(header.number()).eip1559 {
             // Check if the block changed the gas target too much
-            let max_gas_target = parent.gas_limit() + parent.gas_limit() / U256::from(1024);
-            let min_gas_target = parent.gas_limit() - parent.gas_limit() / U256::from(1024);
+            let gas_limit_bound_divisor = self.params().gas_limit_bound_divisor;
+            let max_gas_target = parent.gas_limit() + parent.gas_limit() / gas_limit_bound_divisor;
+            let min_gas_target = parent.gas_limit() - parent.gas_limit() / gas_limit_bound_divisor;
 
             println!("max_gas_target: {}", max_gas_target);
             println!("min_gas_target: {}", min_gas_target);
@@ -440,7 +445,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
                 return Err(From::from(BlockError::GasTargetTooBig(OutOfBounds {
                     min: Some(min_gas_target),
                     max: Some(max_gas_target),
-                    found: header.gas_limit().clone(),
+                    found: *header.gas_limit(),
                 })));
             }
 
@@ -448,16 +453,16 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
                 return Err(From::from(BlockError::GasTargetTooSmall(OutOfBounds {
                     min: Some(min_gas_target),
                     max: Some(max_gas_target),
-                    found: header.gas_limit().clone(),
+                    found: *header.gas_limit(),
                 })));
             }
 
             // Check if the base fee is correct
-            let expected_base_fee = self.calculate_base_fee(parent);
+            let expected_base_fee = self.calc_base_fee(parent);
             if &expected_base_fee != header.base_fee() {
                 return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
                     expected: expected_base_fee,
-                    found: header.base_fee().clone(),
+                    found: *header.base_fee(),
                 })));
             };
         }
@@ -566,11 +571,11 @@ impl Ethash {
         target
     }
 
-    fn calculate_base_fee(&self, parent: &Header) -> U256 {
-        if parent.gas_limit() == &U256::from(0) {
+    fn calc_base_fee(&self, parent: &Header) -> U256 {
+        if parent.gas_limit() == &U256::zero() {
             panic!("Can't calculate base fee if parent gas target is zero.");
         }
-        if self.machine.params().base_fee_max_change_denominator == U256::from(0) {
+        if self.machine.params().base_fee_max_change_denominator == U256::zero() {
             panic!("Can't calculate base fee if base fee denominator is zero.");
         }
 
@@ -590,7 +595,7 @@ impl Ethash {
             let base_fee_per_gas_delta = parent.base_fee() * gas_used_delta
                 / parent.gas_limit()
                 / self.machine.params().base_fee_max_change_denominator;
-            max(parent.base_fee() - base_fee_per_gas_delta, U256::from(0))
+            max(parent.base_fee() - base_fee_per_gas_delta, U256::zero())
         }
     }
 }
@@ -1139,7 +1144,7 @@ mod tests {
             parent_header.set_gas_used(parent_gas_used[i]);
             parent_header.set_gas_limit(parent_gas_limit[i]);
 
-            let base_fee = ethash.calculate_base_fee(&parent_header);
+            let base_fee = ethash.calc_base_fee(&parent_header);
             assert_eq!(expected_base_fee[i], base_fee);
         }
     }

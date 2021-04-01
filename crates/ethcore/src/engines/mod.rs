@@ -357,6 +357,14 @@ pub trait Engine<M: Machine>: Sync + Send {
         Seal::None
     }
 
+    /// Calculates base fee for the block that should be mined next.
+    /// This base fee is calculated based on the parent header (last block in blockchain / best block).
+    ///
+    /// Introduced by EIP1559 to support new market fee mechanism.
+    fn calculate_base_fee(&self, _parent: &Header) -> U256 {
+        Default::default()
+    }
+
     /// Verify a locally-generated seal of a header.
     ///
     /// If this engine seals internally,

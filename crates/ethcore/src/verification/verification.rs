@@ -351,12 +351,6 @@ pub fn verify_header_params(
         }
     }
 
-    let gas_limit = if engine.schedule(header.number()).eip1559 {
-        header.gas_limit() * engine.params().elasticity_multiplier
-    } else {
-        *header.gas_limit()
-    };
-
     if header.number() >= From::from(BlockNumber::max_value()) {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
             max: Some(From::from(BlockNumber::max_value())),
@@ -364,6 +358,12 @@ pub fn verify_header_params(
             found: header.number(),
         })));
     }
+
+    let gas_limit = if engine.schedule(header.number()).eip1559 {
+        header.gas_limit() * engine.params().elasticity_multiplier
+    } else {
+        *header.gas_limit()
+    };
 
     if header.gas_used() > &gas_limit {
         return Err(From::from(BlockError::TooMuchGasUsed(OutOfBounds {
@@ -482,6 +482,10 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         .into());
     }
 
+    // Comparing two blocks before eip1559 activation is based on gas_limit of those blocks
+    // Comparing fork block and his parent is based on comparing of gas_target of fork block
+    // and gas_limit of his parent
+    // Comparing two blocks after eip1559 activation is based on gas_target of those blocks
     let parent_gas_limit = *parent.gas_limit();
     let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
     let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;

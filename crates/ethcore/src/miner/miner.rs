@@ -484,17 +484,12 @@ impl Miner {
 
         let client = self.pool_client(chain);
         let engine_params = self.engine.params();
-        let schedule = self.engine.schedule(chain_info.best_block_number);
+        let schedule = self.engine.schedule(block_number);
         let min_tx_gas: U256 = schedule.tx_gas.into();
         let gas_limit = if schedule.eip1559 {
             open_block.header.gas_limit() * engine_params.elasticity_multiplier
         } else {
             *open_block.header.gas_limit()
-        };
-        let block_base_fee = if schedule.eip1559 {
-            *chain.best_block_header().base_fee()
-        } else {
-            Default::default()
         };
         let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
             >= engine_params.dust_protection_transition
@@ -520,7 +515,13 @@ impl Miner {
                 nonce_cap,
                 max_len: max_transactions,
                 ordering: miner::PendingOrdering::Priority,
-                includable_boundary: block_base_fee,
+                includable_boundary: {
+                    if schedule.eip1559 {
+                        self.engine.calculate_base_fee(&chain.best_block_header())
+                    } else {
+                        Default::default()
+                    }
+                },
             },
         );
 
@@ -1384,12 +1385,16 @@ impl miner::MinerService for Miner {
         }
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
-        let gas_limit = *chain.best_block_header().gas_limit();
-        let schedule = self.engine.schedule(chain.best_block_header().number());
+        let schedule = self.engine.schedule(chain.best_block_header().number() + 1);
         let base_fee = if schedule.eip1559 {
-            Some(*chain.best_block_header().base_fee())
+            Some(self.engine.calculate_base_fee(&chain.best_block_header()))
         } else {
             None
+        };
+        let gas_limit = if schedule.eip1559 {
+            chain.best_block_header().gas_limit() * self.engine.params().elasticity_multiplier
+        } else {
+            *chain.best_block_header().gas_limit()
         };
         self.update_transaction_queue_limits(gas_limit, base_fee);
 

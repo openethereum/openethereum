@@ -78,9 +78,8 @@ pub struct Header {
     log_bloom: Bloom,
     /// Gas used for contracts execution.
     gas_used: U256,
-    /// Block gas limit.
+    /// Block gas limit. On EIP1559 activation it becomes gas_target.
     gas_limit: U256,
-
     /// Block difficulty.
     difficulty: U256,
     /// Vector of post-RLP-encoded fields.
@@ -206,7 +205,7 @@ impl Header {
         &self.gas_used
     }
 
-    /// Get the gas limit field of the header.
+    /// Get the gas limit field of the header. On EIP1559 activation it becomes gas_target.
     pub fn gas_limit(&self) -> &U256 {
         &self.gas_limit
     }

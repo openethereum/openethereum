@@ -130,7 +130,9 @@ impl ExecutedBlock {
     }
 
     /// Get the environment info concerning this block.
-    pub fn env_info(&self) -> EnvInfo {
+    /// Elasticity multiplier is introduced by EIP1559. After 1559 activation, gas_limit field of header
+    /// is actually gas_target, therefore gas_limit = gas_target * elasticity_multiplier
+    pub fn env_info(&self, elasticity_multiplier: U256) -> EnvInfo {
         // TODO: memoise.
         EnvInfo {
             number: self.header.number(),
@@ -139,7 +141,7 @@ impl ExecutedBlock {
             difficulty: self.header.difficulty().clone(),
             last_hashes: self.last_hashes.clone(),
             gas_used: self.receipts.last().map_or(U256::zero(), |r| r.gas_used),
-            gas_limit: self.header.gas_limit().clone(),
+            gas_limit: self.header.gas_limit() * elasticity_multiplier,
         }
     }
 
@@ -258,7 +260,12 @@ impl<'x> OpenBlock<'x> {
             return Err(TransactionError::AlreadyImported.into());
         }
 
-        let env_info = self.block.env_info();
+        let elasticity_multiplier = if self.engine.schedule(self.block.header.number()).eip1559 {
+            self.engine.params().elasticity_multiplier
+        } else {
+            U256::from(1)
+        };
+        let env_info = self.block.env_info(elasticity_multiplier);
         let outcome = self.block.state.apply(
             &env_info,
             self.engine.machine(),
@@ -559,11 +566,9 @@ pub(crate) fn enact(
     )?;
 
     if let Some(ref s) = trace_state {
-        let env = b.env_info();
-        let root = s.root();
-        let author_balance = s.balance(&env.author)?;
+        let author_balance = s.balance(&b.header.author())?;
         trace!(target: "enact", "num={}, root={}, author={}, author_balance={}\n",
-				b.block.header.number(), root, env.author, author_balance);
+				b.block.header.number(), s.root(), b.header.author(), author_balance);
     }
 
     // t_nb 8.2 transfer all field from current header to OpenBlock header that we created

@@ -360,8 +360,10 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     // take handle to client
     let client = service.client();
-    let schedule = spec.engine.schedule(client.best_block_header().number());
-
+    let schedule = spec
+        .engine
+        .schedule(client.best_block_header().number() + 1);
+    let elasticity_multiplier = spec.engine.params().elasticity_multiplier;
     let connection_filter_address = spec.params().node_permission_contract;
     // drop the spec to free up genesis state.
     let forks = spec.hard_forks.clone();
@@ -369,11 +371,21 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     // Update miners block gas limit and base_fee
     let base_fee = if schedule.eip1559 {
-        Some(*client.best_block_header().base_fee())
+        Some(
+            client
+                .engine()
+                .calculate_base_fee(&client.best_block_header()),
+        )
     } else {
         None
     };
-    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit(), base_fee);
+    let gas_limit = if schedule.eip1559 {
+        *client.best_block_header().gas_limit() * elasticity_multiplier
+    } else {
+        *client.best_block_header().gas_limit()
+    };
+
+    miner.update_transaction_queue_limits(gas_limit, base_fee);
 
     let connection_filter = connection_filter_address.map(|a| {
         Arc::new(NodeFilter::new(

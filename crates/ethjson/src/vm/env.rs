@@ -36,6 +36,9 @@ pub struct Env {
     /// Timestamp.
     #[serde(rename = "currentTimestamp")]
     pub timestamp: Uint,
+    /// Block base fee.
+    #[serde(rename = "currentBlockBaseFee")]
+    pub base_fee: Option<Uint>,
 }
 
 #[cfg(test)]

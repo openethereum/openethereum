@@ -142,6 +142,7 @@ impl ExecutedBlock {
             last_hashes: self.last_hashes.clone(),
             gas_used: self.receipts.last().map_or(U256::zero(), |r| r.gas_used),
             gas_limit: self.header.gas_limit() * elasticity_multiplier,
+            base_fee: self.header.base_fee().clone(),
         }
     }
 
@@ -198,6 +199,11 @@ impl<'x> OpenBlock<'x> {
             .header
             .set_timestamp(engine.open_block_header_timestamp(parent.timestamp()));
         r.block.header.set_extra_data(extra_data);
+        if engine.schedule(r.block.header.number()).eip1559 {
+            r.block
+                .header
+                .set_base_fee(engine.calculate_base_fee(parent));
+        }
 
         let gas_floor_target = cmp::max(gas_range_target.0, engine.params().min_gas_limit);
         let gas_ceil_target = cmp::max(gas_range_target.1, gas_floor_target);
@@ -477,7 +483,8 @@ impl LockedBlock {
             }))?;
         }
 
-        s.block.header.set_seal(seal);
+        let eip1559 = s.block.header.number() >= engine.params().eip1559_transition;
+        s.block.header.set_seal(seal, eip1559);
         engine.on_seal_block(&mut s.block)?;
         s.block.header.compute_hash();
 
@@ -490,7 +497,8 @@ impl LockedBlock {
     /// TODO(https://github.com/openethereum/openethereum/issues/10407): This is currently only used in POW chain call paths, we should really merge it with seal() above.
     pub fn try_seal(self, engine: &dyn EthEngine, seal: Vec<Bytes>) -> Result<SealedBlock, Error> {
         let mut s = self;
-        s.block.header.set_seal(seal);
+        let eip1559 = s.block.header.number() >= engine.params().eip1559_transition;
+        s.block.header.set_seal(seal, eip1559);
         s.block.header.compute_hash();
 
         // TODO: passing state context to avoid engines owning it?
@@ -695,6 +703,7 @@ mod tests {
         factories: Factories,
     ) -> Result<SealedBlock, Error> {
         let header = Unverified::from_rlp(block_bytes.clone())?.header;
+        let eip1559 = header.number() >= engine.params().eip1559_transition;
         Ok(enact_bytes(
             block_bytes,
             engine,
@@ -704,7 +713,7 @@ mod tests {
             last_hashes,
             factories,
         )?
-        .seal(engine, header.seal().to_vec())?)
+        .seal(engine, header.seal(eip1559).to_vec())?)
     }
 
     #[test]

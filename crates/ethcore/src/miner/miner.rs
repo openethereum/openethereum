@@ -1339,9 +1339,14 @@ impl miner::MinerService for Miner {
             } else {
                 GetAction::Take
             },
-            |b| &b.header.bare_hash() == &block_hash,
+            |b| {
+                &b.header
+                    .bare_hash(b.header.number() >= self.engine.params().eip1559_transition)
+                    == &block_hash
+            },
         ) {
-            trace!(target: "miner", "Submitted block {}={} with seal {:?}", block_hash, b.header.bare_hash(), seal);
+            let eip1559 = b.header.number() >= self.engine.params().eip1559_transition;
+            trace!(target: "miner", "Submitted block {}={} with seal {:?}", block_hash, b.header.bare_hash(eip1559), seal);
             b.lock().try_seal(&*self.engine, seal).or_else(|e| {
                 warn!(target: "miner", "Mined solution rejected: {}", e);
                 Err(ErrorKind::PowInvalid.into())

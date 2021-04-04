@@ -787,6 +787,7 @@ impl Spec {
                 last_hashes: Default::default(),
                 gas_used: U256::zero(),
                 gas_limit: U256::max_value(),
+                base_fee: self.engine.params().base_fee_initial_value,
             };
 
             if !self.constructors.is_empty() {
@@ -891,10 +892,13 @@ impl Spec {
         header.set_gas_used(self.gas_used.clone());
         header.set_gas_limit(self.gas_limit.clone());
         header.set_difficulty(self.difficulty.clone());
-        header.set_seal({
-            let r = Rlp::new(&self.seal_rlp);
-            r.iter().map(|f| f.as_raw().to_vec()).collect()
-        });
+        header.set_seal(
+            {
+                let r = Rlp::new(&self.seal_rlp);
+                r.iter().map(|f| f.as_raw().to_vec()).collect()
+            },
+            false,
+        );
         trace!(target: "spec", "Header hash is {}", header.hash());
         header
     }
@@ -1006,6 +1010,7 @@ impl Spec {
                 gas_limit: U256::max_value(),
                 last_hashes: Arc::new(Vec::new()),
                 gas_used: 0.into(),
+                base_fee: *genesis.base_fee(),
             };
 
             let from = Address::default();

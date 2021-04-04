@@ -155,7 +155,7 @@ impl<'a> From<&'a EthHeader> for Header {
 			timestamp: h.timestamp().into(),
 			difficulty: h.difficulty(),
 			extra_data: h.extra_data().into(),
-			seal_fields: h.view().decode_seal()
+			seal_fields: h.view().decode_seal(false)
 				.expect("Client/Miner returns only valid headers. We only serialize headers from Client/Miner; qed")
 				.into_iter().map(Into::into).collect(),
 		}

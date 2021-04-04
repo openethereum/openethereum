@@ -125,17 +125,33 @@ impl<'a> HeaderView<'a> {
     }
 
     /// Returns a vector of post-RLP-encoded seal fields.
-    pub fn seal(&self) -> Vec<Bytes> {
+    /// If eip1559 is true, seal contains also base_fee_per_gas. Otherwise, it contains only seal fields.
+    pub fn seal(&self, eip1559: bool) -> Vec<Bytes> {
+        let last_seal_index = if eip1559 {
+            self.rlp.item_count() - 1
+        } else {
+            self.rlp.item_count()
+        };
         let mut seal = vec![];
-        for i in 13..self.rlp.item_count() {
+        for i in 13..last_seal_index {
             seal.push(self.rlp.at(i).as_raw().to_vec());
         }
         seal
     }
 
+    /// Returns block base fee. Should be called only for EIP1559 headers.
+    /// If called for non EIP1559 header, returns garbage
+    pub fn base_fee(&self) -> U256 {
+        match self.rlp.rlp.val_at::<U256>(self.rlp.item_count() - 1) {
+            Ok(base_fee) => base_fee,
+            Err(_) => Default::default(),
+        }
+    }
+
     /// Returns a vector of seal fields (RLP-decoded).
-    pub fn decode_seal(&self) -> Result<Vec<Bytes>, rlp::DecoderError> {
-        let seal = self.seal();
+    /// If eip1559 is true, seal contains also base_fee_per_gas. Otherwise, it contains only seal fields.
+    pub fn decode_seal(&self, eip1559: bool) -> Result<Vec<Bytes>, rlp::DecoderError> {
+        let seal = self.seal(eip1559);
         seal.into_iter()
             .map(|s| rlp::Rlp::new(&s).data().map(|x| x.to_vec()))
             .collect()
@@ -193,6 +209,6 @@ mod tests {
         assert_eq!(view.gas_used(), 0x524d.into());
         assert_eq!(view.timestamp(), 0x56_8e_93_2a);
         assert_eq!(view.extra_data(), vec![] as Vec<u8>);
-        assert_eq!(view.seal(), vec![mix_hash, nonce]);
+        assert_eq!(view.seal(false), vec![mix_hash, nonce]);
     }
 }

@@ -33,6 +33,7 @@ use self::finality::RollingFinality;
 use super::{
     signer::EngineSigner,
     validator_set::{new_validator_set, SimpleList, ValidatorSet},
+    EthEngine,
 };
 use block::*;
 use client::{traits::ForceUpdateSealing, EngineClient};
@@ -473,6 +474,7 @@ struct EpochVerifier {
     step: Arc<PermissionedStep>,
     subchain_validators: SimpleList,
     empty_steps_transition: u64,
+    eip1559_transition: BlockNumber,
 }
 
 impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
@@ -488,6 +490,7 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
             header,
             &self.subchain_validators,
             self.empty_steps_transition,
+            self.eip1559_transition,
         )
     }
 
@@ -502,13 +505,16 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
             let mut push_header = |parent_header: &Header, header: Option<&Header>| {
                 // ensure all headers have correct number of seal fields so we can `verify_external`
                 // and get `empty_steps` without panic.
-                if parent_header.seal().len()
+                let eip1559_parent = parent_header.number() >= self.eip1559_transition;
+                if parent_header.seal(eip1559_parent).len()
                     != header_expected_seal_fields(parent_header, self.empty_steps_transition)
                 {
                     return None;
                 }
                 if header.iter().any(|h| {
-                    h.seal().len() != header_expected_seal_fields(h, self.empty_steps_transition)
+                    let eip1559_header = h.number() >= self.eip1559_transition;
+                    h.seal(eip1559_header).len()
+                        != header_expected_seal_fields(h, self.empty_steps_transition)
                 }) {
                     return None;
                 }
@@ -518,6 +524,7 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
                     parent_header,
                     &self.subchain_validators,
                     self.empty_steps_transition,
+                    self.eip1559_transition,
                 )
                 .ok()?;
 
@@ -554,14 +561,19 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
     }
 }
 
-fn header_seal_hash(header: &Header, empty_steps_rlp: Option<&[u8]>) -> H256 {
+fn header_seal_hash(
+    header: &Header,
+    empty_steps_rlp: Option<&[u8]>,
+    eip1559_transition: BlockNumber,
+) -> H256 {
+    let eip1559 = header.number() >= eip1559_transition;
     match empty_steps_rlp {
         Some(empty_steps_rlp) => {
-            let mut message = header.bare_hash().to_vec();
+            let mut message = header.bare_hash(eip1559).to_vec();
             message.extend_from_slice(empty_steps_rlp);
             keccak(message)
         }
-        None => header.bare_hash(),
+        None => header.bare_hash(eip1559),
     }
 }
 
@@ -574,7 +586,7 @@ fn header_expected_seal_fields(header: &Header, empty_steps_transition: u64) -> 
 }
 
 fn header_step(header: &Header, empty_steps_transition: u64) -> Result<u64, ::rlp::DecoderError> {
-    Rlp::new(&header.seal().get(0).unwrap_or_else(||
+    Rlp::new(&header.seal(false).get(0).unwrap_or_else(||
 		panic!("was either checked with verify_block_basic or is genesis; has {} fields; qed (Make sure the spec
 				file has a correct genesis seal)", header_expected_seal_fields(header, empty_steps_transition))
 	))
@@ -584,8 +596,10 @@ fn header_step(header: &Header, empty_steps_transition: u64) -> Result<u64, ::rl
 fn header_signature(
     header: &Header,
     empty_steps_transition: u64,
+    eip1559_transition: BlockNumber,
 ) -> Result<Signature, ::rlp::DecoderError> {
-    Rlp::new(&header.seal().get(1).unwrap_or_else(|| {
+    let eip1559 = header.number() >= eip1559_transition;
+    Rlp::new(&header.seal(eip1559).get(1).unwrap_or_else(|| {
         panic!(
             "was checked with verify_block_basic; has {} fields; qed",
             header_expected_seal_fields(header, empty_steps_transition)
@@ -599,7 +613,7 @@ fn header_signature(
 // (i.e. header.number() >= self.empty_steps_transition)
 fn header_empty_steps_raw(header: &Header) -> &[u8] {
     header
-        .seal()
+        .seal(false)
         .get(2)
         .expect("was checked with verify_block_basic; has 3 fields; qed")
 }
@@ -678,10 +692,11 @@ fn verify_external(
     header: &Header,
     validators: &dyn ValidatorSet,
     empty_steps_transition: u64,
+    eip1559_transition: BlockNumber,
 ) -> Result<(), Error> {
     let header_step = header_step(header, empty_steps_transition)?;
 
-    let proposer_signature = header_signature(header, empty_steps_transition)?;
+    let proposer_signature = header_signature(header, empty_steps_transition, eip1559_transition)?;
     let correct_proposer = validators.get(header.parent_hash(), header_step as usize);
     let is_invalid_proposer = *header.author() != correct_proposer || {
         let empty_steps_rlp = if header.number() >= empty_steps_transition {
@@ -690,7 +705,7 @@ fn verify_external(
             None
         };
 
-        let header_seal_hash = header_seal_hash(header, empty_steps_rlp);
+        let header_seal_hash = header_seal_hash(header, empty_steps_rlp, eip1559_transition);
         !ethkey::verify_address(&correct_proposer, &proposer_signature, &header_seal_hash)?
     };
 
@@ -1089,7 +1104,10 @@ impl Engine<EthereumMachine> for AuthorityRound {
 
     /// Additional engine-specific information for the user/developer concerning `header`.
     fn extra_info(&self, header: &Header) -> BTreeMap<String, String> {
-        if header.seal().len() < header_expected_seal_fields(header, self.empty_steps_transition) {
+        let eip1559 = header.number() >= self.params().eip1559_transition;
+        if header.seal(eip1559).len()
+            < header_expected_seal_fields(header, self.empty_steps_transition)
+        {
             return BTreeMap::default();
         }
 
@@ -1097,10 +1115,14 @@ impl Engine<EthereumMachine> for AuthorityRound {
             .as_ref()
             .map(ToString::to_string)
             .unwrap_or_default();
-        let signature = header_signature(header, self.empty_steps_transition)
-            .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or_default();
+        let signature = header_signature(
+            header,
+            self.empty_steps_transition,
+            self.params().eip1559_transition,
+        )
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_default();
 
         let mut info = map![
             "step".into() => step,
@@ -1263,6 +1285,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
             if let Ok(signature) = self.sign(header_seal_hash(
                 header,
                 empty_steps_rlp.as_ref().map(|e| &**e),
+                self.params().eip1559_transition,
             )) {
                 trace!(target: "engine", "generate_seal: Issuing a block for step {}.", step);
 
@@ -1342,7 +1365,8 @@ impl Engine<EthereumMachine> for AuthorityRound {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let mut beneficiaries = Vec::new();
         if block.header.number() >= self.empty_steps_transition {
-            let empty_steps = if block.header.seal().is_empty() {
+            let eip1559 = block.header.number() >= self.params().eip1559_transition;
+            let empty_steps = if block.header.seal(eip1559).is_empty() {
                 // this is a new block, calculate rewards based on the empty steps messages we have accumulated
                 let client = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
                     Some(client) => client,
@@ -1538,7 +1562,12 @@ impl Engine<EthereumMachine> for AuthorityRound {
 
         // verify signature against fixed list, but reports should go to the
         // contract itself.
-        let res = verify_external(header, &*validators, self.empty_steps_transition);
+        let res = verify_external(
+            header,
+            &*validators,
+            self.empty_steps_transition,
+            self.params().eip1559_transition,
+        );
         match res {
             Err(Error(ErrorKind::Engine(EngineError::NotProposer(_)), _)) => {
                 self.validators
@@ -1674,6 +1703,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
                     step: self.step.clone(),
                     subchain_validators: list,
                     empty_steps_transition: self.empty_steps_transition,
+                    eip1559_transition: self.params().eip1559_transition,
                 });
 
                 match finalize {
@@ -1817,7 +1847,7 @@ mod tests {
     fn can_do_signature_verification_fail() {
         let engine = Spec::new_test_round().engine;
         let mut header: Header = Header::default();
-        header.set_seal(vec![encode(&H520::default())]);
+        header.set_seal(vec![encode(&H520::default())], false);
 
         let verify_result = engine.verify_block_external(&header);
         assert!(verify_result.is_err());
@@ -1956,7 +1986,8 @@ mod tests {
         let tap = AccountProvider::transient_provider();
         let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
         let mut parent_header: Header = Header::default();
-        parent_header.set_seal(vec![encode(&0usize)]);
+        let eip1559 = false;
+        parent_header.set_seal(vec![encode(&0usize)], eip1559);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
         let mut header: Header = Header::default();
         header.set_number(1);
@@ -1969,16 +2000,22 @@ mod tests {
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 2, 0));
         let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
+            .sign(addr, Some("0".into()), header.bare_hash(eip1559))
             .unwrap();
-        header.set_seal(vec![encode(&2usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&2usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_err());
         header.set_difficulty(calculate_score(0, 1, 0));
         let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
+            .sign(addr, Some("0".into()), header.bare_hash(eip1559))
             .unwrap();
-        header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&1usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
     }
@@ -1987,9 +2024,10 @@ mod tests {
     fn rejects_future_block() {
         let tap = AccountProvider::transient_provider();
         let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let eip1559 = false;
 
         let mut parent_header: Header = Header::default();
-        parent_header.set_seal(vec![encode(&0usize)]);
+        parent_header.set_seal(vec![encode(&0usize)], eip1559);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
         let mut header: Header = Header::default();
         header.set_number(1);
@@ -2002,12 +2040,18 @@ mod tests {
         // Spec starts with step 2.
         header.set_difficulty(calculate_score(0, 1, 0));
         let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
+            .sign(addr, Some("0".into()), header.bare_hash(eip1559))
             .unwrap();
-        header.set_seal(vec![encode(&1usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&1usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
         assert!(engine.verify_block_external(&header).is_ok());
-        header.set_seal(vec![encode(&5usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&5usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         assert!(engine.verify_block_basic(&header).is_err());
     }
 
@@ -2015,9 +2059,10 @@ mod tests {
     fn rejects_step_backwards() {
         let tap = AccountProvider::transient_provider();
         let addr = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+        let eip1559 = false;
 
         let mut parent_header: Header = Header::default();
-        parent_header.set_seal(vec![encode(&4usize)]);
+        parent_header.set_seal(vec![encode(&4usize)], eip1559);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
         let mut header: Header = Header::default();
         header.set_number(1);
@@ -2027,14 +2072,20 @@ mod tests {
         let engine = Spec::new_test_round().engine;
 
         let signature = tap
-            .sign(addr, Some("0".into()), header.bare_hash())
+            .sign(addr, Some("0".into()), header.bare_hash(eip1559))
             .unwrap();
         // Two validators.
         // Spec starts with step 2.
-        header.set_seal(vec![encode(&5usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&5usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         header.set_difficulty(calculate_score(4, 5, 0));
         assert!(engine.verify_block_family(&header, &parent_header).is_ok());
-        header.set_seal(vec![encode(&3usize), encode(&(&*signature as &[u8]))]);
+        header.set_seal(
+            vec![encode(&3usize), encode(&(&*signature as &[u8]))],
+            eip1559,
+        );
         header.set_difficulty(calculate_score(4, 3, 0));
         assert!(engine.verify_block_family(&header, &parent_header).is_err());
     }
@@ -2045,14 +2096,15 @@ mod tests {
         let aura = aura(|p| {
             p.validators = Box::new(TestSet::new(Default::default(), last_benign.clone()));
         });
+        let eip1559 = false;
 
         let mut parent_header: Header = Header::default();
-        parent_header.set_seal(vec![encode(&1usize)]);
+        parent_header.set_seal(vec![encode(&1usize)], eip1559);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
         let mut header: Header = Header::default();
         header.set_difficulty(calculate_score(1, 3, 0));
         header.set_gas_limit("222222".parse::<U256>().unwrap());
-        header.set_seal(vec![encode(&3usize)]);
+        header.set_seal(vec![encode(&3usize)], eip1559);
 
         // Do not report when signer not present.
         assert!(aura.verify_block_family(&header, &parent_header).is_ok());
@@ -2153,11 +2205,14 @@ mod tests {
         block_signature: &ethkey::Signature,
         empty_steps: &[SealedEmptyStep],
     ) {
-        header.set_seal(vec![
-            encode(&(step as usize)),
-            encode(&(&**block_signature as &[u8])),
-            ::rlp::encode_list(&empty_steps),
-        ]);
+        header.set_seal(
+            vec![
+                encode(&(step as usize)),
+                encode(&(&**block_signature as &[u8])),
+                ::rlp::encode_list(&empty_steps),
+            ],
+            false,
+        );
     }
 
     fn assert_insufficient_proof<T: ::std::fmt::Debug>(result: Result<T, Error>, contains: &str) {
@@ -2485,9 +2540,10 @@ mod tests {
         let addr1 = accounts[0];
         let addr2 = accounts[1];
         let engine = &*spec.engine;
+        let eip1559 = false;
 
         let mut parent_header: Header = Header::default();
-        parent_header.set_seal(vec![encode(&0usize)]);
+        parent_header.set_seal(vec![encode(&0usize)], eip1559);
         parent_header.set_gas_limit("222222".parse::<U256>().unwrap());
 
         let mut header: Header = Header::default();
@@ -2497,7 +2553,7 @@ mod tests {
         header.set_author(addr1);
 
         let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
+            .sign(addr1, Some("1".into()), header.bare_hash(eip1559))
             .unwrap();
 
         // empty step with invalid step
@@ -2543,7 +2599,7 @@ mod tests {
         let empty_steps = vec![empty_step2, empty_step3];
         header.set_difficulty(calculate_score(0, 4, 2));
         let signature = tap
-            .sign(addr1, Some("1".into()), header.bare_hash())
+            .sign(addr1, Some("1".into()), header.bare_hash(eip1559))
             .unwrap();
         set_empty_steps_seal(&mut header, 4, &signature, &empty_steps);
 
@@ -2626,6 +2682,7 @@ mod tests {
     fn extra_info_from_seal() {
         let (spec, tap, accounts) = setup_empty_steps();
         let engine = &*spec.engine;
+        let eip1559 = false;
 
         let addr1 = accounts[0];
         engine.set_signer(Box::new((tap.clone(), addr1, "1".into())));
@@ -2635,11 +2692,14 @@ mod tests {
         let sealed_empty_step = empty_step.sealed();
 
         header.set_number(2);
-        header.set_seal(vec![
-            encode(&2usize),
-            encode(&H520::default()),
-            ::rlp::encode_list(&vec![sealed_empty_step]),
-        ]);
+        header.set_seal(
+            vec![
+                encode(&2usize),
+                encode(&H520::default()),
+                ::rlp::encode_list(&vec![sealed_empty_step]),
+            ],
+            eip1559,
+        );
 
         let info = engine.extra_info(&header);
 
@@ -2653,7 +2713,7 @@ mod tests {
 
         assert_eq!(info, expected);
 
-        header.set_seal(vec![]);
+        header.set_seal(vec![], eip1559);
 
         assert_eq!(engine.extra_info(&header), BTreeMap::default(),);
     }
@@ -2702,9 +2762,10 @@ mod tests {
             p.empty_steps_transition = 0;
             p.maximum_empty_steps = 0;
         });
+        let eip1559 = false;
 
         let mut parent = Header::default();
-        parent.set_seal(vec![encode(&0usize)]);
+        parent.set_seal(vec![encode(&0usize)], eip1559);
 
         let mut header = Header::default();
         header.set_number(parent.number() + 1);
@@ -2719,7 +2780,7 @@ mod tests {
         ];
         let step = 2;
         let signature = tap
-            .sign(accounts[0], Some("1".into()), header.bare_hash())
+            .sign(accounts[0], Some("1".into()), header.bare_hash(eip1559))
             .unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));
@@ -2741,9 +2802,10 @@ mod tests {
             p.empty_steps_transition = 0;
             p.maximum_empty_steps = 0;
         });
+        let eip1559 = false;
 
         let mut parent = Header::default();
-        parent.set_seal(vec![encode(&0usize)]);
+        parent.set_seal(vec![encode(&0usize)], eip1559);
 
         let mut header = Header::default();
         header.set_number(parent.number() + 1);
@@ -2760,7 +2822,7 @@ mod tests {
 
         let step = 3;
         let signature = tap
-            .sign(accounts[1], Some("0".into()), header.bare_hash())
+            .sign(accounts[1], Some("0".into()), header.bare_hash(eip1559))
             .unwrap();
         set_empty_steps_seal(&mut header, step, &signature, &empty_steps);
         header.set_difficulty(calculate_score(0, step, empty_steps.len()));

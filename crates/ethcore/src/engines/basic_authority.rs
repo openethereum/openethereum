@@ -27,7 +27,10 @@ use ethkey::{self, Signature};
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::RwLock;
 use std::sync::Weak;
-use types::header::{ExtendedHeader, Header};
+use types::{
+    header::{ExtendedHeader, Header},
+    BlockNumber,
+};
 
 /// `BasicAuthority` params.
 #[derive(Debug, PartialEq)]
@@ -46,20 +49,27 @@ impl From<ethjson::spec::BasicAuthorityParams> for BasicAuthorityParams {
 
 struct EpochVerifier {
     list: SimpleList,
+    eip1559_transition: BlockNumber,
 }
 
 impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
     fn verify_light(&self, header: &Header) -> Result<(), Error> {
-        verify_external(header, &self.list)
+        verify_external(header, &self.list, self.eip1559_transition)
     }
 }
 
-fn verify_external(header: &Header, validators: &dyn ValidatorSet) -> Result<(), Error> {
+fn verify_external(
+    header: &Header,
+    validators: &dyn ValidatorSet,
+    eip1559_transition: BlockNumber,
+) -> Result<(), Error> {
     use rlp::Rlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
-    let sig = Rlp::new(&header.seal()[0]).as_val::<H520>()?;
-    let signer = ethkey::public_to_address(&ethkey::recover(&sig.into(), &header.bare_hash())?);
+    let sig = Rlp::new(&header.seal(false)[0]).as_val::<H520>()?;
+    let eip1559 = header.number() >= eip1559_transition;
+    let signer =
+        ethkey::public_to_address(&ethkey::recover(&sig.into(), &header.bare_hash(eip1559))?);
 
     if *header.author() != signer {
         return Err(EngineError::NotAuthorized(*header.author()).into());
@@ -113,7 +123,8 @@ impl Engine<EthereumMachine> for BasicAuthority {
         let author = header.author();
         if self.validators.contains(header.parent_hash(), author) {
             // account should be pernamently unlocked, otherwise sealing will fail
-            if let Ok(signature) = self.sign(header.bare_hash()) {
+            let eip1559 = header.number() >= self.machine.params().eip1559_transition;
+            if let Ok(signature) = self.sign(header.bare_hash(eip1559)) {
                 return Seal::Regular(vec![::rlp::encode(&(&H520::from(signature) as &[u8]))]);
             } else {
                 trace!(target: "basicauthority", "generate_seal: FAIL: accounts secret key unavailable");
@@ -127,7 +138,11 @@ impl Engine<EthereumMachine> for BasicAuthority {
     }
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
-        verify_external(header, &*self.validators)
+        verify_external(
+            header,
+            &*self.validators,
+            self.machine.params().eip1559_transition,
+        )
     }
 
     fn genesis_epoch_data(&self, header: &Header, call: &Call) -> Result<Vec<u8>, String> {
@@ -180,7 +195,10 @@ impl Engine<EthereumMachine> for BasicAuthority {
             .epoch_set(first, &self.machine, header.number(), proof)
         {
             Ok((list, finalize)) => {
-                let verifier = Box::new(EpochVerifier { list: list });
+                let verifier = Box::new(EpochVerifier {
+                    list: list,
+                    eip1559_transition: self.machine.params().eip1559_transition,
+                });
 
                 // our epoch verifier will ensure no unverified verifier is ever verified.
                 match finalize {
@@ -255,7 +273,8 @@ mod tests {
     fn can_do_signature_verification_fail() {
         let engine = new_test_authority().engine;
         let mut header: Header = Header::default();
-        header.set_seal(vec![::rlp::encode(&H520::default())]);
+        let eip1559 = header.number() >= engine.params().eip1559_transition;
+        header.set_seal(vec![::rlp::encode(&H520::default())], eip1559);
 
         let verify_result = engine.verify_block_external(&header);
         assert!(verify_result.is_err());

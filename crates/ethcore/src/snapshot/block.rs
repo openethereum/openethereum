@@ -45,7 +45,7 @@ impl AbridgedBlock {
     /// producing new rlp.
     pub fn from_block_view(block_view: &BlockView) -> Self {
         let header = block_view.header_view();
-        let seal_fields = header.seal();
+        let seal_fields = header.seal(false);
 
         // 10 header fields, unknown number of seal fields, and 2 block fields.
         let mut stream = RlpStream::new_list(HEADER_FIELDS + seal_fields.len() + BLOCK_FIELDS);
@@ -120,7 +120,13 @@ impl AbridgedBlock {
             seal_fields.push(seal_rlp.as_raw().to_owned());
         }
 
-        header.set_seal(seal_fields);
+        // try to read base fee
+        header.set_base_fee(match rlp.val_at::<_>(rlp.item_count()? - 1) {
+            Ok(base_fee) => base_fee,
+            Err(_) => Default::default(),
+        });
+
+        header.set_seal(seal_fields, false);
 
         Ok(Block {
             header: header,
@@ -150,6 +156,18 @@ mod tests {
     #[test]
     fn empty_block_abridging() {
         let b = Block::default();
+        let receipts_root = b.header.receipts_root().clone();
+        let encoded = encode_block(&b);
+
+        let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
+        assert_eq!(abridged.to_block(H256::new(), 0, receipts_root).unwrap(), b);
+    }
+
+    #[test]
+    fn eip1559_block_abridging() {
+        let mut b = Block::default();
+        b.header.set_base_fee(100.into());
+        b.header.set_seal(vec![vec![50u8], vec![60u8]], true);
         let receipts_root = b.header.receipts_root().clone();
         let encoded = encode_block(&b);
 

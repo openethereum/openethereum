@@ -147,8 +147,13 @@ impl Header {
     }
 
     /// Engine-specific seal fields.
-    pub fn seal(&self) -> Vec<Vec<u8>> {
-        self.view().seal()
+    pub fn seal(&self, eip1559: bool) -> Vec<Vec<u8>> {
+        self.view().seal(eip1559)
+    }
+
+    /// Base fee.
+    pub fn base_fee(&self) -> U256 {
+        self.view().base_fee()
     }
 }
 
@@ -387,8 +392,8 @@ impl Block {
     }
 
     /// Engine-specific seal fields.
-    pub fn seal(&self) -> Vec<Vec<u8>> {
-        self.header_view().seal()
+    pub fn seal(&self, eip1559: bool) -> Vec<Vec<u8>> {
+        self.header_view().seal(eip1559)
     }
 }
 

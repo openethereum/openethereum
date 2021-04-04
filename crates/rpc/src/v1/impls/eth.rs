@@ -286,7 +286,11 @@ where
                         timestamp: view.timestamp().into(),
                         difficulty: view.difficulty(),
                         total_difficulty: Some(total_difficulty),
-                        seal_fields: view.seal().into_iter().map(Into::into).collect(),
+                        seal_fields: view
+                            .seal(client.engine().schedule(view.number()).eip1559)
+                            .into_iter()
+                            .map(Into::into)
+                            .collect(),
                         uncles: block.uncle_hashes(),
                         transactions: match include_txs {
                             true => BlockTransactions::Full(
@@ -455,7 +459,12 @@ where
                 total_difficulty: Some(uncle.difficulty() + parent_difficulty),
                 receipts_root: *uncle.receipts_root(),
                 extra_data: uncle.extra_data().clone().into(),
-                seal_fields: uncle.seal().iter().cloned().map(Into::into).collect(),
+                seal_fields: uncle
+                    .seal(client.engine().schedule(uncle.number()).eip1559)
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
                 uncles: vec![],
                 transactions: BlockTransactions::Hashes(vec![]),
             },

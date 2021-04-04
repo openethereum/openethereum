@@ -185,7 +185,12 @@ impl CliqueBlockState {
     }
 
     /// Verify and apply a new header to current state
-    pub fn apply(&mut self, header: &Header, is_checkpoint: bool) -> Result<Address, Error> {
+    pub fn apply(
+        &mut self,
+        header: &Header,
+        is_checkpoint: bool,
+        eip1559: bool,
+    ) -> Result<Address, Error> {
         let creator = self.verify(header)?;
         self.recent_signers.push_front(creator);
         self.rotate_recent_signers();
@@ -213,7 +218,7 @@ impl CliqueBlockState {
 
         // Contains vote
         if *header.author() != NULL_AUTHOR {
-            let decoded_seal = header.decode_seal::<Vec<_>>()?;
+            let decoded_seal = header.decode_seal::<Vec<_>>(eip1559)?;
             if decoded_seal.len() != 2 {
                 Err(BlockError::InvalidSealArity(Mismatch {
                     expected: 2,

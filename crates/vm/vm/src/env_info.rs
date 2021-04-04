@@ -44,6 +44,8 @@ pub struct EnvInfo {
     pub last_hashes: Arc<LastHashes>,
     /// The gas used.
     pub gas_used: U256,
+    /// Block base fee.
+    pub base_fee: U256,
 }
 
 impl Default for EnvInfo {
@@ -56,6 +58,7 @@ impl Default for EnvInfo {
             gas_limit: 0.into(),
             last_hashes: Arc::new(vec![]),
             gas_used: 0.into(),
+            base_fee: 0.into(),
         }
     }
 }
@@ -75,6 +78,7 @@ impl From<ethjson::vm::Env> for EnvInfo {
                     .collect(),
             ),
             gas_used: U256::default(),
+            base_fee: e.base_fee.unwrap_or_default().into(),
         }
     }
 }
@@ -96,6 +100,7 @@ mod tests {
             difficulty: ethjson::uint::Uint(U256::from(50_000)),
             gas_limit: ethjson::uint::Uint(U256::from(40_000)),
             timestamp: ethjson::uint::Uint(U256::from(1_100)),
+            base_fee: None,
         });
 
         assert_eq!(env_info.number, 1112339);

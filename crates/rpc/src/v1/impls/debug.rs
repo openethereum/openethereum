@@ -71,7 +71,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                         total_difficulty: None,
                         seal_fields: block
                             .header
-                            .seal()
+                            .seal(false)
                             .iter()
                             .cloned()
                             .map(Into::into)

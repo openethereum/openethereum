@@ -749,6 +749,7 @@ impl Importer {
                             last_hashes: client.build_last_hashes(header.parent_hash()),
                             gas_used: U256::default(),
                             gas_limit: u64::max_value().into(),
+                            base_fee: *header.base_fee(),
                         };
 
                         let call = move |addr, data| {
@@ -1085,6 +1086,7 @@ impl Client {
                     U256::from(1)
                 }
             },
+            base_fee: header.base_fee(),
         })
     }
 
@@ -1847,6 +1849,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
+            base_fee: *header.base_fee(),
         };
         let machine = self.engine.machine();
 
@@ -1867,6 +1870,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
+            base_fee: *header.base_fee(),
         };
 
         let mut results = Vec::with_capacity(transactions.len());
@@ -1903,6 +1907,7 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
+                base_fee: *header.base_fee(),
             };
 
             (init, max, env_info)

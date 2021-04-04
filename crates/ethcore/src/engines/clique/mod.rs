@@ -347,7 +347,8 @@ impl Clique {
                 // Backfill!
                 let mut new_state = last_checkpoint_state.clone();
                 for item in chain {
-                    new_state.apply(item, false)?;
+                    let eip1559 = item.number() >= self.machine.params().eip1559_transition;
+                    new_state.apply(item, false, eip1559)?;
                 }
                 new_state.calc_next_timestamp(header.timestamp(), self.period)?;
                 block_state_by_hash.insert(header.hash(), new_state.clone());
@@ -402,6 +403,7 @@ impl Engine<EthereumMachine> for Clique {
             .ok_or_else(|| BlockError::UnknownParent(*header.parent_hash()))?;
 
         let is_checkpoint = header.number() % self.epoch_length == 0;
+        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
 
         header.set_author(NULL_AUTHOR);
 
@@ -424,7 +426,7 @@ impl Engine<EthereumMachine> for Clique {
                 trace!(target: "engine", "Casting vote: beneficiary {}, type {:?} ", beneficiary, vote_type);
 
                 header.set_author(beneficiary);
-                header.set_seal(vote_type.as_rlp());
+                header.set_seal(vote_type.as_rlp(), eip1559);
             }
         }
 
@@ -464,7 +466,8 @@ impl Engine<EthereumMachine> for Clique {
 
         // locally sealed block don't go through valid_block_family(), so we have to record state here.
         let mut new_state = state.clone();
-        new_state.apply(&header, is_checkpoint)?;
+
+        new_state.apply(&header, is_checkpoint, eip1559)?;
         new_state.calc_next_timestamp(header.timestamp(), self.period)?;
         self.block_state_by_hash
             .write()
@@ -595,7 +598,8 @@ impl Engine<EthereumMachine> for Clique {
             }))?;
         }
 
-        let seal_fields = header.decode_seal::<Vec<_>>()?;
+        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
+        let seal_fields = header.decode_seal::<Vec<_>>(eip1559)?;
         if seal_fields.len() != 2 {
             Err(BlockError::InvalidSealArity(Mismatch {
                 expected: 2,
@@ -703,7 +707,8 @@ impl Engine<EthereumMachine> for Clique {
         let parent_state = self.state(&parent)?;
         // Try to apply current state, apply() will further check signer and recent signer.
         let mut new_state = parent_state.clone();
-        new_state.apply(header, header.number() % self.epoch_length == 0)?;
+        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
+        new_state.apply(header, header.number() % self.epoch_length == 0, eip1559)?;
         new_state.calc_next_timestamp(header.timestamp(), self.period)?;
         self.block_state_by_hash
             .write()

@@ -343,10 +343,11 @@ pub fn verify_header_params(
 ) -> Result<(), Error> {
     if check_seal {
         let expected_seal_fields = engine.seal_fields(header);
-        if header.seal().len() != expected_seal_fields {
+        let eip1559 = header.number() >= engine.params().eip1559_transition;
+        if header.seal(eip1559).len() != expected_seal_fields {
             return Err(From::from(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
-                found: header.seal().len(),
+                found: header.seal(eip1559).len(),
             })));
         }
     }

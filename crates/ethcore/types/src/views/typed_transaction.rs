@@ -81,10 +81,10 @@ impl<'a> TypedTransactionView<'a> {
             }
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
-                .val_at(1),
+                .val_at(0),
             TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
-                .val_at(1),
+                .val_at(0),
         }
     }
 
@@ -258,7 +258,26 @@ mod tests {
     #[test]
     fn test_access_list_transaction_view() {
         let rlp = "b8c101f8be01010a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
+        let view = view!(TypedTransactionView, &rlp);
+        assert_eq!(view.nonce(), 0x1.into());
+        assert_eq!(view.gas_price(), 0xa.into());
+        assert_eq!(view.gas(), 0x1e241.into());
+        assert_eq!(view.value(), 0x0.into());
+        assert_eq!(view.data(), "".from_hex().unwrap());
+        assert_eq!(
+            view.r(),
+            "82dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234db".into()
+        );
+        assert_eq!(
+            view.s(),
+            "72228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".into()
+        );
+        assert_eq!(view.standard_v(), 0x0);
+    }
 
+    #[test]
+    fn test_eip1559_transaction_view() {
+        let rlp = "b8c202f8bf01010a0a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
         let view = view!(TypedTransactionView, &rlp);
         assert_eq!(view.nonce(), 0x1.into());
         assert_eq!(view.gas_price(), 0xa.into());

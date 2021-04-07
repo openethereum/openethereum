@@ -109,6 +109,8 @@ pub struct SyncConfig {
     pub fork_block: Option<(BlockNumber, H256)>,
     /// Enable snapshot sync
     pub warp_sync: WarpSync,
+    /// Number of first block where EIP-1559 rules begin. New encoding/decoding block format.
+    pub eip1559_transition: BlockNumber,
 }
 
 impl Default for SyncConfig {
@@ -120,6 +122,7 @@ impl Default for SyncConfig {
             subprotocol_name: ETH_PROTOCOL,
             fork_block: None,
             warp_sync: WarpSync::Disabled,
+            eip1559_transition: BlockNumber::max_value(),
         }
     }
 }

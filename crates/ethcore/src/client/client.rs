@@ -339,7 +339,11 @@ impl Importer {
                             .accrue_block(&header, transactions_len);
                     }
                     Err(err) => {
-                        self.bad_blocks.report(bytes, format!("{:?}", err));
+                        self.bad_blocks.report(
+                            bytes,
+                            format!("{:?}", err),
+                            self.engine.params().eip1559_transition,
+                        );
                         invalid_blocks.insert(hash);
                     }
                 }
@@ -611,7 +615,7 @@ impl Importer {
             let header = chain
                 .block_header_data(&hash)
                 .expect("Best block is in the database; qed")
-                .decode()
+                .decode(self.engine.params().eip1559_transition)
                 .expect("Stored block header is valid RLP; qed");
             let details = chain
                 .block_details(&hash)
@@ -749,7 +753,7 @@ impl Importer {
                             last_hashes: client.build_last_hashes(header.parent_hash()),
                             gas_used: U256::default(),
                             gas_limit: u64::max_value().into(),
-                            base_fee: *header.base_fee(),
+                            base_fee: header.base_fee(),
                         };
 
                         let call = move |addr, data| {
@@ -888,7 +892,12 @@ impl Client {
         }
 
         let gb = spec.genesis_block();
-        let chain = Arc::new(BlockChain::new(config.blockchain.clone(), &gb, db.clone()));
+        let chain = Arc::new(BlockChain::new(
+            config.blockchain.clone(),
+            &gb,
+            db.clone(),
+            spec.params().eip1559_transition,
+        ));
         let tracedb = RwLock::new(TraceDB::new(
             config.tracing.clone(),
             db.clone(),
@@ -1567,7 +1576,9 @@ impl Client {
             BlockId::Number(number) if number == self.chain.read().best_block_number() => {
                 Some(self.chain.read().best_block_header())
             }
-            _ => self.block_header(id).and_then(|h| h.decode().ok()),
+            _ => self
+                .block_header(id)
+                .and_then(|h| h.decode(self.engine.params().eip1559_transition).ok()),
         }
     }
 }
@@ -1594,6 +1605,7 @@ impl snapshot::DatabaseRestore for Client {
             self.config.blockchain.clone(),
             &[],
             db.clone(),
+            self.engine.params().eip1559_transition,
         ));
         *tracedb = TraceDB::new(self.config.tracing.clone(), db.clone(), chain.clone());
         Ok(())
@@ -1805,9 +1817,11 @@ impl ImportBlock for Client {
             }
             // t_nb 2.5 if block is not okay print error. we only care about block errors (not import errors)
             Err((Some(block), EthcoreError(EthcoreErrorKind::Block(err), _))) => {
-                self.importer
-                    .bad_blocks
-                    .report(block.bytes, err.to_string());
+                self.importer.bad_blocks.report(
+                    block.bytes,
+                    err.to_string(),
+                    self.engine.params().eip1559_transition,
+                );
                 bail!(EthcoreErrorKind::Block(err))
             }
             Err((None, EthcoreError(EthcoreErrorKind::Block(err), _))) => {
@@ -1849,7 +1863,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
-            base_fee: *header.base_fee(),
+            base_fee: header.base_fee(),
         };
         let machine = self.engine.machine();
 
@@ -1870,7 +1884,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
-            base_fee: *header.base_fee(),
+            base_fee: header.base_fee(),
         };
 
         let mut results = Vec::with_capacity(transactions.len());
@@ -1907,7 +1921,7 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
-                base_fee: *header.base_fee(),
+                base_fee: header.base_fee(),
             };
 
             (init, max, env_info)
@@ -1991,7 +2005,9 @@ impl EngineInfo for Client {
 
 impl BadBlocks for Client {
     fn bad_blocks(&self) -> Vec<(Unverified, String)> {
-        self.importer.bad_blocks.bad_blocks()
+        self.importer
+            .bad_blocks
+            .bad_blocks(self.engine.params().eip1559_transition)
     }
 }
 
@@ -2576,8 +2592,11 @@ impl BlockChainClient for Client {
     }
 
     fn uncle_extra_info(&self, id: UncleId) -> Option<BTreeMap<String, String>> {
-        self.uncle(id)
-            .and_then(|h| h.decode().map(|dh| self.engine.extra_info(&dh)).ok())
+        self.uncle(id).and_then(|h| {
+            h.decode(self.engine.params().eip1559_transition)
+                .map(|dh| self.engine.extra_info(&dh))
+                .ok()
+        })
     }
 
     fn pruning_info(&self) -> PruningInfo {
@@ -2760,7 +2779,9 @@ impl ReopenBlock for Client {
                     let uncle = chain
                         .block_header_data(&h)
                         .expect("find_uncle_hashes only returns hashes for existing headers; qed");
-                    let uncle = uncle.decode().expect("decoding failure");
+                    let uncle = uncle
+                        .decode(self.engine.params().eip1559_transition)
+                        .expect("decoding failure");
                     block.push_uncle(uncle).expect(
                         "pushing up to maximum_uncle_count;
 												push_uncle is not ok only if more than maximum_uncle_count is pushed;
@@ -2812,7 +2833,10 @@ impl PrepareOpenBlock for Client {
             .take(engine.maximum_uncle_count(open_block.header.number()))
             .foreach(|h| {
                 open_block
-                    .push_uncle(h.decode().expect("decoding failure"))
+                    .push_uncle(
+                        h.decode(engine.params().eip1559_transition)
+                            .expect("decoding failure"),
+                    )
                     .expect(
                         "pushing maximum_uncle_count;
 												open_block was just created;
@@ -2848,6 +2872,7 @@ impl ImportSealedBlock for Client {
                 self.importer.bad_blocks.report(
                     block.rlp_bytes(),
                     format!("Detected an issue with locally sealed block: {}", e),
+                    self.engine.params().eip1559_transition,
                 );
                 return Err(e.into());
             }
@@ -3078,7 +3103,8 @@ impl ImportExportBlocks for Client {
         };
 
         let do_import = |bytes: Vec<u8>| {
-            let block = Unverified::from_rlp(bytes).map_err(|_| "Invalid block rlp")?;
+            let block = Unverified::from_rlp(bytes, self.engine.params().eip1559_transition)
+                .map_err(|_| "Invalid block rlp")?;
             let number = block.header.number();
             while self.queue_info().is_full() {
                 std::thread::sleep(Duration::from_secs(1));

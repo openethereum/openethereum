@@ -238,8 +238,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
     /// Additional engine-specific information for the user/developer concerning `header`.
     fn extra_info(&self, header: &Header) -> BTreeMap<String, String> {
-        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
-        match Seal::parse_seal(header.seal(eip1559)) {
+        match Seal::parse_seal(header.seal()) {
             Ok(seal) => map![
                 "nonce".to_owned() => format!("0x{:x}", seal.nonce),
                 "mixHash".to_owned() => format!("0x{:x}", seal.mix_hash)
@@ -345,8 +344,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         // check the seal fields.
-        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
-        let seal = Seal::parse_seal(header.seal(eip1559))?;
+        let seal = Seal::parse_seal(header.seal())?;
 
         // TODO: consider removing these lines.
         let min_difficulty = self.ethash_params.minimum_difficulty;
@@ -359,7 +357,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
         }
 
         let difficulty = ethash::boundary_to_difficulty(&H256(quick_get_difficulty(
-            &header.bare_hash(eip1559).0,
+            &header.bare_hash().0,
             seal.nonce.low_u64(),
             &seal.mix_hash.0,
             header.number() >= self.ethash_params.progpow_transition,
@@ -377,12 +375,10 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
     }
 
     fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
-        let eip1559 = header.number() >= self.machine.params().eip1559_transition;
-        let seal = Seal::parse_seal(header.seal(eip1559))?;
-
+        let seal = Seal::parse_seal(header.seal())?;
         let result = self.pow.compute_light(
             header.number() as u64,
-            &header.bare_hash(eip1559).0,
+            &header.bare_hash().0,
             seal.nonce.low_u64(),
         );
         let mix = H256(result.mix_hash);
@@ -390,7 +386,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
         trace!(target: "miner", "num: {num}, seed: {seed}, h: {h}, non: {non}, mix: {mix}, res: {res}",
 			   num = header.number() as u64,
 			   seed = H256(slow_hash_block_number(header.number() as u64)),
-			   h = header.bare_hash(eip1559),
+			   h = header.bare_hash(),
 			   non = seal.nonce.low_u64(),
 			   mix = H256(result.mix_hash),
 			   res = H256(result.value));
@@ -788,10 +784,7 @@ mod tests {
     fn can_do_difficulty_verification_fail() {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
-        header.set_seal(
-            vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())],
-            false,
-        );
+        header.set_seal(vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())]);
 
         let verify_result = engine.verify_block_basic(&header);
 
@@ -810,10 +803,7 @@ mod tests {
     fn can_do_proof_of_work_verification_fail() {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
-        header.set_seal(
-            vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())],
-            false,
-        );
+        header.set_seal(vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())]);
         header.set_difficulty(
             U256::from_str("ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa")
                 .unwrap(),
@@ -860,7 +850,7 @@ mod tests {
     fn can_do_seal_unordered_verification_fail2() {
         let engine = test_spec().engine;
         let mut header = Header::default();
-        header.set_seal(vec![vec![], vec![]], false);
+        header.set_seal(vec![vec![], vec![]]);
 
         let verify_result = engine.verify_block_unordered(&header);
         // rlp error, shouldn't panic
@@ -871,10 +861,7 @@ mod tests {
     fn can_do_seal256_verification_fail() {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
-        header.set_seal(
-            vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())],
-            false,
-        );
+        header.set_seal(vec![rlp::encode(&H256::zero()), rlp::encode(&H64::zero())]);
         let verify_result = engine.verify_block_unordered(&header);
 
         match verify_result {
@@ -895,15 +882,12 @@ mod tests {
     fn can_do_proof_of_work_unordered_verification_fail() {
         let engine = test_spec().engine;
         let mut header: Header = Header::default();
-        header.set_seal(
-            vec![
-                rlp::encode(&H256::from(
-                    "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-                )),
-                rlp::encode(&H64::zero()),
-            ],
-            false,
-        );
+        header.set_seal(vec![
+            rlp::encode(&H256::from(
+                "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
+            )),
+            rlp::encode(&H64::zero()),
+        ]);
         header.set_difficulty(
             U256::from_str("ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa")
                 .unwrap(),
@@ -1035,15 +1019,12 @@ mod tests {
         let tempdir = TempDir::new("").unwrap();
         let ethash = Ethash::new(tempdir.path(), ethparams, machine, None);
         let mut header = Header::default();
-        header.set_seal(
-            vec![
-                rlp::encode(&H256::from(
-                    "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
-                )),
-                rlp::encode(&H64::zero()),
-            ],
-            false,
-        );
+        header.set_seal(vec![
+            rlp::encode(&H256::from(
+                "b251bd2e0283d0658f2cadfdc8ca619b5de94eca5742725e2e757dd13ed7503d",
+            )),
+            rlp::encode(&H64::zero()),
+        ]);
         let info = ethash.extra_info(&header);
         assert_eq!(info["nonce"], "0x0000000000000000");
         assert_eq!(

@@ -729,7 +729,7 @@ impl Miner {
         trace!(target: "miner", "seal_block_internally: attempting internal seal.");
 
         let parent_header = match chain.block_header(BlockId::Hash(*block.header.parent_hash())) {
-            Some(h) => match h.decode() {
+            Some(h) => match h.decode(self.engine.params().eip1559_transition) {
                 Ok(decoded_hdr) => decoded_hdr,
                 Err(_) => return false,
             },
@@ -1339,14 +1339,9 @@ impl miner::MinerService for Miner {
             } else {
                 GetAction::Take
             },
-            |b| {
-                &b.header
-                    .bare_hash(b.header.number() >= self.engine.params().eip1559_transition)
-                    == &block_hash
-            },
+            |b| &b.header.bare_hash() == &block_hash,
         ) {
-            let eip1559 = b.header.number() >= self.engine.params().eip1559_transition;
-            trace!(target: "miner", "Submitted block {}={} with seal {:?}", block_hash, b.header.bare_hash(eip1559), seal);
+            trace!(target: "miner", "Submitted block {}={} with seal {:?}", block_hash, b.header.bare_hash(), seal);
             b.lock().try_seal(&*self.engine, seal).or_else(|e| {
                 warn!(target: "miner", "Mined solution rejected: {}", e);
                 Err(ErrorKind::PowInvalid.into())

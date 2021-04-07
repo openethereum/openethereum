@@ -20,7 +20,7 @@ use bytes::Bytes;
 use ethereum_types::{Address, Bloom, H256, U256};
 use hash::{keccak, KECCAK_EMPTY_LIST_RLP, KECCAK_NULL_RLP};
 use heapsize::HeapSizeOf;
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 use BlockNumber;
 
 /// Semantic boolean for when a seal/signature is included.
@@ -86,7 +86,7 @@ pub struct Header {
     seal: Vec<Bytes>,
 
     /// Base fee per gas. Introduced by EIP1559.
-    base_fee_per_gas: U256,
+    base_fee_per_gas: Option<U256>,
 
     /// Memoized hash of that header and the seal.
     hash: Option<H256>,
@@ -139,7 +139,7 @@ impl Default for Header {
             difficulty: U256::default(),
             seal: vec![],
             hash: None,
-            base_fee_per_gas: U256::default(),
+            base_fee_per_gas: None,
         }
     }
 }
@@ -216,32 +216,20 @@ impl Header {
     }
 
     /// Get the seal field of the header.
-    pub fn seal(&self, eip1559: bool) -> &[Bytes] {
-        &self.seal[..self.seal_length(eip1559)]
-    }
-
-    /// Get the number of seal elements in the seal field
-    /// EIP1559 header seal contains seal elements + base_fee_per_gas
-    fn seal_length(&self, eip1559: bool) -> usize {
-        if eip1559 && self.seal.len() > 0 {
-            self.seal.len() - 1
-        } else {
-            self.seal.len()
-        }
+    pub fn seal(&self) -> &[Bytes] {
+        &self.seal
     }
 
     /// Get the base fee field of the header.
-    pub fn base_fee(&self) -> &U256 {
-        &self.base_fee_per_gas
+    pub fn base_fee(&self) -> U256 {
+        self.base_fee_per_gas.unwrap_or_default()
     }
 
     /// Get the seal field with RLP-decoded values as bytes.
     pub fn decode_seal<'a, T: ::std::iter::FromIterator<&'a [u8]>>(
         &'a self,
-        eip1559: bool,
     ) -> Result<T, DecoderError> {
-        let seal = self.seal(eip1559);
-        seal.iter().map(|rlp| Rlp::new(rlp).data()).collect()
+        self.seal.iter().map(|rlp| Rlp::new(rlp).data()).collect()
     }
 
     /// Set the number field of the header.
@@ -309,17 +297,8 @@ impl Header {
     }
 
     /// Set the seal field of the header.
-    pub fn set_seal(&mut self, a: Vec<Bytes>, eip1559: bool) {
-        if eip1559 {
-            let a = {
-                let mut new_seal = a;
-                new_seal.push(self.base_fee_per_gas.rlp_bytes());
-                new_seal
-            };
-            change_field(&mut self.hash, &mut self.seal, a)
-        } else {
-            change_field(&mut self.hash, &mut self.seal, a)
-        }
+    pub fn set_seal(&mut self, a: Vec<Bytes>) {
+        change_field(&mut self.hash, &mut self.seal, a)
     }
 
     /// Get & memoize the hash of this header (keccak of the RLP with seal).
@@ -330,41 +309,44 @@ impl Header {
     }
 
     /// Set the block base fee of the header.
-    pub fn set_base_fee(&mut self, a: U256) {
+    pub fn set_base_fee(&mut self, a: Option<U256>) {
         change_field(&mut self.hash, &mut self.base_fee_per_gas, a);
     }
 
     /// Get the hash of this header (keccak of the RLP with seal).
     /// eip1559 option is not important, since Seal::With is used.
     pub fn hash(&self) -> H256 {
-        self.hash
-            .unwrap_or_else(|| keccak(self.rlp(Seal::With, false)))
+        self.hash.unwrap_or_else(|| keccak(self.rlp(Seal::With)))
     }
 
     /// Get the hash of the header excluding the seal
-    pub fn bare_hash(&self, eip1559: bool) -> H256 {
-        keccak(self.rlp(Seal::Without, eip1559))
+    pub fn bare_hash(&self) -> H256 {
+        keccak(self.rlp(Seal::Without))
     }
 
     /// Encode the header, getting a type-safe wrapper around the RLP.
     /// eip1559 option is not important, since Seal::With is used.
     pub fn encoded(&self) -> ::encoded::Header {
-        ::encoded::Header::new(self.rlp(Seal::With, false))
+        ::encoded::Header::new(self.rlp(Seal::With))
     }
 
     /// Get the RLP representation of this Header.
-    fn rlp(&self, with_seal: Seal, eip1559: bool) -> Bytes {
+    fn rlp(&self, with_seal: Seal) -> Bytes {
         let mut s = RlpStream::new();
-        self.stream_rlp(&mut s, with_seal, eip1559);
+        self.stream_rlp(&mut s, with_seal);
         s.out()
     }
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
-    fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal, eip1559: bool) {
-        let stream_length_without_seal = if eip1559 { 14 } else { 13 };
+    fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
+        let stream_length_without_seal = if self.base_fee_per_gas.is_some() {
+            14
+        } else {
+            13
+        };
 
         if let Seal::With = with_seal {
-            s.begin_list(stream_length_without_seal + self.seal_length(eip1559));
+            s.begin_list(stream_length_without_seal + self.seal.len());
         } else {
             s.begin_list(stream_length_without_seal);
         }
@@ -384,13 +366,13 @@ impl Header {
         s.append(&self.extra_data);
 
         if let Seal::With = with_seal {
-            for b in self.seal(eip1559) {
+            for b in &self.seal {
                 s.append_raw(b, 1);
             }
         }
 
-        if eip1559 {
-            s.append(&self.base_fee_per_gas);
+        if self.base_fee_per_gas.is_some() {
+            s.append(&self.base_fee_per_gas.unwrap());
         }
     }
 }
@@ -406,8 +388,8 @@ where
     }
 }
 
-impl Decodable for Header {
-    fn decode(r: &Rlp) -> Result<Self, DecoderError> {
+impl Header {
+    pub fn decode_rlp(r: &Rlp, eip1559_transition: BlockNumber) -> Result<Self, DecoderError> {
         let mut blockheader = Header {
             parent_hash: r.val_at(0)?,
             uncles_hash: r.val_at(1)?,
@@ -424,26 +406,42 @@ impl Decodable for Header {
             extra_data: r.val_at(12)?,
             seal: vec![],
             hash: keccak(r.as_raw()).into(),
-            base_fee_per_gas: U256::default(),
+            base_fee_per_gas: None,
         };
 
-        for i in 13..r.item_count()? {
-            blockheader.seal.push(r.at(i)?.as_raw().to_vec())
-        }
-
-        // try to read base fee
-        match r.val_at::<U256>(r.item_count()? - 1) {
-            Ok(base_fee) => blockheader.base_fee_per_gas = base_fee,
-            Err(_) => (),
+        if blockheader.number >= eip1559_transition {
+            for i in 13..r.item_count()? - 1 {
+                blockheader.seal.push(r.at(i)?.as_raw().to_vec())
+            }
+            blockheader.base_fee_per_gas = Some(r.val_at(r.item_count()? - 1)?);
+        } else {
+            for i in 13..r.item_count()? {
+                blockheader.seal.push(r.at(i)?.as_raw().to_vec())
+            }
         }
 
         Ok(blockheader)
+    }
+
+    pub fn decode_rlp_list(
+        rlp: &Rlp,
+        eip1559_transition: BlockNumber,
+    ) -> Result<Vec<Self>, DecoderError> {
+        if !rlp.is_list() {
+            // at least one byte needs to be present
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+        let mut output = Vec::with_capacity(rlp.item_count()?);
+        for h in rlp.iter() {
+            output.push(Self::decode_rlp(&h, eip1559_transition)?);
+        }
+        Ok(output)
     }
 }
 
 impl Encodable for Header {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.stream_rlp(s, Seal::With, false);
+        self.stream_rlp(s, Seal::With);
     }
 }
 
@@ -462,9 +460,11 @@ impl ExtendedHeader {
 
 #[cfg(test)]
 mod tests {
+    use crate::BlockNumber;
+
     use super::Header;
     use ethereum_types::U256;
-    use rlp;
+    use rlp::{self, Rlp};
     use rustc_hex::FromHex;
 
     #[test]
@@ -480,13 +480,15 @@ mod tests {
         let nonce = "88ab4e252a7e8c2a23".from_hex().unwrap();
         let nonce_decoded = "ab4e252a7e8c2a23".from_hex().unwrap();
 
-        let header: Header = rlp::decode(&header_rlp).expect("error decoding header");
+        let rlp = Rlp::new(&header_rlp);
+        let header: Header =
+            Header::decode_rlp(&rlp, BlockNumber::max_value()).expect("error decoding header");
         let seal_fields = header.seal.clone();
         assert_eq!(seal_fields.len(), 2);
         assert_eq!(seal_fields[0], mix_hash);
         assert_eq!(seal_fields[1], nonce);
 
-        let decoded_seal = header.decode_seal::<Vec<_>>(false).unwrap();
+        let decoded_seal = header.decode_seal::<Vec<_>>().unwrap();
         assert_eq!(decoded_seal.len(), 2);
         assert_eq!(decoded_seal[0], &*mix_hash_decoded);
         assert_eq!(decoded_seal[1], &*nonce_decoded);
@@ -495,21 +497,23 @@ mod tests {
     #[test]
     fn test_header_seal_fields_after_1559() {
         let header_rlp = "f901faa0d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a05fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25a088d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158a007c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1b90100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008302008011832fefba82524d84568e932a80a0a0349d8c3df71f1a48a9df7d03fd5f14aeee7d91332c009ecaff0a71ead405bd88ab4e252a7e8c2a2364".from_hex().unwrap();
-        let mut header: Header = rlp::decode(&header_rlp).expect("error decoding header");
+        let rlp = Rlp::new(&header_rlp);
+        let mut header: Header =
+            Header::decode_rlp(&rlp, BlockNumber::default()).expect("error decoding header");
 
-        assert_eq!(header.seal(true).len(), 2);
-        assert_eq!(header.base_fee(), &U256::from(100));
+        assert_eq!(header.seal().len(), 2);
+        assert_eq!(header.base_fee(), U256::from(100));
 
         let new_base_fee = U256::from(200);
-        header.set_base_fee(new_base_fee);
-        assert_eq!(header.base_fee(), &new_base_fee);
+        header.set_base_fee(Some(new_base_fee));
+        assert_eq!(header.base_fee(), new_base_fee);
 
         let seal = vec![vec![50u8], vec![60u8]];
-        header.set_seal(seal.clone(), true);
-        assert_eq!(header.seal(true), seal);
-        assert_eq!(header.base_fee(), &new_base_fee);
+        header.set_seal(seal.clone());
+        assert_eq!(header.seal(), seal);
+        assert_eq!(header.base_fee(), new_base_fee);
 
-        let decoded_seal = header.decode_seal::<Vec<_>>(true).unwrap();
+        let decoded_seal = header.decode_seal::<Vec<_>>().unwrap();
         assert_eq!(decoded_seal.len(), 2);
     }
 
@@ -517,8 +521,10 @@ mod tests {
     fn decode_and_encode_header() {
         // that's rlp of block header created with ethash engine.
         let header_rlp = "f901f9a0d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a05fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25a088d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158a007c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1b90100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008302008003832fefba82524d84568e932a80a0a0349d8c3df71f1a48a9df7d03fd5f14aeee7d91332c009ecaff0a71ead405bd88ab4e252a7e8c2a23".from_hex().unwrap();
+        let rlp = Rlp::new(&header_rlp);
 
-        let header: Header = rlp::decode(&header_rlp).expect("error decoding header");
+        let header: Header =
+            Header::decode_rlp(&rlp, BlockNumber::max_value()).expect("error decoding header");
         let encoded_header = rlp::encode(&header);
 
         assert_eq!(header_rlp, encoded_header);
@@ -528,8 +534,10 @@ mod tests {
     fn decode_and_encode_header_after_1559() {
         // that's rlp of block header created with ethash engine.
         let header_rlp = "f901faa0d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a05fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25a088d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158a007c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1b90100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008302008011832fefba82524d84568e932a80a0a0349d8c3df71f1a48a9df7d03fd5f14aeee7d91332c009ecaff0a71ead405bd88ab4e252a7e8c2a2364".from_hex().unwrap();
+        let rlp = Rlp::new(&header_rlp);
 
-        let header: Header = rlp::decode(&header_rlp).expect("error decoding header");
+        let header: Header =
+            Header::decode_rlp(&rlp, BlockNumber::default()).expect("error decoding header");
         let encoded_header = rlp::encode(&header);
 
         assert_eq!(header_rlp, encoded_header);
@@ -540,33 +548,23 @@ mod tests {
         // that's rlp of block header created with ethash engine.
         // The encoding contains a large timestamp (295147905179352825856)
         let header_rlp = "f901f9a0d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347948888f1f195afa192cfee860698584c030f4c9db1a05fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25a088d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158a007c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1b90100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008302008003832fefba82524d891000000000000000000080a0a0349d8c3df71f1a48a9df7d03fd5f14aeee7d91332c009ecaff0a71ead405bd88ab4e252a7e8c2a23".from_hex().unwrap();
+        let rlp = Rlp::new(&header_rlp);
 
         // This should fail decoding timestamp
-        let header: Result<Header, _> = rlp::decode(&header_rlp);
+        let header: Result<Header, _> = Header::decode_rlp(&rlp, BlockNumber::max_value());
         assert_eq!(header.unwrap_err(), rlp::DecoderError::RlpIsTooBig);
     }
 
     #[test]
     fn hash_should_be_different() {
-        let mut header_legacy = Header::new();
+        let header_legacy = Header::new();
         let mut header_1559 = Header::new();
-        let seal = vec![vec![50u8], vec![60u8]];
 
-        header_legacy.set_seal(seal.clone(), false);
-        header_1559.set_seal(seal, true);
+        header_1559.set_base_fee(Some(U256::from(100)));
 
         let hash_legacy = header_legacy.hash();
         let hash_1559 = header_1559.hash();
 
         assert_ne!(hash_legacy, hash_1559);
-    }
-    #[test]
-    fn bare_hash_should_be_different() {
-        let header = Header::new();
-
-        let bare_hash_legacy = header.bare_hash(false);
-        let bare_hash_1559 = header.bare_hash(true);
-
-        assert_ne!(bare_hash_legacy, bare_hash_1559);
     }
 }

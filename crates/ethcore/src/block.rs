@@ -202,7 +202,7 @@ impl<'x> OpenBlock<'x> {
         if engine.schedule(r.block.header.number()).eip1559 {
             r.block
                 .header
-                .set_base_fee(engine.calculate_base_fee(parent));
+                .set_base_fee(Some(engine.calculate_base_fee(parent)));
         }
 
         let gas_floor_target = cmp::max(gas_range_target.0, engine.params().min_gas_limit);
@@ -483,8 +483,7 @@ impl LockedBlock {
             }))?;
         }
 
-        let eip1559 = s.block.header.number() >= engine.params().eip1559_transition;
-        s.block.header.set_seal(seal, eip1559);
+        s.block.header.set_seal(seal);
         engine.on_seal_block(&mut s.block)?;
         s.block.header.compute_hash();
 
@@ -497,8 +496,7 @@ impl LockedBlock {
     /// TODO(https://github.com/openethereum/openethereum/issues/10407): This is currently only used in POW chain call paths, we should really merge it with seal() above.
     pub fn try_seal(self, engine: &dyn EthEngine, seal: Vec<Bytes>) -> Result<SealedBlock, Error> {
         let mut s = self;
-        let eip1559 = s.block.header.number() >= engine.params().eip1559_transition;
-        s.block.header.set_seal(seal, eip1559);
+        s.block.header.set_seal(seal);
         s.block.header.compute_hash();
 
         // TODO: passing state context to avoid engines owning it?
@@ -645,7 +643,7 @@ mod tests {
         last_hashes: Arc<LastHashes>,
         factories: Factories,
     ) -> Result<LockedBlock, Error> {
-        let block = Unverified::from_rlp(block_bytes)?;
+        let block = Unverified::from_rlp(block_bytes, engine.params().eip1559_transition)?;
         let header = block.header;
         let transactions: Result<Vec<_>, Error> = block
             .transactions
@@ -702,8 +700,8 @@ mod tests {
         last_hashes: Arc<LastHashes>,
         factories: Factories,
     ) -> Result<SealedBlock, Error> {
-        let header = Unverified::from_rlp(block_bytes.clone())?.header;
-        let eip1559 = header.number() >= engine.params().eip1559_transition;
+        let header =
+            Unverified::from_rlp(block_bytes.clone(), engine.params().eip1559_transition)?.header;
         Ok(enact_bytes(
             block_bytes,
             engine,
@@ -713,7 +711,7 @@ mod tests {
             last_hashes,
             factories,
         )?
-        .seal(engine, header.seal(eip1559).to_vec())?)
+        .seal(engine, header.seal().to_vec())?)
     }
 
     #[test]
@@ -860,7 +858,7 @@ mod tests {
 
         let bytes = e.rlp_bytes();
         assert_eq!(bytes, orig_bytes);
-        let uncles = view!(BlockView, &bytes).uncles();
+        let uncles = view!(BlockView, &bytes).uncles(engine.params().eip1559_transition);
         assert_eq!(uncles[1].extra_data(), b"uncle2");
 
         let db = e.drain().state.drop().1;

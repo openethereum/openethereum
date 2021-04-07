@@ -293,7 +293,7 @@ fn verify_uncles(
                 )));
             }
 
-            let uncle_parent = uncle_parent.decode()?;
+            let uncle_parent = uncle_parent.decode(engine.params().eip1559_transition)?;
             verify_parent(&uncle, &uncle_parent, engine)?;
             engine.verify_block_family(&uncle, &uncle_parent)?;
             verified.insert(uncle.hash());
@@ -343,11 +343,10 @@ pub fn verify_header_params(
 ) -> Result<(), Error> {
     if check_seal {
         let expected_seal_fields = engine.seal_fields(header);
-        let eip1559 = header.number() >= engine.params().eip1559_transition;
-        if header.seal(eip1559).len() != expected_seal_fields {
+        if header.seal().len() != expected_seal_fields {
             return Err(From::from(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
-                found: header.seal(eip1559).len(),
+                found: header.seal().len(),
             })));
         }
     }
@@ -501,10 +500,10 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
     // Check base fee only if parent header is EIP1559 header
     if engine.schedule(parent.number()).eip1559 {
         let expected_base_fee = engine.calculate_base_fee(parent);
-        if &expected_base_fee != header.base_fee() {
+        if expected_base_fee != header.base_fee() {
             return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
                 expected: expected_base_fee,
-                found: *header.base_fee(),
+                found: header.base_fee(),
             })));
         };
     }
@@ -618,7 +617,9 @@ mod tests {
         }
 
         pub fn insert(&mut self, bytes: Bytes) {
-            let header = Unverified::from_rlp(bytes.clone()).unwrap().header;
+            let header = Unverified::from_rlp(bytes.clone(), BlockNumber::max_value())
+                .unwrap()
+                .header;
             let hash = header.hash();
             self.blocks.insert(hash, bytes);
             self.numbers.insert(header.number(), hash);
@@ -658,7 +659,9 @@ mod tests {
         /// Get the familial details concerning a block.
         fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
             self.blocks.get(hash).map(|bytes| {
-                let header = Unverified::from_rlp(bytes.to_vec()).unwrap().header;
+                let header = Unverified::from_rlp(bytes.to_vec(), BlockNumber::max_value())
+                    .unwrap()
+                    .header;
                 BlockDetails {
                     number: header.number(),
                     total_difficulty: *header.difficulty(),
@@ -712,7 +715,7 @@ mod tests {
     }
 
     fn basic_test(bytes: &[u8], engine: &dyn EthEngine) -> Result<(), Error> {
-        let unverified = Unverified::from_rlp(bytes.to_vec())?;
+        let unverified = Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition)?;
         verify_block_basic(&unverified, engine, true)
     }
 
@@ -720,7 +723,8 @@ mod tests {
     where
         BC: BlockProvider,
     {
-        let block = Unverified::from_rlp(bytes.to_vec()).unwrap();
+        let block =
+            Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition).unwrap();
         let header = block.header;
         let transactions: Vec<_> = block
             .transactions
@@ -736,7 +740,7 @@ mod tests {
         let parent = bc
             .block_header_data(header.parent_hash())
             .ok_or(BlockError::UnknownParent(*header.parent_hash()))?
-            .decode()?;
+            .decode(engine.params().eip1559_transition)?;
 
         let block = PreverifiedBlock {
             header,
@@ -754,7 +758,7 @@ mod tests {
     }
 
     fn unordered_test(bytes: &[u8], engine: &dyn EthEngine) -> Result<(), Error> {
-        let un = Unverified::from_rlp(bytes.to_vec())?;
+        let un = Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition)?;
         verify_block_unordered(un, engine, false)?;
         Ok(())
     }

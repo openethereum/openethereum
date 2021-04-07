@@ -759,7 +759,7 @@ mod tests {
 
         for i in 0..parent_base_fees.len() {
             let mut parent_header = Header::default();
-            parent_header.set_base_fee(parent_base_fees[i]);
+            parent_header.set_base_fee(Some(parent_base_fees[i]));
             parent_header.set_gas_used(parent_gas_used[i]);
             parent_header.set_gas_limit(parent_gas_limit[i]);
 

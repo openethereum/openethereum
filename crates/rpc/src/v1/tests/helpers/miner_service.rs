@@ -38,7 +38,6 @@ use miner::pool::{
     VerifiedTransaction,
 };
 use parking_lot::{Mutex, RwLock};
-use txpool;
 use types::{
     block::Block,
     header::Header,
@@ -321,6 +320,7 @@ impl MinerService for TestMinerService {
                 block_gas_limit: 5_000_000.into(),
                 tx_gas_limit: 5_000_000.into(),
                 no_early_reject: false,
+                block_base_fee: None,
             },
             status: txpool::LightStatus {
                 mem_usage: 1_000,

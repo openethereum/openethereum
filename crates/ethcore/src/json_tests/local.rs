@@ -4,7 +4,10 @@ use ethjson::{self, blockchain::Block};
 use log::warn;
 use rlp::RlpStream;
 use std::path::Path;
-use types::transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction};
+use types::{
+    transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction},
+    BlockNumber,
+};
 use verification::queue::kind::blocks::Unverified;
 
 pub fn json_local_block_en_de_test<H: FnMut(&str, HookType)>(
@@ -22,7 +25,7 @@ pub fn json_local_block_en_de_test<H: FnMut(&str, HookType)>(
     for (name, ref_block) in tests.into_iter() {
         start_stop_hook(&name, HookType::OnStart);
 
-        let block = Unverified::from_rlp(ref_block.rlp());
+        let block = Unverified::from_rlp(ref_block.rlp(), BlockNumber::max_value());
         let block = match block {
             Ok(block) => block,
             Err(decoder_err) => {

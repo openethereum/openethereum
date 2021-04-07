@@ -254,6 +254,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         _ => sync::WarpSync::Disabled,
     };
     sync_config.download_old_blocks = cmd.download_old_blocks;
+    sync_config.eip1559_transition = spec.params().eip1559_transition;
 
     let passwords = passwords_from_files(&cmd.acc_conf.password_files)?;
 

@@ -320,7 +320,7 @@ impl TestBlockChainClient {
         rlp.append(&header);
         rlp.append_raw(&txs, 1);
         rlp.append_raw(uncles.as_raw(), 1);
-        let unverified = Unverified::from_rlp(rlp.out()).unwrap();
+        let unverified = Unverified::from_rlp(rlp.out(), BlockNumber::max_value()).unwrap();
         self.import_block(unverified).unwrap();
     }
 
@@ -337,7 +337,7 @@ impl TestBlockChainClient {
         let mut header: Header = self
             .block_header(BlockId::Number(n))
             .unwrap()
-            .decode()
+            .decode(BlockNumber::max_value())
             .expect("decoding failed");
         header.set_parent_hash(H256::from(42));
         let mut rlp = RlpStream::new_list(3);
@@ -548,7 +548,7 @@ impl BlockInfo for TestBlockChainClient {
     fn best_block_header(&self) -> Header {
         self.block_header(BlockId::Hash(self.chain_info().best_block_hash))
             .expect("Best block always has header.")
-            .decode()
+            .decode(BlockNumber::max_value())
             .expect("decoding failed")
     }
 
@@ -606,7 +606,7 @@ impl ImportBlock for TestBlockChainClient {
         if number > 0 {
             match self.blocks.read().get(header.parent_hash()) {
                 Some(parent) => {
-                    let parent = view!(BlockView, parent).header();
+                    let parent = view!(BlockView, parent).header(BlockNumber::max_value());
                     if parent.number() != (header.number() - 1) {
                         panic!("Unexpected block parent");
                     }
@@ -636,7 +636,7 @@ impl ImportBlock for TestBlockChainClient {
                     *self.numbers.write().get_mut(&n).unwrap() = parent_hash.clone();
                     n -= 1;
                     parent_hash = view!(BlockView, &self.blocks.read()[&parent_hash])
-                        .header()
+                        .header(BlockNumber::max_value())
                         .parent_hash()
                         .clone();
                 }
@@ -718,7 +718,7 @@ impl StateClient for TestBlockChainClient {
 
 impl EngineInfo for TestBlockChainClient {
     fn engine(&self) -> &dyn EthEngine {
-        unimplemented!()
+        &*self.spec.engine
     }
 }
 
@@ -877,7 +877,7 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn block_extra_info(&self, id: BlockId) -> Option<BTreeMap<String, String>> {
         self.block(id)
-            .map(|block| block.view().header())
+            .map(|block| block.view().header(BlockNumber::max_value()))
             .map(|header| self.spec.engine.extra_info(&header))
     }
 

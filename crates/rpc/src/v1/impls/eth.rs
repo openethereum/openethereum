@@ -412,7 +412,8 @@ where
                 };
 
                 let uncle = match client.uncle(uncle_id) {
-                    Some(hdr) => match hdr.decode() {
+                    Some(hdr) => match hdr.decode(self.client.engine().params().eip1559_transition)
+                    {
                         Ok(h) => h,
                         Err(e) => return Err(errors::decode(e)),
                     },
@@ -459,12 +460,7 @@ where
                 total_difficulty: Some(uncle.difficulty() + parent_difficulty),
                 receipts_root: *uncle.receipts_root(),
                 extra_data: uncle.extra_data().clone().into(),
-                seal_fields: uncle
-                    .seal(client.engine().schedule(uncle.number()).eip1559)
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                seal_fields: uncle.seal().iter().cloned().map(Into::into).collect(),
                 uncles: vec![],
                 transactions: BlockTransactions::Hashes(vec![]),
             },
@@ -1133,7 +1129,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
 
             (state, header)
         };
@@ -1174,7 +1172,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
             (state, header)
         };
 

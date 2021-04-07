@@ -97,7 +97,9 @@ impl EthTester {
         };
 
         for b in chain.blocks_rlp() {
-            if let Ok(block) = Unverified::from_rlp(b) {
+            if let Ok(block) =
+                Unverified::from_rlp(b, tester.client.engine().params().eip1559_transition)
+            {
                 let _ = tester.client.import_block(block);
                 tester.client.flush_queue();
                 tester.client.import_verified_blocks();
@@ -545,11 +547,9 @@ fn verify_transaction_counts(name: String, chain: BlockChain) {
     let tester = EthTester::from_chain(&chain);
 
     let mut id = 1;
-    for b in chain
-        .blocks_rlp()
-        .into_iter()
-        .filter_map(|b| Unverified::from_rlp(b).ok())
-    {
+    for b in chain.blocks_rlp().into_iter().filter_map(|b| {
+        Unverified::from_rlp(b, tester.client.engine().params().eip1559_transition).ok()
+    }) {
         let count = b.transactions.len();
 
         let hash = b.header.hash();

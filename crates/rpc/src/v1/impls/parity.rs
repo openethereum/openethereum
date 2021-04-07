@@ -19,7 +19,7 @@ use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 use crypto::DEFAULT_MAC;
 use ethcore::{
-    client::{BlockChainClient, Call, StateClient},
+    client::{BlockChainClient, Call, EngineInfo, StateClient},
     miner::{self, MinerService},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
@@ -70,7 +70,7 @@ where
 
 impl<C, M> ParityClient<C, M>
 where
-    C: BlockChainClient + PrometheusMetrics,
+    C: BlockChainClient + PrometheusMetrics + EngineInfo,
 {
     /// Creates new `ParityClient`.
     pub fn new(
@@ -106,6 +106,7 @@ where
         + PrometheusMetrics
         + StateClient<State = S>
         + Call<State = S>
+        + EngineInfo
         + 'static,
     M: MinerService<State = S> + 'static,
 {
@@ -448,7 +449,7 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)?
-                .decode()
+                .decode(self.client.engine().params().eip1559_transition)
                 .map_err(errors::decode)?;
 
             (state, header)

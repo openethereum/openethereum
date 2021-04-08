@@ -405,8 +405,18 @@ impl EthereumMachine {
     pub fn verify_transaction_unordered(
         &self,
         t: UnverifiedTransaction,
-        _header: &Header,
+        header: &Header,
     ) -> Result<SignedTransaction, transaction::Error> {
+        if header.number() >= self.params().eip1559_transition {
+            // ensure that the user was willing to at least pay the base fee
+            if t.tx().gas_price < header.base_fee() {
+                return Err(transaction::Error::GasPriceLowerThanBaseFee {
+                    gas_price: t.tx().gas_price,
+                    base_fee: header.base_fee(),
+                });
+            }
+        }
+
         Ok(SignedTransaction::new(t)?)
     }
 

@@ -1204,6 +1204,16 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
+        if schedule.eip1559 {
+            // ensure that the user was willing to at least pay the base fee
+            if t.tx().gas_price < self.info.base_fee {
+                return Err(ExecutionError::GasPriceLowerThanBaseFee {
+                    gas_price: t.tx().gas_price,
+                    base_fee: self.info.base_fee,
+                });
+            }
+        }
+
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
         let gas_cost = t
@@ -1486,6 +1496,21 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 "U256 Overflow".to_string(),
             ));
         }
+
+        // Up until now, fees_value is calculated for each type of transaction based on their gas prices
+        // Now, if eip1559 is activated, burn the base fee
+        // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
+        let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
+            let (base_fee, overflow_3) = gas_used.overflowing_mul(self.info.base_fee);
+            if overflow_3 {
+                return Err(ExecutionError::TransactionMalformed(
+                    "U256 Overflow".to_string(),
+                ));
+            }
+            base_fee
+        } else {
+            U256::from(0)
+        });
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
 			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
@@ -2629,7 +2654,7 @@ mod tests {
                     value: U256::from(17),
                     data: "3331600055".from_hex().unwrap(),
                     gas: U256::from(80_001),
-                    gas_price: U256::zero(),
+                    gas_price: U256::from(150),
                     nonce: U256::zero(),
                 },
                 vec![
@@ -2637,7 +2662,7 @@ mod tests {
                     (H160::from(400), vec![]),
                 ],
             ),
-            max_inclusion_fee_per_gas: Default::default(),
+            max_inclusion_fee_per_gas: U256::from(30),
         })
         .sign(keypair.secret(), None);
 
@@ -2645,7 +2670,7 @@ mod tests {
 
         let mut state = get_temp_state_with_factory(factory);
         state
-            .add_balance(&sender, &U256::from(17), CleanupMode::NoEmpty)
+            .add_balance(&sender, &U256::from(10400147), CleanupMode::NoEmpty)
             .unwrap();
         let mut info = EnvInfo::default();
         info.gas_limit = U256::from(100_000);

@@ -365,6 +365,7 @@ pub fn verify_header_params(
         *header.gas_limit()
     };
 
+    // check if the block used too much gas
     if header.gas_used() > &gas_limit {
         return Err(From::from(BlockError::TooMuchGasUsed(OutOfBounds {
             max: Some(gas_limit),
@@ -482,6 +483,7 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         .into());
     }
 
+    // check if the block changed the gas target too much
     // Comparing two blocks before eip1559 activation is based on gas_limit of those blocks
     // Comparing fork block and his parent is based on comparing of gas_target of fork block
     // and gas_limit of his parent
@@ -497,7 +499,7 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         })));
     }
 
-    // Check base fee only if parent header is EIP1559 header
+    // check if the base fee is correct
     if engine.schedule(parent.number()).eip1559 {
         let expected_base_fee = engine.calculate_base_fee(parent);
         if expected_base_fee != header.base_fee() {

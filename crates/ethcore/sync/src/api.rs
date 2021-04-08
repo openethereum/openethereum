@@ -433,7 +433,7 @@ const TX_TIMER: TimerToken = 3;
 const PRIORITY_TIMER: TimerToken = 4;
 const DELAYED_PROCESSING_TIMER: TimerToken = 5;
 
-pub(crate) const PRIORITY_TIMER_INTERVAL: Duration = Duration::from_millis(250);
+pub(crate) const PRIORITY_TIMER_INTERVAL: Duration = Duration::from_millis(1000);
 
 struct SyncProtocolHandler {
     /// Shared blockchain client.

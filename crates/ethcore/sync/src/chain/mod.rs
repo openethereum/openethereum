@@ -194,7 +194,7 @@ const SNAPSHOT_DATA_TIMEOUT: Duration = Duration::from_secs(120);
 /// Defines how much time we have to complete priority transaction or block propagation.
 /// after the deadline is reached the task is considered finished
 /// (so we might sent only to some part of the peers we originally intended to send to)
-const PRIORITY_TASK_DEADLINE: Duration = Duration::from_millis(100);
+const PRIORITY_TASK_DEADLINE: Duration = Duration::from_millis(300);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 /// Sync state
@@ -543,10 +543,10 @@ impl ChainSyncApi {
                     debug!(target: "sync", "Finished block propagation, took {}ms", as_ms(started));
                 }
                 PriorityTask::PropagateTransactions(time, _) => {
-                    SyncPropagator::propagate_new_transactions(&mut sync, io, || {
+                    let peers_served = SyncPropagator::propagate_new_transactions(&mut sync, io, || {
                         check_deadline(deadline).is_some()
                     });
-                    debug!(target: "sync", "Finished transaction propagation, took {}ms", as_ms(time));
+                    debug!(target: "txbroadcast", "Finished transaction propagation, took {}ms, and it served {} peers", as_ms(time), peers_served);
                 }
             }
 

@@ -543,9 +543,10 @@ impl ChainSyncApi {
                     debug!(target: "sync", "Finished block propagation, took {}ms", as_ms(started));
                 }
                 PriorityTask::PropagateTransactions(time, _) => {
-                    let peers_served = SyncPropagator::propagate_new_transactions(&mut sync, io, || {
-                        check_deadline(deadline).is_some()
-                    });
+                    let peers_served =
+                        SyncPropagator::propagate_new_transactions(&mut sync, io, || {
+                            check_deadline(deadline).is_some()
+                        });
                     debug!(target: "txbroadcast", "Finished transaction propagation, took {}ms, and it served {} peers", as_ms(time), peers_served);
                 }
             }

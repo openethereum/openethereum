@@ -106,77 +106,11 @@ impl LegacyReceipt {
     }
 }
 
-/// Information describing execution of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EIP1559Receipt {
-    pub receipt: LegacyReceipt,
-    pub effective_gas_price: U256,
-}
-
-impl EIP1559Receipt {
-    pub fn new(receipt: LegacyReceipt, effective_gas_price: U256) -> Self {
-        EIP1559Receipt {
-            receipt,
-            effective_gas_price,
-        }
-    }
-    pub fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        match rlp.item_count()? {
-            4 => Ok(EIP1559Receipt::new(
-                LegacyReceipt {
-                    outcome: TransactionOutcome::Unknown,
-                    gas_used: rlp.val_at(1)?,
-                    log_bloom: rlp.val_at(2)?,
-                    logs: rlp.list_at(3)?,
-                },
-                rlp.val_at(0)?,
-            )),
-            5 => Ok(EIP1559Receipt::new(
-                LegacyReceipt {
-                    outcome: {
-                        let first = rlp.at(0)?;
-                        if first.is_data() && first.data()?.len() <= 1 {
-                            TransactionOutcome::StatusCode(first.as_val()?)
-                        } else {
-                            TransactionOutcome::StateRoot(first.as_val()?)
-                        }
-                    },
-                    gas_used: rlp.val_at(2)?,
-                    log_bloom: rlp.val_at(3)?,
-                    logs: rlp.list_at(4)?,
-                },
-                rlp.val_at(1)?,
-            )),
-            _ => Err(DecoderError::RlpIncorrectListLen),
-        }
-    }
-
-    pub fn rlp_append(&self, s: &mut RlpStream) {
-        match self.receipt.outcome {
-            TransactionOutcome::Unknown => {
-                s.begin_list(4);
-            }
-            TransactionOutcome::StateRoot(ref root) => {
-                s.begin_list(5);
-                s.append(root);
-            }
-            TransactionOutcome::StatusCode(ref status_code) => {
-                s.begin_list(5);
-                s.append(status_code);
-            }
-        }
-        s.append(&self.effective_gas_price);
-        s.append(&self.receipt.gas_used);
-        s.append(&self.receipt.log_bloom);
-        s.append_list(&self.receipt.logs);
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
     AccessList(LegacyReceipt),
-    EIP1559Transaction(EIP1559Receipt),
+    EIP1559Transaction(LegacyReceipt),
 }
 
 impl TypedReceipt {
@@ -188,26 +122,19 @@ impl TypedReceipt {
         }
     }
 
-    pub fn legacy_receipt(&self) -> &LegacyReceipt {
+    pub fn receipt(&self) -> &LegacyReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
-            Self::EIP1559Transaction(receipt) => &receipt.receipt,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
-    pub fn legacy_receipt_mut(&mut self) -> &mut LegacyReceipt {
+    pub fn receipt_mut(&mut self) -> &mut LegacyReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
-            Self::EIP1559Transaction(receipt) => &mut receipt.receipt,
-        }
-    }
-
-    pub fn effective_gas_price(&self) -> Option<U256> {
-        match self {
-            Self::EIP1559Transaction(receipt) => Some(receipt.effective_gas_price),
-            _ => None,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
@@ -224,7 +151,7 @@ impl TypedReceipt {
         match id.unwrap() {
             TypedTxId::EIP1559Transaction => {
                 let rlp = Rlp::new(&tx[1..]);
-                Ok(Self::EIP1559Transaction(EIP1559Receipt::decode(&rlp)?))
+                Ok(Self::EIP1559Transaction(LegacyReceipt::decode(&rlp)?))
             }
             TypedTxId::AccessList => {
                 let rlp = Rlp::new(&tx[1..]);
@@ -303,19 +230,19 @@ impl Deref for TypedReceipt {
     type Target = LegacyReceipt;
 
     fn deref(&self) -> &Self::Target {
-        self.legacy_receipt()
+        self.receipt()
     }
 }
 
 impl DerefMut for TypedReceipt {
     fn deref_mut(&mut self) -> &mut LegacyReceipt {
-        self.legacy_receipt_mut()
+        self.receipt_mut()
     }
 }
 
 impl HeapSizeOf for TypedReceipt {
     fn heap_size_of_children(&self) -> usize {
-        self.legacy_receipt().logs.heap_size_of_children()
+        self.receipt().logs.heap_size_of_children()
     }
 }
 
@@ -330,8 +257,6 @@ pub struct RichReceipt {
     pub transaction_index: usize,
     /// The total gas used in the block following execution of the transaction.
     pub cumulative_gas_used: U256,
-    /// Effective gas price
-    pub effective_gas_price: Option<U256>,
     /// The gas used in the execution of the transaction. Note the difference of meaning to `Receipt::gas_used`.
     pub gas_used: U256,
     /// Contract address.
@@ -365,8 +290,6 @@ pub struct LocalizedReceipt {
     pub block_number: BlockNumber,
     /// The total gas used in the block following execution of the transaction.
     pub cumulative_gas_used: U256,
-    /// Effective gas price
-    pub effective_gas_price: Option<U256>,
     /// The gas used in the execution of the transaction. Note the difference of meaning to `Receipt::gas_used`.
     pub gas_used: U256,
     /// Contract address.
@@ -387,7 +310,7 @@ pub struct LocalizedReceipt {
 
 #[cfg(test)]
 mod tests {
-    use super::{EIP1559Receipt, LegacyReceipt, TransactionOutcome, TypedReceipt};
+    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt};
     use log_entry::LogEntry;
 
     #[test]
@@ -447,21 +370,18 @@ mod tests {
 
     #[test]
     fn test_basic_eip1559() {
-        let expected = ::rustc_hex::FromHex::from_hex("02f90163a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee6483040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::EIP1559Transaction(EIP1559Receipt {
-            receipt: LegacyReceipt::new(
-                TransactionOutcome::StateRoot(
-                    "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
-                ),
-                0x40cae.into(),
-                vec![LogEntry {
-                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                    topics: vec![],
-                    data: vec![0u8; 32],
-                }],
+        let expected = ::rustc_hex::FromHex::from_hex("02f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let r = TypedReceipt::EIP1559Transaction(LegacyReceipt::new(
+            TransactionOutcome::StateRoot(
+                "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
             ),
-            effective_gas_price: 100.into(),
-        });
+            0x40cae.into(),
+            vec![LogEntry {
+                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                topics: vec![],
+                data: vec![0u8; 32],
+            }],
+        ));
         let encoded = r.encode();
         assert_eq!(&encoded, &expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");

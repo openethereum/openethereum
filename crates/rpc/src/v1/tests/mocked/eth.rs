@@ -1140,7 +1140,6 @@ fn rpc_eth_transaction_receipt() {
         .unwrap(),
         block_number: 0x4510c,
         cumulative_gas_used: U256::from(0x20),
-        effective_gas_price: None,
         gas_used: U256::from(0x10),
         contract_address: None,
         logs: vec![LocalizedLogEntry {
@@ -1223,7 +1222,6 @@ fn rpc_eth_pending_receipt() {
         transaction_index: 0,
         transaction_type: TypedTxId::Legacy,
         cumulative_gas_used: U256::from(0x20),
-        effective_gas_price: None,
         gas_used: U256::from(0x10),
         contract_address: None,
         logs: Vec::new(),

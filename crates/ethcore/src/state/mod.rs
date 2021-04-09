@@ -38,7 +38,7 @@ use state_db::StateDB;
 use trace::{self, FlatTrace, VMTrace};
 use types::{
     basic_account::BasicAccount,
-    receipt::{EIP1559Receipt, LegacyReceipt, TransactionOutcome, TypedReceipt},
+    receipt::{LegacyReceipt, TransactionOutcome, TypedReceipt},
     state_diff::StateDiff,
     transaction::{SignedTransaction, TypedTxId},
 };
@@ -960,10 +960,9 @@ impl<B: Backend> State<B> {
             TypedTxId::AccessList => {
                 TypedReceipt::Legacy(LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs))
             }
-            TypedTxId::EIP1559Transaction => TypedReceipt::EIP1559Transaction(EIP1559Receipt::new(
-                LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),
-                Default::default(), //ds todo
-            )),
+            TypedTxId::EIP1559Transaction => {
+                TypedReceipt::Legacy(LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs))
+            }
         };
 
         trace!(target: "state", "Transaction receipt: {:?}", receipt);

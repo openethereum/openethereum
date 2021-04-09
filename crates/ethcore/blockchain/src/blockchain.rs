@@ -465,13 +465,13 @@ impl BlockProvider for BlockChain {
 							warn!("Block {} ({}) has different number of receipts ({}) to transactions ({}). Database corrupt?", number, hash, receipts.len(), hashes.len());
 							assert!(false);
 						}
-						let mut log_index = receipts.iter().fold(0, |sum, receipt| sum + receipt.legacy_receipt().logs.len());
+						let mut log_index = receipts.iter().fold(0, |sum, receipt| sum + receipt.receipt().logs.len());
 
 						let receipts_len = receipts.len();
 						hashes.reverse();
 						receipts.reverse();
 						receipts.into_iter()
-							.map(|receipt| receipt.legacy_receipt().logs.clone())
+							.map(|receipt| receipt.receipt().logs.clone())
 							.zip(hashes)
 							.enumerate()
 							.flat_map(move |(index, (mut logs, tx_hash))| {

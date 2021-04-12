@@ -313,10 +313,15 @@ impl<C: Client> txpool::Verifier<Transaction>
             }
         }
 
-        let (full_gas_price, overflow_1) = transaction
-            .tx()
-            .gas_price
-            .overflowing_mul(transaction.tx().gas);
+        // transactions with sender having account balance lower than max_fee_cap and higher than 
+        // block_base_fee + tip should be considered into tx pool, since what they actually pay is a 
+        // lower value between these two.
+        let gas_price = match self.options.block_base_fee {
+            Some(base_fee) => transaction.effective_tip_scaled(&base_fee),
+            None => transaction.tx().gas_price,
+        };
+
+        let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);
         if overflow_1 || overflow_2 {
             trace!(

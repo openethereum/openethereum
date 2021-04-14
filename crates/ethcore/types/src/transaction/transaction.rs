@@ -753,6 +753,12 @@ impl From<SignedTransaction> for UnverifiedTransaction {
     }
 }
 
+impl rlp::Encodable for SignedTransaction {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        self.transaction.rlp_append(s);
+    }
+}
+
 impl SignedTransaction {
     // t_nb 5.3.1 Try to verify transaction and recover sender.
     pub fn new(transaction: UnverifiedTransaction) -> Result<Self, publickey::Error> {

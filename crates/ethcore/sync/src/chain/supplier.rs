@@ -276,8 +276,6 @@ impl SyncSupplier {
 
     /// Respond to GetPooledTransactions request
     fn return_pooled_transactions(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        let payload_soft_limit = io.payload_soft_limit();
-
         let mut added = 0;
         let mut rlp = RlpStream::new();
         rlp.begin_unbounded_list();
@@ -286,13 +284,13 @@ impl SyncSupplier {
                 if let Some(tx) = io.chain().queued_transaction(hash) {
                     rlp.append(tx.signed());
                     added += 1;
-                    if rlp.len() > payload_soft_limit {
+                    if rlp.len() > PAYLOAD_SOFT_LIMIT {
                         break;
                     }
                 }
             }
         }
-        rlp.complete_unbounded_list();
+        rlp.finalize_unbounded_list();
 
         trace!(target: "sync", "{} -> GetPooledTransactions: returned {} entries", peer_id, added);
         Ok(Some((PooledTransactionsPacket, rlp)))

@@ -1146,7 +1146,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         if schedule.eip2929 {
             for (address, builtin) in self.machine.builtins() {
-                if builtin.is_active() {
+                if builtin.is_active(self.info.number) {
                     access_list.insert_address(*address);
                 }
             }

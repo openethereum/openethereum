@@ -1144,6 +1144,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let mut access_list = AccessList::new(schedule.eip2929);
 
         if schedule.eip2929 {
+            access_list.insert_address(sender);
             for (address, _) in self.machine.builtins() {
                 access_list.insert_address(*address);
             }
@@ -1231,6 +1232,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     &nonce,
                     &t.tx().data,
                 );
+                access_list.insert_address(new_address);
                 let params = ActionParams {
                     code_address: new_address.clone(),
                     code_hash: code_hash,
@@ -1254,6 +1256,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 (res, out)
             }
             Action::Call(ref address) => {
+                access_list.insert_address(address.clone());
                 let params = ActionParams {
                     code_address: address.clone(),
                     address: address.clone(),

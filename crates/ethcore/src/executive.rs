@@ -1145,8 +1145,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let mut access_list = AccessList::new(schedule.eip2929);
 
         if schedule.eip2929 {
-            for (address, _) in self.machine.builtins() {
-                access_list.insert_address(*address);
+            for (address, builtin) in self.machine.builtins() {
+                if builtin.is_active() {
+                    access_list.insert_address(*address);
+                }
             }
             if schedule.eip2930 {
                 // optional access list

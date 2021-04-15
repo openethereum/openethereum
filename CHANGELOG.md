@@ -1,3 +1,7 @@
+## OpenEthereum v3.2.3
+
+* Hotfix for berlin consensus error.
+
 ## OpenEthereum v3.2.1
 
 Hot fix issue, related to initial sync:

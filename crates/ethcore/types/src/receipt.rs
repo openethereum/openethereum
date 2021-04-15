@@ -114,6 +114,16 @@ pub enum TypedReceipt {
 }
 
 impl TypedReceipt {
+    /// Create a new receipt.
+    pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
+        //curently we are using same receipt for both legacy and typed transaction
+        match type_id {
+            TypedTxId::EIP1559Transaction => Self::EIP1559Transaction(legacy_receipt),
+            TypedTxId::AccessList => Self::AccessList(legacy_receipt),
+            TypedTxId::Legacy => Self::Legacy(legacy_receipt),
+        }
+    }
+
     pub fn tx_type(&self) -> TypedTxId {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,

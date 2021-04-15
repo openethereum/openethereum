@@ -40,7 +40,7 @@ use types::{
     basic_account::BasicAccount,
     receipt::{LegacyReceipt, TransactionOutcome, TypedReceipt},
     state_diff::StateDiff,
-    transaction::{SignedTransaction, TypedTxId},
+    transaction::SignedTransaction,
 };
 
 use vm::EnvInfo;
@@ -953,17 +953,10 @@ impl<B: Backend> State<B> {
         };
 
         let output = e.output;
-        let receipt = match t.tx_type() {
-            TypedTxId::Legacy => {
-                TypedReceipt::Legacy(LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs))
-            }
-            TypedTxId::AccessList => {
-                TypedReceipt::Legacy(LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs))
-            }
-            TypedTxId::EIP1559Transaction => {
-                TypedReceipt::Legacy(LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs))
-            }
-        };
+        let receipt = TypedReceipt::new(
+            t.tx_type(),
+            LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),
+        );
 
         trace!(target: "state", "Transaction receipt: {:?}", receipt);
 

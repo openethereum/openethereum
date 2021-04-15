@@ -264,8 +264,11 @@ impl SyncPropagator {
                             packet.append(&hash);
                             pushed += 1
                         } else {
-                            let appended =
-                                packet.append_raw_checked(&tx.encode(), 1, MAX_TRANSACTION_PACKET_SIZE);
+                            let appended = packet.append_raw_checked(
+                                &tx.encode(),
+                                1,
+                                MAX_TRANSACTION_PACKET_SIZE,
+                            );
                             if !appended {
                                 // Maximal packet size reached just proceed with sending
                                 debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());

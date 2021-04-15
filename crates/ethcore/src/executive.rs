@@ -240,7 +240,6 @@ impl<'a> CallCreateExecutive<'a> {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
             substate.access_list.insert_address(params.address);
-            substate.access_list.insert_address(params.sender);
             substate
         } else {
             Substate::default()

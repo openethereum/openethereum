@@ -1919,21 +1919,26 @@ pub mod tests {
 
     #[test]
     fn generate_pooled_transactions_report() {
-        let asked = vec![1, 2, 3, 4, 5, 6, 7].into_iter().map(From::from);
-        let received = vec![2, 4, 5].into_iter().map(From::from);
+        let asked = vec![1, 2, 3, 4, 5, 6, 7]
+            .into_iter()
+            .map(H256::from_low_u64_be);
+        let received = vec![2, 4, 5].into_iter().map(H256::from_low_u64_be);
 
         let report = GetPooledTransactionsReport::generate(asked.collect(), received).unwrap();
         assert_eq!(
             report.found,
-            vec![2, 4, 5].into_iter().map(From::from).collect()
+            vec![2, 4, 5]
+                .into_iter()
+                .map(H256::from_low_u64_be)
+                .collect()
         );
         assert_eq!(
             report.missing,
-            vec![1, 3].into_iter().map(From::from).collect()
+            vec![1, 3].into_iter().map(H256::from_low_u64_be).collect()
         );
         assert_eq!(
             report.not_sent,
-            vec![6, 7].into_iter().map(From::from).collect()
+            vec![6, 7].into_iter().map(H256::from_low_u64_be).collect()
         );
     }
 }

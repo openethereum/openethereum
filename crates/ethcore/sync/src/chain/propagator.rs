@@ -23,12 +23,14 @@ use network::{client_version::ClientCapabilities, PeerId};
 use rand::Rng;
 use rlp::RlpStream;
 use sync_io::SyncIo;
-use types::{blockchain_info::BlockChainInfo, transaction::SignedTransaction, BlockNumber};
+use types::{blockchain_info::BlockChainInfo, transaction::{TypedTxId, SignedTransaction}, BlockNumber};
 
 use super::sync_packet::{
     SyncPacket,
     SyncPacket::{ConsensusDataPacket, NewBlockHashesPacket, NewBlockPacket, TransactionsPacket},
 };
+
+use bytes::ToPretty;
 
 use super::{
     random, ChainSync, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
@@ -233,11 +235,18 @@ impl SyncPropagator {
             let (packet, to_send) = {
                 let mut to_send = to_send;
                 let mut packet = RlpStream::new();
+                let mut packet_test = RlpStream::new();
+                packet_test.begin_unbounded_list();
                 packet.begin_unbounded_list();
                 let mut pushed = 0;
+                let mut has_eip2930 = false;
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
+                        packet_test.append_raw_checked(&tx.encode(), 1, 1024*1024*1024);
+                        if tx.tx_type() != TypedTxId::Legacy {
+                            has_eip2930 = true;
+                        }
                         tx.rlp_append(&mut packet);
                         pushed += 1;
                         // this is not hard limit and we are okay with it. Max default tx size is 300k.
@@ -250,6 +259,10 @@ impl SyncPropagator {
                     }
                 }
                 packet.complete_unbounded_list();
+                packet_test.complete_unbounded_list();
+                if has_eip2930 {
+                    info!("Got list {:?}", packet_test.out().to_hex());
+                }
                 (packet, to_send)
             };
 

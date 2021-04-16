@@ -121,10 +121,7 @@ pub trait ScoredTransaction {
     fn priority(&self) -> Priority;
 
     /// Gets transaction gas price.
-    fn gas_price(&self) -> &U256;
-
-    /// Get effective tip scaled with the block_base_fee value.
-    fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256;
+    fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256;
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256;
@@ -197,14 +194,8 @@ impl ScoredTransaction for VerifiedTransaction {
         self.priority
     }
 
-    /// Gets transaction gas price.
-    fn gas_price(&self) -> &U256 {
-        &self.transaction.tx().gas_price
-    }
-
-    /// Get effective tip scaled with the block_base_fee value.
-    fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
-        self.transaction.effective_tip_scaled(block_base_fee)
+    fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        self.transaction.typed_gas_price(block_base_fee)
     }
 
     /// Gets transaction nonce.

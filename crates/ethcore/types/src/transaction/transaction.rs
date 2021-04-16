@@ -638,12 +638,11 @@ impl TypedTransaction {
         }
     }
 
-    /// Effective tip is scaled with the block_base_fee, in order to NOT have negative values of effective tip
-    pub fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
+    pub fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         match self {
             Self::EIP1559Transaction(tx) => min(
                 self.tx().gas_price,
-                tx.max_inclusion_fee_per_gas + block_base_fee,
+                tx.max_inclusion_fee_per_gas + block_base_fee.unwrap_or_default(),
             ),
             Self::AccessList(_) => self.tx().gas_price,
             Self::Legacy(_) => self.tx().gas_price,

@@ -73,14 +73,9 @@ where
         } else if both_local {
             Choice::InsertNew
         } else {
-            let old_score = match self.block_base_fee {
-                Some(block_base_fee) => (old.priority(), old.effective_tip_scaled(&block_base_fee)),
-                None => (old.priority(), old.gas_price().clone()),
-            };
-            let new_score = match self.block_base_fee {
-                Some(block_base_fee) => (new.priority(), new.effective_tip_scaled(&block_base_fee)),
-                None => (new.priority(), new.gas_price().clone()),
-            };
+            let old_score = (old.priority(), old.typed_gas_price(self.block_base_fee));
+            let new_score = (new.priority(), new.typed_gas_price(self.block_base_fee));
+
             if new_score > old_score {
                 // Check if this is a replacement transaction.
                 //

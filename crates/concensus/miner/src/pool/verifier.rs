@@ -96,7 +96,7 @@ impl Transaction {
         }
     }
 
-    /// Return transaction gas price
+    /// Return transaction gas price (actually max fee per gas)
     pub fn gas_price(&self) -> &U256 {
         match *self {
             Transaction::Unverified(ref tx) => &tx.tx().gas_price,
@@ -113,12 +113,12 @@ impl Transaction {
         }
     }
 
-    /// Calculate effective miner tip scaled with block_base_fee value
-    pub fn effective_tip_scaled(&self, block_base_fee: &U256) -> U256 {
+    /// Return actual gas price of the transaction depending on the current block base fee
+    pub fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         match *self {
-            Transaction::Unverified(ref tx) => tx.effective_tip_scaled(block_base_fee),
-            Transaction::Retracted(ref tx) => tx.effective_tip_scaled(block_base_fee),
-            Transaction::Local(ref tx) => tx.effective_tip_scaled(block_base_fee),
+            Transaction::Unverified(ref tx) => tx.typed_gas_price(block_base_fee),
+            Transaction::Retracted(ref tx) => tx.typed_gas_price(block_base_fee),
+            Transaction::Local(ref tx) => tx.typed_gas_price(block_base_fee),
         }
     }
 
@@ -225,22 +225,24 @@ impl<C: Client> txpool::Verifier<Transaction>
         }
 
         let is_own = tx.is_local();
+        let gas_price = tx.typed_gas_price(self.options.block_base_fee);
         // Quick exit for non-service and non-local transactions
         //
         // We're checking if the transaction is below configured minimal gas price
         // or the effective minimal gas price in case the pool is full.
-        if !tx.gas_price().is_zero() && !is_own {
-            if tx.gas_price() < &self.options.minimal_gas_price {
+
+        if !gas_price.is_zero() && !is_own {
+            if gas_price < self.options.minimal_gas_price {
                 trace!(
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    tx.gas_price(),
+                    gas_price,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: *tx.gas_price(),
+                    got: gas_price,
                 });
             }
 
@@ -250,12 +252,12 @@ impl<C: Client> txpool::Verifier<Transaction>
                         target: "txqueue",
                         "[{:?}] Rejected tx early, cause it doesn't have any chance to get to the pool: (gas price: {} < {})",
                         hash,
-                        tx.gas_price(),
-                        vtx.transaction.tx().gas_price, // ds todo fix
+                        gas_price,
+                        vtx.transaction.typed_gas_price(self.options.block_base_fee),
                     );
                     return Err(transaction::Error::TooCheapToReplace {
-                        prev: Some(vtx.transaction.tx().gas_price),
-                        new: Some(*tx.gas_price()),
+                        prev: Some(vtx.transaction.typed_gas_price(self.options.block_base_fee)),
+                        new: Some(gas_price),
                     });
                 }
             }
@@ -313,13 +315,10 @@ impl<C: Client> txpool::Verifier<Transaction>
             }
         }
 
-        // transactions with sender having account balance lower than max_fee_cap and higher than 
-        // block_base_fee + tip should be considered into tx pool, since what they actually pay is a 
+        // transactions with sender having account balance lower than max_fee_cap and higher than
+        // block_base_fee + tip should be considered into tx pool, since what they actually pay is a
         // lower value between these two.
-        let gas_price = match self.options.block_base_fee {
-            Some(base_fee) => transaction.effective_tip_scaled(&base_fee),
-            None => transaction.tx().gas_price,
-        };
+        let gas_price = transaction.typed_gas_price(self.options.block_base_fee);
 
         let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);

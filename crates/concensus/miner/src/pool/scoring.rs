@@ -80,13 +80,7 @@ impl NonceAndGasPrice {
             return true;
         }
 
-        match self.block_base_fee {
-            Some(block_base_fee) => {
-                old.effective_tip_scaled(&block_base_fee)
-                    > new.effective_tip_scaled(&block_base_fee)
-            }
-            None => &old.transaction.tx().gas_price > new.gas_price(),
-        }
+        old.typed_gas_price(self.block_base_fee) > new.typed_gas_price(self.block_base_fee)
     }
 }
 
@@ -106,15 +100,8 @@ where
             return scoring::Choice::InsertNew;
         }
 
-        let old_gp = match self.block_base_fee {
-            Some(block_base_fee) => old.effective_tip_scaled(&block_base_fee),
-            None => old.gas_price().clone(),
-        };
-
-        let new_gp = match self.block_base_fee {
-            Some(block_base_fee) => new.effective_tip_scaled(&block_base_fee),
-            None => new.gas_price().clone(),
-        };
+        let old_gp = old.typed_gas_price(self.block_base_fee);
+        let new_gp = new.typed_gas_price(self.block_base_fee);
 
         let min_required_gp = bump_gas_price(old_gp);
 
@@ -139,12 +126,7 @@ where
                 assert!(i < txs.len());
                 assert!(i < scores.len());
 
-                scores[i] = match self.block_base_fee {
-                    Some(block_base_fee) => {
-                        txs[i].transaction.effective_tip_scaled(&block_base_fee)
-                    }
-                    None => *txs[i].transaction.gas_price(),
-                };
+                scores[i] = txs[i].typed_gas_price(self.block_base_fee);
                 let boost = match txs[i].priority() {
                     super::Priority::Local => 15,
                     super::Priority::Retracted => 10,
@@ -164,15 +146,11 @@ where
                             }
                         }
                     }
-                    ScoringEvent::BlockBaseFeeChanged => match self.block_base_fee {
-                        Some(block_base_fee) => {
-                            for i in 0..txs.len() {
-                                scores[i] =
-                                    txs[i].transaction.effective_tip_scaled(&block_base_fee);
-                            }
+                    ScoringEvent::BlockBaseFeeChanged => {
+                        for i in 0..txs.len() {
+                            scores[i] = txs[i].transaction.typed_gas_price(self.block_base_fee);
                         }
-                        None => (),
-                    },
+                    }
                 }
             }
         }

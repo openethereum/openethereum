@@ -157,6 +157,8 @@ pub struct Schedule {
     pub eip2930: bool,
     /// Enable EIP-1559 rules
     pub eip1559: bool,
+    /// Enable BASEFEE opcode
+    pub eip3198: bool,
 }
 
 /// Wasm cost table
@@ -305,6 +307,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
+            eip3198: false,
         }
     }
 
@@ -366,6 +369,7 @@ impl Schedule {
     pub fn new_london() -> Schedule {
         let mut schedule = Self::new_berlin();
         schedule.eip1559 = true;
+        schedule.eip3198 = true;
 
         schedule
     }
@@ -434,6 +438,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
+            eip3198: false,
         }
     }
 

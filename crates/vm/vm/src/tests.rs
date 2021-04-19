@@ -130,6 +130,13 @@ impl FakeExt {
         ext
     }
 
+    /// New fake externalities with London schedule rules
+    pub fn new_london() -> Self {
+        let mut ext = FakeExt::default();
+        ext.schedule = Schedule::new_london();
+        ext
+    }
+
     /// Alter fake externalities to allow wasm
     pub fn with_wasm(mut self) -> Self {
         self.schedule.wasm = Some(Default::default());

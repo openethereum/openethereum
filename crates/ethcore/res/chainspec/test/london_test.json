@@ -47,8 +47,10 @@
 		"eip2929Transition": "0x0",
 		"eip2930Transition": "0x0",
 		"eip1559Transition": "0x0",
+		"eip3198Transition": "0x0",
 		"baseFeeMaxChangeDenominator": "0x8",
-		"elasticityMultiplier": "0x2"
+		"elasticityMultiplier": "0x2",
+		"baseFeeInitialValue": "0x3B9ACA00"
 	},
 	"genesis": {
 		"seal": {

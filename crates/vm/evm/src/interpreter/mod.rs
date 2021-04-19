@@ -590,6 +590,7 @@ impl<Cost: CostType> Interpreter<Cost> {
             || (instruction == EXTCODEHASH && !schedule.have_extcodehash)
             || (instruction == CHAINID && !schedule.have_chain_id)
             || (instruction == SELFBALANCE && !schedule.have_selfbalance)
+            || (instruction == BASEFEE && !schedule.eip3198)
             || ((instruction == BEGINSUB || instruction == JUMPSUB || instruction == RETURNSUB)
                 && !schedule.have_subs)
         {
@@ -1163,6 +1164,9 @@ impl<Cost: CostType> Interpreter<Cost> {
             instructions::CHAINID => self.stack.push(ext.chain_id().into()),
             instructions::SELFBALANCE => {
                 self.stack.push(ext.balance(&self.params.address)?);
+            }
+            instructions::BASEFEE => {
+                self.stack.push(ext.env_info().base_fee);
             }
 
             // Stack instructions

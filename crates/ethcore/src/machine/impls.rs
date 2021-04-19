@@ -514,7 +514,7 @@ impl EthereumMachine {
         }
 
         if parent.gas_used() == parent.gas_limit() {
-            parent.base_fee().clone()
+            parent.base_fee()
         } else if parent.gas_used() > parent.gas_limit() {
             let gas_used_delta = parent.gas_used() - parent.gas_limit();
             let base_fee_per_gas_delta = max(

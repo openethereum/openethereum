@@ -282,7 +282,7 @@ impl SyncSupplier {
         for v in r {
             if let Ok(hash) = v.as_val::<H256>() {
                 if let Some(tx) = io.chain().queued_transaction(hash) {
-                    rlp.append(tx.signed());
+                    tx.signed().rlp_append(&mut rlp);
                     added += 1;
                     if rlp.len() > PAYLOAD_SOFT_LIMIT {
                         break;

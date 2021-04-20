@@ -866,7 +866,11 @@ impl SyncHandler {
         let mut transactions = Vec::with_capacity(item_count);
         for i in 0..item_count {
             let rlp = tx_rlp.at(i)?;
-            let tx = rlp.as_raw().to_vec();
+            let tx = if rlp.is_list() {
+                rlp.as_raw()
+            } else {
+                rlp.data().unwrap()
+            }.to_vec();
             transactions.push(tx);
         }
         io.chain().queue_transactions(transactions, peer_id);

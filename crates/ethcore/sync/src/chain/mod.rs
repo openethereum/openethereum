@@ -879,7 +879,7 @@ impl ChainSync {
                             .copied()
                             .collect();
                     }
-                    Err(unknown_tx) => {
+                    Err(_unknown_tx) => {
                         // punish peer?
                     }
                 }

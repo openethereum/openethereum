@@ -254,7 +254,7 @@ impl<'a> EvmTestClient<'a> {
                     U256::from(1)
                 }
             },
-            base_fee: genesis.base_fee(),
+            base_fee: genesis.base_fee().unwrap_or_default(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)
     }

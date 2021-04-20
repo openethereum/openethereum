@@ -45,7 +45,7 @@ use v1::{
     metadata::Metadata,
     traits::Parity,
     types::{
-        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
+        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Header, Histogram,
         LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
         Transaction, TransactionStats,
     },
@@ -386,7 +386,7 @@ where
         };
 
         Box::new(future::ok(RichHeader {
-            inner: header.into(),
+            inner: Header::new(&header, self.client.engine().params().eip1559_transition),
             extra_info: extra.unwrap_or_default(),
         }))
     }

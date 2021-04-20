@@ -409,10 +409,10 @@ impl EthereumMachine {
     ) -> Result<SignedTransaction, transaction::Error> {
         if header.number() >= self.params().eip1559_transition {
             // ensure that the user was willing to at least pay the base fee
-            if t.tx().gas_price < header.base_fee() {
+            if t.tx().gas_price < header.base_fee().unwrap_or_default() {
                 return Err(transaction::Error::GasPriceLowerThanBaseFee {
                     gas_price: t.tx().gas_price,
-                    base_fee: header.base_fee(),
+                    base_fee: header.base_fee().unwrap_or_default(),
                 });
             }
         }
@@ -513,23 +513,25 @@ impl EthereumMachine {
             panic!("Can't calculate base fee if base fee denominator is zero.");
         }
 
+        let parent_base_fee = parent.base_fee().unwrap_or_default();
+
         if parent.gas_used() == parent.gas_limit() {
-            parent.base_fee()
+            parent_base_fee
         } else if parent.gas_used() > parent.gas_limit() {
             let gas_used_delta = parent.gas_used() - parent.gas_limit();
             let base_fee_per_gas_delta = max(
-                parent.base_fee() * gas_used_delta
+                parent_base_fee * gas_used_delta
                     / parent.gas_limit()
                     / self.params().base_fee_max_change_denominator,
                 U256::from(1),
             );
-            parent.base_fee() + base_fee_per_gas_delta
+            parent_base_fee + base_fee_per_gas_delta
         } else {
             let gas_used_delta = parent.gas_limit() - parent.gas_used();
-            let base_fee_per_gas_delta = parent.base_fee() * gas_used_delta
+            let base_fee_per_gas_delta = parent_base_fee * gas_used_delta
                 / parent.gas_limit()
                 / self.params().base_fee_max_change_denominator;
-            max(parent.base_fee() - base_fee_per_gas_delta, U256::zero())
+            max(parent_base_fee - base_fee_per_gas_delta, U256::zero())
         }
     }
 }

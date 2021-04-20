@@ -221,8 +221,8 @@ impl Header {
     }
 
     /// Get the base fee field of the header.
-    pub fn base_fee(&self) -> U256 {
-        self.base_fee_per_gas.unwrap_or_default()
+    pub fn base_fee(&self) -> Option<U256> {
+        self.base_fee_per_gas
     }
 
     /// Get the seal field with RLP-decoded values as bytes.
@@ -502,16 +502,16 @@ mod tests {
             Header::decode_rlp(&rlp, BlockNumber::default()).expect("error decoding header");
 
         assert_eq!(header.seal().len(), 2);
-        assert_eq!(header.base_fee(), U256::from(100));
+        assert_eq!(header.base_fee().unwrap(), U256::from(100));
 
         let new_base_fee = U256::from(200);
         header.set_base_fee(Some(new_base_fee));
-        assert_eq!(header.base_fee(), new_base_fee);
+        assert_eq!(header.base_fee().unwrap(), new_base_fee);
 
         let seal = vec![vec![50u8], vec![60u8]];
         header.set_seal(seal.clone());
         assert_eq!(header.seal(), seal);
-        assert_eq!(header.base_fee(), new_base_fee);
+        assert_eq!(header.base_fee().unwrap(), new_base_fee);
 
         let decoded_seal = header.decode_seal::<Vec<_>>().unwrap();
         assert_eq!(decoded_seal.len(), 2);

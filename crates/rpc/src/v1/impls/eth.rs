@@ -259,6 +259,7 @@ where
         match (block, difficulty) {
             (Some(block), Some(total_difficulty)) => {
                 let view = block.header_view();
+                let eip1559_enabled = client.engine().schedule(view.number()).eip1559;
                 Ok(Some(RichBlock {
                     inner: Block {
                         hash: match is_pending {
@@ -278,7 +279,20 @@ where
                             false => Some(view.number().into()),
                         },
                         gas_used: view.gas_used(),
-                        gas_limit: view.gas_limit(),
+                        gas_limit: {
+                            if eip1559_enabled {
+                                None
+                            } else {
+                                Some(view.gas_limit())
+                            }
+                        },
+                        gas_target: {
+                            if eip1559_enabled {
+                                Some(view.gas_limit())
+                            } else {
+                                None
+                            }
+                        },
                         logs_bloom: match is_pending {
                             true => None,
                             false => Some(view.log_bloom()),
@@ -287,10 +301,17 @@ where
                         difficulty: view.difficulty(),
                         total_difficulty: Some(total_difficulty),
                         seal_fields: view
-                            .seal(client.engine().schedule(view.number()).eip1559)
+                            .seal(eip1559_enabled)
                             .into_iter()
                             .map(Into::into)
                             .collect(),
+                        base_fee_per_gas: {
+                            if eip1559_enabled {
+                                Some(view.base_fee())
+                            } else {
+                                None
+                            }
+                        },
                         uncles: block.uncle_hashes(),
                         transactions: match include_txs {
                             true => BlockTransactions::Full(
@@ -441,6 +462,7 @@ where
             .map(|block| block.into_inner().len())
             .map(U256::from);
 
+        let eip1559_enabled = uncle.number() >= self.client.engine().params().eip1559_transition;
         let block = RichBlock {
             inner: Block {
                 hash: Some(uncle.hash()),
@@ -453,7 +475,20 @@ where
                 transactions_root: *uncle.transactions_root(),
                 number: Some(uncle.number().into()),
                 gas_used: *uncle.gas_used(),
-                gas_limit: *uncle.gas_limit(),
+                gas_limit: {
+                    if eip1559_enabled {
+                        None
+                    } else {
+                        Some(*uncle.gas_limit())
+                    }
+                },
+                gas_target: {
+                    if eip1559_enabled {
+                        Some(*uncle.gas_limit())
+                    } else {
+                        None
+                    }
+                },
                 logs_bloom: Some(*uncle.log_bloom()),
                 timestamp: uncle.timestamp().into(),
                 difficulty: *uncle.difficulty(),
@@ -461,6 +496,7 @@ where
                 receipts_root: *uncle.receipts_root(),
                 extra_data: uncle.extra_data().clone().into(),
                 seal_fields: uncle.seal().iter().cloned().map(Into::into).collect(),
+                base_fee_per_gas: uncle.base_fee(),
                 uncles: vec![],
                 transactions: BlockTransactions::Hashes(vec![]),
             },

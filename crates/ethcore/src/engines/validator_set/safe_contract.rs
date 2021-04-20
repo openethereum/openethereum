@@ -112,7 +112,7 @@ fn check_first_proof(
             Arc::new(last_hashes)
         },
         gas_used: 0.into(),
-        base_fee: old_header.base_fee(),
+        base_fee: old_header.base_fee().unwrap_or_default(),
     };
 
     // check state proof using given machine.

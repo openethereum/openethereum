@@ -52,6 +52,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
             .map(|(block, reason)| {
                 let number = block.header.number();
                 let hash = block.header.hash();
+                let eip1559_enabled = block.header.base_fee().is_some();
                 RichBlock {
                     inner: Block {
                         hash: Some(hash),
@@ -64,7 +65,20 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                         receipts_root: cast(block.header.receipts_root()),
                         number: Some(number.into()),
                         gas_used: cast(block.header.gas_used()),
-                        gas_limit: cast(block.header.gas_limit()),
+                        gas_limit: {
+                            if eip1559_enabled {
+                                None
+                            } else {
+                                cast(block.header.gas_limit())
+                            }
+                        },
+                        gas_target: {
+                            if eip1559_enabled {
+                                cast(block.header.gas_limit())
+                            } else {
+                                None
+                            }
+                        },
                         logs_bloom: Some(cast(block.header.log_bloom())),
                         timestamp: block.header.timestamp().into(),
                         difficulty: cast(block.header.difficulty()),
@@ -76,6 +90,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                             .cloned()
                             .map(Into::into)
                             .collect(),
+                        base_fee_per_gas: block.header.base_fee(),
                         uncles: block.uncles.iter().map(Header::hash).collect(),
                         transactions: BlockTransactions::Full(
                             block

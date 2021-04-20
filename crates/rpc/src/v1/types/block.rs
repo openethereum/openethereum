@@ -18,7 +18,7 @@ use std::{collections::BTreeMap, ops::Deref};
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256};
 use serde::{ser::Error, Serialize, Serializer};
-use types::encoded::Header as EthHeader;
+use types::{encoded::Header as EthHeader, BlockNumber};
 use v1::types::{Bytes, Transaction};
 
 /// Block Transactions
@@ -68,7 +68,11 @@ pub struct Block {
     /// Gas Used
     pub gas_used: U256,
     /// Gas Limit
-    pub gas_limit: U256,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_limit: Option<U256>,
+    /// Gas Target
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_target: Option<U256>,
     /// Extra data
     pub extra_data: Bytes,
     /// Logs bloom
@@ -81,6 +85,9 @@ pub struct Block {
     pub total_difficulty: Option<U256>,
     /// Seal fields
     pub seal_fields: Vec<Bytes>,
+    /// Base fee
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_fee_per_gas: Option<U256>,
     /// Uncles' hashes
     pub uncles: Vec<H256>,
     /// Transactions
@@ -115,7 +122,11 @@ pub struct Header {
     /// Gas Used
     pub gas_used: U256,
     /// Gas Limit
-    pub gas_limit: U256,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_limit: Option<U256>,
+    /// Gas Target
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_target: Option<U256>,
     /// Extra data
     pub extra_data: Bytes,
     /// Logs bloom
@@ -126,20 +137,18 @@ pub struct Header {
     pub difficulty: U256,
     /// Seal fields
     pub seal_fields: Vec<Bytes>,
+    /// Base fee
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_fee_per_gas: Option<U256>,
     /// Size in bytes
     pub size: Option<U256>,
 }
 
-impl From<EthHeader> for Header {
-    fn from(h: EthHeader) -> Self {
-        (&h).into()
-    }
-}
-
-impl<'a> From<&'a EthHeader> for Header {
-    fn from(h: &'a EthHeader) -> Self {
+impl Header {
+    pub fn new(h: &EthHeader, eip1559_transition: BlockNumber) -> Self {
+        let eip1559_enabled = h.number() >= eip1559_transition;
         Header {
-			hash: Some(h.hash()),
+            hash: Some(h.hash()),
 			size: Some(h.rlp().as_raw().len().into()),
 			parent_hash: h.parent_hash(),
 			uncles_hash: h.uncles_hash(),
@@ -150,14 +159,34 @@ impl<'a> From<&'a EthHeader> for Header {
 			receipts_root: h.receipts_root(),
 			number: Some(h.number().into()),
 			gas_used: h.gas_used(),
-			gas_limit: h.gas_limit(),
+			gas_limit: {
+                if eip1559_enabled {
+                    None
+                } else {
+                    Some(h.gas_limit())
+                }
+            },
+            gas_target: {
+                if eip1559_enabled {
+                    Some(h.gas_limit())
+                } else {
+                    None
+                }
+            },
 			logs_bloom: h.log_bloom(),
 			timestamp: h.timestamp().into(),
 			difficulty: h.difficulty(),
 			extra_data: h.extra_data().into(),
-			seal_fields: h.view().decode_seal(false)
+			seal_fields: h.view().decode_seal(eip1559_enabled)
 				.expect("Client/Miner returns only valid headers. We only serialize headers from Client/Miner; qed")
 				.into_iter().map(Into::into).collect(),
+            base_fee_per_gas: {
+                if eip1559_enabled {
+                    Some(h.base_fee())
+                } else {
+                    None
+                }
+            },
 		}
     }
 }
@@ -245,13 +274,15 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: U256::default(),
+            gas_limit: Some(U256::default()),
+            gas_target: None,
             extra_data: Bytes::default(),
             logs_bloom: Some(H2048::default()),
             timestamp: U256::default(),
             difficulty: U256::default(),
             total_difficulty: Some(U256::default()),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             uncles: vec![],
             transactions: BlockTransactions::Hashes(vec![].into()),
             size: Some(69.into()),
@@ -289,13 +320,15 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: U256::default(),
+            gas_limit: Some(U256::default()),
+            gas_target: None,
             extra_data: Bytes::default(),
             logs_bloom: Some(H2048::default()),
             timestamp: U256::default(),
             difficulty: U256::default(),
             total_difficulty: Some(U256::default()),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             uncles: vec![],
             transactions: BlockTransactions::Hashes(vec![].into()),
             size: None,
@@ -333,12 +366,14 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: U256::default(),
+            gas_limit: Some(U256::default()),
+            gas_target: None,
             extra_data: Bytes::default(),
             logs_bloom: H2048::default(),
             timestamp: U256::default(),
             difficulty: U256::default(),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             size: Some(69.into()),
         };
         let serialized_header = serde_json::to_string(&header).unwrap();

@@ -1,3 +1,11 @@
+## OpenEthereum v3.2.4
+
+* Fix for Typed transaction broadcast.
+
+## OpenEthereum v3.2.3
+
+* Hotfix for berlin consensus error.
+
 ## OpenEthereum v3.2.2-rc.1
 
 Bug fixes:

@@ -238,15 +238,15 @@ impl SyncPropagator {
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
-                        let appended =
-                            packet.append_raw_checked(&tx.encode(), 1, MAX_TRANSACTION_PACKET_SIZE);
-                        if !appended {
+                        tx.rlp_append(&mut packet);
+                        pushed += 1;
+                        // this is not hard limit and we are okay with it. Max default tx size is 300k.
+                        if packet.as_raw().len() >= MAX_TRANSACTION_PACKET_SIZE {
                             // Maximal packet size reached just proceed with sending
                             debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
                             to_send = to_send.into_iter().take(pushed).collect();
                             break;
                         }
-                        pushed += 1;
                     }
                 }
                 packet.finalize_unbounded_list();

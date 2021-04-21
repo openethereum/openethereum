@@ -240,7 +240,6 @@ impl<'a> CallCreateExecutive<'a> {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
             substate.access_list.insert_address(params.address);
-            substate.access_list.insert_address(params.sender);
             substate
         } else {
             Substate::default()
@@ -1146,8 +1145,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         if schedule.eip2929 {
             access_list.insert_address(sender);
-            for (address, _) in self.machine.builtins() {
-                access_list.insert_address(*address);
+            for (address, builtin) in self.machine.builtins() {
+                if builtin.is_active(self.info.number) {
+                    access_list.insert_address(*address);
+                }
             }
             if schedule.eip2930 {
                 // optional access list

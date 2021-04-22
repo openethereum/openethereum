@@ -259,6 +259,7 @@ impl SyncPropagator {
                         if is_hashes {
                             if pushed >= NEW_POOLED_HASHES_LIMIT {
                                 debug!(target: "sync", "NewPooledTransactionHashes length limit reached. Sending incomplete list of {}/{} transactions.", pushed, to_send.len());
+                                to_send = to_send.into_iter().take(pushed).collect();
                                 break;
                             }
                             packet.append(&hash);

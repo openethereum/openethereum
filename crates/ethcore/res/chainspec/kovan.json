@@ -69,6 +69,8 @@
 		"eip1706Transition": "0xd751a5",
 		"eip1884Transition": "0xd751a5",
 		"eip2028Transition": "0xd751a5",
+		"eip2929Transition": "0x179f954",
+		"eip2930Transition": "0x179f954",
 		"kip4Transition": "0x8c6180",
 		"kip6Transition": "0x8c6180"
 	},
@@ -156,6 +158,12 @@
 							"modexp": {
 								"divisor": 20
 							}
+						}
+					},
+					"0x179f954": {
+						"info": "EIP-2565: ModExp Gas Cost. Berlin hardfork (24_770_900)",
+						"price": {
+							"modexp2565": {}
 						}
 					}
 				}

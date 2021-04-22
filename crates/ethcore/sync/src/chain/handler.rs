@@ -869,8 +869,9 @@ impl SyncHandler {
             let tx = if rlp.is_list() {
                 rlp.as_raw()
             } else {
-                rlp.data().unwrap()
-            }.to_vec();
+                rlp.data()?
+            }
+            .to_vec();
             transactions.push(tx);
         }
         io.chain().queue_transactions(transactions, peer_id);

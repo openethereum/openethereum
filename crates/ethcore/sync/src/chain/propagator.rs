@@ -248,44 +248,45 @@ impl SyncPropagator {
             }
 
             // Construct RLP
-            let (packet, to_send) = {
-                let mut to_send = to_send;
+            let (packet, in_packet, is_all) = {
+                let mut in_packet = vec![];
+                let mut is_all = true;
                 let mut packet = RlpStream::new();
                 packet.begin_unbounded_list();
-                let mut pushed = 0;
                 for tx in &transactions {
                     let hash = tx.hash();
                     if to_send.contains(&hash) {
                         if is_hashes {
-                            if pushed >= NEW_POOLED_HASHES_LIMIT {
-                                debug!(target: "sync", "NewPooledTransactionHashes length limit reached. Sending incomplete list of {}/{} transactions.", pushed, to_send.len());
-                                to_send = to_send.into_iter().take(pushed).collect();
+                            if in_packet.len() >= NEW_POOLED_HASHES_LIMIT {
+                                debug!(target: "sync", "NewPooledTransactionHashes length limit reached. Sending incomplete list of {}/{} transactions.", in_packet.len(), to_send.len());
+                                is_all = false;
                                 break;
                             }
                             packet.append(&hash);
-                            pushed += 1
+                            in_packet.push(hash.clone());
                         } else {
                             tx.rlp_append(&mut packet);
-                            pushed += 1;
+                            in_packet.push(hash.clone());
                             // this is not hard limit and we are okay with it. Max default tx size is 300k.
                             if packet.as_raw().len() >= MAX_TRANSACTION_PACKET_SIZE {
                                 // Maximal packet size reached just proceed with sending
-                                debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", pushed, to_send.len());
-                                to_send = to_send.into_iter().take(pushed).collect();
+                                debug!(target: "sync", "Transaction packet size limit reached. Sending incomplete set of {}/{} transactions.", in_packet.len(), to_send.len());
+                                is_all = false;
                                 break;
                             }
                         }
                     }
                 }
                 packet.finalize_unbounded_list();
-                (packet, to_send)
+                (packet, in_packet, is_all)
             };
 
             // Update stats
             let id = io.peer_session_info(peer_id).and_then(|info| info.id);
             for hash in &to_send {
-                // update stats
-                stats.propagated(hash, id, block_number);
+                if is_all || in_packet.contains(&hash) {
+                    stats.propagated(hash, id, block_number);
+                }
             }
 
             peer_info.last_sent_transactions = all_transactions_hashes

@@ -69,6 +69,8 @@
 		"eip1706Transition": "0xd751a5",
 		"eip1884Transition": "0xd751a5",
 		"eip2028Transition": "0xd751a5",
+		"eip2929Transition": "0x179f954",
+		"eip2930Transition": "0x179f954",
 		"kip4Transition": "0x8c6180",
 		"kip6Transition": "0x8c6180"
 	},
@@ -156,6 +158,12 @@
 							"modexp": {
 								"divisor": 20
 							}
+						}
+					},
+					"0x179f954": {
+						"info": "EIP-2565: ModExp Gas Cost. Berlin hardfork (24_770_900)",
+						"price": {
+							"modexp2565": {}
 						}
 					}
 				}
@@ -248,9 +256,8 @@
 		}
 	},
 	"nodes": [
+		"enode://30499bde23362f7d310a34518a2a6ff765921870bf0c3e63d21153cfa7ba9cf39cc7c8e54e9dad2f2b3c07288b3e91b220656833cc2d843a54875c229f3f959a@8.9.8.175:30303",
 		"enode://16898006ba2cd4fa8bf9a3dfe32684c178fa861df144bfc21fe800dc4838a03e342056951fa9fd533dcb0be1219e306106442ff2cf1f7e9f8faa5f2fc1a3aa45@116.203.116.241:30303",
-		"enode://2909846f78c37510cc0e306f185323b83bb2209e5ff4fdd279d93c60e3f365e3c6e62ad1d2133ff11f9fd6d23ad9c3dad73bb974d53a22f7d1ac5b7dea79d0b0@3.217.96.11:30303",
-		"enode://740e1c8ea64e71762c71a463a04e2046070a0c9394fcab5891d41301dc473c0cff00ebab5a9bc87fbcb610ab98ac18225ff897bc8b7b38def5975d5ceb0a7d7c@108.61.170.124:30303",
-		"enode://2909846f78c37510cc0e306f185323b83bb2209e5ff4fdd279d93c60e3f365e3c6e62ad1d2133ff11f9fd6d23ad9c3dad73bb974d53a22f7d1ac5b7dea79d0b0@157.230.31.163:30303"
+		"enode://49a0e1aa38caa12cbf31222cb4e31cef1e8794cb4dd38012f84498ac867b19584e29bbf6d53201d7dfd3b5eb0998a4d908d096ed4ddb5f9102c623852cd331ec@54.87.247.5:30303"
 	]
 }

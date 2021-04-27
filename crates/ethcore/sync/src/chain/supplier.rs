@@ -31,15 +31,7 @@ use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
 
-use super::sync_packet::{
-    PacketInfo, SyncPacket,
-    SyncPacket::{
-        BlockBodiesPacket, BlockHeadersPacket, ConsensusDataPacket, GetBlockBodiesPacket,
-        GetBlockHeadersPacket, GetReceiptsPacket, GetSnapshotDataPacket, GetSnapshotManifestPacket,
-        ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
-        TransactionsPacket,
-    },
-};
+use super::sync_packet::{PacketInfo, SyncPacket, SyncPacket::*};
 
 use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
@@ -64,6 +56,14 @@ impl SyncSupplier {
 
         if let Some(id) = SyncPacket::from_u8(packet_id) {
             let result = match id {
+                GetPooledTransactionsPacket => SyncSupplier::return_rlp(
+                    io,
+                    &rlp,
+                    peer,
+                    SyncSupplier::return_pooled_transactions,
+                    |e| format!("Error sending pooled transactions: {:?}", e),
+                ),
+
                 GetBlockBodiesPacket => SyncSupplier::return_rlp(
                     io,
                     &rlp,
@@ -271,6 +271,28 @@ impl SyncSupplier {
         rlp.append_raw(&data, count as usize);
         trace!(target: "sync", "{} -> GetBlockHeaders: returned {} entries", peer_id, count);
         Ok(Some((BlockHeadersPacket, rlp)))
+    }
+
+    /// Respond to GetPooledTransactions request
+    fn return_pooled_transactions(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
+        let mut added = 0;
+        let mut rlp = RlpStream::new();
+        rlp.begin_unbounded_list();
+        for v in r {
+            if let Ok(hash) = v.as_val::<H256>() {
+                if let Some(tx) = io.chain().queued_transaction(hash) {
+                    tx.signed().rlp_append(&mut rlp);
+                    added += 1;
+                    if rlp.len() > PAYLOAD_SOFT_LIMIT {
+                        break;
+                    }
+                }
+            }
+        }
+        rlp.finalize_unbounded_list();
+
+        trace!(target: "sync", "{} -> GetPooledTransactions: returned {} entries", peer_id, added);
+        Ok(Some((PooledTransactionsPacket, rlp)))
     }
 
     /// Respond to GetBlockBodies request

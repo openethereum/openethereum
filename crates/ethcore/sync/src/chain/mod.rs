@@ -108,17 +108,14 @@ use ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
 use rand::{seq::SliceRandom, Rng};
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
     cmp,
     collections::{BTreeMap, HashMap, HashSet},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc, RwLock as StdRwLock, RwLockWriteGuard as StdRwLockWriteGuard,
-    },
+    sync::mpsc,
     time::{Duration, Instant},
 };
 use sync_io::SyncIo;
@@ -414,10 +411,8 @@ pub type Peers = HashMap<PeerId, PeerInfo>;
 pub struct ChainSyncApi {
     /// Priority tasks queue
     priority_tasks: Mutex<mpsc::Receiver<PriorityTask>>,
-    /// Gate for executing only one priority timer.
-    priority_tasks_gate: AtomicBool,
     /// The rest of sync data
-    sync: StdRwLock<ChainSync>,
+    sync: RwLock<ChainSync>,
 }
 
 impl ChainSyncApi {
@@ -429,33 +424,31 @@ impl ChainSyncApi {
         priority_tasks: mpsc::Receiver<PriorityTask>,
     ) -> Self {
         ChainSyncApi {
-            sync: StdRwLock::new(ChainSync::new(config, chain, fork_filter)),
+            sync: RwLock::new(ChainSync::new(config, chain, fork_filter)),
             priority_tasks: Mutex::new(priority_tasks),
-            priority_tasks_gate: AtomicBool::new(false),
         }
     }
 
     /// Gives `write` access to underlying `ChainSync`
-    pub fn write(&self) -> StdRwLockWriteGuard<ChainSync> {
-        self.sync.write().unwrap()
+    pub fn write(&self) -> RwLockWriteGuard<ChainSync> {
+        self.sync.write()
     }
 
     /// Returns info about given list of peers
     pub fn peer_info(&self, ids: &[PeerId]) -> Vec<Option<PeerInfoDigest>> {
-        let sync = self.sync.read().unwrap();
+        let sync = self.sync.read();
         ids.iter().map(|id| sync.peer_info(id)).collect()
     }
 
     /// Returns synchonization status
     pub fn status(&self) -> SyncStatus {
-        self.sync.read().unwrap().status()
+        self.sync.read().status()
     }
 
     /// Returns transactions propagation statistics
     pub fn transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
         self.sync
             .read()
-            .unwrap()
             .transactions_stats()
             .iter()
             .map(|(hash, stats)| (*hash, stats.into()))
@@ -469,7 +462,7 @@ impl ChainSyncApi {
 
     /// Process the queue with requests, that were delayed with response.
     pub fn process_delayed_requests(&self, io: &mut dyn SyncIo) {
-        let requests = self.sync.write().unwrap().retrieve_delayed_requests();
+        let requests = self.sync.write().retrieve_delayed_requests();
         if !requests.is_empty() {
             debug!(target: "sync", "Processing {} delayed requests", requests.len());
             for (peer_id, packet_id, packet_data) in requests {
@@ -500,14 +493,6 @@ impl ChainSyncApi {
             }
         }
 
-        if self
-            .priority_tasks_gate
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_err()
-        {
-            return;
-        }
-
         // deadline to get the task from the queue
         let deadline = Instant::now() + ::api::PRIORITY_TIMER_INTERVAL;
         let mut work = || {
@@ -517,8 +502,9 @@ impl ChainSyncApi {
                 tasks.recv_timeout(left).ok()?
             };
             task.starting();
-            // wait for the sync lock
-            let mut sync = self.sync.write().unwrap();
+            // wait for the sync lock until deadline,
+            // note we might drop the task here if we won't manage to acquire the lock.
+            let mut sync = self.sync.try_write_until(deadline)?;
             // since we already have everything let's use a different deadline
             // to do the rest of the job now, so that previous work is not wasted.
             let deadline = Instant::now() + PRIORITY_TASK_DEADLINE;
@@ -565,7 +551,6 @@ impl ChainSyncApi {
         // Process as many items as we can until the deadline is reached.
         loop {
             if work().is_none() {
-                self.priority_tasks_gate.store(false, Ordering::SeqCst);
                 return;
             }
         }

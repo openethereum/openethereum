@@ -809,8 +809,11 @@ impl BlockChainClient for TestBlockChainClient {
     ) -> Option<Vec<H256>> {
         None
     }
-    fn transaction(&self, _id: TransactionId) -> Option<LocalizedTransaction> {
+    fn block_transaction(&self, _id: TransactionId) -> Option<LocalizedTransaction> {
         None // Simple default.
+    }
+    fn queued_transaction(&self, _hash: H256) -> Option<Arc<VerifiedTransaction>> {
+        None
     }
 
     fn uncle(&self, _id: UncleId) -> Option<encoded::Header> {
@@ -1144,11 +1147,11 @@ impl super::traits::EngineClient for TestBlockChainClient {
     }
 
     fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
-        BlockChainClient::block_number(self, id)
+        <dyn BlockChainClient>::block_number(self, id)
     }
 
     fn block_header(&self, id: BlockId) -> Option<encoded::Header> {
-        BlockChainClient::block_header(self, id)
+        <dyn BlockChainClient>::block_header(self, id)
     }
 }
 

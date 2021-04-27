@@ -309,7 +309,7 @@ where
     }
 
     fn transaction(&self, id: PendingTransactionId) -> Result<Option<Transaction>> {
-        let client_transaction = |id| match self.client.transaction(id) {
+        let client_transaction = |id| match self.client.block_transaction(id) {
             Some(t) => Ok(Some(Transaction::from_localized(t))),
             None => Ok(None),
         };

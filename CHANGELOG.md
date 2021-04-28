@@ -1,3 +1,10 @@
+## OpenEthereum v3.2.5-rc.1
+
+Enhancements:
+* Support for eth/65 protocol version (#366)
+* Berlin hardfork blocks: kovan (24,770,900), xdai (16,101,500)
+* Bump ethereum/tests to v8.0.3
+
 ## OpenEthereum v3.2.4
 
 * Fix for Typed transaction broadcast.
@@ -35,6 +42,7 @@ devops:
 
 Hot fix issue, related to initial sync:
 * Initial sync gets stuck. (#318)
+
 ## OpenEthereum v3.2.0
 
 Bug fixes:

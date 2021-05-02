@@ -17,7 +17,7 @@
 //! Interface for Evm externalities.
 
 use bytes::Bytes;
-use call_type::CallType;
+use action_type::ActionType;
 use env_info::EnvInfo;
 use error::{Result, TrapKind};
 use ethereum_types::{Address, H256, U256};
@@ -117,7 +117,7 @@ pub trait Ext {
         value: Option<U256>,
         data: &[u8],
         code_address: &Address,
-        call_type: CallType,
+        call_type: ActionType,
         trap: bool,
     ) -> ::std::result::Result<MessageCallResult, TrapKind>;
 

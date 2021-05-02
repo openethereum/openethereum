@@ -30,7 +30,7 @@ use num_bigint::BigUint;
 use std::{cmp, marker::PhantomData, mem, sync::Arc};
 
 use vm::{
-    self, ActionParams, ActionValue, CallType, ContractCreateResult, CreateContractAddress,
+    self, ActionParams, ActionValue, ActionType, ContractCreateResult, CreateContractAddress,
     GasLeft, MessageCallResult, ParamsType, ReturnData, Schedule, TrapError, TrapKind,
 };
 
@@ -144,7 +144,7 @@ struct InterpreterParams {
     /// Input data.
     pub data: Option<Bytes>,
     /// Type of call
-    pub call_type: CallType,
+    pub call_type: ActionType,
     /// Param types encoding
     pub params_type: ParamsType,
 }
@@ -806,7 +806,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                             &self.params.address,
                             &code_address,
                             has_balance,
-                            CallType::Call,
+                            ActionType::Call,
                         )
                     }
                     instructions::CALLCODE => {
@@ -816,20 +816,20 @@ impl<Cost: CostType> Interpreter<Cost> {
                             &self.params.address,
                             &self.params.address,
                             has_balance,
-                            CallType::CallCode,
+                            ActionType::CallCode,
                         )
                     }
                     instructions::DELEGATECALL => (
                         &self.params.sender,
                         &self.params.address,
                         true,
-                        CallType::DelegateCall,
+                        ActionType::DelegateCall,
                     ),
                     instructions::STATICCALL => (
                         &self.params.address,
                         &code_address,
                         true,
-                        CallType::StaticCall,
+                        ActionType::StaticCall,
                     ),
                     _ => panic!(format!(
                         "Unexpected instruction {:?} in CALL branch.",

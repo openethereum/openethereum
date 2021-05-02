@@ -17,7 +17,7 @@
 use super::panic_payload;
 use ethereum_types::{Address, BigEndianHash, H256, U256};
 use std::cmp;
-use vm::{self, CallType};
+use vm::{self, ActionType};
 use wasmi::{
     self, Error as InterpreterError, MemoryRef, RuntimeArgs, RuntimeValue, Trap, TrapKind,
 };
@@ -401,7 +401,7 @@ impl<'a> Runtime<'a> {
     fn do_call(
         &mut self,
         use_val: bool,
-        call_type: CallType,
+        call_type: ActionType,
         args: RuntimeArgs,
     ) -> Result<RuntimeValue> {
         trace!(target: "wasm", "runtime: CALL({:?})", call_type);
@@ -470,11 +470,11 @@ impl<'a> Runtime<'a> {
             .call(
                 &gas.into(),
                 match call_type {
-                    CallType::DelegateCall => &self.context.sender,
+                    ActionType::DelegateCall => &self.context.sender,
                     _ => &self.context.address,
                 },
                 match call_type {
-                    CallType::Call | CallType::StaticCall => &address,
+                    ActionType::Call | ActionType::StaticCall => &address,
                     _ => &self.context.address,
                 },
                 val,
@@ -517,17 +517,17 @@ impl<'a> Runtime<'a> {
 
     /// Message call
     fn ccall(&mut self, args: RuntimeArgs) -> Result<RuntimeValue> {
-        self.do_call(true, CallType::Call, args)
+        self.do_call(true, ActionType::Call, args)
     }
 
     /// Delegate call
     fn dcall(&mut self, args: RuntimeArgs) -> Result<RuntimeValue> {
-        self.do_call(false, CallType::DelegateCall, args)
+        self.do_call(false, ActionType::DelegateCall, args)
     }
 
     /// Static call
     fn scall(&mut self, args: RuntimeArgs) -> Result<RuntimeValue> {
-        self.do_call(false, CallType::StaticCall, args)
+        self.do_call(false, ActionType::StaticCall, args)
     }
 
     fn return_address_ptr(&mut self, ptr: u32, val: Address) -> Result<()> {

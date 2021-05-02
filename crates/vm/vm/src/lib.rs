@@ -25,7 +25,7 @@ extern crate rlp;
 
 pub mod access_list;
 mod action_params;
-mod call_type;
+mod action_type;
 mod env_info;
 mod error;
 mod ext;
@@ -36,7 +36,7 @@ pub mod tests;
 
 pub use access_list::AccessList;
 pub use action_params::{ActionParams, ActionValue, ParamsType};
-pub use call_type::CallType;
+pub use action_type::ActionType;
 pub use env_info::{EnvInfo, LastHashes};
 pub use error::{Error, ExecTrapError, ExecTrapResult, Result, TrapError, TrapKind, TrapResult};
 pub use ext::{ContractCreateResult, CreateContractAddress, Ext, MessageCallResult};

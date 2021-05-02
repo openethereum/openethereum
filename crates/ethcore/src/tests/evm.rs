@@ -24,7 +24,7 @@ use std::sync::Arc;
 use test_helpers::get_temp_state_with_factory;
 use trace::{NoopTracer, NoopVMTracer};
 use types::transaction::SYSTEM_ADDRESS;
-use vm::{AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
+use vm::{AccessList, ActionParams, ActionValue, ActionType, EnvInfo, ParamsType};
 
 use rustc_hex::FromHex;
 
@@ -60,7 +60,7 @@ fn test_blockhash_eip210(factory: Factory) {
             code: Some(blockhash_contract_code.clone()),
             code_hash: Some(blockhash_contract_code_hash),
             data: Some(H256::from_low_u64_be(i - 1).as_bytes().to_vec()),
-            call_type: CallType::Call,
+            call_type: ActionType::Call,
             params_type: ParamsType::Separate,
             access_list: AccessList::default(),
         };
@@ -84,7 +84,7 @@ fn test_blockhash_eip210(factory: Factory) {
         code: Some(get_prev_hash_code),
         code_hash: Some(get_prev_hash_code_hash),
         data: None,
-        call_type: CallType::Call,
+        call_type: ActionType::Call,
         params_type: ParamsType::Separate,
         access_list: AccessList::default(),
     };

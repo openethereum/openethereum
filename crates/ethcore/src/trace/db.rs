@@ -407,13 +407,12 @@ where
 #[cfg(test)]
 mod tests {
     use ethereum_types::{Address, H256, U256};
-    use evm::CallType;
     use kvdb::DBTransaction;
     use std::{collections::HashMap, sync::Arc};
     use test_helpers::new_db;
     use trace::{
         flat::{FlatBlockTraces, FlatTrace, FlatTransactionTraces},
-        trace::{Action, Call, Res},
+        trace::{Action, Call, CallType,Res},
         AddressesFilter, Config, Database as TraceDatabase, DatabaseExtras, Filter, ImportRequest,
         LocalizedTrace, TraceDB, TraceError,
     };
@@ -505,7 +504,7 @@ mod tests {
                     value: 3.into(),
                     gas: 4.into(),
                     input: vec![],
-                    call_type: CallType::Call,
+                    call_type: Some(CallType::Call).into(),
                 }),
                 result: Res::FailedCall(TraceError::OutOfGas),
             }])]),
@@ -530,7 +529,7 @@ mod tests {
                     value: 3.into(),
                     gas: 4.into(),
                     input: vec![],
-                    call_type: CallType::Call,
+                    call_type: Some(CallType::Call).into(),
                 }),
                 result: Res::FailedCall(TraceError::OutOfGas),
             }])]),
@@ -553,7 +552,7 @@ mod tests {
                 value: U256::from(3),
                 gas: U256::from(4),
                 input: vec![],
-                call_type: CallType::Call,
+                call_type: Some(CallType::Call).into(),
             }),
             result: Res::FailedCall(TraceError::OutOfGas),
             trace_address: vec![],

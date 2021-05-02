@@ -24,7 +24,7 @@ use bytes::Bytes;
 use error::TrapKind;
 use ethereum_types::{Address, H256, U256};
 use hash::keccak;
-use CallType;
+use ActionType;
 use ContractCreateResult;
 use CreateContractAddress;
 use EnvInfo;
@@ -214,7 +214,7 @@ impl Ext for FakeExt {
         value: Option<U256>,
         data: &[u8],
         code_address: &Address,
-        _call_type: CallType,
+        _call_type: ActionType,
         _trap: bool,
     ) -> ::std::result::Result<MessageCallResult, TrapKind> {
         self.calls.insert(FakeCall {

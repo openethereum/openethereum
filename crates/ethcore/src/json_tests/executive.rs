@@ -30,7 +30,7 @@ use std::{path::Path, sync::Arc};
 use test_helpers::get_temp_state;
 use trace::{NoopTracer, NoopVMTracer, Tracer, VMTracer};
 use vm::{
-    self, ActionParams, CallType, ContractCreateResult, CreateContractAddress, EnvInfo, Ext,
+    self, ActionParams, ActionType, ContractCreateResult, CreateContractAddress, EnvInfo, Ext,
     MessageCallResult, ReturnData, Schedule,
 };
 
@@ -180,7 +180,7 @@ where
         value: Option<U256>,
         data: &[u8],
         _code_address: &Address,
-        _call_type: CallType,
+        _call_type: ActionType,
         _trap: bool,
     ) -> Result<MessageCallResult, vm::TrapKind> {
         self.callcreates.push(CallCreate {

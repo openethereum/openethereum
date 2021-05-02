@@ -48,7 +48,7 @@ use ethcore::{json_tests, spec, TrieSpec};
 use ethereum_types::{Address, U256};
 use rustc_hex::FromHex;
 use std::{fmt, fs, path::PathBuf, sync::Arc};
-use vm::{ActionParams, CallType};
+use vm::{ActionParams, ActionType};
 
 mod display;
 mod info;
@@ -302,9 +302,9 @@ fn run_call<T: Informant>(args: Args, informant: T) {
     }
 
     params.call_type = if code.is_none() {
-        CallType::Call
+        ActionType::Call
     } else {
-        CallType::None
+        ActionType::Create
     };
     params.code_address = to;
     params.address = to;

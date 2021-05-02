@@ -56,7 +56,7 @@ use types::{
     transaction::{self, SignedTransaction, UnverifiedTransaction},
     BlockNumber,
 };
-use vm::{ActionValue, CallType, CreateContractAddress, EnvInfo, Schedule};
+use vm::{ActionValue, ActionType, CreateContractAddress, EnvInfo, Schedule};
 
 use block::ExecutedBlock;
 use bytes::Bytes;
@@ -235,7 +235,7 @@ pub fn default_system_or_code_call<'a>(
                 Some(ActionValue::Apparent(U256::zero())),
                 U256::max_value(),
                 Some(data),
-                Some(CallType::StaticCall),
+                Some(ActionType::StaticCall),
             ),
         };
 

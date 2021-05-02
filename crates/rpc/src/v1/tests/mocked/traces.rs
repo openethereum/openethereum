@@ -20,13 +20,11 @@ use ethcore::{
     client::TestBlockChainClient,
     executed::{CallError, Executed},
     trace::{
-        trace::{Action, Call, Res},
+        trace::{Action, Call, Res, CallType},
         LocalizedTrace,
     },
 };
 use ethereum_types::{Address, H256};
-
-use vm::CallType;
 
 use jsonrpc_core::IoHandler;
 use v1::{tests::helpers::TestMinerService, Metadata, Traces, TracesClient};
@@ -46,7 +44,7 @@ fn io() -> Tester {
             value: 0x1.into(),
             gas: 0x100.into(),
             input: vec![1, 2, 3],
-            call_type: CallType::Call,
+            call_type: Some(CallType::Call).into(),
         }),
         result: Res::None,
         subtraces: 0,

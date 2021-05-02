@@ -17,7 +17,7 @@
 //! Evm input params.
 use super::access_list::AccessList;
 use bytes::Bytes;
-use call_type::CallType;
+use action_type::ActionType;
 use ethereum_types::{Address, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_EMPTY};
@@ -87,7 +87,7 @@ pub struct ActionParams {
     /// Input data.
     pub data: Option<Bytes>,
     /// Type of call
-    pub call_type: CallType,
+    pub call_type: ActionType,
     /// Param types encoding
     pub params_type: ParamsType,
     /// Current access list
@@ -108,7 +108,7 @@ impl Default for ActionParams {
             value: ActionValue::Transfer(U256::zero()),
             code: None,
             data: None,
-            call_type: CallType::None,
+            call_type: ActionType::Create,
             params_type: ParamsType::Separate,
             access_list: AccessList::default(),
         }
@@ -130,8 +130,8 @@ impl From<ethjson::vm::Transaction> for ActionParams {
             gas_price: t.gas_price.into(),
             value: ActionValue::Transfer(t.value.into()),
             call_type: match address.is_zero() {
-                true => CallType::None,
-                false => CallType::Call,
+                true => ActionType::Create,
+                false => ActionType::Call,
             }, // TODO @debris is this correct?
             params_type: ParamsType::Separate,
             access_list: AccessList::default(),

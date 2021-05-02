@@ -133,10 +133,9 @@ impl Filter {
 #[cfg(test)]
 mod tests {
     use ethereum_types::{Address, Bloom, BloomInput};
-    use evm::CallType;
     use trace::{
         flat::FlatTrace,
-        trace::{Action, Call, Create, CreateResult, Res, Reward, Suicide},
+        trace::{Action, Call, CallType, Create, CreationMethod, CreateResult, Res, Reward, Suicide},
         AddressesFilter, Filter, RewardType, TraceError,
     };
 
@@ -296,7 +295,7 @@ mod tests {
                 value: 3.into(),
                 gas: 4.into(),
                 input: vec![0x5],
-                call_type: CallType::Call,
+                call_type: Some(CallType::Call).into(),
             }),
             result: Res::FailedCall(TraceError::OutOfGas),
             trace_address: vec![0].into_iter().collect(),
@@ -317,6 +316,7 @@ mod tests {
                 value: 3.into(),
                 gas: 4.into(),
                 init: vec![0x5],
+                creation_method: Some(CreationMethod::Create),
             }),
             result: Res::Create(CreateResult {
                 gas_used: 10.into(),
@@ -436,6 +436,7 @@ mod tests {
                 gas: 4.into(),
                 init: vec![0x5],
                 value: 3.into(),
+                creation_method: Some(CreationMethod::Create),
             }),
             result: Res::FailedCall(TraceError::BadInstruction),
             trace_address: vec![].into_iter().collect(),

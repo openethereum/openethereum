@@ -32,7 +32,7 @@ use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
 use rustc_hex::FromHex;
 use types::{header::Header, BlockNumber};
-use vm::{AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
+use vm::{AccessList, ActionParams, ActionValue, ActionType, EnvInfo, ParamsType};
 
 use builtin::Builtin;
 use engines::{
@@ -789,7 +789,7 @@ impl Spec {
                         value: ActionValue::Transfer(Default::default()),
                         code: Some(Arc::new(constructor.clone())),
                         data: None,
-                        call_type: CallType::None,
+                        call_type: ActionType::Create,
                         params_type: ParamsType::Embedded,
                         access_list: AccessList::default(),
                     };

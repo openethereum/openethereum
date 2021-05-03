@@ -30,6 +30,8 @@ pub struct TransactionRequest {
     pub to: Option<Address>,
     /// Gas Price
     pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: Option<U256>,
     /// Value of transaction in wei
@@ -58,7 +60,9 @@ pub struct FilledTransactionRequest {
     /// Recipient
     pub to: Option<Address>,
     /// Gas Price
-    pub gas_price: U256,
+    pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: U256,
     /// Value of transaction in wei
@@ -81,7 +85,8 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             transaction_type: r.transaction_type,
             from: Some(r.from),
             to: r.to,
-            gas_price: Some(r.gas_price),
+            gas_price: r.gas_price,
+            max_fee_per_gas: r.max_fee_per_gas,
             gas: Some(r.gas),
             value: Some(r.value),
             data: Some(r.data),
@@ -104,6 +109,8 @@ pub struct CallRequest {
     pub to: Option<Address>,
     /// Gas Price
     pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: Option<U256>,
     /// Value

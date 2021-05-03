@@ -52,11 +52,11 @@ impl super::Accounts for Signer {
         nonce: U256,
         password: SignWith,
     ) -> Result<WithToken<SignedTransaction>> {
-        let legacy_tx = Transaction {
+        let mut legacy_tx = Transaction {
             nonce,
             action: filled.to.map_or(Action::Create, Action::Call),
             gas: filled.gas,
-            gas_price: filled.gas_price,
+            gas_price: filled.gas_price.unwrap_or_default(),
             value: filled.value,
             data: filled.data,
         };
@@ -77,9 +77,12 @@ impl super::Accounts for Signer {
                 ))
             }
             Some(TypedTxId::EIP1559Transaction) => {
-                if filled.access_list.is_none() {
+                if let Some(max_fee_per_gas) = filled.max_fee_per_gas {
+                    legacy_tx.gas_price = max_fee_per_gas;
+                } else {
                     return Err(Error::new(ErrorCode::InvalidParams));
                 }
+
                 if let Some(max_inclusion_fee_per_gas) = filled.max_inclusion_fee_per_gas {
                     let transaction = AccessListTx::new(
                         legacy_tx,

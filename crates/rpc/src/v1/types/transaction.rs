@@ -50,7 +50,11 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
     /// Gas Price
-    pub gas_price: U256,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_price: Option<U256>,
+    /// Max fee per gas
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: U256,
     /// Data
@@ -205,6 +209,12 @@ impl Transaction {
             TypedTransaction::Legacy(_) => None,
         };
 
+        let (gas_price, max_fee_per_gas) = match t.as_unsigned() {
+            TypedTransaction::Legacy(_) => (Some(t.tx().gas_price), None),
+            TypedTransaction::AccessList(_) => (Some(t.tx().gas_price), None),
+            TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
+        };
+
         let max_inclusion_fee_per_gas =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
                 Some(tx.max_inclusion_fee_per_gas)
@@ -230,7 +240,8 @@ impl Transaction {
                 Action::Call(ref address) => Some(*address),
             },
             value: t.tx().value,
-            gas_price: t.tx().gas_price,
+            gas_price,
+            max_fee_per_gas,
             gas: t.tx().gas,
             input: Bytes::new(t.tx().data.clone()),
             creates: match t.tx().action {
@@ -273,6 +284,12 @@ impl Transaction {
             TypedTransaction::Legacy(_) => None,
         };
 
+        let (gas_price, max_fee_per_gas) = match t.as_unsigned() {
+            TypedTransaction::Legacy(_) => (Some(t.tx().gas_price), None),
+            TypedTransaction::AccessList(_) => (Some(t.tx().gas_price), None),
+            TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
+        };
+
         let max_inclusion_fee_per_gas =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
                 Some(tx.max_inclusion_fee_per_gas)
@@ -298,7 +315,8 @@ impl Transaction {
                 Action::Call(ref address) => Some(*address),
             },
             value: t.tx().value,
-            gas_price: t.tx().gas_price,
+            gas_price,
+            max_fee_per_gas,
             gas: t.tx().gas,
             input: Bytes::new(t.tx().data.clone()),
             creates: match t.tx().action {
@@ -368,7 +386,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
+            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
         );
     }
 

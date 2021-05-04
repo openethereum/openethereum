@@ -27,7 +27,7 @@ use rlp::Rlp;
 /// View onto transaction rlp. Assumption is this is part of block.
 /// Typed Transaction View. It handles raw bytes to search for particular field.
 /// EIP1559 tx:
-/// 2 | [chainId, nonce, maxInclusionFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]
+/// 2 | [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]
 /// Access tx:
 /// 1 | [chainId, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]
 /// Legacy tx:

@@ -56,7 +56,7 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
             if request.access_list.is_none() {
                 return Err(Error::new(ErrorCode::InvalidParams));
             }
-            if let Some(max_inclusion_fee_per_gas) = request.max_inclusion_fee_per_gas {
+            if let Some(max_priority_fee_per_gas) = request.max_priority_fee_per_gas {
                 let transaction = AccessListTx::new(
                     tx_legacy,
                     request
@@ -68,7 +68,7 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
                 );
                 TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
                     transaction,
-                    max_inclusion_fee_per_gas,
+                    max_priority_fee_per_gas,
                 })
             } else {
                 return Err(Error::new(ErrorCode::InvalidParams));

@@ -2662,7 +2662,7 @@ mod tests {
                     (H160::from(400), vec![]),
                 ],
             ),
-            max_inclusion_fee_per_gas: U256::from(30),
+            max_priority_fee_per_gas: U256::from(30),
         })
         .sign(keypair.secret(), None);
 

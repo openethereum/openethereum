@@ -147,6 +147,12 @@ pub struct Header {
 impl Header {
     pub fn new(h: &EthHeader, eip1559_transition: BlockNumber) -> Self {
         let eip1559_enabled = h.number() >= eip1559_transition;
+        let (gas_limit, gas_target) = if eip1559_enabled {
+            (None, Some(h.gas_limit()))
+        } else {
+            (Some(h.gas_limit()), None)
+        };
+
         Header {
             hash: Some(h.hash()),
 			size: Some(h.rlp().as_raw().len().into()),
@@ -159,20 +165,8 @@ impl Header {
 			receipts_root: h.receipts_root(),
 			number: Some(h.number().into()),
 			gas_used: h.gas_used(),
-			gas_limit: {
-                if eip1559_enabled {
-                    None
-                } else {
-                    Some(h.gas_limit())
-                }
-            },
-            gas_target: {
-                if eip1559_enabled {
-                    Some(h.gas_limit())
-                } else {
-                    None
-                }
-            },
+			gas_limit,
+            gas_target,
 			logs_bloom: h.log_bloom(),
 			timestamp: h.timestamp().into(),
 			difficulty: h.difficulty(),

@@ -83,7 +83,7 @@ pub struct Transaction {
     pub access_list: Option<AccessList>,
     /// miner bribe
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_inclusion_fee_per_gas: Option<U256>,
+    pub max_priority_fee_per_gas: Option<U256>,
 }
 
 /// Local Transaction Status
@@ -215,9 +215,9 @@ impl Transaction {
             TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
         };
 
-        let max_inclusion_fee_per_gas =
+        let max_priority_fee_per_gas =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
-                Some(tx.max_inclusion_fee_per_gas)
+                Some(tx.max_priority_fee_per_gas)
             } else {
                 None
             };
@@ -260,7 +260,7 @@ impl Transaction {
             condition: None,
             transaction_type: t.signed.tx_type().to_U64_option_id(),
             access_list,
-            max_inclusion_fee_per_gas,
+            max_priority_fee_per_gas,
         }
     }
 
@@ -290,9 +290,9 @@ impl Transaction {
             TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
         };
 
-        let max_inclusion_fee_per_gas =
+        let max_priority_fee_per_gas =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
-                Some(tx.max_inclusion_fee_per_gas)
+                Some(tx.max_priority_fee_per_gas)
             } else {
                 None
             };
@@ -335,7 +335,7 @@ impl Transaction {
             condition: None,
             transaction_type: t.tx_type().to_U64_option_id(),
             access_list,
-            max_inclusion_fee_per_gas,
+            max_priority_fee_per_gas,
         }
     }
 

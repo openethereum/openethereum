@@ -83,7 +83,7 @@ impl super::Accounts for Signer {
                     return Err(Error::new(ErrorCode::InvalidParams));
                 }
 
-                if let Some(max_inclusion_fee_per_gas) = filled.max_inclusion_fee_per_gas {
+                if let Some(max_priority_fee_per_gas) = filled.max_priority_fee_per_gas {
                     let transaction = AccessListTx::new(
                         legacy_tx,
                         filled
@@ -95,7 +95,7 @@ impl super::Accounts for Signer {
                     );
                     TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
                         transaction,
-                        max_inclusion_fee_per_gas,
+                        max_priority_fee_per_gas,
                     })
                 } else {
                     return Err(Error::new(ErrorCode::InvalidParams));

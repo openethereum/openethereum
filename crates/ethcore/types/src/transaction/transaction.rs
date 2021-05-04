@@ -129,7 +129,7 @@ pub mod signature {
 pub struct Transaction {
     /// Nonce.
     pub nonce: U256,
-    /// Gas price.
+    /// Gas price for non 1559 transactions. MaxFeePerGas for 1559 transactions.
     pub gas_price: U256,
     /// Gas paid up front for transaction execution.
     pub gas: U256,
@@ -372,7 +372,7 @@ impl AccessListTx {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EIP1559TransactionTx {
     pub transaction: AccessListTx,
-    pub max_inclusion_fee_per_gas: U256, //miner bribe
+    pub max_priority_fee_per_gas: U256,
 }
 
 impl EIP1559TransactionTx {
@@ -388,7 +388,7 @@ impl EIP1559TransactionTx {
         self.transaction.tx_mut()
     }
 
-    // decode bytes by this payload spec: rlp([2, [chainId, nonce, maxInclusionFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    // decode bytes by this payload spec: rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
         let tx_rlp = &Rlp::new(tx);
 
@@ -399,7 +399,7 @@ impl EIP1559TransactionTx {
 
         let chain_id = Some(tx_rlp.val_at(0)?);
 
-        let max_inclusion_fee_per_gas = tx_rlp.val_at(2)?;
+        let max_priority_fee_per_gas = tx_rlp.val_at(2)?;
 
         let tx = Transaction {
             nonce: tx_rlp.val_at(1)?,
@@ -437,7 +437,7 @@ impl EIP1559TransactionTx {
         Ok(UnverifiedTransaction::new(
             TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
                 transaction: AccessListTx::new(tx, accl),
-                max_inclusion_fee_per_gas,
+                max_priority_fee_per_gas,
             }),
             chain_id,
             signature,
@@ -460,7 +460,7 @@ impl EIP1559TransactionTx {
         stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
 
         stream.append(&self.tx().nonce);
-        stream.append(&self.max_inclusion_fee_per_gas);
+        stream.append(&self.max_priority_fee_per_gas);
         stream.append(&self.tx().gas_price);
         stream.append(&self.tx().gas);
         stream.append(&self.tx().action);
@@ -485,7 +485,7 @@ impl EIP1559TransactionTx {
         stream
     }
 
-    // encode by this payload spec: 0x02 | rlp([2, [chainId, nonce, maxInclusionFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    // encode by this payload spec: 0x02 | rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
     pub fn encode(
         &self,
         chain_id: Option<u64>,
@@ -642,7 +642,7 @@ impl TypedTransaction {
         match self {
             Self::EIP1559Transaction(tx) => min(
                 self.tx().gas_price,
-                tx.max_inclusion_fee_per_gas + block_base_fee.unwrap_or_default(),
+                tx.max_priority_fee_per_gas + block_base_fee.unwrap_or_default(),
             ),
             Self::AccessList(_) => self.tx().gas_price,
             Self::Legacy(_) => self.tx().gas_price,
@@ -1301,7 +1301,7 @@ mod tests {
                     (H160::from(400), vec![]),
                 ],
             ),
-            max_inclusion_fee_per_gas: U256::from(100),
+            max_priority_fee_per_gas: U256::from(100),
         })
         .sign(&key.secret(), Some(69));
         let encoded = t.encode();

@@ -136,7 +136,7 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             data: request.data.unwrap_or_else(Vec::new),
             condition: request.condition,
             access_list: request.access_list,
-            max_inclusion_fee_per_gas: request.max_inclusion_fee_per_gas,
+            max_priority_fee_per_gas: request.max_priority_fee_per_gas,
         }))
     }
 

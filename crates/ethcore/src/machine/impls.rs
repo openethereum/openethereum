@@ -182,12 +182,8 @@ impl EthereumMachine {
         call_type: Option<CallType>,
     ) -> Result<Vec<u8>, Error> {
         let env_info = {
-            let elasticity_multiplier = if self.schedule(block.header.number()).eip1559 {
-                self.params.elasticity_multiplier
-            } else {
-                U256::from(1)
-            };
-            let mut env_info = block.env_info(elasticity_multiplier);
+            let mut env_info =
+                block.env_info(self.schedule(block.header.number()).elasticity_multiplier);
             env_info.gas_limit = env_info.gas_used.saturating_add(gas);
             env_info
         };

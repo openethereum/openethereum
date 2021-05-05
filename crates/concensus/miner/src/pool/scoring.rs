@@ -58,8 +58,7 @@ pub enum ScoringEvent {
 pub struct NonceAndGasPrice {
     /// Strategy for prioritization
     pub strategy: PrioritizationStrategy,
-    /// Block base fee of the latest block, exists if the EIP 1559 is activated. If doesnt exist, scoring
-    /// should be done based on gas_price
+    /// Block base fee. Exists if the EIP 1559 is activated.
     pub block_base_fee: Option<U256>,
 }
 
@@ -80,7 +79,7 @@ impl NonceAndGasPrice {
             return true;
         }
 
-        old.typed_gas_price(self.block_base_fee) > new.typed_gas_price(self.block_base_fee)
+        old.effective_gas_price(self.block_base_fee) > new.effective_gas_price(self.block_base_fee)
     }
 }
 
@@ -100,8 +99,8 @@ where
             return scoring::Choice::InsertNew;
         }
 
-        let old_gp = old.typed_gas_price(self.block_base_fee);
-        let new_gp = new.typed_gas_price(self.block_base_fee);
+        let old_gp = old.effective_gas_price(self.block_base_fee);
+        let new_gp = new.effective_gas_price(self.block_base_fee);
 
         let min_required_gp = bump_gas_price(old_gp);
 
@@ -126,7 +125,7 @@ where
                 assert!(i < txs.len());
                 assert!(i < scores.len());
 
-                scores[i] = txs[i].typed_gas_price(self.block_base_fee);
+                scores[i] = txs[i].effective_gas_price(self.block_base_fee);
                 let boost = match txs[i].priority() {
                     super::Priority::Local => 15,
                     super::Priority::Retracted => 10,
@@ -148,7 +147,7 @@ where
                     }
                     ScoringEvent::BlockBaseFeeChanged => {
                         for i in 0..txs.len() {
-                            scores[i] = txs[i].transaction.typed_gas_price(self.block_base_fee);
+                            scores[i] = txs[i].transaction.effective_gas_price(self.block_base_fee);
                         }
                     }
                 }

@@ -73,8 +73,8 @@ where
         } else if both_local {
             Choice::InsertNew
         } else {
-            let old_score = (old.priority(), old.typed_gas_price(self.block_base_fee));
-            let new_score = (new.priority(), new.typed_gas_price(self.block_base_fee));
+            let old_score = (old.priority(), old.effective_gas_price(self.block_base_fee));
+            let new_score = (new.priority(), new.effective_gas_price(self.block_base_fee));
 
             if new_score > old_score {
                 // Check if this is a replacement transaction.

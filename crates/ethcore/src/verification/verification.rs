@@ -85,11 +85,8 @@ pub fn verify_block_basic(
 
     // t_nb 4.6 call engine.gas_limit_override (Used only by Aura)
     if let Some(expected_gas_limit) = engine.gas_limit_override(&block.header) {
-        let gas_limit = if engine.schedule(block.header.number()).eip1559 {
-            block.header.gas_limit() * engine.params().elasticity_multiplier
-        } else {
-            *block.header.gas_limit()
-        };
+        let gas_limit =
+            block.header.gas_limit() * engine.schedule(block.header.number()).elasticity_multiplier;
 
         if gas_limit != expected_gas_limit {
             return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
@@ -367,11 +364,7 @@ pub fn verify_header_params(
         })));
     }
 
-    let gas_limit = if engine.schedule(header.number()).eip1559 {
-        header.gas_limit() * engine.params().elasticity_multiplier
-    } else {
-        *header.gas_limit()
-    };
+    let gas_limit = header.gas_limit() * engine.schedule(header.number()).elasticity_multiplier;
 
     // check if the block used too much gas
     if header.gas_used() > &gas_limit {

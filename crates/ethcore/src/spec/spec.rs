@@ -227,6 +227,9 @@ impl CommonParams {
         schedule.eip2930 = block_number >= self.eip2930_transition;
         schedule.eip1559 = block_number >= self.eip1559_transition;
         schedule.eip3198 = block_number >= self.eip3198_transition;
+        if schedule.eip1559 {
+            schedule.elasticity_multiplier = self.elasticity_multiplier.as_usize();
+        }
 
         if block_number >= self.eip1884_transition {
             schedule.have_selfbalance = true;

@@ -512,11 +512,7 @@ impl Miner {
         let engine_params = self.engine.params();
         let schedule = self.engine.schedule(block_number);
         let min_tx_gas: U256 = schedule.tx_gas.into();
-        let gas_limit = if schedule.eip1559 {
-            open_block.header.gas_limit() * engine_params.elasticity_multiplier
-        } else {
-            *open_block.header.gas_limit()
-        };
+        let gas_limit = open_block.header.gas_limit() * schedule.elasticity_multiplier;
         let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
             >= engine_params.dust_protection_transition
         {
@@ -1451,14 +1447,13 @@ impl miner::MinerService for Miner {
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
         let schedule = self.engine.schedule(chain.best_block_header().number() + 1);
-        let (base_fee, gas_limit) = if schedule.eip1559 {
-            (
-                Some(self.engine.calculate_base_fee(&chain.best_block_header())),
-                chain.best_block_header().gas_limit() * self.engine.params().elasticity_multiplier,
-            )
+        let base_fee = if schedule.eip1559 {
+            Some(self.engine.calculate_base_fee(&chain.best_block_header()))
         } else {
-            (None, *chain.best_block_header().gas_limit())
+            None
         };
+        let gas_limit = chain.best_block_header().gas_limit() * schedule.elasticity_multiplier;
+
         self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).

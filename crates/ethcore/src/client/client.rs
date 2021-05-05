@@ -1153,13 +1153,8 @@ impl Client {
             difficulty: header.difficulty(),
             last_hashes: self.build_last_hashes(&header.parent_hash()),
             gas_used: U256::default(),
-            gas_limit: header.gas_limit() * {
-                if self.engine.schedule(header.number()).eip1559 {
-                    self.engine.params().elasticity_multiplier
-                } else {
-                    U256::from(1)
-                }
-            },
+            gas_limit: header.gas_limit()
+                * self.engine.schedule(header.number()).elasticity_multiplier,
             base_fee: header.base_fee(),
         })
     }
@@ -1999,11 +1994,8 @@ impl Call for Client {
         header: &Header,
     ) -> Result<U256, CallError> {
         let (mut upper, max_upper, env_info) = {
-            let init = if self.engine.schedule(header.number()).eip1559 {
-                header.gas_limit() * self.engine.params().elasticity_multiplier
-            } else {
-                *header.gas_limit()
-            };
+            let init =
+                header.gas_limit() * self.engine.schedule(header.number()).elasticity_multiplier;
             let max = init * U256::from(10);
 
             let env_info = EnvInfo {
@@ -2654,11 +2646,8 @@ impl BlockChainClient for Client {
         const PROPAGATE_FOR_BLOCKS: u32 = 4;
         const MIN_TX_TO_PROPAGATE: usize = 256;
 
-        let block_gas_limit = if self.latest_schedule().eip1559 {
-            self.best_block_header().gas_limit() * self.engine.params().elasticity_multiplier
-        } else {
-            *self.best_block_header().gas_limit()
-        };
+        let block_gas_limit =
+            self.best_block_header().gas_limit() * self.latest_schedule().elasticity_multiplier;
         let min_tx_gas: U256 = self.latest_schedule().tx_gas.into();
 
         let max_len = if min_tx_gas.is_zero() {

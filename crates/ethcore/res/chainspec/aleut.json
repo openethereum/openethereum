@@ -31,7 +31,7 @@
 		"eip2929Transition": "0x0",
 		"eip2930Transition": "0x0",
 		"eip658Transition": "0x0",
-        "eip1559Transition": "0xa",
+		"eip1559Transition": "0xa",
 		"eip3198Transition": "0xa",
 		"gasLimitBoundDivisor": "0x0400",
 		"maxCodeSize": 24576,

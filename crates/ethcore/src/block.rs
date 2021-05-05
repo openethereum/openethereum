@@ -132,7 +132,7 @@ impl ExecutedBlock {
     /// Get the environment info concerning this block.
     /// Elasticity multiplier is introduced by EIP1559. After 1559 activation, gas_limit field of header
     /// is actually gas_target, therefore gas_limit = gas_target * elasticity_multiplier
-    pub fn env_info(&self, elasticity_multiplier: U256) -> EnvInfo {
+    pub fn env_info(&self, elasticity_multiplier: usize) -> EnvInfo {
         // TODO: memoise.
         EnvInfo {
             number: self.header.number(),
@@ -266,12 +266,11 @@ impl<'x> OpenBlock<'x> {
             return Err(TransactionError::AlreadyImported.into());
         }
 
-        let elasticity_multiplier = if self.engine.schedule(self.block.header.number()).eip1559 {
-            self.engine.params().elasticity_multiplier
-        } else {
-            U256::from(1)
-        };
-        let env_info = self.block.env_info(elasticity_multiplier);
+        let env_info = self.block.env_info(
+            self.engine
+                .schedule(self.block.header.number())
+                .elasticity_multiplier,
+        );
         let outcome = self.block.state.apply(
             &env_info,
             self.engine.machine(),

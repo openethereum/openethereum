@@ -632,7 +632,7 @@ impl TypedTransaction {
         }
     }
 
-    pub fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         match self {
             Self::EIP1559Transaction(tx) => min(
                 self.tx().gas_price,

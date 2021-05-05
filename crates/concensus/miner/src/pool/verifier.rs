@@ -46,7 +46,7 @@ pub struct Options {
     pub minimal_gas_price: U256,
     /// Current block gas limit.
     pub block_gas_limit: U256,
-    /// Current block base fee. Exists if the EIP 1559 is activated
+    /// Block base fee. Exists if the EIP 1559 is activated.
     pub block_base_fee: Option<U256>,
     /// Maximal gas limit for a single transaction.
     pub tx_gas_limit: U256,
@@ -96,7 +96,7 @@ impl Transaction {
         }
     }
 
-    /// Return transaction gas price (actually max fee per gas)
+    /// Return transaction gas price for non 1559 transactions or maxFeePerGas for 1559 transactions.
     pub fn gas_price(&self) -> &U256 {
         match *self {
             Transaction::Unverified(ref tx) => &tx.tx().gas_price,
@@ -114,11 +114,11 @@ impl Transaction {
     }
 
     /// Return actual gas price of the transaction depending on the current block base fee
-    pub fn typed_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         match *self {
-            Transaction::Unverified(ref tx) => tx.typed_gas_price(block_base_fee),
-            Transaction::Retracted(ref tx) => tx.typed_gas_price(block_base_fee),
-            Transaction::Local(ref tx) => tx.typed_gas_price(block_base_fee),
+            Transaction::Unverified(ref tx) => tx.effective_gas_price(block_base_fee),
+            Transaction::Retracted(ref tx) => tx.effective_gas_price(block_base_fee),
+            Transaction::Local(ref tx) => tx.effective_gas_price(block_base_fee),
         }
     }
 
@@ -225,7 +225,7 @@ impl<C: Client> txpool::Verifier<Transaction>
         }
 
         let is_own = tx.is_local();
-        let gas_price = tx.typed_gas_price(self.options.block_base_fee);
+        let gas_price = tx.effective_gas_price(self.options.block_base_fee);
         // Quick exit for non-service and non-local transactions
         //
         // We're checking if the transaction is below configured minimal gas price
@@ -253,10 +253,13 @@ impl<C: Client> txpool::Verifier<Transaction>
                         "[{:?}] Rejected tx early, cause it doesn't have any chance to get to the pool: (gas price: {} < {})",
                         hash,
                         gas_price,
-                        vtx.transaction.typed_gas_price(self.options.block_base_fee),
+                        vtx.transaction.effective_gas_price(self.options.block_base_fee),
                     );
                     return Err(transaction::Error::TooCheapToReplace {
-                        prev: Some(vtx.transaction.typed_gas_price(self.options.block_base_fee)),
+                        prev: Some(
+                            vtx.transaction
+                                .effective_gas_price(self.options.block_base_fee),
+                        ),
                         new: Some(gas_price),
                     });
                 }
@@ -315,10 +318,10 @@ impl<C: Client> txpool::Verifier<Transaction>
             }
         }
 
-        // transactions with sender having account balance lower than max_fee_cap and higher than
-        // block_base_fee + tip should be considered into tx pool, since what they actually pay is a
+        // transactions with sender having account balance lower than maxFeePerGas and higher than
+        // effective_gas_price should be considered into tx pool, since what they actually pay is a
         // lower value between these two.
-        let gas_price = transaction.typed_gas_price(self.options.block_base_fee);
+        let gas_price = transaction.effective_gas_price(self.options.block_base_fee);
 
         let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);

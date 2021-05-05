@@ -157,6 +157,8 @@ pub struct Schedule {
     pub eip2930: bool,
     /// Enable EIP-1559 rules
     pub eip1559: bool,
+    /// Elasticity multiplier. EIP-1559 related.
+    pub elasticity_multiplier: usize,
     /// Enable BASEFEE opcode
     pub eip3198: bool,
 }
@@ -307,6 +309,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
+            elasticity_multiplier: 1,
             eip3198: false,
         }
     }
@@ -369,6 +372,7 @@ impl Schedule {
     pub fn new_london() -> Schedule {
         let mut schedule = Self::new_berlin();
         schedule.eip1559 = true;
+        schedule.elasticity_multiplier = 2;
         schedule.eip3198 = true;
 
         schedule
@@ -438,6 +442,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
+            elasticity_multiplier: 1,
             eip3198: false,
         }
     }

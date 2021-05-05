@@ -17,23 +17,21 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crypto::DEFAULT_MAC;
+use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
     client::{BlockChainClient, Call, EngineInfo, StateClient},
-    miner::{self, MinerService},
+    miner::{self, MinerService, TransactionFilter},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
 };
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
-use ethkey::{crypto::ecies, Brain, Generator};
+use ethkey::Brain;
 use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use stats::PrometheusMetrics;
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
-use version::version_data;
-
 use v1::{
     helpers::{
         self,
@@ -50,6 +48,7 @@ use v1::{
         Transaction, TransactionStats,
     },
 };
+use version::version_data;
 use Host;
 
 /// Parity implementation.
@@ -214,10 +213,7 @@ where
     }
 
     fn phrase_to_address(&self, phrase: String) -> Result<H160> {
-        Ok(Brain::new(phrase)
-            .generate()
-            .expect("Brain::generate always returns Ok; qed")
-            .address())
+        Ok(Brain::new(phrase).generate().address())
     }
 
     fn list_accounts(
@@ -269,10 +265,15 @@ where
             .map(Into::into)
     }
 
-    fn pending_transactions(&self, limit: Option<usize>) -> Result<Vec<Transaction>> {
-        let ready_transactions = self.miner.ready_transactions(
+    fn pending_transactions(
+        &self,
+        limit: Option<usize>,
+        filter: Option<TransactionFilter>,
+    ) -> Result<Vec<Transaction>> {
+        let ready_transactions = self.miner.ready_transactions_filtered(
             &*self.client,
             limit.unwrap_or_else(usize::max_value),
+            filter,
             miner::PendingOrdering::Priority,
         );
 

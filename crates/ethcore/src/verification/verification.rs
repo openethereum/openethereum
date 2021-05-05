@@ -28,7 +28,7 @@ use std::{
 
 use bytes::Bytes;
 use hash::keccak;
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::Rlp;
 use triehash::ordered_trie_root;
 use unexpected::{Mismatch, OutOfBounds};
@@ -44,6 +44,7 @@ use verification::queue::kind::blocks::Unverified;
 use time_utils::CheckedSystemTime;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
+#[derive(MallocSizeOf)]
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
@@ -53,14 +54,6 @@ pub struct PreverifiedBlock {
     pub uncles: Vec<Header>,
     /// Block bytes
     pub bytes: Bytes,
-}
-
-impl HeapSizeOf for PreverifiedBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.bytes.heap_size_of_children()
-    }
 }
 
 /// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
@@ -90,7 +83,22 @@ pub fn verify_block_basic(
         }
     }
 
-    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
+    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura)
+    if let Some(expected_gas_limit) = engine.gas_limit_override(&block.header) {
+        let gas_limit = if engine.schedule(block.header.number()).eip1559 {
+            block.header.gas_limit() * engine.params().elasticity_multiplier
+        } else {
+            *block.header.gas_limit()
+        };
+
+        if gas_limit != expected_gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(expected_gas_limit),
+                max: Some(expected_gas_limit),
+                found: gas_limit,
+            })));
+        }
+    }
 
     // t_nb 4.7 for every transaction call engine.verify_transaction_basic
     for t in &block.transactions {
@@ -373,25 +381,26 @@ pub fn verify_header_params(
             found: *header.gas_used(),
         })));
     }
-    let min_gas_limit = engine.params().min_gas_limit;
-    if gas_limit < min_gas_limit {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas_limit),
-            max: None,
-            found: gas_limit,
-        })));
-    }
-    if let Some(limit) = engine.maximum_gas_limit() {
-        if gas_limit > limit {
-            return Err(From::from(::error::BlockError::InvalidGasLimit(
-                OutOfBounds {
+    if engine.gas_limit_override(header).is_none() {
+        let min_gas_limit = engine.min_gas_limit();
+        if gas_limit < min_gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas_limit),
+                max: None,
+                found: gas_limit,
+            })));
+        }
+        if let Some(limit) = engine.maximum_gas_limit() {
+            if gas_limit > limit {
+                return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                     min: None,
                     max: Some(limit),
                     found: gas_limit,
-                },
-            )));
+                })));
+            }
         }
     }
+
     let maximum_extra_data_size = engine.maximum_extra_data_size();
     if header.number() != 0 && header.extra_data().len() > maximum_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
@@ -450,8 +459,6 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         "Parent hash should already have been verified; qed"
     );
 
-    let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
-
     if !engine.is_timestamp_valid(header.timestamp(), parent.timestamp()) {
         let now = SystemTime::now();
         let min = CheckedSystemTime::checked_add(
@@ -485,18 +492,21 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
 
     // check if the block changed the gas target too much
     // Comparing two blocks before eip1559 activation is based on gas_limit of those blocks
-    // Comparing fork block and his parent is based on comparing of gas_target of fork block
+    // Comparing EIP1559 fork block and his parent is based on comparing of gas_target of fork block
     // and gas_limit of his parent
     // Comparing two blocks after eip1559 activation is based on gas_target of those blocks
-    let parent_gas_limit = *parent.gas_limit();
-    let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
-    let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
-    if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas),
-            max: Some(max_gas),
-            found: *header.gas_limit(),
-        })));
+    if engine.gas_limit_override(header).is_none() {
+        let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
+        let parent_gas_limit = *parent.gas_limit();
+        let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
+        let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
+        if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas),
+                max: Some(max_gas),
+                found: *header.gas_limit(),
+            })));
+        }
     }
 
     // check if the base fee is correct
@@ -548,10 +558,10 @@ mod tests {
     use super::*;
 
     use blockchain::{BlockDetails, BlockReceipts, TransactionAddress};
+    use crypto::publickey::{Generator, Random};
     use engines::EthEngine;
     use error::{BlockError::*, ErrorKind};
-    use ethereum_types::{BloomRef, H256, U256};
-    use ethkey::{Generator, Random};
+    use ethereum_types::{Address, BloomRef, H256, U256};
     use hash::keccak;
     use rlp;
     use spec::{CommonParams, Spec};
@@ -776,7 +786,7 @@ mod tests {
             // that's an invalid transaction list rlp
             let invalid_transactions = vec![vec![0u8]];
             header.set_transactions_root(ordered_trie_root(&invalid_transactions));
-            header.set_gas_limit(engine.params().min_gas_limit);
+            header.set_gas_limit(engine.min_gas_limit());
             rlp.append(&header);
             rlp.append_list::<Vec<u8>, _>(&invalid_transactions);
             rlp.append_raw(&rlp::EMPTY_LIST_RLP, 1);
@@ -795,12 +805,12 @@ mod tests {
         let spec = Spec::new_test();
         let engine = &*spec.engine;
 
-        let min_gas_limit = engine.params().min_gas_limit;
+        let min_gas_limit = engine.min_gas_limit();
         good.set_gas_limit(min_gas_limit);
         good.set_timestamp(40);
         good.set_number(10);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
 
         let tr1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
@@ -823,7 +833,7 @@ mod tests {
         .sign(keypair.secret(), None);
 
         let tr3 = TypedTransaction::Legacy(Transaction {
-            action: Action::Call(0x0.into()),
+            action: Action::Call(Address::from_low_u64_be(0x0)),
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
@@ -900,7 +910,7 @@ mod tests {
         bad_header.set_transactions_root(eip86_transactions_root.clone());
         bad_header.set_uncles_hash(good_uncles_hash.clone());
         match basic_test(&create_test_block_with_data(&bad_header, &eip86_transactions, &good_uncles), engine) {
-			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &::ethkey::Error::InvalidSignature.into() => (),
+			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &crypto::publickey::Error::InvalidSignature.into() => (),
 			e => panic!("Block verification failed.\nExpected: Transaction Error (Invalid Signature)\nGot: {:?}", e),
 		}
 
@@ -1131,8 +1141,8 @@ mod tests {
 
     #[test]
     fn dust_protection() {
+        use crypto::publickey::{Generator, Random};
         use engines::NullEngine;
-        use ethkey::{Generator, Random};
         use machine::EthereumMachine;
         use types::transaction::{Action, Transaction};
 
@@ -1143,7 +1153,7 @@ mod tests {
         let mut header = Header::default();
         header.set_number(1);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let bad_transactions: Vec<_> = (0..3)
             .map(|i| {
                 TypedTransaction::Legacy(Transaction {

@@ -679,6 +679,7 @@ impl From<(H256, Executed)> for TraceResultsWithTransactionHash {
 mod tests {
     use super::*;
     use ethcore::trace::TraceError;
+    use ethereum_types::{Address, H256};
     use serde_json;
     use std::collections::BTreeMap;
     use v1::types::Bytes;
@@ -702,8 +703,8 @@ mod tests {
     fn test_trace_call_serialize() {
         let t = LocalizedTrace {
             action: Action::Call(Call {
-                from: 4.into(),
-                to: 5.into(),
+                from: Address::from_low_u64_be(4),
+                to: Address::from_low_u64_be(5),
                 value: 6.into(),
                 gas: 7.into(),
                 input: Bytes::new(vec![0x12, 0x34]),
@@ -716,9 +717,9 @@ mod tests {
             trace_address: vec![10],
             subtraces: 1,
             transaction_position: Some(11),
-            transaction_hash: Some(12.into()),
+            transaction_hash: Some(H256::from_low_u64_be(12)),
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -731,8 +732,8 @@ mod tests {
     fn test_trace_failed_call_serialize() {
         let t = LocalizedTrace {
             action: Action::Call(Call {
-                from: 4.into(),
-                to: 5.into(),
+                from: Address::from_low_u64_be(4),
+                to: Address::from_low_u64_be(5),
                 value: 6.into(),
                 gas: 7.into(),
                 input: Bytes::new(vec![0x12, 0x34]),
@@ -742,9 +743,9 @@ mod tests {
             trace_address: vec![10],
             subtraces: 1,
             transaction_position: Some(11),
-            transaction_hash: Some(12.into()),
+            transaction_hash: Some(H256::from_low_u64_be(12)),
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -757,7 +758,7 @@ mod tests {
     fn test_trace_create_serialize() {
         let t = LocalizedTrace {
             action: Action::Create(Create {
-                from: 4.into(),
+                from: Address::from_low_u64_be(4),
                 value: 6.into(),
                 gas: 7.into(),
                 init: Bytes::new(vec![0x12, 0x34]),
@@ -765,14 +766,14 @@ mod tests {
             result: Res::Create(CreateResult {
                 gas_used: 8.into(),
                 code: vec![0x56, 0x78].into(),
-                address: 0xff.into(),
+                address: Address::from_low_u64_be(0xff),
             }),
             trace_address: vec![10],
             subtraces: 1,
             transaction_position: Some(11),
-            transaction_hash: Some(12.into()),
+            transaction_hash: Some(H256::from_low_u64_be(12)),
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -785,7 +786,7 @@ mod tests {
     fn test_trace_failed_create_serialize() {
         let t = LocalizedTrace {
             action: Action::Create(Create {
-                from: 4.into(),
+                from: Address::from_low_u64_be(4),
                 value: 6.into(),
                 gas: 7.into(),
                 init: Bytes::new(vec![0x12, 0x34]),
@@ -794,9 +795,9 @@ mod tests {
             trace_address: vec![10],
             subtraces: 1,
             transaction_position: Some(11),
-            transaction_hash: Some(12.into()),
+            transaction_hash: Some(H256::from_low_u64_be(12)),
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -809,17 +810,17 @@ mod tests {
     fn test_trace_suicide_serialize() {
         let t = LocalizedTrace {
             action: Action::Suicide(Suicide {
-                address: 4.into(),
-                refund_address: 6.into(),
+                address: Address::from_low_u64_be(4),
+                refund_address: Address::from_low_u64_be(6),
                 balance: 7.into(),
             }),
             result: Res::None,
             trace_address: vec![10],
             subtraces: 1,
             transaction_position: Some(11),
-            transaction_hash: Some(12.into()),
+            transaction_hash: Some(H256::from_low_u64_be(12)),
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -832,7 +833,7 @@ mod tests {
     fn test_trace_reward_serialize() {
         let t = LocalizedTrace {
             action: Action::Reward(Reward {
-                author: 4.into(),
+                author: Address::from_low_u64_be(4),
                 value: 6.into(),
                 reward_type: RewardType::Block,
             }),
@@ -842,7 +843,7 @@ mod tests {
             transaction_position: None,
             transaction_hash: None,
             block_number: 13,
-            block_hash: 14.into(),
+            block_hash: H256::from_low_u64_be(14),
         };
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
@@ -904,15 +905,15 @@ mod tests {
     #[test]
     fn test_statediff_serialize() {
         let t = StateDiff(map![
-            42.into() => AccountDiff {
+            Address::from_low_u64_be(42) => AccountDiff {
                 balance: Diff::Same,
                 nonce: Diff::Born(1.into()),
                 code: Diff::Same,
                 storage: map![
-                    42.into() => Diff::Same
+                    H256::from_low_u64_be(42) => Diff::Same
                 ]
             },
-            69.into() => AccountDiff {
+            Address::from_low_u64_be(69) => AccountDiff {
                 balance: Diff::Same,
                 nonce: Diff::Changed(ChangedType { from: 1.into(), to: 0.into() }),
                 code: Diff::Died(vec![96].into()),

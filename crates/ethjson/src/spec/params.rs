@@ -16,9 +16,11 @@
 
 //! Spec params deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use uint::{self, Uint};
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    uint::{self, Uint},
+};
 
 /// Spec params.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -156,10 +158,9 @@ pub struct Params {
 
 #[cfg(test)]
 mod tests {
+    use crate::{spec::params::Params, uint::Uint};
     use ethereum_types::U256;
     use serde_json;
-    use spec::params::Params;
-    use uint::Uint;
 
     #[test]
     fn params_deserialization() {

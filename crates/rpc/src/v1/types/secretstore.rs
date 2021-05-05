@@ -32,13 +32,14 @@ pub struct EncryptedDocumentKey {
 #[cfg(test)]
 mod tests {
     use super::EncryptedDocumentKey;
+    use ethereum_types::H512;
     use serde_json;
 
     #[test]
     fn test_serialize_encrypted_document_key() {
         let initial = EncryptedDocumentKey {
-            common_point: 1.into(),
-            encrypted_point: 2.into(),
+            common_point: H512::from_low_u64_be(1),
+            encrypted_point: H512::from_low_u64_be(2),
             encrypted_key: vec![3].into(),
         };
 
@@ -49,8 +50,8 @@ mod tests {
         );
 
         let deserialized: EncryptedDocumentKey = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.common_point, 1.into());
-        assert_eq!(deserialized.encrypted_point, 2.into());
+        assert_eq!(deserialized.common_point, H512::from_low_u64_be(1));
+        assert_eq!(deserialized.encrypted_point, H512::from_low_u64_be(2));
         assert_eq!(deserialized.encrypted_key, vec![3].into());
     }
 }

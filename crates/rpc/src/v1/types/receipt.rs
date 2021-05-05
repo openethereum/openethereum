@@ -140,6 +140,7 @@ impl From<TypedReceipt> for Receipt {
 
 #[cfg(test)]
 mod tests {
+    use ethereum_types::{Bloom, H256};
     use serde_json;
     use types::transaction::TypedTxId;
     use v1::types::{Log, Receipt};
@@ -152,7 +153,7 @@ mod tests {
             from: None,
             to: None,
             transaction_type: TypedTxId::AccessList.to_U64_option_id(),
-            transaction_hash: Some(0.into()),
+            transaction_hash: Some(H256::zero()),
             transaction_index: Some(0.into()),
             block_hash: Some(
                 "ed76641c68a1c641aee09a94b3b471f4dc0316efe5ac19cf488e2674cf8d05b5"
@@ -180,15 +181,15 @@ mod tests {
                         .unwrap(),
                 ),
                 block_number: Some(0x4510c.into()),
-                transaction_hash: Some(0.into()),
+                transaction_hash: Some(H256::zero()),
                 transaction_index: Some(0.into()),
                 transaction_log_index: None,
                 log_index: Some(1.into()),
                 log_type: "mined".into(),
                 removed: false,
             }],
-            logs_bloom: 15.into(),
-            state_root: Some(10.into()),
+            logs_bloom: Bloom::from_low_u64_be(15),
+            state_root: Some(H256::from_low_u64_be(10)),
             status_code: Some(1u64.into()),
         };
 

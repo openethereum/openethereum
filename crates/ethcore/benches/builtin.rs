@@ -25,10 +25,13 @@ extern crate ethereum_types;
 extern crate parity_bytes as bytes;
 extern crate rustc_hex;
 
+use std::str::FromStr;
+
 use bytes::BytesRef;
 use criterion::{Bencher, Criterion};
 use ethcore::{ethereum::new_byzantium_test_machine, machine::EthereumMachine};
 use ethcore_builtin::Builtin;
+use ethereum_types::H160;
 use rustc_hex::FromHex;
 
 lazy_static! {
@@ -45,7 +48,10 @@ impl<'a> BuiltinBenchmark<'a> {
     fn new(builtin_address: &'static str, input: &str, expected: &str) -> BuiltinBenchmark<'a> {
         let builtins = BYZANTIUM_MACHINE.builtins();
 
-        let builtin = builtins.get(&builtin_address.into()).unwrap().clone();
+        let builtin = builtins
+            .get(&H160::from_str(builtin_address).unwrap())
+            .unwrap()
+            .clone();
         let input = FromHex::from_hex(input).unwrap();
         let expected = FromHex::from_hex(expected).unwrap();
 

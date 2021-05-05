@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use accounts::{AccountProvider, AccountProviderSettings};
 use ethereum_types::Address;
@@ -76,7 +76,9 @@ fn rpc_parity_accounts_info() {
     assert_eq!(accounts.len(), 1);
     let address = accounts[0];
 
-    tester.accounts.set_address_name(1.into(), "XX".into());
+    tester
+        .accounts
+        .set_address_name(Address::from_low_u64_be(1), "XX".into());
     tester
         .accounts
         .set_account_name(address.clone(), "Test".into())
@@ -645,7 +647,7 @@ fn should_import_wallet() {
 
     let account_meta = tester
         .accounts
-        .account_meta("0x00bac56a8a27232baa044c03f43bf3648c961735".into())
+        .account_meta(Address::from_str("00bac56a8a27232baa044c03f43bf3648c961735").unwrap())
         .unwrap();
     let account_uuid: String = account_meta.uuid.unwrap().into();
 

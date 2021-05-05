@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey::{Generator, Random};
 use ethcore::client::{Executed, TestBlockChainClient, TransactionId};
 use ethcore_logger::RotatingLogger;
-use ethereum_types::{Address, H256, U256};
-use ethstore::ethkey::{Generator, Random};
+use ethereum_types::{Address, BigEndianHash, Bloom, H256, U256};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use sync::ManageNetwork;
 use types::{
     receipt::{LocalizedReceipt, TransactionOutcome},
@@ -290,11 +290,90 @@ fn rpc_parity_pending_transactions() {
     assert_eq!(io.handle_request_sync(request), Some(response.to_owned()));
 }
 
+fn assert_txs_filtered(io: &IoHandler<Metadata>, filter: &str, expected: Vec<u8>) {
+    let request = format!(
+        r#"{{"jsonrpc": "2.0", "method": "parity_pendingTransactions",
+        "params":[10, {}], "id": 1}}"#,
+        filter
+    );
+    let response_str = io.handle_request_sync(&request).unwrap();
+    let response = serde_json::Value::from_str(&response_str).unwrap();
+    assert_eq!(response["result"].as_array().unwrap().len(), expected.len());
+    for n in expected {
+        let expected_sender = format!("0x000000000000000000000000000000000000005{}", n);
+        assert!(response_str.contains(&expected_sender));
+    }
+}
+
+#[test]
+fn rpc_parity_pending_transactions_with_filter() {
+    use types::transaction::{Action, Transaction, TypedTransaction};
+    let deps = Dependencies::new();
+    let io = deps.default_client();
+
+    for i in 1..6 {
+        let tx = TypedTransaction::Legacy(Transaction {
+            value: i.into(),
+            gas: (i + 0x10).into(),
+            gas_price: (i + 0x20).into(),
+            nonce: (i + 0x30).into(),
+            action: Action::Call(Address::from_low_u64_be(i + 0x40)),
+            data: vec![],
+        })
+        .fake_sign(Address::from_low_u64_be(i + 0x50));
+        deps.miner
+            .pending_transactions
+            .lock()
+            .insert(H256::from_low_u64_be(i + 0x60), tx);
+    }
+
+    let tx = TypedTransaction::Legacy(Transaction {
+        value: 0.into(),
+        gas: 0x16.into(),
+        gas_price: 0x26.into(),
+        nonce: 0x36.into(),
+        action: Action::Create,
+        data: vec![0x01, 0x02, 0x03],
+    })
+    .fake_sign(Address::from_low_u64_be(0x56));
+    deps.miner
+        .pending_transactions
+        .lock()
+        .insert(H256::from_low_u64_be(0x66), tx);
+
+    assert_txs_filtered(
+        &io,
+        r#"{"from":{"eq":"0x0000000000000000000000000000000000000052"}}"#,
+        vec![2],
+    );
+    assert_txs_filtered(
+        &io,
+        r#"{"to":{"eq":"0x0000000000000000000000000000000000000041"}}"#,
+        vec![1],
+    );
+    assert_txs_filtered(&io, r#"{"to":{"action":"contract_creation"}}"#, vec![6]);
+    assert_txs_filtered(&io, r#"{"gas":{"gt":"0x12"}}"#, vec![3, 4, 5, 6]);
+    assert_txs_filtered(&io, r#"{"gasPrice":{"eq":"0x24"}}"#, vec![4]);
+    assert_txs_filtered(&io, r#"{"nonce":{"lt":"0x33"}}"#, vec![1, 2]);
+    assert_txs_filtered(&io, r#"{"value":{"lt":"0x2"}}"#, vec![1, 6]);
+    assert_txs_filtered(
+        &io,
+        r#"{"value":{"gt":"0x1"},"gas":{"lt":"0x14"}}"#,
+        vec![2, 3],
+    );
+    assert_txs_filtered(&io, r#"{"value":{"gt":"0x6"},"gas":{"gt":"0x1"}}"#, vec![]);
+    assert_txs_filtered(
+        &io,
+        r#"{"value":{"lt":"0x60"},"nonce":{"lt":"0x60"}}"#,
+        vec![1, 2, 3, 4, 5, 6],
+    );
+}
+
 #[test]
 fn rpc_parity_encrypt() {
     let deps = Dependencies::new();
     let io = deps.default_client();
-    let key = format!("{:x}", Random.generate().unwrap().public());
+    let key = format!("{:x}", Random.generate().public());
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_encryptMessage", "params":["0x"#
         .to_owned()
@@ -382,16 +461,16 @@ fn rpc_parity_local_transactions() {
         data: vec![1, 2, 3],
         nonce: 0.into(),
     })
-    .fake_sign(3.into());
+    .fake_sign(Address::from_low_u64_be(3));
     let tx = Arc::new(::miner::pool::VerifiedTransaction::from_pending_block_transaction(tx));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(10.into(), LocalTransactionStatus::Pending(tx.clone()));
-    deps.miner
-        .local_transactions
-        .lock()
-        .insert(15.into(), LocalTransactionStatus::Pending(tx.clone()));
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(10),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
+    deps.miner.local_transactions.lock().insert(
+        H256::from_low_u64_be(15),
+        LocalTransactionStatus::Pending(tx.clone()),
+    );
 
     let request =
         r#"{"jsonrpc": "2.0", "method": "parity_localTransactions", "params":[], "id": 1}"#;
@@ -406,7 +485,7 @@ fn rpc_parity_chain_status() {
     let io = deps.default_client();
 
     *deps.client.ancient_block.write() = Some((H256::default(), 5));
-    *deps.client.first_block.write() = Some((H256::from(U256::from(1234)), 3333));
+    *deps.client.first_block.write() = Some((BigEndianHash::from_uint(&U256::from(1234)), 3333));
 
     let request = r#"{"jsonrpc": "2.0", "method": "parity_chainStatus", "params":[], "id": 1}"#;
     let response = r#"{"jsonrpc":"2.0","result":{"blockGap":["0x6","0xd05"]},"id":1}"#;
@@ -467,21 +546,21 @@ fn rpc_parity_call() {
 fn rpc_parity_block_receipts() {
     let deps = Dependencies::new();
     deps.client.receipts.write().insert(
-        TransactionId::Hash(1.into()),
+        TransactionId::Hash(H256::from_low_u64_be(1)),
         LocalizedReceipt {
-            transaction_hash: 1.into(),
+            transaction_hash: H256::from_low_u64_be(1),
             transaction_type: TypedTxId::Legacy,
             transaction_index: 0,
-            block_hash: 3.into(),
+            block_hash: H256::from_low_u64_be(3),
             block_number: 0,
             cumulative_gas_used: 21_000.into(),
             gas_used: 21_000.into(),
             contract_address: None,
             logs: vec![],
-            log_bloom: 1.into(),
+            log_bloom: Bloom::from_low_u64_be(1),
             outcome: TransactionOutcome::Unknown,
             to: None,
-            from: 9.into(),
+            from: Address::from_low_u64_be(9),
         },
     );
     let io = deps.default_client();

@@ -16,7 +16,7 @@
 
 //! Trie test input deserialization.
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 use serde::{
     de::{Error as ErrorTrait, MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer,
@@ -135,7 +135,7 @@ impl<'a> Visitor<'a> for InputVisitor {
 #[cfg(test)]
 mod tests {
     use super::Input;
-    use bytes::Bytes;
+    use crate::bytes::Bytes;
     use serde_json;
     use std::collections::BTreeMap;
 

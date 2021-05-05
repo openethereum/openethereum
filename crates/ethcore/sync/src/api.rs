@@ -15,6 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
+use crypto::publickey::Secret;
 use devp2p::NetworkService;
 use network::{
     client_version::ClientVersion, ConnectionFilter, Error, ErrorKind,
@@ -31,14 +32,14 @@ use std::{
 
 use chain::{
     fork_filter::ForkFilterApi, ChainSyncApi, SyncState, SyncStatus as EthSyncStatus,
-    ETH_PROTOCOL_VERSION_64, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
+    ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, ETH_PROTOCOL_VERSION_65,
+    PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
 use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
     snapshot::SnapshotService,
 };
 use ethereum_types::{H256, H512, U256, U64};
-use ethkey::Secret;
 use io::TimerToken;
 use network::IpFilter;
 use parking_lot::{Mutex, RwLock};
@@ -566,7 +567,11 @@ impl ChainNotify for EthSync {
             .register_protocol(
                 self.eth_handler.clone(),
                 self.subprotocol_name,
-                &[ETH_PROTOCOL_VERSION_64],
+                &[
+                    ETH_PROTOCOL_VERSION_63,
+                    ETH_PROTOCOL_VERSION_64,
+                    ETH_PROTOCOL_VERSION_65,
+                ],
             )
             .unwrap_or_else(|e| warn!("Error registering ethereum protocol: {:?}", e));
         // register the warp sync subprotocol

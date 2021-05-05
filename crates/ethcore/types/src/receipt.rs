@@ -18,15 +18,17 @@
 
 use super::transaction::TypedTxId;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
 
-use log_entry::{LocalizedLogEntry, LogEntry};
-use BlockNumber;
+use crate::{
+    log_entry::{LocalizedLogEntry, LogEntry},
+    BlockNumber,
+};
 
 /// Transaction outcome store in the receipt.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub enum TransactionOutcome {
     /// Status and state root are unknown under EIP-98 rules.
     Unknown,
@@ -37,7 +39,7 @@ pub enum TransactionOutcome {
 }
 
 /// Information describing execution of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub struct LegacyReceipt {
     /// The total gas used in the block following execution of the transaction.
     pub gas_used: U256,
@@ -106,7 +108,7 @@ impl LegacyReceipt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
     AccessList(LegacyReceipt),
@@ -250,12 +252,6 @@ impl DerefMut for TypedReceipt {
     }
 }
 
-impl HeapSizeOf for TypedReceipt {
-    fn heap_size_of_children(&self) -> usize {
-        self.receipt().logs.heap_size_of_children()
-    }
-}
-
 /// Receipt with additional info.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RichReceipt {
@@ -320,38 +316,49 @@ pub struct LocalizedReceipt {
 
 #[cfg(test)]
 mod tests {
-    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt};
-    use log_entry::LogEntry;
+    use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
+    use crate::log_entry::LogEntry;
+    use ethereum_types::{H160, H256};
+    use std::str::FromStr;
 
     #[test]
     fn test_no_state_root() {
         let expected = ::rustc_hex::FromHex::from_hex("f9014183040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::Legacy(LegacyReceipt::new(
-            TransactionOutcome::Unknown,
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        ));
+        let r = TypedReceipt::new(
+            TypedTxId::Legacy,
+            LegacyReceipt::new(
+                TransactionOutcome::Unknown,
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
+            ),
+        );
         assert_eq!(r.encode(), expected);
     }
 
     #[test]
     fn test_basic_legacy() {
         let expected = ::rustc_hex::FromHex::from_hex("f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::Legacy(LegacyReceipt::new(
-            TransactionOutcome::StateRoot(
-                "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+        let r = TypedReceipt::new(
+            TypedTxId::Legacy,
+            LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
             ),
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        ));
+        );
         let encoded = r.encode();
         assert_eq!(encoded, expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
@@ -361,17 +368,23 @@ mod tests {
     #[test]
     fn test_basic_access_list() {
         let expected = ::rustc_hex::FromHex::from_hex("01f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::AccessList(LegacyReceipt::new(
-            TransactionOutcome::StateRoot(
-                "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+        let r = TypedReceipt::new(
+            TypedTxId::AccessList,
+            LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
             ),
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        ));
+        );
         let encoded = r.encode();
         assert_eq!(&encoded, &expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
@@ -381,17 +394,23 @@ mod tests {
     #[test]
     fn test_basic_eip1559() {
         let expected = ::rustc_hex::FromHex::from_hex("02f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::EIP1559Transaction(LegacyReceipt::new(
-            TransactionOutcome::StateRoot(
-                "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+        let r = TypedReceipt::new(
+            TypedTxId::EIP1559Transaction,
+            LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
             ),
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        ));
+        );
         let encoded = r.encode();
         assert_eq!(&encoded, &expected);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
@@ -401,15 +420,18 @@ mod tests {
     #[test]
     fn test_status_code() {
         let expected = ::rustc_hex::FromHex::from_hex("f901428083040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
-        let r = TypedReceipt::Legacy(LegacyReceipt::new(
-            TransactionOutcome::StatusCode(0),
-            0x40cae.into(),
-            vec![LogEntry {
-                address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
-                topics: vec![],
-                data: vec![0u8; 32],
-            }],
-        ));
+        let r = TypedReceipt::new(
+            TypedTxId::Legacy,
+            LegacyReceipt::new(
+                TransactionOutcome::StatusCode(0),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
+            ),
+        );
         let encoded = r.encode();
         assert_eq!(&encoded[..], &expected[..]);
         let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");

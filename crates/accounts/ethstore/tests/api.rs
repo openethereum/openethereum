@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+extern crate ethereum_types;
 extern crate ethstore;
+extern crate parity_crypto as crypto;
 extern crate rand;
 
 mod util;
 
+use std::str::FromStr;
+
+use crypto::publickey::{verify_address, Generator, KeyPair, Random, Secret};
+use ethereum_types::H160;
 use ethstore::{
-    accounts_dir::RootDiskDirectory,
-    ethkey::{verify_address, Generator, KeyPair, Random, Secret},
-    EthStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
+    accounts_dir::RootDiskDirectory, EthStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
 };
 use util::TransientDir;
 
@@ -40,7 +44,7 @@ fn secret_store_open_not_existing() {
 }
 
 fn random_secret() -> Secret {
-    Random.generate().unwrap().secret().clone()
+    Random.generate().secret().clone()
 }
 
 #[test]
@@ -66,13 +70,10 @@ fn secret_store_sign() {
         .insert_account(SecretVaultRef::Root, random_secret(), &"".into())
         .is_ok());
     let accounts = store.accounts().unwrap();
+    let message = [1u8; 32].into();
     assert_eq!(accounts.len(), 1);
-    assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
-        .is_ok());
-    assert!(store
-        .sign(&accounts[0], &"1".into(), &Default::default())
-        .is_err());
+    assert!(store.sign(&accounts[0], &"".into(), &message).is_ok());
+    assert!(store.sign(&accounts[0], &"1".into(), &message).is_err());
 }
 
 #[test]
@@ -83,19 +84,14 @@ fn secret_store_change_password() {
         .insert_account(SecretVaultRef::Root, random_secret(), &"".into())
         .is_ok());
     let accounts = store.accounts().unwrap();
+    let message = [1u8; 32].into();
     assert_eq!(accounts.len(), 1);
-    assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
-        .is_ok());
+    assert!(store.sign(&accounts[0], &"".into(), &message).is_ok());
     assert!(store
         .change_password(&accounts[0], &"".into(), &"1".into())
         .is_ok());
-    assert!(store
-        .sign(&accounts[0], &"".into(), &Default::default())
-        .is_err());
-    assert!(store
-        .sign(&accounts[0], &"1".into(), &Default::default())
-        .is_ok());
+    assert!(store.sign(&accounts[0], &"".into(), &message).is_err());
+    assert!(store.sign(&accounts[0], &"1".into(), &message).is_ok());
 }
 
 #[test]
@@ -140,9 +136,15 @@ fn secret_store_laod_geth_files() {
     assert_eq!(
         store.accounts().unwrap(),
         vec![
-            StoreAccountRef::root("3f49624084b67849c7b4e805c5988c21a430f9d9".into()),
-            StoreAccountRef::root("5ba4dcf897e97c2bdf8315b9ef26c13c085988cf".into()),
-            StoreAccountRef::root("63121b431a52f8043c16fcf0d1df9cb7b5f66649".into()),
+            StoreAccountRef::root(
+                H160::from_str("3f49624084b67849c7b4e805c5988c21a430f9d9").unwrap()
+            ),
+            StoreAccountRef::root(
+                H160::from_str("5ba4dcf897e97c2bdf8315b9ef26c13c085988cf").unwrap()
+            ),
+            StoreAccountRef::root(
+                H160::from_str("63121b431a52f8043c16fcf0d1df9cb7b5f66649").unwrap()
+            ),
         ]
     );
 }
@@ -154,8 +156,12 @@ fn secret_store_load_pat_files() {
     assert_eq!(
         store.accounts().unwrap(),
         vec![
-            StoreAccountRef::root("3f49624084b67849c7b4e805c5988c21a430f9d9".into()),
-            StoreAccountRef::root("5ba4dcf897e97c2bdf8315b9ef26c13c085988cf".into()),
+            StoreAccountRef::root(
+                H160::from_str("3f49624084b67849c7b4e805c5988c21a430f9d9").unwrap()
+            ),
+            StoreAccountRef::root(
+                H160::from_str("5ba4dcf897e97c2bdf8315b9ef26c13c085988cf").unwrap()
+            ),
         ]
     );
 }
@@ -182,12 +188,16 @@ fn test_decrypting_files_with_short_ciphertext() {
     assert_eq!(
         accounts,
         vec![
-            StoreAccountRef::root("31e9d1e6d844bd3a536800ef8d8be6a9975db509".into()),
-            StoreAccountRef::root("d1e64e5480bfaf733ba7d48712decb8227797a4e".into()),
+            StoreAccountRef::root(
+                H160::from_str("31e9d1e6d844bd3a536800ef8d8be6a9975db509").unwrap()
+            ),
+            StoreAccountRef::root(
+                H160::from_str("d1e64e5480bfaf733ba7d48712decb8227797a4e").unwrap()
+            ),
         ]
     );
 
-    let message = Default::default();
+    let message = [1u8; 32].into();
 
     let s1 = store.sign(&accounts[0], &"foo".into(), &message).unwrap();
     let s2 = store.sign(&accounts[1], &"foo".into(), &message).unwrap();

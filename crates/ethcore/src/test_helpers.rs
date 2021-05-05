@@ -23,9 +23,9 @@ use blockchain::{
 };
 use blooms_db;
 use bytes::Bytes;
+use crypto::publickey::KeyPair;
 use db::KeyValueDB;
 use ethereum_types::{Address, H256, U256};
-use ethkey::KeyPair;
 use evm::Factory as EvmFactory;
 use hash::keccak;
 use io::IoChannel;
@@ -113,7 +113,7 @@ pub fn create_test_block_with_data(
 
 /// Generates dummy client (not test client) with corresponding amount of blocks
 pub fn generate_dummy_client(block_number: u32) -> Arc<Client> {
-    generate_dummy_client_with_spec_and_data(Spec::new_test, block_number, 0, &[])
+    generate_dummy_client_with_spec_and_data(Spec::new_test, block_number, 0, &[], false)
 }
 
 /// Generates dummy client (not test client) with corresponding amount of blocks and txs per every block
@@ -127,6 +127,7 @@ pub fn generate_dummy_client_with_data(
         block_number,
         txs_per_block,
         tx_gas_prices,
+        false,
     )
 }
 
@@ -135,7 +136,7 @@ pub fn generate_dummy_client_with_spec<F>(test_spec: F) -> Arc<Client>
 where
     F: Fn() -> Spec,
 {
-    generate_dummy_client_with_spec_and_data(test_spec, 0, 0, &[])
+    generate_dummy_client_with_spec_and_data(test_spec, 0, 0, &[], false)
 }
 
 /// Generates dummy client (not test client) with corresponding amount of blocks, txs per block and spec
@@ -144,6 +145,7 @@ pub fn generate_dummy_client_with_spec_and_data<F>(
     block_number: u32,
     txs_per_block: usize,
     tx_gas_prices: &[U256],
+    force_sealing: bool,
 ) -> Arc<Client>
 where
     F: Fn() -> Spec,
@@ -151,11 +153,13 @@ where
     let test_spec = test_spec();
     let client_db = new_db();
 
+    let miner = Miner::new_for_tests_force_sealing(&test_spec, None, force_sealing);
+
     let client = Client::new(
         ClientConfig::default(),
         &test_spec,
         client_db,
-        Arc::new(Miner::new_for_tests(&test_spec, None)),
+        Arc::new(miner),
         IoChannel::disconnected(),
     )
     .unwrap();
@@ -170,7 +174,7 @@ where
     let mut last_hashes = vec![];
     let mut last_header = genesis_header.clone();
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret_slice(keccak("").as_bytes()).unwrap();
     let author = kp.address();
 
     let mut n = 0;
@@ -620,7 +624,7 @@ pub fn get_bad_state_dummy_block() -> Bytes {
     block_header.set_timestamp(40);
     block_header.set_number(1);
     block_header.set_parent_hash(test_spec.genesis_header().hash());
-    block_header.set_state_root(0xbad.into());
+    block_header.set_state_root(H256::from_low_u64_be(0xbad));
 
     create_test_block(&block_header)
 }

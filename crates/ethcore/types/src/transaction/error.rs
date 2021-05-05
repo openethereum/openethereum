@@ -16,8 +16,8 @@
 
 use std::{error, fmt};
 
+use crate::crypto;
 use ethereum_types::U256;
-use ethkey;
 use rlp;
 use unexpected::OutOfBounds;
 
@@ -95,8 +95,8 @@ pub enum Error {
     TransactionTypeNotEnabled,
 }
 
-impl From<ethkey::Error> for Error {
-    fn from(err: ethkey::Error) -> Self {
+impl From<crypto::publickey::Error> for Error {
+    fn from(err: crypto::publickey::Error) -> Self {
         Error::InvalidSignature(format!("{}", err))
     }
 }
@@ -147,7 +147,7 @@ impl fmt::Display for Error {
             InvalidChainId => "Transaction of this chain ID is not allowed on this chain.".into(),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
             NotAllowed => {
-                "Sender does not have permissions to execute this type of transction".into()
+                "Sender does not have permissions to execute this type of transaction".into()
             }
             TooBig => "Transaction too big".into(),
             InvalidRlp(ref err) => format!("Transaction has invalid RLP structure: {}.", err),

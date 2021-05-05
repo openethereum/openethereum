@@ -86,13 +86,13 @@ impl Worker {
                         future::loop_fn(ini, |(stealer, channel, wait, wait_mutex, deleting)| {
                             {
                                 let mut lock = wait_mutex.lock();
-                                if deleting.load(AtomicOrdering::Acquire) {
+                                if deleting.load(AtomicOrdering::SeqCst) {
                                     return Ok(Loop::Break(()));
                                 }
                                 wait.wait(&mut lock);
                             }
 
-                            while !deleting.load(AtomicOrdering::Acquire) {
+                            while !deleting.load(AtomicOrdering::SeqCst) {
                                 match stealer.steal() {
                                     deque::Steal::Data(work) => {
                                         Worker::do_work(work, channel.clone())
@@ -147,7 +147,7 @@ impl Drop for Worker {
     fn drop(&mut self) {
         trace!(target: "shutdown", "[IoWorker] Closing...");
         let _ = self.wait_mutex.lock();
-        self.deleting.store(true, AtomicOrdering::Release);
+        self.deleting.store(true, AtomicOrdering::SeqCst);
         self.wait.notify_all();
         if let Some(thread) = self.thread.take() {
             thread.join().ok();

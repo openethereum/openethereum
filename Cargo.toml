@@ -2,7 +2,7 @@
 description = "OpenEthereum"
 name = "openethereum"
 # NOTE Make sure to update util/version/Cargo.toml as well
-version = "3.2.0-rc.1"
+version = "3.2.5-rc.1"
 license = "GPL-3.0"
 authors = [
 	"OpenEthereum developers",
@@ -22,7 +22,7 @@ number_prefix = "0.2"
 rpassword = "1.0"
 semver = "0.9"
 ansi_term = "0.10"
-parking_lot = "0.7"
+parking_lot = "0.11.1"
 regex = "1.0"
 atty = "0.2.8"
 toml = "0.4"
@@ -47,12 +47,13 @@ ethcore-miner = { path = "crates/concensus/miner" }
 ethcore-network = { path = "crates/net/network" }
 ethcore-service = { path = "crates/ethcore/service" }
 ethcore-sync = { path = "crates/ethcore/sync" }
-ethereum-types = "0.4"
+ethereum-types = "0.9.2"
 ethkey = { path = "crates/accounts/ethkey" }
 ethstore = { path = "crates/accounts/ethstore" }
 fetch = { path = "crates/net/fetch" }
 node-filter = { path = "crates/net/node-filter" }
-rlp = { version = "0.3.0", features = ["ethereum"] }
+parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
+rlp = { version = "0.4.6" }
 cli-signer= { path = "crates/util/cli-signer" }
 parity-daemonize = "0.3"
 parity-local-store = { path = "crates/concensus/miner/local-store" }
@@ -62,7 +63,7 @@ parity-version = { path = "crates/util/version" }
 parity-path = "0.1"
 dir = { path = "crates/util/dir" }
 panic_hook = { path = "crates/util/panic-hook" }
-keccak-hash = "0.1"
+keccak-hash = "0.5.0"
 migration-rocksdb = { path = "crates/db/migration-rocksdb" }
 kvdb = "0.1"
 kvdb-rocksdb = "0.1.3"
@@ -130,6 +131,3 @@ members = [
 	"bin/evmbin",
 	"bin/chainspec"
 ]
-
-[patch.crates-io]
-heapsize = { git = "https://github.com/cheme/heapsize.git", branch = "ec-macfix" }

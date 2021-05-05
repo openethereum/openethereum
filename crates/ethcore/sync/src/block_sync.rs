@@ -99,12 +99,6 @@ pub enum BlockDownloaderImportError {
     Useless,
 }
 
-impl From<rlp04::DecoderError> for BlockDownloaderImportError {
-    fn from(_: rlp04::DecoderError) -> BlockDownloaderImportError {
-        BlockDownloaderImportError::Invalid
-    }
-}
-
 impl From<rlp::DecoderError> for BlockDownloaderImportError {
     fn from(_: rlp::DecoderError) -> BlockDownloaderImportError {
         BlockDownloaderImportError::Invalid
@@ -772,8 +766,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crypto::publickey::{Generator, Random};
     use ethcore::{client::TestBlockChainClient, spec::Spec};
-    use ethkey::{Generator, Random};
     use hash::keccak;
     use parking_lot::RwLock;
     use rlp::{encode_list, RlpStream};
@@ -796,7 +790,7 @@ mod tests {
     }
 
     fn dummy_signed_tx() -> SignedTransaction {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         TypedTransaction::Legacy(Transaction::default()).sign(keypair.secret(), None)
     }
 

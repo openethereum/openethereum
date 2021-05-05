@@ -30,7 +30,7 @@ use ethcore::{
     },
     engines::{signer::EngineSigner, EthEngine},
     error::Error,
-    miner::{self, AuthoringParams, MinerService},
+    miner::{self, AuthoringParams, MinerService, TransactionFilter},
 };
 use ethereum_types::{Address, H256, U256};
 use miner::pool::{
@@ -133,10 +133,16 @@ impl MinerService for TestMinerService {
         self.authoring_params.read().clone()
     }
 
-    fn set_author(&self, author: miner::Author) {
-        self.authoring_params.write().author = author.address();
-        if let miner::Author::Sealer(signer) = author {
-            *self.signer.write() = Some(signer);
+    fn set_author<T: Into<Option<miner::Author>>>(&self, author: T) {
+        let author_opt = author.into();
+        self.authoring_params.write().author = author_opt
+            .as_ref()
+            .map(miner::Author::address)
+            .unwrap_or_default();
+        match author_opt {
+            Some(miner::Author::Sealer(signer)) => *self.signer.write() = Some(signer),
+            Some(miner::Author::External(_addr)) => (),
+            None => *self.signer.write() = None,
         }
     }
 
@@ -263,13 +269,21 @@ impl MinerService for TestMinerService {
             .collect()
     }
 
-    fn ready_transactions<C>(
+    fn ready_transactions_filtered<C>(
         &self,
         _chain: &C,
         _max_len: usize,
+        filter: Option<TransactionFilter>,
         _ordering: miner::PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>> {
-        self.queued_transactions()
+        match filter {
+            Some(f) => self
+                .queued_transactions()
+                .into_iter()
+                .filter(|tx| f.matches(tx))
+                .collect(),
+            None => self.queued_transactions(),
+        }
     }
 
     fn pending_transaction_hashes<C>(&self, _chain: &C) -> BTreeSet<H256> {

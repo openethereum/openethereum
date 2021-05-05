@@ -19,12 +19,15 @@
 use crate::BlockNumber;
 
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    header::Header,
+    transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction},
+    views::{HeaderView, TypedTransactionView},
+};
+
 use ethereum_types::H256;
-use hash::keccak;
-use header::Header;
-use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TypedTransactionView};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {
@@ -220,7 +223,9 @@ impl<'a> BlockView<'a> {
 #[cfg(test)]
 mod tests {
     use super::BlockView;
+    use ethereum_types::H256;
     use rustc_hex::FromHex;
+    use std::str::FromStr;
 
     #[test]
     fn test_block_view() {
@@ -230,7 +235,8 @@ mod tests {
         let view = view!(BlockView, &rlp);
         assert_eq!(
             view.hash(),
-            "2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259".into()
+            H256::from_str("2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259")
+                .unwrap()
         );
         assert_eq!(view.transactions_count(), 1);
         assert_eq!(view.uncles_count(), 0);

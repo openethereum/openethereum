@@ -673,7 +673,7 @@ mod tests {
             db,
             parent,
             last_hashes,
-            Address::new(),
+            Address::default(),
             (3141562.into(), 31415620.into()),
             vec![],
             false,

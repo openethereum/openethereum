@@ -21,6 +21,7 @@
 extern crate ansi_term;
 extern crate common_types as types;
 extern crate crossbeam_utils;
+extern crate derive_more;
 extern crate ethabi;
 extern crate ethash;
 extern crate ethcore_blockchain as blockchain;
@@ -31,9 +32,7 @@ extern crate ethcore_io as io;
 extern crate ethcore_miner;
 extern crate ethereum_types;
 extern crate ethjson;
-extern crate ethkey;
 extern crate hash_db;
-extern crate heapsize;
 extern crate itertools;
 extern crate journaldb;
 extern crate keccak_hash as hash;
@@ -46,11 +45,14 @@ extern crate memory_cache;
 extern crate memory_db;
 extern crate num_cpus;
 extern crate parity_bytes as bytes;
+extern crate parity_crypto as crypto;
 extern crate parity_snappy as snappy;
+extern crate parity_util_mem;
 extern crate parking_lot;
 extern crate patricia_trie_ethereum as ethtrie;
 extern crate rand;
 extern crate rayon;
+extern crate reth_util;
 extern crate rlp;
 extern crate rustc_hex;
 extern crate serde;
@@ -84,8 +86,6 @@ extern crate tempfile;
 #[cfg(feature = "json-tests")]
 extern crate walkdir;
 
-#[macro_use]
-extern crate ethabi_derive;
 #[macro_use]
 extern crate ethabi_contract;
 #[macro_use]

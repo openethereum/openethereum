@@ -18,6 +18,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrder},
         Arc,
@@ -26,10 +27,10 @@ use std::{
 
 use blockchain::{BlockReceipts, TreeRoute};
 use bytes::Bytes;
+use crypto::publickey::{Generator, Random};
 use db::{COL_STATE, NUM_COLUMNS};
 use ethcore_miner::pool::VerifiedTransaction;
 use ethereum_types::{Address, H256, U256};
-use ethkey::{Generator, Random};
 use ethtrie;
 use hash::keccak;
 use itertools::Itertools;
@@ -47,6 +48,7 @@ use types::{
     receipt::{LegacyReceipt, LocalizedReceipt, TransactionOutcome, TypedReceipt},
     transaction::{
         self, Action, LocalizedTransaction, SignedTransaction, Transaction, TypedTransaction,
+        TypedTxId,
     },
     view,
     views::BlockView,
@@ -57,12 +59,12 @@ use vm::Schedule;
 use block::{ClosedBlock, OpenBlock, SealedBlock};
 use call_contract::{CallContract, RegistryInfo};
 use client::{
-    traits::ForceUpdateSealing, AccountData, BadBlocks, Balance, BlockChain, BlockChainClient,
-    BlockChainInfo, BlockId, BlockInfo, BlockProducer, BlockStatus, BroadcastProposalBlock, Call,
-    CallAnalytics, ChainInfo, EngineInfo, ImportBlock, ImportSealedBlock, IoClient, LastHashes,
-    Mode, Nonce, PrepareOpenBlock, ProvingBlockChainClient, ReopenBlock, ScheduleInfo,
-    SealedBlockImporter, StateClient, StateOrBlock, TraceFilter, TraceId, TransactionId,
-    TransactionInfo, UncleId,
+    traits::{ForceUpdateSealing, TransactionRequest},
+    AccountData, BadBlocks, Balance, BlockChain, BlockChainClient, BlockChainInfo, BlockId,
+    BlockInfo, BlockProducer, BlockStatus, BroadcastProposalBlock, Call, CallAnalytics, ChainInfo,
+    EngineInfo, ImportBlock, ImportSealedBlock, IoClient, LastHashes, Mode, Nonce,
+    PrepareOpenBlock, ProvingBlockChainClient, ReopenBlock, ScheduleInfo, SealedBlockImporter,
+    StateClient, StateOrBlock, TraceFilter, TraceId, TransactionId, TransactionInfo, UncleId,
 };
 use engines::EthEngine;
 use error::{Error, EthcoreResult};
@@ -173,9 +175,9 @@ impl TestBlockChainClient {
         let mut client = TestBlockChainClient {
             blocks: RwLock::new(HashMap::new()),
             numbers: RwLock::new(HashMap::new()),
-            genesis_hash: H256::new(),
+            genesis_hash: H256::default(),
             extra_data: extra_data,
-            last_hash: RwLock::new(H256::new()),
+            last_hash: RwLock::new(H256::default()),
             difficulty: RwLock::new(spec.genesis_header().difficulty().clone()),
             balances: RwLock::new(HashMap::new()),
             nonces: RwLock::new(HashMap::new()),
@@ -236,7 +238,7 @@ impl TestBlockChainClient {
 
     /// Set block queue size for testing
     pub fn set_queue_size(&self, size: usize) {
-        self.queue_size.store(size, AtomicOrder::Relaxed);
+        self.queue_size.store(size, AtomicOrder::SeqCst);
     }
 
     /// Set timestamp assigned to latest sealed block
@@ -292,7 +294,7 @@ impl TestBlockChainClient {
                     _ => 1,
                 };
                 let mut txs = RlpStream::new_list(num_transactions);
-                let keypair = Random.generate().unwrap();
+                let keypair = Random.generate();
                 let mut nonce = U256::zero();
 
                 for _ in 0..num_transactions {
@@ -339,7 +341,7 @@ impl TestBlockChainClient {
             .unwrap()
             .decode(BlockNumber::max_value())
             .expect("decoding failed");
-        header.set_parent_hash(H256::from(42));
+        header.set_parent_hash(H256::from_low_u64_be(42));
         let mut rlp = RlpStream::new_list(3);
         rlp.append(&header);
         rlp.append_raw(&::rlp::NULL_RLP, 1);
@@ -369,7 +371,7 @@ impl TestBlockChainClient {
 
     /// Inserts a transaction with given gas price to miners transactions queue.
     pub fn insert_transaction_with_gas_price_to_queue(&self, gas_price: U256) -> H256 {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let tx = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(100),
@@ -401,7 +403,7 @@ impl TestBlockChainClient {
 
     /// Returns true if the client has been disabled.
     pub fn is_disabled(&self) -> bool {
-        self.disabled.load(AtomicOrder::Relaxed)
+        self.disabled.load(AtomicOrder::SeqCst)
     }
 }
 
@@ -752,7 +754,7 @@ impl BlockChainClient for TestBlockChainClient {
                 .clone()
                 .unwrap()
                 .into_iter()
-                .map(|t| t.transaction_hash.unwrap_or(H256::new()))
+                .map(|t| t.transaction_hash.unwrap_or(H256::default()))
                 .zip(self.execution_result.read().clone().unwrap().into_iter()),
         ))
     }
@@ -783,7 +785,7 @@ impl BlockChainClient for TestBlockChainClient {
                     .read()
                     .get(&(address.clone(), position.clone()))
                     .cloned()
-                    .unwrap_or_else(H256::new),
+                    .unwrap_or_else(H256::default),
             ),
             _ => None,
         }
@@ -807,8 +809,11 @@ impl BlockChainClient for TestBlockChainClient {
     ) -> Option<Vec<H256>> {
         None
     }
-    fn transaction(&self, _id: TransactionId) -> Option<LocalizedTransaction> {
+    fn block_transaction(&self, _id: TransactionId) -> Option<LocalizedTransaction> {
         None // Simple default.
+    }
+    fn queued_transaction(&self, _hash: H256) -> Option<Arc<VerifiedTransaction>> {
+        None
     }
 
     fn uncle(&self, _id: UncleId) -> Option<encoded::Header> {
@@ -901,7 +906,7 @@ impl BlockChainClient for TestBlockChainClient {
     // works only if blocks are one after another 1 -> 2 -> 3
     fn tree_route(&self, from: &H256, to: &H256) -> Option<TreeRoute> {
         Some(TreeRoute {
-            ancestor: H256::new(),
+            ancestor: H256::default(),
             index: 0,
             blocks: {
                 let numbers_read = self.numbers.read();
@@ -942,12 +947,18 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn block_receipts(&self, hash: &H256) -> Option<BlockReceipts> {
         // starts with 'f' ?
-        if *hash > H256::from("f000000000000000000000000000000000000000000000000000000000000000") {
-            let receipt = BlockReceipts::new(vec![TypedReceipt::Legacy(LegacyReceipt::new(
-                TransactionOutcome::StateRoot(H256::zero()),
-                U256::zero(),
-                vec![],
-            ))]);
+        if *hash
+            > H256::from_str("f000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap()
+        {
+            let receipt = BlockReceipts::new(vec![TypedReceipt::new(
+                TypedTxId::Legacy,
+                LegacyReceipt::new(
+                    TransactionOutcome::StateRoot(H256::zero()),
+                    U256::zero(),
+                    vec![],
+                ),
+            )]);
             return Some(receipt);
         }
         None
@@ -955,7 +966,7 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn queue_info(&self) -> QueueInfo {
         QueueInfo {
-            verified_queue_size: self.queue_size.load(AtomicOrder::Relaxed),
+            verified_queue_size: self.queue_size.load(AtomicOrder::SeqCst),
             unverified_queue_size: 0,
             verifying_queue_size: 0,
             max_queue_size: 0,
@@ -1015,7 +1026,7 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn disable(&self) {
-        self.disabled.store(true, AtomicOrder::Relaxed);
+        self.disabled.store(true, AtomicOrder::SeqCst);
     }
 
     fn pruning_info(&self) -> PruningInfo {
@@ -1031,12 +1042,22 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
-    fn transact_contract(&self, address: Address, data: Bytes) -> Result<(), transaction::Error> {
+    fn create_transaction(
+        &self,
+        TransactionRequest {
+            action,
+            data,
+            gas,
+            gas_price,
+            nonce,
+        }: TransactionRequest,
+    ) -> Result<SignedTransaction, transaction::Error> {
         let transaction = TypedTransaction::Legacy(Transaction {
-            nonce: self.latest_nonce(&self.miner.authoring_params().author),
-            action: Action::Call(address),
-            gas: self.spec.gas_limit,
-            gas_price: U256::zero(),
+            nonce: nonce
+                .unwrap_or_else(|| self.latest_nonce(&self.miner.authoring_params().author)),
+            action,
+            gas: gas.unwrap_or(self.spec.gas_limit),
+            gas_price: gas_price.unwrap_or_else(U256::zero),
             value: U256::default(),
             data: data,
         });
@@ -1046,7 +1067,11 @@ impl BlockChainClient for TestBlockChainClient {
             .engine
             .sign(transaction.signature_hash(chain_id))
             .unwrap();
-        let signed = SignedTransaction::new(transaction.with_signature(sig, chain_id)).unwrap();
+        Ok(SignedTransaction::new(transaction.with_signature(sig, chain_id)).unwrap())
+    }
+
+    fn transact(&self, tx_request: TransactionRequest) -> Result<(), transaction::Error> {
+        let signed = self.create_transaction(tx_request)?;
         self.miner.import_own_transaction(self, signed.into())
     }
 
@@ -1063,6 +1088,10 @@ impl IoClient for TestBlockChainClient {
             .filter_map(|bytes| TypedTransaction::decode(&bytes).ok())
             .collect();
         self.miner.import_external_transactions(self, txs);
+    }
+
+    fn ancient_block_queue_fullness(&self) -> f32 {
+        0.0
     }
 
     fn queue_ancient_block(&self, unverified: Unverified, _r: Bytes) -> EthcoreResult<H256> {
@@ -1118,11 +1147,11 @@ impl super::traits::EngineClient for TestBlockChainClient {
     }
 
     fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
-        BlockChainClient::block_number(self, id)
+        <dyn BlockChainClient>::block_number(self, id)
     }
 
     fn block_header(&self, id: BlockId) -> Option<encoded::Header> {
-        BlockChainClient::block_header(self, id)
+        <dyn BlockChainClient>::block_header(self, id)
     }
 }
 

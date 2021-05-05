@@ -21,6 +21,8 @@ use std::collections::BTreeMap;
 use ethereum_types::{H160, H256, H512, H64, U256, U64};
 use jsonrpc_core::{BoxFuture, Result};
 use jsonrpc_derive::rpc;
+
+use ethcore::miner::TransactionFilter;
 use v1::types::{
     BlockNumber, Bytes, CallRequest, ChainStatus, Histogram, LocalTransactionStatus, Peers,
     Receipt, RecoveredAccount, RichHeader, RpcSettings, Transaction, TransactionStats,
@@ -132,7 +134,11 @@ pub trait Parity {
 
     /// Returns all pending transactions from transaction queue.
     #[rpc(name = "parity_pendingTransactions")]
-    fn pending_transactions(&self, _: Option<usize>) -> Result<Vec<Transaction>>;
+    fn pending_transactions(
+        &self,
+        _: Option<usize>,
+        _: Option<TransactionFilter>,
+    ) -> Result<Vec<Transaction>>;
 
     /// Returns all transactions from transaction queue.
     ///

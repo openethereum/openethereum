@@ -31,15 +31,7 @@ use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
 
-use super::sync_packet::{
-    PacketInfo, SyncPacket,
-    SyncPacket::{
-        BlockBodiesPacket, BlockHeadersPacket, ConsensusDataPacket, GetBlockBodiesPacket,
-        GetBlockHeadersPacket, GetReceiptsPacket, GetSnapshotDataPacket, GetSnapshotManifestPacket,
-        ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
-        TransactionsPacket,
-    },
-};
+use super::sync_packet::{PacketInfo, SyncPacket, SyncPacket::*};
 
 use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
@@ -64,6 +56,14 @@ impl SyncSupplier {
 
         if let Some(id) = SyncPacket::from_u8(packet_id) {
             let result = match id {
+                GetPooledTransactionsPacket => SyncSupplier::return_rlp(
+                    io,
+                    &rlp,
+                    peer,
+                    SyncSupplier::return_pooled_transactions,
+                    |e| format!("Error sending pooled transactions: {:?}", e),
+                ),
+
                 GetBlockBodiesPacket => SyncSupplier::return_rlp(
                     io,
                     &rlp,
@@ -273,6 +273,28 @@ impl SyncSupplier {
         Ok(Some((BlockHeadersPacket, rlp)))
     }
 
+    /// Respond to GetPooledTransactions request
+    fn return_pooled_transactions(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
+        let mut added = 0;
+        let mut rlp = RlpStream::new();
+        rlp.begin_unbounded_list();
+        for v in r {
+            if let Ok(hash) = v.as_val::<H256>() {
+                if let Some(tx) = io.chain().queued_transaction(hash) {
+                    tx.signed().rlp_append(&mut rlp);
+                    added += 1;
+                    if rlp.len() > PAYLOAD_SOFT_LIMIT {
+                        break;
+                    }
+                }
+            }
+        }
+        rlp.finalize_unbounded_list();
+
+        trace!(target: "sync", "{} -> GetPooledTransactions: returned {} entries", peer_id, added);
+        Ok(Some((PooledTransactionsPacket, rlp)))
+    }
+
     /// Respond to GetBlockBodies request
     fn return_block_bodies(io: &dyn SyncIo, r: &Rlp, peer_id: PeerId) -> RlpResponseResult {
         let mut count = r.item_count().unwrap_or(0);
@@ -420,7 +442,7 @@ mod test {
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
-    use std::collections::VecDeque;
+    use std::{collections::VecDeque, str::FromStr};
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
 
     #[test]
@@ -479,7 +501,7 @@ mod test {
         let ss = TestSnapshotService::new();
         let io = TestIo::new(&mut client, &ss, &queue, None);
 
-        let unknown: H256 = H256::new();
+        let unknown: H256 = H256::default();
         let result = SyncSupplier::return_block_headers(
             &io,
             &Rlp::new(&make_hash_req(&unknown, 1, 0, false)),
@@ -635,23 +657,27 @@ mod test {
     fn return_receipts() {
         let mut client = TestBlockChainClient::new();
         let queue = RwLock::new(VecDeque::new());
-        let sync = dummy_sync_with_peer(H256::new(), &client);
+        let sync = dummy_sync_with_peer(H256::default(), &client);
         let ss = TestSnapshotService::new();
         let mut io = TestIo::new(&mut client, &ss, &queue, None);
 
         let mut receipt_list = RlpStream::new_list(4);
-        receipt_list.append(&H256::from(
-            "0000000000000000000000000000000000000000000000005555555555555555",
-        ));
-        receipt_list.append(&H256::from(
-            "ff00000000000000000000000000000000000000000000000000000000000000",
-        ));
-        receipt_list.append(&H256::from(
-            "fff0000000000000000000000000000000000000000000000000000000000000",
-        ));
-        receipt_list.append(&H256::from(
-            "aff0000000000000000000000000000000000000000000000000000000000000",
-        ));
+        receipt_list.append(
+            &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("ff00000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("fff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+        receipt_list.append(
+            &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
 
         let receipts_request = receipt_list.out();
         // it returns rlp ONLY for hashes started with "f"

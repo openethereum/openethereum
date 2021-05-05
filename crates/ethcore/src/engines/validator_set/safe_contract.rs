@@ -15,26 +15,38 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 /// Validator set maintained in a contract, updated using `getValidators` method.
-use std::sync::{Arc, Weak};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Weak},
+};
 
 use bytes::Bytes;
+use error::{Error as EthcoreError, ErrorKind as EthcoreErrorKind};
 use ethabi::FunctionOutputDecoder;
 use ethereum_types::{Address, Bloom, H256, U256};
 use hash::keccak;
 use kvdb::DBValue;
 use memory_cache::MemoryLruCache;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use rlp::{Rlp, RlpStream};
 use types::{
-    header::Header, ids::BlockId, log_entry::LogEntry, receipt::TypedReceipt, BlockNumber,
+    header::Header, ids::BlockId, log_entry::LogEntry, receipt::TypedReceipt, transaction,
+    BlockNumber,
 };
 use unexpected::Mismatch;
 
 use super::{simple_list::SimpleList, SystemCall, ValidatorSet};
-use client::EngineClient;
+use client::{traits::TransactionRequest, BlockChainClient, EngineClient};
 use machine::{AuxiliaryData, AuxiliaryRequest, Call, EthereumMachine};
 
 use_contract!(validator_set, "res/contracts/validator_set.json");
+
+/// The maximum number of reports to keep queued.
+const MAX_QUEUED_REPORTS: usize = 10;
+/// The maximum number of malice reports to include when creating a new block.
+const MAX_REPORTS_PER_BLOCK: usize = 10;
+/// Don't re-send malice reports every block. Skip this many before retrying.
+const REPORTS_SKIP_BLOCKS: u64 = 1;
 
 const MEMOIZE_CAPACITY: usize = 500;
 
@@ -74,6 +86,12 @@ pub struct ValidatorSafeContract {
     contract_address: Address,
     validators: RwLock<MemoryLruCache<H256, SimpleList>>,
     client: RwLock<Option<Weak<dyn EngineClient>>>, // TODO [keorn]: remove
+    report_queue: Mutex<ReportQueue>,
+    /// The block number where we resent the queued reports last time.
+    resent_reports_in_block: Mutex<BlockNumber>,
+    /// If set, this is the block number at which the consensus engine switches from AuRa to AuRa
+    /// with POSDAO modifications.
+    posdao_transition: Option<BlockNumber>,
 }
 
 // first proof is just a state proof call of `getValidators` at header's state.
@@ -216,12 +234,52 @@ fn prove_initial(
 }
 
 impl ValidatorSafeContract {
-    pub fn new(contract_address: Address) -> Self {
+    pub fn new(contract_address: Address, posdao_transition: Option<BlockNumber>) -> Self {
         ValidatorSafeContract {
             contract_address,
             validators: RwLock::new(MemoryLruCache::new(MEMOIZE_CAPACITY)),
             client: RwLock::new(None),
+            report_queue: Mutex::new(ReportQueue::default()),
+            resent_reports_in_block: Mutex::new(0),
+            posdao_transition,
         }
+    }
+
+    fn transact(&self, data: Bytes, nonce: U256) -> Result<(), EthcoreError> {
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .ok_or("No client!")?;
+        let full_client = client.as_full_client().ok_or("No full client!")?;
+
+        let tx_request = TransactionRequest::call(self.contract_address, data)
+            .gas_price(U256::zero())
+            .nonce(nonce);
+        match full_client.transact(tx_request) {
+            Ok(()) | Err(transaction::Error::AlreadyImported) => Ok(()),
+            Err(e) => Err(e)?,
+        }
+    }
+
+    /// Puts a malice report into the queue for later resending.
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The address of the misbehaving validator.
+    /// * `block` - The block number at which the misbehavior occurred.
+    /// * `data` - The call data for the `reportMalicious` contract call.
+    pub(crate) fn enqueue_report(&self, addr: Address, block: BlockNumber, data: Vec<u8>) {
+        // Skip the rest of the function unless there has been a transition to POSDAO AuRa.
+        if self
+            .posdao_transition
+            .map_or(true, |block_num| block < block_num)
+        {
+            trace!(target: "engine", "Skipping queueing a malicious behavior report");
+            return;
+        }
+        self.report_queue.lock().push(addr, block, data)
     }
 
     /// Queries the state and gets the set of validators.
@@ -325,6 +383,110 @@ impl ValidatorSet for ValidatorSafeContract {
                 })
                 .map(|out| (out, Vec::new()))
         }) // generate no proofs in general
+    }
+
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        header: &Header,
+        caller: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError> {
+        // Skip the rest of the function unless there has been a transition to POSDAO AuRa.
+        if self
+            .posdao_transition
+            .map_or(true, |block_num| header.number() < block_num)
+        {
+            trace!(target: "engine", "Skipping a call to emitInitiateChange");
+            return Ok(Vec::new());
+        }
+        let mut transactions = Vec::new();
+
+        // Create the `InitiateChange` event if necessary.
+        let (data, decoder) = validator_set::functions::emit_initiate_change_callable::call();
+        let emit_initiate_change_callable = caller(self.contract_address, data)
+            .and_then(|x| {
+                decoder
+                    .decode(&x)
+                    .map_err(|x| format!("chain spec bug: could not decode: {:?}", x))
+            })
+            .map_err(::engines::EngineError::FailedSystemCall)?;
+        if !emit_initiate_change_callable {
+            trace!(target: "engine", "New block #{} issued ― no need to call emitInitiateChange()", header.number());
+        } else {
+            trace!(target: "engine", "New block issued #{} ― calling emitInitiateChange()", header.number());
+            let (data, _decoder) = validator_set::functions::emit_initiate_change::call();
+            transactions.push((self.contract_address, data));
+        }
+
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .ok_or("No client!")?;
+        let client = client.as_full_client().ok_or("No full client!")?;
+
+        // Retry all pending reports.
+        let mut report_queue = self.report_queue.lock();
+        report_queue.filter(client, header.author(), self.contract_address);
+        for (_address, _block, data) in report_queue.iter().take(MAX_REPORTS_PER_BLOCK) {
+            transactions.push((self.contract_address, data.clone()))
+        }
+
+        Ok(transactions)
+    }
+
+    fn on_close_block(&self, header: &Header, our_address: &Address) -> Result<(), EthcoreError> {
+        // Skip the rest of the function unless there has been a transition to POSDAO AuRa.
+        if self
+            .posdao_transition
+            .map_or(true, |block_num| header.number() < block_num)
+        {
+            trace!(target: "engine", "Skipping resending of queued malicious behavior reports");
+            return Ok(());
+        }
+
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .ok_or("No client!")?;
+        let client = client.as_full_client().ok_or("No full client!")?;
+
+        let mut report_queue = self.report_queue.lock();
+        report_queue.filter(client, our_address, self.contract_address);
+        report_queue.truncate();
+
+        let mut resent_reports_in_block = self.resent_reports_in_block.lock();
+
+        // Skip at least one block after sending malicious reports last time.
+        if header.number() > *resent_reports_in_block + REPORTS_SKIP_BLOCKS {
+            *resent_reports_in_block = header.number();
+            let mut nonce = client.latest_nonce(our_address);
+            for (address, block, data) in report_queue.iter() {
+                debug!(target: "engine", "Retrying to report validator {} for misbehavior on block {} with nonce {}.",
+                   address, block, nonce);
+                while match self.transact(data.clone(), nonce) {
+                    Ok(()) => false,
+                    Err(EthcoreError(
+                        EthcoreErrorKind::Transaction(transaction::Error::Old),
+                        _,
+                    )) => true,
+                    Err(err) => {
+                        warn!(target: "engine", "Cannot report validator {} for misbehavior on block {}: {}",
+                          address, block, err);
+                        false
+                    }
+                } {
+                    warn!(target: "engine", "Nonce {} already used. Incrementing.", nonce);
+                    nonce += U256::from(1);
+                }
+                nonce += U256::from(1);
+            }
+        }
+
+        Ok(())
     }
 
     fn on_epoch_begin(
@@ -487,6 +649,68 @@ impl ValidatorSet for ValidatorSafeContract {
     }
 }
 
+/// A queue containing pending reports of malicious validators.
+#[derive(Debug, Default)]
+struct ReportQueue(VecDeque<(Address, BlockNumber, Vec<u8>)>);
+
+impl ReportQueue {
+    /// Pushes a report to the end of the queue.
+    fn push(&mut self, addr: Address, block: BlockNumber, data: Vec<u8>) {
+        self.0.push_back((addr, block, data));
+    }
+
+    /// Filters reports of validators that have already been reported or are banned.
+    fn filter(
+        &mut self,
+        client: &dyn BlockChainClient,
+        our_address: &Address,
+        contract_address: Address,
+    ) {
+        self.0.retain(|&(malicious_validator_address, block, ref _data)| {
+			trace!(
+				target: "engine",
+				"Checking if report of malicious validator {} at block {} should be removed from cache",
+				malicious_validator_address,
+				block
+			);
+			// Check if the validator should be reported.
+			let (data, decoder) = validator_set::functions::should_validator_report::call(
+				*our_address, malicious_validator_address, block
+			);
+			match client.call_contract(BlockId::Latest, contract_address, data)
+				.and_then(|result| decoder.decode(&result[..]).map_err(|e| e.to_string()))
+			{
+				Ok(false) => {
+					trace!(target: "engine", "Successfully removed report from report cache");
+					false
+				}
+				Ok(true) => true,
+				Err(err) => {
+					warn!(target: "engine", "Failed to query report status {:?}, dropping pending report.", err);
+					false
+				}
+			}
+		});
+    }
+
+    /// Returns an iterator over all transactions in the queue.
+    fn iter(&self) -> impl Iterator<Item = &(Address, BlockNumber, Vec<u8>)> {
+        self.0.iter()
+    }
+
+    /// Removes reports from the queue if it contains more than `MAX_QUEUED_REPORTS` entries.
+    fn truncate(&mut self) {
+        if self.0.len() > MAX_QUEUED_REPORTS {
+            warn!(
+                target: "engine",
+                "Removing {} reports from report cache, even though it has not been finalized",
+                self.0.len() - MAX_QUEUED_REPORTS
+            );
+            self.0.truncate(MAX_QUEUED_REPORTS);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{super::ValidatorSet, ValidatorSafeContract, EVENT_NAME_HASH};
@@ -495,14 +719,14 @@ mod tests {
         traits::{EngineClient, ForceUpdateSealing},
         BlockInfo, ChainInfo, ImportBlock,
     };
+    use crypto::publickey::Secret;
     use ethereum_types::Address;
-    use ethkey::Secret;
     use hash::keccak;
     use miner::{self, MinerService};
     use rustc_hex::FromHex;
     use spec::Spec;
     use std::sync::Arc;
-    use test_helpers::{generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data};
+    use test_helpers::generate_dummy_client_with_spec;
     use types::{
         ids::BlockId,
         transaction::{Action, Transaction, TypedTransaction},
@@ -512,11 +736,8 @@ mod tests {
     #[test]
     fn fetches_validators() {
         let client = generate_dummy_client_with_spec(Spec::new_validator_safe_contract);
-        let vc = Arc::new(ValidatorSafeContract::new(
-            "0000000000000000000000000000000000000005"
-                .parse::<Address>()
-                .unwrap(),
-        ));
+        let addr: Address = "0000000000000000000000000000000000000005".parse().unwrap();
+        let vc = Arc::new(ValidatorSafeContract::new(addr, None));
         vc.register_client(Arc::downgrade(&client) as _);
         let last_hash = client.best_block_header().hash();
         assert!(vc.contains(
@@ -614,8 +835,7 @@ mod tests {
         assert_eq!(client.chain_info().best_block_number, 3);
 
         // Check syncing.
-        let sync_client =
-            generate_dummy_client_with_spec_and_data(Spec::new_validator_safe_contract, 0, 0, &[]);
+        let sync_client = generate_dummy_client_with_spec(Spec::new_validator_safe_contract);
         sync_client
             .engine()
             .register_client(Arc::downgrade(&sync_client) as _);

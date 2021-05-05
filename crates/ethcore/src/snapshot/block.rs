@@ -113,7 +113,6 @@ impl AbridgedBlock {
 
         let transactions = TypedTransaction::decode_rlp_list(&rlp.at(8)?)?;
         let uncles = Header::decode_rlp_list(&rlp.at(9)?, eip1559_transition)?;
-        //let uncles: Vec<Header> = rlp.list_at(9)?;
 
         header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| {
             if r.is_list() {
@@ -181,7 +180,7 @@ mod tests {
             AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::max_value());
         assert_eq!(
             abridged
-                .to_block(H256::new(), 0, receipts_root, BlockNumber::max_value())
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::max_value())
                 .unwrap(),
             b
         );
@@ -199,7 +198,7 @@ mod tests {
             AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::default());
         assert_eq!(
             abridged
-                .to_block(H256::new(), 0, receipts_root, BlockNumber::default())
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::default())
                 .unwrap(),
             b
         );
@@ -216,7 +215,7 @@ mod tests {
             AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::max_value());
         assert_eq!(
             abridged
-                .to_block(H256::new(), 2, receipts_root, BlockNumber::max_value())
+                .to_block(H256::default(), 2, receipts_root, BlockNumber::max_value())
                 .unwrap(),
             b
         );
@@ -234,7 +233,7 @@ mod tests {
             value: U256::from(1),
             data: b"Hello!".to_vec(),
         })
-        .fake_sign(Address::from(0x69));
+        .fake_sign(Address::from_low_u64_be(0x69));
 
         let t2 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
@@ -244,7 +243,7 @@ mod tests {
             value: U256::from(1000000000),
             data: "Eep!".into(),
         })
-        .fake_sign(Address::from(0x55));
+        .fake_sign(Address::from_low_u64_be(0x55));
 
         b.transactions.push(t1.into());
         b.transactions.push(t2.into());
@@ -263,7 +262,7 @@ mod tests {
         );
         assert_eq!(
             abridged
-                .to_block(H256::new(), 0, receipts_root, BlockNumber::max_value())
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::max_value())
                 .unwrap(),
             b
         );

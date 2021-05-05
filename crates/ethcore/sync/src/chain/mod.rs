@@ -109,7 +109,7 @@ use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
 use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
@@ -133,7 +133,7 @@ use self::{
 pub(crate) use self::supplier::SyncSupplier;
 use self::{propagator::SyncPropagator, requester::SyncRequester};
 
-known_heap_size!(0, PeerInfo);
+malloc_size_of_is_0!(PeerInfo);
 
 /// Possible errors during packet's processing
 #[derive(Debug, Display)]
@@ -153,8 +153,12 @@ impl From<DecoderError> for PacketProcessError {
     }
 }
 
+/// Version 65 of the Ethereum protocol and number of packet IDs reserved by the protocol (packet count).
+pub const ETH_PROTOCOL_VERSION_65: (u8, u8) = (65, 0x11);
 /// 64 version of Ethereum protocol.
 pub const ETH_PROTOCOL_VERSION_64: (u8, u8) = (64, 0x11);
+/// 63 version of Ethereum protocol.
+pub const ETH_PROTOCOL_VERSION_63: (u8, u8) = (63, 0x11);
 /// 1 version of OpenEthereum protocol and the packet count.
 pub const PAR_PROTOCOL_VERSION_1: (u8, u8) = (1, 0x15);
 /// 2 version of OpenEthereum protocol (consensus messages added).
@@ -163,6 +167,7 @@ pub const PAR_PROTOCOL_VERSION_2: (u8, u8) = (2, 0x16);
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
 pub const MAX_RECEIPTS_HEADERS_TO_SEND: usize = 256;
+pub const MAX_TRANSACTIONS_TO_REQUEST: usize = 256;
 const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 const MAX_PEER_LAG_PROPAGATION: BlockNumber = 20;
@@ -182,6 +187,7 @@ const STATUS_TIMEOUT: Duration = Duration::from_secs(5);
 const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
 const BODIES_TIMEOUT: Duration = Duration::from_secs(20);
 const RECEIPTS_TIMEOUT: Duration = Duration::from_secs(10);
+const POOLED_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(10);
 const FORK_HEADER_TIMEOUT: Duration = Duration::from_secs(3);
 const SNAPSHOT_MANIFEST_TIMEOUT: Duration = Duration::from_secs(5);
 const SNAPSHOT_DATA_TIMEOUT: Duration = Duration::from_secs(120);
@@ -284,6 +290,7 @@ pub enum PeerAsking {
     BlockHeaders,
     BlockBodies,
     BlockReceipts,
+    PooledTransactions,
     SnapshotManifest,
     SnapshotData,
 }
@@ -335,6 +342,10 @@ pub struct PeerInfo {
     asking_blocks: Vec<H256>,
     /// Holds requested header hash if currently requesting block header by hash
     asking_hash: Option<H256>,
+    /// Hashes of transactions to be requested.
+    unfetched_pooled_transactions: H256FastSet,
+    /// Hashes of the transactions we're requesting.
+    asking_pooled_transactions: Vec<H256>,
     /// Holds requested snapshot chunk hash if any.
     asking_snapshot_data: Option<H256>,
     /// Request timestamp
@@ -377,15 +388,17 @@ impl PeerInfo {
 #[cfg(not(test))]
 pub mod random {
     use rand;
-    pub fn new() -> rand::ThreadRng {
+    pub fn new() -> rand::rngs::ThreadRng {
         rand::thread_rng()
     }
 }
 #[cfg(test)]
 pub mod random {
-    use rand::{self, SeedableRng};
-    pub fn new() -> rand::XorShiftRng {
-        rand::XorShiftRng::from_seed([0, 1, 2, 3])
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    const RNG_SEED: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    pub fn new() -> XorShiftRng {
+        XorShiftRng::from_seed(RNG_SEED)
     }
 }
 
@@ -615,7 +628,7 @@ impl ChainSync {
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
-        random::new().shuffle(&mut peers);
+        peers.shuffle(&mut random::new());
         peers.truncate(count);
         peers
     }
@@ -684,6 +697,55 @@ pub struct ChainSync {
     eip1559_transition: BlockNumber,
 }
 
+#[derive(Debug, Default)]
+struct GetPooledTransactionsReport {
+    found: H256FastSet,
+    missing: H256FastSet,
+    not_sent: H256FastSet,
+}
+
+impl GetPooledTransactionsReport {
+    fn generate(
+        mut asked: Vec<H256>,
+        received: impl IntoIterator<Item = H256>,
+    ) -> Result<Self, H256> {
+        let mut out = GetPooledTransactionsReport::default();
+
+        let asked_set = asked.iter().copied().collect::<H256FastSet>();
+        let mut asked_iter = asked.drain(std::ops::RangeFull);
+        let mut txs = received.into_iter();
+        let mut next_received: Option<H256> = None;
+        loop {
+            if let Some(received) = next_received {
+                if !asked_set.contains(&received) {
+                    return Err(received);
+                }
+
+                if let Some(requested) = asked_iter.next() {
+                    if requested == received {
+                        next_received = None;
+                        out.found.insert(requested);
+                    } else {
+                        out.missing.insert(requested);
+                    }
+                } else {
+                    break;
+                }
+            } else {
+                if let Some(tx) = txs.next() {
+                    next_received = Some(tx);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        out.not_sent = asked_iter.collect();
+
+        Ok(out)
+    }
+}
+
 impl ChainSync {
     pub fn new(
         config: SyncConfig,
@@ -735,7 +797,7 @@ impl ChainSync {
 
         SyncStatus {
             state: self.state.clone(),
-            protocol_version: ETH_PROTOCOL_VERSION_64.0,
+            protocol_version: ETH_PROTOCOL_VERSION_65.0,
             network_id: self.network_id,
             start_block_number: self.starting_block,
             last_imported_block_number: Some(last_imported_number),
@@ -783,10 +845,37 @@ impl ChainSync {
 
     /// Updates transactions were received by a peer
     pub fn transactions_received(&mut self, txs: &[UnverifiedTransaction], peer_id: PeerId) {
-        if let Some(peer_info) = self.peers.get_mut(&peer_id) {
-            peer_info
-                .last_sent_transactions
-                .extend(txs.iter().map(|tx| tx.hash()));
+        // Remove imported txs from all request queues
+        let imported = txs.iter().map(|tx| tx.hash()).collect::<H256FastSet>();
+        for (pid, peer_info) in &mut self.peers {
+            peer_info.unfetched_pooled_transactions = peer_info
+                .unfetched_pooled_transactions
+                .difference(&imported)
+                .copied()
+                .collect();
+            if *pid == peer_id {
+                match GetPooledTransactionsReport::generate(
+                    std::mem::replace(&mut peer_info.asking_pooled_transactions, Vec::new()),
+                    txs.iter().map(UnverifiedTransaction::hash),
+                ) {
+                    Ok(report) => {
+                        // Some transactions were not received in this batch because of size.
+                        // Add them back to request feed.
+                        peer_info.unfetched_pooled_transactions = peer_info
+                            .unfetched_pooled_transactions
+                            .union(&report.not_sent)
+                            .copied()
+                            .collect();
+                    }
+                    Err(_unknown_tx) => {
+                        // punish peer?
+                    }
+                }
+
+                peer_info
+                    .last_sent_transactions
+                    .extend(txs.iter().map(|tx| tx.hash()));
+            }
         }
     }
 
@@ -1017,8 +1106,9 @@ impl ChainSync {
                     self.active_peers.len(), peers.len(), self.peers.len()
                 );
 
-                random::new().shuffle(&mut peers); // TODO (#646): sort by rating
+                peers.shuffle(&mut random::new()); // TODO (#646): sort by rating
                                                    // prefer peers with higher protocol version
+
                 peers.sort_by(|&(_, ref v1), &(_, ref v2)| v1.cmp(v2));
 
                 for (peer_id, _) in peers {
@@ -1114,21 +1204,31 @@ impl ChainSync {
 					}
 
 					// Only ask for old blocks if the peer has an equal or higher difficulty
-					let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
-
+                    let equal_or_higher_difficulty = peer_difficulty.map_or(true, |pd| pd >= syncing_difficulty);
+                    // check queue fullness
+                    let ancient_block_fullness = io.chain().ancient_block_queue_fullness();
 					if force || equal_or_higher_difficulty {
-                        let mut is_complete = false;
-						if let Some(old_blocks) = self.old_blocks.as_mut() {
-                            if let Some(request) = old_blocks.request_blocks(peer_id, io, num_active_peers) {
+						if ancient_block_fullness < 0.8 {
+                            if let Some(request) = self.old_blocks.as_mut().and_then(|d| d.request_blocks(peer_id, io, num_active_peers)) {
                                 SyncRequester::request_blocks(self, io, peer_id, request, BlockSet::OldBlocks);
                                 return;
                             }
-                            is_complete = old_blocks.is_complete();
+                        }
 
-                        }
-                        if is_complete { // if old_blocks is in complete state, set it to None.
-                            self.old_blocks = None;
-                        }
+						// and if we have nothing else to do, get the peer to give us at least some of announced but unfetched transactions
+						let mut to_send = Default::default();
+						if let Some(peer) = self.peers.get_mut(&peer_id) {
+							if peer.asking_pooled_transactions.is_empty() {
+								to_send = peer.unfetched_pooled_transactions.drain().take(MAX_TRANSACTIONS_TO_REQUEST).collect::<Vec<_>>();
+								peer.asking_pooled_transactions = to_send.clone();
+							}
+						}
+
+						if !to_send.is_empty() {
+							SyncRequester::request_pooled_transactions(self, io, peer_id, &to_send);
+
+							return;
+						}
 					} else {
 						trace!(
 							target: "sync",
@@ -1285,7 +1385,7 @@ impl ChainSync {
         };
         trace!(target: "sync", "Sending status to {}, protocol version {}", peer, protocol);
 
-        let mut packet = rlp04::RlpStream::new();
+        let mut packet = RlpStream::new();
         packet.begin_unbounded_list();
         let chain = io.chain().chain_info();
         packet.append(&(protocol as u32));
@@ -1293,12 +1393,13 @@ impl ChainSync {
         packet.append(&primitive_types07::U256(chain.total_difficulty.0));
         packet.append(&primitive_types07::H256(chain.best_block_hash.0));
         packet.append(&primitive_types07::H256(chain.genesis_hash.0));
-        packet.append(&self.fork_filter.current(io.chain()));
-
+        if eth_protocol_version >= ETH_PROTOCOL_VERSION_64.0 {
+            packet.append(&self.fork_filter.current(io.chain()));
+        }
         if warp_protocol {
             let manifest = io.snapshot_service().manifest();
             let block_number = manifest.as_ref().map_or(0, |m| m.block_number);
-            let manifest_hash = manifest.map_or(H256::new(), |m| keccak(m.into_rlp()));
+            let manifest_hash = manifest.map_or(H256::default(), |m| keccak(m.into_rlp()));
             packet.append(&primitive_types07::H256(manifest_hash.0));
             packet.append(&block_number);
         }
@@ -1315,6 +1416,7 @@ impl ChainSync {
                 PeerAsking::BlockHeaders => elapsed > HEADERS_TIMEOUT,
                 PeerAsking::BlockBodies => elapsed > BODIES_TIMEOUT,
                 PeerAsking::BlockReceipts => elapsed > RECEIPTS_TIMEOUT,
+                PeerAsking::PooledTransactions => elapsed > POOLED_TRANSACTIONS_TIMEOUT,
                 PeerAsking::Nothing => false,
                 PeerAsking::ForkHeader => elapsed > FORK_HEADER_TIMEOUT,
                 PeerAsking::SnapshotManifest => elapsed > SNAPSHOT_MANIFEST_TIMEOUT,
@@ -1509,7 +1611,6 @@ pub mod tests {
         miner::{MinerService, PendingOrdering},
     };
     use ethereum_types::{Address, H256, U256};
-    use ethkey;
     use network::PeerId;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
@@ -1546,7 +1647,7 @@ pub mod tests {
         let mut rlp = RlpStream::new_list(5);
         for _ in 0..5 {
             let mut hash_d_rlp = RlpStream::new_list(2);
-            let hash: H256 = H256::from(0u64);
+            let hash: H256 = H256::from_low_u64_be(0u64);
             let diff: U256 = U256::from(1u64);
             hash_d_rlp.append(&hash);
             hash_d_rlp.append(&diff);
@@ -1624,6 +1725,8 @@ pub mod tests {
                 asking: PeerAsking::Nothing,
                 asking_blocks: Vec::new(),
                 asking_hash: None,
+                unfetched_pooled_transactions: Default::default(),
+                asking_pooled_transactions: Default::default(),
                 ask_time: Instant::now(),
                 last_sent_transactions: Default::default(),
                 expired: false,
@@ -1708,7 +1811,7 @@ pub mod tests {
     #[test]
     fn should_add_transactions_to_queue() {
         fn sender(tx: &UnverifiedTransaction) -> Address {
-            ethkey::public_to_address(&tx.recover_public().unwrap())
+            crypto::publickey::public_to_address(&tx.recover_public().unwrap())
         }
 
         // given
@@ -1800,5 +1903,30 @@ pub mod tests {
         // then
         let status = io.chain.miner.queue_status();
         assert_eq!(status.status.transaction_count, 0);
+    }
+
+    #[test]
+    fn generate_pooled_transactions_report() {
+        let asked = vec![1, 2, 3, 4, 5, 6, 7]
+            .into_iter()
+            .map(H256::from_low_u64_be);
+        let received = vec![2, 4, 5].into_iter().map(H256::from_low_u64_be);
+
+        let report = GetPooledTransactionsReport::generate(asked.collect(), received).unwrap();
+        assert_eq!(
+            report.found,
+            vec![2, 4, 5]
+                .into_iter()
+                .map(H256::from_low_u64_be)
+                .collect()
+        );
+        assert_eq!(
+            report.missing,
+            vec![1, 3].into_iter().map(H256::from_low_u64_be).collect()
+        );
+        assert_eq!(
+            report.not_sent,
+            vec![6, 7].into_iter().map(H256::from_low_u64_be).collect()
+        );
     }
 }

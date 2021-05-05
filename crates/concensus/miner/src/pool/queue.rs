@@ -33,7 +33,10 @@ use txpool::{self, Verifier};
 use types::transaction;
 
 use pool::{
-    self, client, listener, local_transactions::LocalTransactionsList, ready, replace, scoring,
+    self, client, listener,
+    local_transactions::LocalTransactionsList,
+    ready, replace, scoring,
+    transaction_filter::{match_filter, TransactionFilter},
     verifier, PendingOrdering, PendingSettings, PrioritizationStrategy,
 };
 
@@ -122,6 +125,17 @@ impl CachedPending {
         nonce_cap: Option<&U256>,
         max_len: usize,
     ) -> Option<Vec<Arc<pool::VerifiedTransaction>>> {
+        self.pending_filtered(block_number, current_timestamp, nonce_cap, max_len, None)
+    }
+
+    pub fn pending_filtered(
+        &self,
+        block_number: u64,
+        current_timestamp: u64,
+        nonce_cap: Option<&U256>,
+        max_len: usize,
+        filter: Option<TransactionFilter>,
+    ) -> Option<Vec<Arc<pool::VerifiedTransaction>>> {
         // First check if we have anything in cache.
         let pending = self.pending.as_ref()?;
 
@@ -150,7 +164,14 @@ impl CachedPending {
             return None;
         }
 
-        Some(pending.iter().take(max_len).cloned().collect())
+        Some(
+            pending
+                .iter()
+                .filter(|tx| match_filter(&filter, tx))
+                .take(max_len)
+                .cloned()
+                .collect(),
+        )
     }
 }
 
@@ -459,6 +480,32 @@ impl TransactionQueue {
         pending
     }
 
+    /// Returns current pending transactions filtered.
+    ///
+    /// Different to the pending() method, this one does not cache.
+    pub fn pending_filtered<C>(
+        &self,
+        client: C,
+        settings: PendingSettings,
+        filter: &TransactionFilter,
+    ) -> Vec<Arc<pool::VerifiedTransaction>>
+    where
+        C: client::NonceClient,
+    {
+        self.collect_pending(
+            client,
+            settings.includable_boundary,
+            settings.block_number,
+            settings.current_timestamp,
+            settings.nonce_cap,
+            |i| {
+                i.filter(|tx| filter.matches(tx))
+                    .take(settings.max_len)
+                    .collect()
+            },
+        )
+    }
+
     /// Collect pending transactions.
     ///
     /// NOTE This is re-computing the pending set and it might be expensive to do so.
@@ -514,7 +561,7 @@ impl TransactionQueue {
         // We want to clear stale transactions from the queue as well.
         // (Transactions that are occuping the queue for a long time without being included)
         let stale_id = {
-            let current_id = self.insertion_id.load(atomic::Ordering::Relaxed);
+            let current_id = self.insertion_id.load(atomic::Ordering::SeqCst);
             // wait at least for half of the queue to be replaced
             let gap = self.pool.read().options().max_count / 2;
             // but never less than 100 transactions

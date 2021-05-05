@@ -22,7 +22,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use ethereum_types::{Address, H160, H256, H64, U256, U64};
+use ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64};
 use parking_lot::Mutex;
 
 use ethash::{self, SeedHashCompute};
@@ -327,7 +327,7 @@ where
     }
 
     fn transaction(&self, id: PendingTransactionId) -> Result<Option<Transaction>> {
-        let client_transaction = |id| match self.client.transaction(id) {
+        let client_transaction = |id| match self.client.block_transaction(id) {
             Some(t) => Ok(Some(Transaction::from_localized(t))),
             None => Ok(None),
         };
@@ -455,11 +455,12 @@ where
             .map(|block| block.into_inner().len())
             .map(U256::from);
 
-        let (gas_limit, gas_target) = if uncle.number() >= self.client.engine().params().eip1559_transition {
-            (None, Some(*uncle.gas_limit()))
-        } else {
-            (Some(*uncle.gas_limit()), None)
-        };
+        let (gas_limit, gas_target) =
+            if uncle.number() >= self.client.engine().params().eip1559_transition {
+                (None, Some(*uncle.gas_limit()))
+            } else {
+                (Some(*uncle.gas_limit()), None)
+            };
         let block = RichBlock {
             inner: Block {
                 hash: Some(uncle.hash()),
@@ -663,7 +664,7 @@ where
 
     fn author(&self) -> Result<H160> {
         let miner = self.miner.authoring_params().author;
-        if miner == 0.into() {
+        if miner.is_zero() {
             (self.accounts)()
                 .first()
                 .cloned()
@@ -758,8 +759,8 @@ where
                         let key2: H256 = storage_index;
                         self.client.prove_storage(key1, keccak(key2), id).map(
                             |(storage_proof, storage_value)| StorageProof {
-                                key: key2.into(),
-                                value: storage_value.into(),
+                                key: key2.into_uint(),
+                                value: storage_value.into_uint(),
                                 proof: storage_proof.into_iter().map(Bytes::new).collect(),
                             },
                         )
@@ -781,10 +782,11 @@ where
         let num = num.unwrap_or_default();
 
         try_bf!(check_known(&*self.client, num.clone()));
-        let res = match self
-            .client
-            .storage_at(&address, &H256::from(position), self.get_state(num))
-        {
+        let res = match self.client.storage_at(
+            &address,
+            &BigEndianHash::from_uint(&position),
+            self.get_state(num),
+        ) {
             Some(s) => Ok(s),
             None => Err(errors::state_pruned()),
         };

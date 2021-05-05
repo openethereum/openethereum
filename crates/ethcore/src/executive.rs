@@ -25,7 +25,7 @@ use factory::VmFactory;
 use hash::keccak;
 use machine::EthereumMachine as Machine;
 use state::{Backend as StateBackend, CleanupMode, State, Substate};
-use std::{cmp, sync::Arc};
+use std::{cmp, convert::TryFrom, sync::Arc};
 use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction, TypedTransaction};
@@ -240,7 +240,6 @@ impl<'a> CallCreateExecutive<'a> {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
             substate.access_list.insert_address(params.address);
-            substate.access_list.insert_address(params.sender);
             substate
         } else {
             Substate::default()
@@ -1153,8 +1152,11 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let mut access_list = AccessList::new(schedule.eip2929);
 
         if schedule.eip2929 {
-            for (address, _) in self.machine.builtins() {
-                access_list.insert_address(*address);
+            access_list.insert_address(sender);
+            for (address, builtin) in self.machine.builtins() {
+                if builtin.is_active(self.info.number) {
+                    access_list.insert_address(*address);
+                }
             }
 
             if let Some(al) = t.access_list() {
@@ -1239,7 +1241,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
         self.state.sub_balance(
             &sender,
-            &U256::from(gas_cost),
+            &U256::try_from(gas_cost).expect("Total cost (value + gas_cost) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
@@ -1251,6 +1253,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     &nonce,
                     &t.tx().data,
                 );
+                access_list.insert_address(new_address);
                 let params = ActionParams {
                     code_address: new_address.clone(),
                     code_hash: code_hash,
@@ -1274,6 +1277,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 (res, out)
             }
             Action::Call(ref address) => {
+                access_list.insert_address(address.clone());
                 let params = ActionParams {
                     code_address: address.clone(),
                     address: address.clone(),
@@ -1597,9 +1601,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 #[allow(dead_code)]
 mod tests {
     use super::*;
+    use crypto::publickey::{Generator, Random};
     use error::ExecutionError;
-    use ethereum_types::{Address, H160, H256, U256, U512};
-    use ethkey::{Generator, Random};
+    use ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
     use evm::{Factory, VMType};
     use machine::EthereumMachine;
     use rustc_hex::FromHex;
@@ -1684,8 +1688,8 @@ mod tests {
 
         assert_eq!(gas_left, U256::from(79_975));
         assert_eq!(
-            state.storage_at(&address, &H256::new()).unwrap(),
-            H256::from(&U256::from(0xf9u64))
+            state.storage_at(&address, &H256::default()).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0xf9u64))
         );
         assert_eq!(state.balance(&sender).unwrap(), U256::from(0xf9));
         assert_eq!(state.balance(&address).unwrap(), U256::from(0x7));
@@ -1803,8 +1807,8 @@ mod tests {
             vec![
                 FlatTrace {
                     action: trace::Action::Call(trace::Call {
-                        from: "4444444444444444444444444444444444444444".into(),
-                        to: "5555555555555555555555555555555555555555".into(),
+                        from: H160::from_str("4444444444444444444444444444444444444444").unwrap(),
+                        to: H160::from_str("5555555555555555555555555555555555555555").unwrap(),
                         value: 100.into(),
                         gas: 100_000.into(),
                         input: vec![],
@@ -1819,8 +1823,8 @@ mod tests {
                 },
                 FlatTrace {
                     action: trace::Action::Call(trace::Call {
-                        from: "5555555555555555555555555555555555555555".into(),
-                        to: "0000000000000000000000000000000000000003".into(),
+                        from: H160::from_str("5555555555555555555555555555555555555555").unwrap(),
+                        to: H160::from_str("0000000000000000000000000000000000000003").unwrap(),
                         value: 1.into(),
                         gas: 66560.into(),
                         input: vec![],
@@ -1910,8 +1914,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "cd1722f3947def4cf144679da39c4c32bdc35681".into(),
-                    to: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap(),
+                    to: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 100.into(),
                     gas: 100000.into(),
                     input: vec![],
@@ -1926,7 +1930,7 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Create(trace::Create {
-                    from: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 23.into(),
                     gas: 67979.into(),
                     init: vec![
@@ -2041,8 +2045,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "cd1722f3947def4cf144679da39c4c32bdc35681".into(),
-                    to: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap(),
+                    to: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 100.into(),
                     gas: 100_000.into(),
                     input: vec![],
@@ -2057,7 +2061,7 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Create(trace::Create {
-                    from: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 23.into(),
                     gas: 66_917.into(),
                     init: vec![0x60, 0x01, 0x60, 0x00, 0xfd],
@@ -2436,9 +2440,9 @@ mod tests {
         assert_eq!(gas_left, U256::from(73_237));
         assert_eq!(
             state
-                .storage_at(&address_a, &H256::from(&U256::from(0x23)))
+                .storage_at(&address_a, &BigEndianHash::from_uint(&U256::from(0x23)))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
@@ -2495,15 +2499,15 @@ mod tests {
         assert_eq!(gas_left, U256::from(59_870));
         assert_eq!(
             state
-                .storage_at(&address, &H256::from(&U256::zero()))
+                .storage_at(&address, &BigEndianHash::from_uint(&U256::zero()))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
         assert_eq!(
             state
-                .storage_at(&address, &H256::from(&U256::one()))
+                .storage_at(&address, &BigEndianHash::from_uint(&U256::one()))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
@@ -2511,7 +2515,7 @@ mod tests {
     // TODO: fix (preferred) or remove
     evm_test_ignore! {test_transact_simple: test_transact_simple_int}
     fn test_transact_simple(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2555,14 +2559,14 @@ mod tests {
         assert_eq!(state.balance(&contract).unwrap(), U256::from(17));
         assert_eq!(state.nonce(&sender).unwrap(), U256::from(1));
         assert_eq!(
-            state.storage_at(&contract, &H256::new()).unwrap(),
-            H256::from(&U256::from(1))
+            state.storage_at(&contract, &H256::zero()).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
     evm_test! {test_transact_invalid_nonce: test_transact_invalid_nonce_int}
     fn test_transact_invalid_nonce(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2601,7 +2605,7 @@ mod tests {
 
     evm_test! {test_transact_gas_limit_reached: test_transact_gas_limit_reached_int}
     fn test_transact_gas_limit_reached(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2646,7 +2650,7 @@ mod tests {
 
     evm_test! {test_transact_eip1559: test_transact_eip1559_int}
     fn test_transact_eip1559(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
             transaction: AccessListTx::new(
                 Transaction {
@@ -2658,8 +2662,11 @@ mod tests {
                     nonce: U256::zero(),
                 },
                 vec![
-                    (H160::from(10), vec![H256::from(102), H256::from(103)]),
-                    (H160::from(400), vec![]),
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
                 ],
             ),
             max_priority_fee_per_gas: U256::from(30),
@@ -2690,7 +2697,7 @@ mod tests {
 
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}
     fn test_not_enough_cash(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(18),
@@ -2818,20 +2825,20 @@ mod tests {
         assert_eq!(output[..], returns[..]);
         assert_eq!(
             state
-                .storage_at(&contract_address, &H256::from(&U256::zero()))
+                .storage_at(&contract_address, &BigEndianHash::from_uint(&U256::zero()))
                 .unwrap(),
-            H256::from(&U256::from(0))
+            BigEndianHash::from_uint(&U256::from(0))
         );
     }
 
     evm_test! {test_eip1283: test_eip1283_int}
     fn test_eip1283(factory: Factory) {
-        let x1 = Address::from(0x1000);
-        let x2 = Address::from(0x1001);
-        let y1 = Address::from(0x2001);
-        let y2 = Address::from(0x2002);
-        let operating_address = Address::from(0);
-        let k = H256::new();
+        let x1 = Address::from_low_u64_be(0x1000);
+        let x2 = Address::from_low_u64_be(0x1001);
+        let y1 = Address::from_low_u64_be(0x2001);
+        let y2 = Address::from_low_u64_be(0x2002);
+        let operating_address = Address::from_low_u64_be(0);
+        let k = H256::default();
 
         let mut state = get_temp_state_with_factory(factory.clone());
         state
@@ -2865,7 +2872,7 @@ mod tests {
 
         assert_eq!(
             state.storage_at(&operating_address, &k).unwrap(),
-            H256::from(U256::from(0))
+            BigEndianHash::from_uint(&U256::from(0))
         );
         // Test a call via top-level -> y1 -> x1
         let (FinalizationResult { gas_left, .. }, refund, gas) = {
@@ -2892,7 +2899,7 @@ mod tests {
 
         assert_eq!(
             state.storage_at(&operating_address, &k).unwrap(),
-            H256::from(U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
         // Test a call via top-level -> y2 -> x2
         let (FinalizationResult { gas_left, .. }, refund, gas) = {

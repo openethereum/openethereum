@@ -52,7 +52,8 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
             .map(|(block, reason)| {
                 let number = block.header.number();
                 let hash = block.header.hash();
-                let (gas_limit, gas_target) = if block.header.base_fee().is_some() { //is 1559 enabled
+                let (gas_limit, gas_target) = if block.header.base_fee().is_some() {
+                    //is 1559 enabled
                     (None, cast(block.header.gas_limit()))
                 } else {
                     (cast(block.header.gas_limit()), None)

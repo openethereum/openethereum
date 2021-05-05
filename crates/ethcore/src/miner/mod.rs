@@ -26,7 +26,10 @@ pub mod pool_client;
 pub mod stratum;
 
 pub use self::miner::{Author, AuthoringParams, Miner, MinerOptions, Penalization, PendingSet};
-pub use ethcore_miner::{local_accounts::LocalAccounts, pool::PendingOrdering};
+pub use ethcore_miner::{
+    local_accounts::LocalAccounts,
+    pool::{transaction_filter::TransactionFilter, PendingOrdering},
+};
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -149,7 +152,7 @@ pub trait MinerService: Send + Sync {
     /// Set info necessary to sign consensus messages and block authoring.
     ///
     /// On chains where sealing is done externally (e.g. PoW) we provide only reward beneficiary.
-    fn set_author(&self, author: Author);
+    fn set_author<T: Into<Option<Author>>>(&self, author: T);
 
     // Transaction Pool
 
@@ -209,11 +212,23 @@ pub trait MinerService: Send + Sync {
     where
         C: ChainInfo + Sync;
 
-    /// Get a list of all ready transactions either ordered by priority or unordered (cheaper).
+    /// Get a list of all ready transactions either ordered by priority or unordered (cheaper),
+    /// and optionally filtered by sender, recipient, gas, gas price, value and/or nonce.
     ///
     /// Depending on the settings may look in transaction pool or only in pending block.
     /// If you don't need a full set of transactions, you can add `max_len` and create only a limited set of
     /// transactions.
+    fn ready_transactions_filtered<C>(
+        &self,
+        chain: &C,
+        max_len: usize,
+        filter: Option<TransactionFilter>,
+        ordering: PendingOrdering,
+    ) -> Vec<Arc<VerifiedTransaction>>
+    where
+        C: ChainInfo + Nonce + Sync;
+
+    /// Get an unfiltered list of all ready transactions.
     fn ready_transactions<C>(
         &self,
         chain: &C,
@@ -221,7 +236,10 @@ pub trait MinerService: Send + Sync {
         ordering: PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
-        C: ChainInfo + Nonce + Sync;
+        C: ChainInfo + Nonce + Sync,
+    {
+        self.ready_transactions_filtered(chain, max_len, None, ordering)
+    }
 
     /// Get a list of all transactions in the pool (some of them might not be ready for inclusion yet).
     fn queued_transactions(&self) -> Vec<Arc<VerifiedTransaction>>;

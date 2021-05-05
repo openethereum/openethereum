@@ -23,12 +23,15 @@ use std::{
 
 pub use parity_rpc::signer::SignerService;
 
-use account_utils::{self, AccountProvider};
+use crate::{
+    account_utils::{self, AccountProvider},
+    miner::external::ExternalMiner,
+    sync::{ManageNetwork, SyncProvider},
+};
 use ethcore::{client::Client, miner::Miner, snapshot::SnapshotService};
 use ethcore_logger::RotatingLogger;
 use fetch::Client as FetchClient;
 use jsonrpc_core::{self as core, MetaIoHandler};
-use miner::external::ExternalMiner;
 use parity_rpc::{
     dispatch::FullDispatcher,
     informant::{ActivityNotifier, ClientNotifier},
@@ -36,7 +39,6 @@ use parity_rpc::{
 };
 use parity_runtime::Executor;
 use parking_lot::Mutex;
-use sync::{ManageNetwork, SyncProvider};
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Api {

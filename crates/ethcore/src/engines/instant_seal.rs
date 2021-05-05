@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use block::ExecutedBlock;
-use engines::{Engine, Seal};
+use engines::{Engine, Seal, SealingState};
 use machine::Machine;
 use std::sync::atomic::{AtomicU64, Ordering};
 use types::header::{ExtendedHeader, Header};
@@ -63,8 +63,8 @@ impl<M: Machine> Engine<M> for InstantSeal<M> {
         &self.machine
     }
 
-    fn seals_internally(&self) -> Option<bool> {
-        Some(true)
+    fn sealing_state(&self) -> SealingState {
+        SealingState::Ready
     }
 
     fn should_reseal_on_update(&self) -> bool {
@@ -81,12 +81,16 @@ impl<M: Machine> Engine<M> for InstantSeal<M> {
             // Return a regular seal if the given block is _higher_ than
             // the last sealed one
             if block_number > last_sealed_block {
-                let prev_last_sealed_block = self.last_sealed_block.compare_and_swap(
-                    last_sealed_block,
-                    block_number,
-                    Ordering::SeqCst,
-                );
-                if prev_last_sealed_block == last_sealed_block {
+                if self
+                    .last_sealed_block
+                    .compare_exchange(
+                        last_sealed_block,
+                        block_number,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
                     return Seal::Regular(Vec::new());
                 }
             }

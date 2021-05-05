@@ -31,13 +31,14 @@
 //! `ExecutedBlock` is an underlaying data structure used by all structs above to store block
 //! related info.
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 
-use header::Header;
+use crate::{
+    header::Header,
+    transaction::{TypedTransaction, UnverifiedTransaction},
+    BlockNumber,
+};
 use rlp::{DecoderError, Rlp, RlpStream};
-use transaction::{TypedTransaction, UnverifiedTransaction};
-
-use crate::BlockNumber;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Default, Debug, Clone, PartialEq)]

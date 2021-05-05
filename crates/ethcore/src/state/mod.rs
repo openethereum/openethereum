@@ -371,7 +371,7 @@ impl<B: Backend> State<B> {
     /// Creates new state with empty state root
     /// Used for tests.
     pub fn new(mut db: B, account_start_nonce: U256, factories: Factories) -> State<B> {
-        let mut root = H256::new();
+        let mut root = H256::default();
         {
             // init trie and reset root to null
             let _ = factories.trie.create(db.as_hash_db_mut(), &mut root);
@@ -528,7 +528,7 @@ impl<B: Backend> State<B> {
         let (nonce, overflow) = self.account_start_nonce.overflowing_add(nonce_offset);
         if overflow {
             return Err(Box::new(TrieError::DecoderError(
-                H256::from(contract),
+                H256::from(contract.clone()),
                 rlp::DecoderError::Custom("Nonce overflow".into()),
             )));
         }
@@ -658,12 +658,14 @@ impl<B: Backend> State<B> {
                                 // would always be empty. Note that this branch is actually never called, because
                                 // `cached_storage_at` handled this case.
                                 warn!(target: "state", "Trying to get an account's cached storage value, but base storage root does not equal to original storage root! Assuming the value is empty.");
-                                return Ok(Some(H256::new()));
+                                return Ok(Some(H256::default()));
                             }
                         }
                     }
                     // The account didn't exist at that point. Return empty value.
-                    Some(Some(AccountEntry { account: None, .. })) => return Ok(Some(H256::new())),
+                    Some(Some(AccountEntry { account: None, .. })) => {
+                        return Ok(Some(H256::default()))
+                    }
                     // The value was not cached at that checkpoint, meaning it was not modified at all.
                     Some(None) => {
                         kind = Some(ReturnKind::OriginalAt);
@@ -718,12 +720,12 @@ impl<B: Backend> State<B> {
                             local_account = Some(maybe_acc);
                         }
                     }
-                    _ => return Ok(H256::new()),
+                    _ => return Ok(H256::default()),
                 }
             }
             // check the global cache and and cache storage key there if found,
             let trie_res = self.db.get_cached(address, |acc| match acc {
-                None => Ok(H256::new()),
+                None => Ok(H256::default()),
                 Some(a) => {
                     let account_db = self
                         .factories
@@ -746,7 +748,7 @@ impl<B: Backend> State<B> {
                         .readonly(self.db.as_hash_db(), account.address_hash(address));
                     return f_at(account, account_db.as_hash_db(), key);
                 } else {
-                    return Ok(H256::new());
+                    return Ok(H256::default());
                 }
             }
         }
@@ -759,8 +761,8 @@ impl<B: Backend> State<B> {
             .readonly(db, &self.root)
             .expect(SEC_TRIE_DB_UNWRAP_STR);
         let from_rlp = |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
-        let maybe_acc = db.get_with(address, from_rlp)?;
-        let r = maybe_acc.as_ref().map_or(Ok(H256::new()), |a| {
+        let maybe_acc = db.get_with(address.as_bytes(), from_rlp)?;
+        let r = maybe_acc.as_ref().map_or(Ok(H256::zero()), |a| {
             let account_db = self
                 .factories
                 .accountdb
@@ -1026,10 +1028,10 @@ impl<B: Backend> State<B> {
                 a.state = AccountState::Committed;
                 match a.account {
                     Some(ref mut account) => {
-                        trie.insert(address, &account.rlp())?;
+                        trie.insert(address.as_bytes(), &account.rlp())?;
                     }
                     None => {
-                        trie.remove(address)?;
+                        trie.remove(address.as_bytes())?;
                     }
                 };
             }
@@ -1152,6 +1154,7 @@ impl<B: Backend> State<B> {
         account: &Account,
         address: &Address,
     ) -> Result<PodAccount, Error> {
+        use ethereum_types::BigEndianHash;
         let mut pod_storage = BTreeMap::new();
         let addr_hash = account.address_hash(address);
         let accountdb = self
@@ -1165,10 +1168,11 @@ impl<B: Backend> State<B> {
         for o_kv in trie.iter()? {
             if let Ok((key, val)) = o_kv {
                 pod_storage.insert(
-                    key[..].into(),
-                    rlp::decode::<U256>(&val[..])
-                        .expect("Decoded from trie which was encoded from the same type; qed")
-                        .into(),
+                    H256::from_slice(&key[..]),
+                    BigEndianHash::from_uint(
+                        &rlp::decode::<U256>(&val[..])
+                            .expect("Decoded from trie which was encoded from the same type; qed"),
+                    ),
                 );
             }
         }
@@ -1328,7 +1332,7 @@ impl<B: Backend> State<B> {
                 if Self::update_account_cache(require, account, &self.db, accountdb.as_hash_db()) {
                     return Ok(f(Some(account)));
                 } else {
-                    return Err(Box::new(TrieError::IncompleteDatabase(H256::from(a))));
+                    return Err(Box::new(TrieError::IncompleteDatabase(H256::from(*a))));
                 }
             }
             return Ok(f(None));
@@ -1341,7 +1345,7 @@ impl<B: Backend> State<B> {
                     .accountdb
                     .readonly(self.db.as_hash_db(), account.address_hash(a));
                 if !Self::update_account_cache(require, account, &self.db, accountdb.as_hash_db()) {
-                    return Err(Box::new(TrieError::IncompleteDatabase(H256::from(a))));
+                    return Err(Box::new(TrieError::IncompleteDatabase(H256::from(*a))));
                 }
             }
             Ok(f(acc.map(|a| &*a)))
@@ -1353,7 +1357,7 @@ impl<B: Backend> State<B> {
                 let db = &self.db.as_hash_db();
                 let db = self.factories.trie.readonly(db, &self.root)?;
                 let from_rlp = |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
-                let mut maybe_acc = db.get_with(a, from_rlp)?;
+                let mut maybe_acc = db.get_with(a.as_bytes(), from_rlp)?;
                 if let Some(ref mut account) = maybe_acc.as_mut() {
                     let accountdb = self
                         .factories
@@ -1365,7 +1369,7 @@ impl<B: Backend> State<B> {
                         &self.db,
                         accountdb.as_hash_db(),
                     ) {
-                        return Err(Box::new(TrieError::IncompleteDatabase(H256::from(a))));
+                        return Err(Box::new(TrieError::IncompleteDatabase(H256::from(*a))));
                     }
                 }
                 let r = f(maybe_acc.as_ref());
@@ -1407,7 +1411,7 @@ impl<B: Backend> State<B> {
                     let db = self.factories.trie.readonly(db, &self.root)?;
                     let from_rlp =
                         |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
-                    let maybe_acc = AccountEntry::new_clean(db.get_with(a, from_rlp)?);
+                    let maybe_acc = AccountEntry::new_clean(db.get_with(a.as_bytes(), from_rlp)?);
                     self.insert_cache(a, maybe_acc);
                 }
             }
@@ -1446,7 +1450,7 @@ impl<B: Backend> State<B> {
                 &self.db,
                 accountdb.as_hash_db(),
             ) {
-                return Err(Box::new(TrieError::IncompleteDatabase(H256::from(a))));
+                return Err(Box::new(TrieError::IncompleteDatabase(H256::from(*a))));
             }
         }
 
@@ -1487,7 +1491,7 @@ impl<B: Backend> State<B> {
                 })
             };
             let query = (&mut recorder, panicky_decoder);
-            trie.get_with(&account_key, query)?
+            trie.get_with(account_key.as_bytes(), query)?
         };
         let account = maybe_account.unwrap_or_else(|| BasicAccount {
             balance: 0.into(),
@@ -1517,9 +1521,9 @@ impl<B: Backend> State<B> {
         let db = &self.db.as_hash_db();
         let trie = TrieDB::new(db, &self.root)?;
         let from_rlp = |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
-        let acc = match trie.get_with(&account_key, from_rlp)? {
+        let acc = match trie.get_with(account_key.as_bytes(), from_rlp)? {
             Some(acc) => acc,
-            None => return Ok((Vec::new(), H256::new())),
+            None => return Ok((Vec::new(), H256::default())),
         };
 
         let account_db = self
@@ -1571,8 +1575,8 @@ impl Clone for State<StateDB> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{Address, H256, U256};
-    use ethkey::Secret;
+    use crypto::publickey::Secret;
+    use ethereum_types::{Address, BigEndianHash, H256, U256};
     use evm::CallType;
     use hash::{keccak, KECCAK_NULL_RLP};
     use machine::EthereumMachine;
@@ -1623,7 +1627,7 @@ mod tests {
             trace_address: Default::default(),
             subtraces: 0,
             action: trace::Action::Create(trace::Create {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
                 value: 100.into(),
                 gas: 77412.into(),
                 init: vec![
@@ -1686,7 +1690,7 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Create(trace::Create {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
                 value: 100.into(),
                 gas: 78792.into(),
                 init: vec![91, 96, 0, 86],
@@ -1712,14 +1716,17 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
         .sign(&secret(), None);
 
         state
-            .init_code(&0xa.into(), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xa),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -1728,8 +1735,8 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: 0xa.into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_low_u64_be(0xa),
                 value: 100.into(),
                 gas: 79000.into(),
                 input: vec![],
@@ -1759,7 +1766,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -1772,8 +1779,8 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: 0xa.into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_low_u64_be(0xa),
                 value: 100.into(),
                 gas: 79000.into(),
                 input: vec![],
@@ -1803,7 +1810,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0x1.into()),
+            action: Action::Call(Address::from_low_u64_be(0x1)),
             value: 0.into(),
             data: vec![],
         })
@@ -1814,8 +1821,8 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: "0000000000000000000000000000000000000001".into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_str("0000000000000000000000000000000000000001").unwrap(),
                 value: 0.into(),
                 gas: 79_000.into(),
                 input: vec![],
@@ -1845,7 +1852,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 0.into(),
             data: vec![],
         })
@@ -1853,7 +1860,7 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("600060006000600060006001610be0f1").unwrap(),
             )
             .unwrap();
@@ -1862,8 +1869,8 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: 0xa.into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_low_u64_be(0xa),
                 value: 0.into(),
                 gas: 79000.into(),
                 input: vec![],
@@ -1893,7 +1900,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 0.into(),
             data: vec![],
         })
@@ -1901,12 +1908,15 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006000600b611000f2").unwrap(),
             )
             .unwrap();
         state
-            .init_code(&0xb.into(), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         let result = state.apply(&info, &machine, &t, true).unwrap();
 
@@ -1915,8 +1925,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 0.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -1931,8 +1941,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 4096.into(),
                     input: vec![],
@@ -1963,7 +1973,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 0.into(),
             data: vec![],
         })
@@ -1971,13 +1981,13 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("6000600060006000600b618000f4").unwrap(),
             )
             .unwrap();
         state
             .init_code(
-                &0xb.into(),
+                &Address::from_low_u64_be(0xb),
                 FromHex::from_hex("60056000526001601ff3").unwrap(),
             )
             .unwrap();
@@ -1988,8 +1998,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 0.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2004,8 +2014,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 32768.into(),
                     input: vec![],
@@ -2035,14 +2045,17 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
         .sign(&secret(), None);
 
         state
-            .init_code(&0xa.into(), FromHex::from_hex("5b600056").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xa),
+                FromHex::from_hex("5b600056").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2051,8 +2064,8 @@ mod tests {
         let expected_trace = vec![FlatTrace {
             trace_address: Default::default(),
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: 0xa.into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_low_u64_be(0xa),
                 value: 100.into(),
                 gas: 79000.into(),
                 input: vec![],
@@ -2079,7 +2092,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -2087,12 +2100,15 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006000600b602b5a03f1").unwrap(),
             )
             .unwrap();
         state
-            .init_code(&0xb.into(), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2104,8 +2120,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2120,8 +2136,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 78934.into(),
                     input: vec![],
@@ -2151,7 +2167,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -2159,7 +2175,7 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006045600b6000f1").unwrap(),
             )
             .unwrap();
@@ -2172,8 +2188,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2188,8 +2204,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 69.into(),
                     gas: 2300.into(),
                     input: vec![],
@@ -2216,7 +2232,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -2224,7 +2240,7 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("600060006000600060ff600b6000f1").unwrap(),
             )
             .unwrap(); // not enough funds.
@@ -2236,8 +2252,8 @@ mod tests {
             trace_address: Default::default(),
             subtraces: 0,
             action: trace::Action::Call(trace::Call {
-                from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                to: 0xa.into(),
+                from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                to: Address::from_low_u64_be(0xa),
                 value: 100.into(),
                 gas: 79000.into(),
                 input: vec![],
@@ -2266,7 +2282,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![], //600480600b6000396000f35b600056
         })
@@ -2274,12 +2290,15 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006000600b602b5a03f1").unwrap(),
             )
             .unwrap();
         state
-            .init_code(&0xb.into(), FromHex::from_hex("5b600056").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xb),
+                FromHex::from_hex("5b600056").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2290,8 +2309,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2306,8 +2325,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 78934.into(),
                     input: vec![],
@@ -2334,7 +2353,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -2342,18 +2361,21 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006000600b602b5a03f1").unwrap(),
             )
             .unwrap();
         state
             .init_code(
-                &0xb.into(),
+                &Address::from_low_u64_be(0xb),
                 FromHex::from_hex("60006000600060006000600c602b5a03f1").unwrap(),
             )
             .unwrap();
         state
-            .init_code(&0xc.into(), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xc),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2364,8 +2386,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2380,8 +2402,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 78934.into(),
                     input: vec![],
@@ -2396,8 +2418,8 @@ mod tests {
                 trace_address: vec![0, 0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xb.into(),
-                    to: 0xc.into(),
+                    from: Address::from_low_u64_be(0xb),
+                    to: Address::from_low_u64_be(0xc),
                     value: 0.into(),
                     gas: 78868.into(),
                     input: vec![],
@@ -2427,7 +2449,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![], //600480600b6000396000f35b600056
         })
@@ -2435,18 +2457,21 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("60006000600060006000600b602b5a03f1").unwrap(),
             )
             .unwrap();
         state
             .init_code(
-                &0xb.into(),
+                &Address::from_low_u64_be(0xb),
                 FromHex::from_hex("60006000600060006000600c602b5a03f1505b601256").unwrap(),
             )
             .unwrap();
         state
-            .init_code(&0xc.into(), FromHex::from_hex("6000").unwrap())
+            .init_code(
+                &Address::from_low_u64_be(0xc),
+                FromHex::from_hex("6000").unwrap(),
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &(100.into()), CleanupMode::NoEmpty)
@@ -2458,8 +2483,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2474,8 +2499,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xa.into(),
-                    to: 0xb.into(),
+                    from: Address::from_low_u64_be(0xa),
+                    to: Address::from_low_u64_be(0xb),
                     value: 0.into(),
                     gas: 78934.into(),
                     input: vec![],
@@ -2487,8 +2512,8 @@ mod tests {
                 trace_address: vec![0, 0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Call(trace::Call {
-                    from: 0xb.into(),
-                    to: 0xc.into(),
+                    from: Address::from_low_u64_be(0xb),
+                    to: Address::from_low_u64_be(0xc),
                     value: 0.into(),
                     gas: 78868.into(),
                     call_type: CallType::Call,
@@ -2518,7 +2543,7 @@ mod tests {
             nonce: 0.into(),
             gas_price: 0.into(),
             gas: 100_000.into(),
-            action: Action::Call(0xa.into()),
+            action: Action::Call(Address::from_low_u64_be(0xa)),
             value: 100.into(),
             data: vec![],
         })
@@ -2526,12 +2551,16 @@ mod tests {
 
         state
             .init_code(
-                &0xa.into(),
+                &Address::from_low_u64_be(0xa),
                 FromHex::from_hex("73000000000000000000000000000000000000000bff").unwrap(),
             )
             .unwrap();
         state
-            .add_balance(&0xa.into(), &50.into(), CleanupMode::NoEmpty)
+            .add_balance(
+                &Address::from_low_u64_be(0xa),
+                &50.into(),
+                CleanupMode::NoEmpty,
+            )
             .unwrap();
         state
             .add_balance(&t.sender(), &100.into(), CleanupMode::NoEmpty)
@@ -2542,8 +2571,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
-                    to: 0xa.into(),
+                    from: Address::from_str("9cce34f7ab185c7aba1b7c8140d620b4bda941d6").unwrap(),
+                    to: Address::from_low_u64_be(0xa),
                     value: 100.into(),
                     gas: 79000.into(),
                     input: vec![],
@@ -2558,8 +2587,8 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Suicide(trace::Suicide {
-                    address: 0xa.into(),
-                    refund_address: 0xb.into(),
+                    address: Address::from_low_u64_be(0xa),
+                    refund_address: Address::from_low_u64_be(0xb),
                     balance: 150.into(),
                 }),
                 result: trace::Res::None,
@@ -2601,8 +2630,8 @@ mod tests {
             state
                 .set_storage(
                     &a,
-                    H256::from(&U256::from(1u64)),
-                    H256::from(&U256::from(69u64)),
+                    BigEndianHash::from_uint(&U256::from(1u64)),
+                    BigEndianHash::from_uint(&U256::from(69u64)),
                 )
                 .unwrap();
             state.commit().unwrap();
@@ -2611,8 +2640,9 @@ mod tests {
 
         let s = State::from_existing(db, root, U256::from(0u8), Default::default()).unwrap();
         assert_eq!(
-            s.storage_at(&a, &H256::from(&U256::from(1u64))).unwrap(),
-            H256::from(&U256::from(69u64))
+            s.storage_at(&a, &BigEndianHash::from_uint(&U256::from(1u64)))
+                .unwrap(),
+            BigEndianHash::from_uint(&U256::from(69u64))
         );
     }
 
@@ -2718,7 +2748,7 @@ mod tests {
     fn alter_balance() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        let b = 1u64.into();
+        let b = Address::from_low_u64_be(1u64);
         state
             .add_balance(&a, &U256::from(69u64), CleanupMode::NoEmpty)
             .unwrap();
@@ -2776,7 +2806,8 @@ mod tests {
         state.commit().unwrap();
         assert_eq!(
             *state.root(),
-            "0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785".into()
+            H256::from_str("0ce23f3c809de377b008a4a3ee94a0834aac8bec1f86e28ffe4fdb5a15b0c785")
+                .unwrap()
         );
     }
 
@@ -2820,147 +2851,164 @@ mod tests {
     fn checkpoint_revert_to_get_storage_at() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        let k = H256::from(U256::from(0));
+        let k = BigEndianHash::from_uint(&U256::from(0));
 
         let c0 = state.checkpoint();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
 
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(1)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
+        );
 
         state.revert_to_checkpoint(); // Revert to c1.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
     }
 
     #[test]
     fn checkpoint_from_empty_get_storage_at() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        let k = H256::from(U256::from(0));
-        let k2 = H256::from(U256::from(1));
+        let k = BigEndianHash::from_uint(&U256::from(0));
+        let k2 = BigEndianHash::from_uint(&U256::from(1));
 
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.clear();
 
         let c0 = state.checkpoint();
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         let c2 = state.checkpoint();
         let c3 = state.checkpoint();
         state
-            .set_storage(&a, k2, H256::from(U256::from(3)))
+            .set_storage(&a, k2, BigEndianHash::from_uint(&U256::from(3)))
             .unwrap();
-        state.set_storage(&a, k, H256::from(U256::from(3))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3)))
+            .unwrap();
         let c4 = state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(4))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4)))
+            .unwrap();
         let c5 = state.checkpoint();
 
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c4, &a, &k).unwrap(),
-            Some(H256::from(U256::from(3)))
+            Some(BigEndianHash::from_uint(&U256::from(3)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c5, &a, &k).unwrap(),
-            Some(H256::from(U256::from(4)))
+            Some(BigEndianHash::from_uint(&U256::from(4)))
         );
 
         state.discard_checkpoint(); // Commit/discard c5.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c4, &a, &k).unwrap(),
-            Some(H256::from(U256::from(3)))
+            Some(BigEndianHash::from_uint(&U256::from(3)))
         );
 
         state.revert_to_checkpoint(); // Revert to c4.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
 
         state.discard_checkpoint(); // Commit/discard c3.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
 
         state.revert_to_checkpoint(); // Revert to c2.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
 
         state.discard_checkpoint(); // Commit/discard c1.
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
     }
 
@@ -2968,18 +3016,18 @@ mod tests {
     fn checkpoint_get_storage_at() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        let k = H256::from(U256::from(0));
-        let k2 = H256::from(U256::from(1));
+        let k = BigEndianHash::from_uint(&U256::from(0));
+        let k2 = BigEndianHash::from_uint(&U256::from(1));
 
         state
-            .set_storage(&a, k, H256::from(U256::from(0xffff)))
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(0xffff)))
             .unwrap();
         state.commit().unwrap();
         state.clear();
 
         assert_eq!(
             state.storage_at(&a, &k).unwrap(),
-            H256::from(U256::from(0xffff))
+            BigEndianHash::from_uint(&U256::from(0xffff))
         );
         state.clear();
 
@@ -2987,134 +3035,140 @@ mod tests {
         let c0 = state.checkpoint();
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         let c1 = state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         let c2 = state.checkpoint();
         let c3 = state.checkpoint();
         state
-            .set_storage(&a, k2, H256::from(U256::from(3)))
+            .set_storage(&a, k2, BigEndianHash::from_uint(&U256::from(3)))
             .unwrap();
-        state.set_storage(&a, k, H256::from(U256::from(3))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(3)))
+            .unwrap();
         let c4 = state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(4))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(4)))
+            .unwrap();
         let c5 = state.checkpoint();
 
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c4, &a, &k).unwrap(),
-            Some(H256::from(U256::from(3)))
+            Some(BigEndianHash::from_uint(&U256::from(3)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c5, &a, &k).unwrap(),
-            Some(H256::from(U256::from(4)))
+            Some(BigEndianHash::from_uint(&U256::from(4)))
         );
 
         state.discard_checkpoint(); // Commit/discard c5.
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c4, &a, &k).unwrap(),
-            Some(H256::from(U256::from(3)))
+            Some(BigEndianHash::from_uint(&U256::from(3)))
         );
 
         state.revert_to_checkpoint(); // Revert to c4.
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c3, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
 
         state.discard_checkpoint(); // Commit/discard c3.
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c2, &a, &k).unwrap(),
-            Some(H256::from(U256::from(1)))
+            Some(BigEndianHash::from_uint(&U256::from(1)))
         );
 
         state.revert_to_checkpoint(); // Revert to c2.
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0)))
+            Some(BigEndianHash::from_uint(&U256::from(0)))
         );
 
         state.discard_checkpoint(); // Commit/discard c1.
         assert_eq!(
             state.checkpoint_storage_at(cm1, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
         assert_eq!(
             state.checkpoint_storage_at(c0, &a, &k).unwrap(),
-            Some(H256::from(U256::from(0xffff)))
+            Some(BigEndianHash::from_uint(&U256::from(0xffff)))
         );
     }
 
@@ -3122,22 +3176,30 @@ mod tests {
     fn kill_account_with_checkpoints() {
         let mut state = get_temp_state();
         let a = Address::zero();
-        let k = H256::from(U256::from(0));
+        let k = BigEndianHash::from_uint(&U256::from(0));
         state.checkpoint();
-        state.set_storage(&a, k, H256::from(U256::from(1))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(1)))
+            .unwrap();
         state.checkpoint();
         state.kill_account(&a);
 
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.revert_to_checkpoint();
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(1)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
+        );
     }
 
     #[test]
     fn create_contract_fail() {
         let mut state = get_temp_state();
         let orig_root = state.root().clone();
-        let a: Address = 1000.into();
+        let a = Address::from_low_u64_be(1000);
 
         state.checkpoint(); // c1
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
@@ -3159,11 +3221,11 @@ mod tests {
     #[test]
     fn create_contract_fail_previous_storage() {
         let mut state = get_temp_state();
-        let a: Address = 1000.into();
-        let k = H256::from(U256::from(0));
+        let a = Address::from_low_u64_be(1000);
+        let k = BigEndianHash::from_uint(&U256::from(0));
 
         state
-            .set_storage(&a, k, H256::from(U256::from(0xffff)))
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(0xffff)))
             .unwrap();
         state.commit().unwrap();
         state.clear();
@@ -3171,20 +3233,25 @@ mod tests {
         let orig_root = state.root().clone();
         assert_eq!(
             state.storage_at(&a, &k).unwrap(),
-            H256::from(U256::from(0xffff))
+            BigEndianHash::from_uint(&U256::from(0xffff))
         );
         state.clear();
 
         state.checkpoint(); // c1
         state.new_contract(&a, U256::zero(), U256::zero()).unwrap();
         state.checkpoint(); // c2
-        state.set_storage(&a, k, H256::from(U256::from(2))).unwrap();
+        state
+            .set_storage(&a, k, BigEndianHash::from_uint(&U256::from(2)))
+            .unwrap();
         state.revert_to_checkpoint(); // revert to c2
-        assert_eq!(state.storage_at(&a, &k).unwrap(), H256::from(U256::from(0)));
+        assert_eq!(
+            state.storage_at(&a, &k).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0))
+        );
         state.revert_to_checkpoint(); // revert to c1
         assert_eq!(
             state.storage_at(&a, &k).unwrap(),
-            H256::from(U256::from(0xffff))
+            BigEndianHash::from_uint(&U256::from(0xffff))
         );
 
         state.commit().unwrap();
@@ -3197,7 +3264,8 @@ mod tests {
         state.commit().unwrap();
         assert_eq!(
             *state.root(),
-            "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421".into()
+            H256::from_str("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+                .unwrap()
         );
     }
 
@@ -3205,27 +3273,31 @@ mod tests {
     fn should_not_panic_on_state_diff_with_storage() {
         let mut state = get_temp_state();
 
-        let a: Address = 0xa.into();
+        let a: Address = Address::from_low_u64_be(0xa);
         state.init_code(&a, b"abcdefg".to_vec()).unwrap();
         state
             .add_balance(&a, &256.into(), CleanupMode::NoEmpty)
             .unwrap();
-        state.set_storage(&a, 0xb.into(), 0xc.into()).unwrap();
+        state
+            .set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xc))
+            .unwrap();
 
         let mut new_state = state.clone();
-        new_state.set_storage(&a, 0xb.into(), 0xd.into()).unwrap();
+        new_state
+            .set_storage(&a, H256::from_low_u64_be(0xb), H256::from_low_u64_be(0xd))
+            .unwrap();
 
         new_state.diff_from(state).unwrap();
     }
 
     #[test]
     fn should_kill_garbage() {
-        let a = 10.into();
-        let b = 20.into();
-        let c = 30.into();
-        let d = 40.into();
-        let e = 50.into();
-        let x = 0.into();
+        let a = Address::from_low_u64_be(10);
+        let b = Address::from_low_u64_be(20);
+        let c = Address::from_low_u64_be(30);
+        let d = Address::from_low_u64_be(40);
+        let e = Address::from_low_u64_be(50);
+        let x = Address::from_low_u64_be(0);
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), Default::default());
@@ -3288,7 +3360,7 @@ mod tests {
     fn should_trace_diff_suicided_accounts() {
         use pod_account;
 
-        let a = 10.into();
+        let a = Address::from_low_u64_be(10);
         let db = get_temp_state_db();
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), Default::default());
@@ -3327,7 +3399,7 @@ mod tests {
     fn should_trace_diff_unmodified_storage() {
         use pod_account;
 
-        let a = 10.into();
+        let a = Address::from_low_u64_be(10);
         let db = get_temp_state_db();
 
         let (root, db) = {
@@ -3335,8 +3407,8 @@ mod tests {
             state
                 .set_storage(
                     &a,
-                    H256::from(&U256::from(1u64)),
-                    H256::from(&U256::from(20u64)),
+                    BigEndianHash::from_uint(&U256::from(1u64)),
+                    BigEndianHash::from_uint(&U256::from(20u64)),
                 )
                 .unwrap();
             state.commit().unwrap();
@@ -3349,8 +3421,8 @@ mod tests {
         state
             .set_storage(
                 &a,
-                H256::from(&U256::from(1u64)),
-                H256::from(&U256::from(100u64)),
+                BigEndianHash::from_uint(&U256::from(1u64)),
+                BigEndianHash::from_uint(&U256::from(100u64)),
             )
             .unwrap();
 
@@ -3366,8 +3438,8 @@ mod tests {
                     nonce: U256::zero(),
                     code: Some(Default::default()),
                     storage: vec![(
-                        H256::from(&U256::from(1u64)),
-                        H256::from(&U256::from(20u64))
+                        BigEndianHash::from_uint(&U256::from(1u64)),
+                        BigEndianHash::from_uint(&U256::from(20u64))
                     )]
                     .into_iter()
                     .collect(),
@@ -3377,8 +3449,8 @@ mod tests {
                     nonce: U256::zero(),
                     code: Some(Default::default()),
                     storage: vec![(
-                        H256::from(&U256::from(1u64)),
-                        H256::from(&U256::from(100u64))
+                        BigEndianHash::from_uint(&U256::from(1u64)),
+                        BigEndianHash::from_uint(&U256::from(100u64))
                     )]
                     .into_iter()
                     .collect(),
@@ -3393,7 +3465,7 @@ mod tests {
     fn should_get_full_pod_storage_values() {
         use trie::{TrieFactory, TrieSpec};
 
-        let a = 10.into();
+        let a = Address::from_low_u64_be(10);
         let db = get_temp_state_db();
 
         let factories = Factories {
@@ -3413,23 +3485,27 @@ mod tests {
                 .clone()
         };
 
-        let storage_address = H256::from(&U256::from(1u64));
+        let storage_address: H256 = BigEndianHash::from_uint(&U256::from(1u64));
 
         let (root, db) = {
             let mut state = State::new(db, U256::from(0), factories.clone());
             state
-                .set_storage(&a, storage_address.clone(), H256::from(&U256::from(20u64)))
+                .set_storage(
+                    &a,
+                    storage_address.clone(),
+                    BigEndianHash::from_uint(&U256::from(20u64)),
+                )
                 .unwrap();
             let dump = state.to_pod_full().unwrap();
             assert_eq!(
                 get_pod_state_val(&dump, &a, storage_address.clone()),
-                H256::from(&U256::from(20u64))
+                BigEndianHash::from_uint(&U256::from(20u64))
             );
             state.commit().unwrap();
             let dump = state.to_pod_full().unwrap();
             assert_eq!(
                 get_pod_state_val(&dump, &a, storage_address.clone()),
-                H256::from(&U256::from(20u64))
+                BigEndianHash::from_uint(&U256::from(20u64))
             );
             state.drop()
         };
@@ -3438,24 +3514,32 @@ mod tests {
         let dump = state.to_pod_full().unwrap();
         assert_eq!(
             get_pod_state_val(&dump, &a, storage_address.clone()),
-            H256::from(&U256::from(20u64))
+            BigEndianHash::from_uint(&U256::from(20u64))
         );
         state
-            .set_storage(&a, storage_address.clone(), H256::from(&U256::from(21u64)))
+            .set_storage(
+                &a,
+                storage_address.clone(),
+                BigEndianHash::from_uint(&U256::from(21u64)),
+            )
             .unwrap();
         let dump = state.to_pod_full().unwrap();
         assert_eq!(
             get_pod_state_val(&dump, &a, storage_address.clone()),
-            H256::from(&U256::from(21u64))
+            BigEndianHash::from_uint(&U256::from(21u64))
         );
         state.commit().unwrap();
         state
-            .set_storage(&a, storage_address.clone(), H256::from(&U256::from(0u64)))
+            .set_storage(
+                &a,
+                storage_address.clone(),
+                BigEndianHash::from_uint(&U256::from(0u64)),
+            )
             .unwrap();
         let dump = state.to_pod_full().unwrap();
         assert_eq!(
             get_pod_state_val(&dump, &a, storage_address.clone()),
-            H256::from(&U256::from(0u64))
+            BigEndianHash::from_uint(&U256::from(0u64))
         );
     }
 }

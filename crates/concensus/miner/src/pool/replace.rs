@@ -124,7 +124,7 @@ where
 mod tests {
     use super::*;
 
-    use ethkey::{Generator, KeyPair, Random};
+    use crypto::publickey::{Generator, KeyPair, Random};
     use pool::{
         scoring::*,
         tests::{
@@ -170,7 +170,7 @@ mod tests {
         let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // same sender txs
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
 
         let same_sender_tx1 = local_tx_verified(
             Tx {
@@ -200,7 +200,7 @@ mod tests {
         );
 
         // different sender txs
-        let sender1 = Random.generate().unwrap();
+        let sender1 = Random.generate();
         let different_sender_tx1 = local_tx_verified(
             Tx {
                 nonce: 2,
@@ -210,7 +210,7 @@ mod tests {
             &sender1,
         );
 
-        let sender2 = Random.generate().unwrap();
+        let sender2 = Random.generate();
         let different_sender_tx2 = local_tx_verified(
             Tx {
                 nonce: 1,
@@ -287,7 +287,7 @@ mod tests {
             ..Default::default()
         };
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let txs = vec![tx1, tx2, tx3, tx4]
             .into_iter()
             .map(|tx| tx.unsigned().sign(keypair.secret(), None).verified())
@@ -462,7 +462,7 @@ mod tests {
         let client = TestClient::new().with_nonce(1);
         let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
-        let old_sender = Random.generate().unwrap();
+        let old_sender = Random.generate();
         let tx_old_ready_1 = {
             let tx = Tx {
                 nonce: 1,
@@ -543,7 +543,7 @@ mod tests {
             tx.signed().verified()
         };
 
-        let new_sender = Random.generate().unwrap();
+        let new_sender = Random.generate();
         let tx_new_ready_1 = {
             let tx = Tx {
                 nonce: 1,
@@ -614,7 +614,7 @@ mod tests {
             tx.signed().verified()
         };
 
-        let new_sender = Random.generate().unwrap();
+        let new_sender = Random.generate();
         let tx_new_ready_1 = local_tx_verified(
             Tx {
                 nonce: 1,
@@ -672,7 +672,7 @@ mod tests {
             tx.signed().verified()
         };
 
-        let new_sender = Random.generate().unwrap();
+        let new_sender = Random.generate();
         let tx_new_ready_1 = local_tx_verified(
             Tx {
                 nonce: 1,

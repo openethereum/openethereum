@@ -142,6 +142,7 @@ impl ClientService {
     pub fn shutdown(&self) {
         trace!(target: "shutdown", "Shutting down Client Service");
         self.snapshot.shutdown();
+        self.client.shutdown();
     }
 }
 

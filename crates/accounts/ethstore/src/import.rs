@@ -17,7 +17,7 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
-use ethkey::Address;
+use crypto::publickey::Address;
 use Error;
 
 /// Import an account from a file.

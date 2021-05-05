@@ -503,15 +503,13 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
     }
 
     // check if the base fee is correct
-    if engine.schedule(parent.number()).eip1559 {
-        let expected_base_fee = engine.calculate_base_fee(parent);
-        if expected_base_fee != header.base_fee().unwrap_or_default() {
+    let expected_base_fee = engine.calculate_base_fee(parent);
+        if expected_base_fee != header.base_fee() {
             return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
-                expected: expected_base_fee,
+                expected: expected_base_fee.unwrap_or_default(),
                 found: header.base_fee().unwrap_or_default(),
             })));
         };
-    }
 
     Ok(())
 }

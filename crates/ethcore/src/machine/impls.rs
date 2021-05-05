@@ -496,12 +496,19 @@ impl EthereumMachine {
     /// This base fee is calculated based on the parent header (last block in blockchain / best block).
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
-    pub fn calc_base_fee(&self, parent: &Header) -> U256 {
-        // All blocks before (eip1559_transition + 1) have default value of base_fee
-        if parent.number() < self.params().eip1559_transition {
-            return self.params().base_fee_initial_value;
+    pub fn calc_base_fee(&self, parent: &Header) -> Option<U256> {
+        
+        // Block eip1559_transition - 1 has base_fee = None
+        if parent.number() + 1 < self.params().eip1559_transition {
+            return None;
         }
 
+        // Block eip1559_transition has base_fee = self.params().base_fee_initial_value
+        if parent.number() + 1 == self.params().eip1559_transition {
+            return Some(self.params().base_fee_initial_value);
+        }
+
+        // Block eip1559_transition + 1 has base_fee = calculated
         if parent.gas_limit() == &U256::zero() {
             panic!("Can't calculate base fee if parent gas target is zero.");
         }
@@ -512,7 +519,7 @@ impl EthereumMachine {
         let parent_base_fee = parent.base_fee().unwrap_or_default();
 
         if parent.gas_used() == parent.gas_limit() {
-            parent_base_fee
+            Some(parent_base_fee)
         } else if parent.gas_used() > parent.gas_limit() {
             let gas_used_delta = parent.gas_used() - parent.gas_limit();
             let base_fee_per_gas_delta = max(
@@ -521,13 +528,13 @@ impl EthereumMachine {
                     / self.params().base_fee_max_change_denominator,
                 U256::from(1),
             );
-            parent_base_fee + base_fee_per_gas_delta
+            Some(parent_base_fee + base_fee_per_gas_delta)
         } else {
             let gas_used_delta = parent.gas_limit() - parent.gas_used();
             let base_fee_per_gas_delta = parent_base_fee * gas_used_delta
                 / parent.gas_limit()
                 / self.params().base_fee_max_change_denominator;
-            max(parent_base_fee - base_fee_per_gas_delta, U256::zero())
+            Some(max(parent_base_fee - base_fee_per_gas_delta, U256::zero()))
         }
     }
 }
@@ -775,7 +782,7 @@ mod tests {
             parent_header.set_gas_limit(parent_gas_limit[i]);
 
             let base_fee = machine.calc_base_fee(&parent_header);
-            assert_eq!(expected_base_fee[i], base_fee);
+            assert_eq!(expected_base_fee[i], base_fee.unwrap());
         }
     }
 }

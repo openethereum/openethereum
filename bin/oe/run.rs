@@ -370,15 +370,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     drop(spec);
 
     // Update miners block gas limit and base_fee
-    let base_fee = if schedule.eip1559 {
-        Some(
-            client
-                .engine()
-                .calculate_base_fee(&client.best_block_header()),
-        )
-    } else {
-        None
-    };
+    let base_fee = client.engine().calculate_base_fee(&client.best_block_header());
     let gas_limit = client.best_block_header().gas_limit() * schedule.elasticity_multiplier;
     miner.update_transaction_queue_limits(gas_limit, base_fee);
 

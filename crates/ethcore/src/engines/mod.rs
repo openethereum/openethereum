@@ -652,7 +652,7 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     /// This base fee is calculated based on the parent header (last block in blockchain / best block).
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
-    fn calculate_base_fee(&self, parent: &Header) -> U256 {
+    fn calculate_base_fee(&self, parent: &Header) -> Option<U256> {
         self.machine().calc_base_fee(parent)
     }
 

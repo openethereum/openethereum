@@ -537,13 +537,7 @@ impl Miner {
                 nonce_cap,
                 max_len: max_transactions.saturating_sub(engine_txs.len()),
                 ordering: miner::PendingOrdering::Priority,
-                includable_boundary: {
-                    if schedule.eip1559 {
-                        self.engine.calculate_base_fee(&chain.best_block_header())
-                    } else {
-                        Default::default()
-                    }
-                },
+                includable_boundary: self.engine.calculate_base_fee(&chain.best_block_header()).unwrap_or_default(),
             },
         );
 
@@ -1447,13 +1441,8 @@ impl miner::MinerService for Miner {
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
         let schedule = self.engine.schedule(chain.best_block_header().number() + 1);
-        let base_fee = if schedule.eip1559 {
-            Some(self.engine.calculate_base_fee(&chain.best_block_header()))
-        } else {
-            None
-        };
+        let base_fee = self.engine.calculate_base_fee(&chain.best_block_header());
         let gas_limit = chain.best_block_header().gas_limit() * schedule.elasticity_multiplier;
-
         self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).

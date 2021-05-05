@@ -1,4 +1,4 @@
-## OpenEthereum v3.2.5-rc.1
+## OpenEthereum v3.2.5
 
 Bug fixes:
 * Backport: Block sync stopped without any errors. #277 (#286)

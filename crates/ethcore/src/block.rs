@@ -141,7 +141,7 @@ impl ExecutedBlock {
             difficulty: self.header.difficulty().clone(),
             last_hashes: self.last_hashes.clone(),
             gas_used: self.receipts.last().map_or(U256::zero(), |r| r.gas_used),
-            gas_limit: self.header.gas_limit() * elasticity_multiplier,
+            gas_limit: self.header.gas_limit() * 1, //elasticity_multiplier, ds todo temporary fix until spec is updated
             base_fee: self.header.base_fee().unwrap_or_default(),
         }
     }

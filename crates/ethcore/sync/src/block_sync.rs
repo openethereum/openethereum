@@ -918,7 +918,7 @@ mod tests {
         ::env_logger::try_init().ok();
 
         let mut chain = TestBlockChainClient::new();
-        let eip1559_transition = BlockNumber::default(); //chain.spec.params().eip1559_transition;
+        let eip1559_transition = BlockNumber::default();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
         let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);

@@ -403,7 +403,6 @@ impl EthereumMachine {
         t: UnverifiedTransaction,
         header: &Header,
     ) -> Result<SignedTransaction, transaction::Error> {
-        
         // ensure that the user was willing to at least pay the base fee
         if t.tx().gas_price < header.base_fee().unwrap_or_default() {
             return Err(transaction::Error::GasPriceLowerThanBaseFee {
@@ -496,7 +495,6 @@ impl EthereumMachine {
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
     pub fn calc_base_fee(&self, parent: &Header) -> Option<U256> {
-        
         // Block eip1559_transition - 1 has base_fee = None
         if parent.number() + 1 < self.params().eip1559_transition {
             return None;

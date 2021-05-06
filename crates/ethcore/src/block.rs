@@ -199,7 +199,9 @@ impl<'x> OpenBlock<'x> {
             .header
             .set_timestamp(engine.open_block_header_timestamp(parent.timestamp()));
         r.block.header.set_extra_data(extra_data);
-        r.block.header.set_base_fee(engine.calculate_base_fee(parent));
+        r.block
+            .header
+            .set_base_fee(engine.calculate_base_fee(parent));
 
         let gas_floor_target = cmp::max(gas_range_target.0, engine.params().min_gas_limit);
         let gas_ceil_target = cmp::max(gas_range_target.1, gas_floor_target);

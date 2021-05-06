@@ -537,7 +537,10 @@ impl Miner {
                 nonce_cap,
                 max_len: max_transactions.saturating_sub(engine_txs.len()),
                 ordering: miner::PendingOrdering::Priority,
-                includable_boundary: self.engine.calculate_base_fee(&chain.best_block_header()).unwrap_or_default(),
+                includable_boundary: self
+                    .engine
+                    .calculate_base_fee(&chain.best_block_header())
+                    .unwrap_or_default(),
             },
         );
 

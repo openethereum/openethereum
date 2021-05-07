@@ -496,6 +496,7 @@ fn test_gas_limit(factory: super::Factory) {
     params.code = Some(Arc::new(code));
     let mut ext = FakeExt::new();
     ext.info.gas_limit = gas_limit;
+    ext.info.gas_target = gas_limit;
 
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());

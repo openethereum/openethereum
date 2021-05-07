@@ -799,6 +799,7 @@ impl Spec {
                 last_hashes: Default::default(),
                 gas_used: U256::zero(),
                 gas_limit: U256::max_value(),
+                gas_target: U256::max_value(),
                 base_fee: self.engine.params().base_fee_initial_value,
             };
 
@@ -1017,6 +1018,7 @@ impl Spec {
                 timestamp: genesis.timestamp(),
                 difficulty: *genesis.difficulty(),
                 gas_limit: U256::max_value(),
+                gas_target: U256::max_value(),
                 last_hashes: Arc::new(Vec::new()),
                 gas_used: 0.into(),
                 base_fee: genesis.base_fee().unwrap_or_default(),

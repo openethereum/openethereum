@@ -40,6 +40,8 @@ pub struct EnvInfo {
     pub difficulty: U256,
     /// The block gas limit.
     pub gas_limit: U256,
+    /// The block gas target. Used for GASLIMIT opcode only.
+    pub gas_target: U256,
     /// The last 256 block hashes.
     pub last_hashes: Arc<LastHashes>,
     /// The gas used.
@@ -56,6 +58,7 @@ impl Default for EnvInfo {
             timestamp: 0,
             difficulty: 0.into(),
             gas_limit: 0.into(),
+            gas_target: 0.into(),
             last_hashes: Arc::new(vec![]),
             gas_used: 0.into(),
             base_fee: 0.into(),
@@ -71,6 +74,7 @@ impl From<ethjson::vm::Env> for EnvInfo {
             author: e.author.into(),
             difficulty: e.difficulty.into(),
             gas_limit: e.gas_limit.into(),
+            gas_target: e.gas_limit.into(),
             timestamp: e.timestamp.into(),
             last_hashes: Arc::new(
                 (1..cmp::min(number + 1, 257))

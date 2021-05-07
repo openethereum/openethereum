@@ -253,6 +253,7 @@ impl<'a> EvmTestClient<'a> {
                     .engine
                     .schedule(genesis.number())
                     .elasticity_multiplier,
+            gas_target: *genesis.gas_limit(),
             base_fee: genesis.base_fee().unwrap_or_default(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)

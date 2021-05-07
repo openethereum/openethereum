@@ -1159,7 +1159,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                 self.stack.push(ext.env_info().difficulty.clone());
             }
             instructions::GASLIMIT => {
-                self.stack.push(ext.env_info().gas_limit.clone());
+                self.stack.push(ext.env_info().gas_target.clone());
             }
             instructions::CHAINID => self.stack.push(ext.chain_id().into()),
             instructions::SELFBALANCE => {

@@ -771,6 +771,7 @@ impl Importer {
                             last_hashes: client.build_last_hashes(header.parent_hash()),
                             gas_used: U256::default(),
                             gas_limit: u64::max_value().into(),
+                            gas_target: u64::max_value().into(),
                             base_fee: header.base_fee().unwrap_or_default(),
                         };
 
@@ -1155,6 +1156,7 @@ impl Client {
             gas_used: U256::default(),
             gas_limit: header.gas_limit()
                 * self.engine.schedule(header.number()).elasticity_multiplier,
+            gas_target: header.gas_limit(),
             base_fee: header.base_fee(),
         })
     }
@@ -1951,6 +1953,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
+            gas_target: U256::max_value(),
             base_fee: header.base_fee().unwrap_or_default(),
         };
         let machine = self.engine.machine();
@@ -1972,6 +1975,7 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
+            gas_target: U256::max_value(),
             base_fee: header.base_fee().unwrap_or_default(),
         };
 
@@ -2006,6 +2010,7 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
+                gas_target: max,
                 base_fee: header.base_fee().unwrap_or_default(),
             };
 

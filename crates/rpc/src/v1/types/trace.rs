@@ -24,7 +24,6 @@ use ethcore::{
 use ethereum_types::{H160, H256, U256};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::{account_diff, state_diff};
-use vm;
 
 use v1::types::Bytes;
 

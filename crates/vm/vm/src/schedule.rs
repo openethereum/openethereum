@@ -28,6 +28,12 @@ pub const EIP2929_SSTORE_RESET_GAS: usize = 5000 - EIP2929_COLD_SLOAD_COST;
 pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
 /// Gas per received address
 pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
+/// Gas used per transaction divided by this number is the maximum refundable amount
+pub const MAX_REFUND_QUOTIENT: usize = 2;
+pub const EIP3529_MAX_REFUND_QUOTIENT: usize = 5;
+///
+pub const EIP3529_SSTORE_CLEARS_SCHEDULE: usize =
+    EIP2929_SSTORE_RESET_GAS + EIP2930_ACCESS_LIST_STORAGE_KEY_COST;
 
 /// Definition of the cost schedule and other parameterisations for the EVM.
 #[derive(Debug)]
@@ -155,6 +161,8 @@ pub struct Schedule {
     pub eip2929: bool,
     /// Enable EIP-2930 rules for optional access list transactions. it depends on EIP-2929
     pub eip2930: bool,
+    /// Gas used in transaction divided by this number is the maximum refundable amount.
+    pub max_refund_quotient: usize,
 }
 
 /// Wasm cost table
@@ -302,6 +310,7 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            max_refund_quotient: MAX_REFUND_QUOTIENT,
         }
     }
 
@@ -355,6 +364,17 @@ impl Schedule {
         schedule.extcodehash_gas = EIP2929_COLD_ACCOUNT_ACCESS_COST;
         schedule.extcodesize_gas = EIP2929_COLD_ACCOUNT_ACCESS_COST;
         schedule.sstore_reset_gas = EIP2929_SSTORE_RESET_GAS;
+
+        schedule
+    }
+
+    pub fn new_london() -> Schedule {
+        let mut schedule = Self::new_berlin();
+
+        // EIP-3529 changes
+        schedule.suicide_refund_gas = 0;
+        schedule.sstore_refund_gas = EIP3529_SSTORE_CLEARS_SCHEDULE;
+        schedule.max_refund_quotient = EIP3529_MAX_REFUND_QUOTIENT;
 
         schedule
     }
@@ -422,6 +442,7 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            max_refund_quotient: MAX_REFUND_QUOTIENT,
         }
     }
 

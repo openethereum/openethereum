@@ -959,7 +959,6 @@ impl<B: Backend> State<B> {
             t.tx_type(),
             LegacyReceipt::new(outcome, e.cumulative_gas_used, e.logs),
         );
-
         trace!(target: "state", "Transaction receipt: {:?}", receipt);
 
         Ok(ApplyOutcome {

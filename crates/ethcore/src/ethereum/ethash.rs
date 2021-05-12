@@ -385,7 +385,7 @@ impl Engine<EthereumMachine> for Arc<Ethash> {
 
     fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
         let seal = Seal::parse_seal(header.seal())?;
-        
+
         let result = self.pow.compute_light(
             header.number() as u64,
             &header.bare_hash().0,

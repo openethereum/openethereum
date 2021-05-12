@@ -1503,7 +1503,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         // Now, if eip1559 is activated, burn the base fee
         // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
         let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
-            let (base_fee, overflow_3) = gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
+            let (base_fee, overflow_3) =
+                gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
             if overflow_3 {
                 return Err(ExecutionError::TransactionMalformed(
                     "U256 Overflow".to_string(),

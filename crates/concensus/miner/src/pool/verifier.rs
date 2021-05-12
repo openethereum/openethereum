@@ -318,10 +318,7 @@ impl<C: Client> txpool::Verifier<Transaction>
             }
         }
 
-        // transactions with sender having account balance lower than maxFeePerGas and higher than
-        // effective_gas_price should be considered into tx pool, since what they actually pay is a
-        // lower value between these two.
-        let gas_price = transaction.effective_gas_price(self.options.block_base_fee);
+        let gas_price = transaction.tx().gas_price;
 
         let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);

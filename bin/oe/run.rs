@@ -359,13 +359,13 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     )
     .map_err(|e| format!("Client service error: {:?}", e))?;
 
-    // take handle to client
-    let client = service.client();
     let connection_filter_address = spec.params().node_permission_contract;
     // drop the spec to free up genesis state.
     let forks = spec.hard_forks.clone();
     drop(spec);
 
+    // take handle to client
+    let client = service.client();
     // Update miners block gas limit and base_fee
     let base_fee = client
         .engine()

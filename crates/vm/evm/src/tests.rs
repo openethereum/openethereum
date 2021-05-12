@@ -463,7 +463,7 @@ fn test_difficulty(factory: super::Factory) {
 
 evm_test! {test_base_fee: test_base_fee_int}
 fn test_base_fee(factory: super::Factory) {
-    let base_fee = U256::from(0x07);
+    let base_fee = Some(U256::from(0x07));
     let code = "48600055".from_hex().unwrap();
 
     let mut params = ActionParams::default();

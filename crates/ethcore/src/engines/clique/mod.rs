@@ -465,7 +465,6 @@ impl Engine<EthereumMachine> for Clique {
 
         // locally sealed block don't go through valid_block_family(), so we have to record state here.
         let mut new_state = state.clone();
-
         new_state.apply(&header, is_checkpoint)?;
         new_state.calc_next_timestamp(header.timestamp(), self.period)?;
         self.block_state_by_hash

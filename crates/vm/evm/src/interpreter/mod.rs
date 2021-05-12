@@ -1166,7 +1166,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                 self.stack.push(ext.balance(&self.params.address)?);
             }
             instructions::BASEFEE => {
-                self.stack.push(ext.env_info().base_fee);
+                self.stack.push(ext.env_info().base_fee.unwrap_or_default());
             }
 
             // Stack instructions

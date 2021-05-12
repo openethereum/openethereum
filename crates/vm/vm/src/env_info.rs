@@ -45,7 +45,7 @@ pub struct EnvInfo {
     /// The gas used.
     pub gas_used: U256,
     /// Block base fee.
-    pub base_fee: U256,
+    pub base_fee: Option<U256>,
 }
 
 impl Default for EnvInfo {
@@ -58,7 +58,7 @@ impl Default for EnvInfo {
             gas_limit: 0.into(),
             last_hashes: Arc::new(vec![]),
             gas_used: 0.into(),
-            base_fee: 0.into(),
+            base_fee: None,
         }
     }
 }
@@ -78,7 +78,7 @@ impl From<ethjson::vm::Env> for EnvInfo {
                     .collect(),
             ),
             gas_used: U256::default(),
-            base_fee: e.base_fee.unwrap_or_default().into(),
+            base_fee: e.base_fee.map(|i| i.into()),
         }
     }
 }

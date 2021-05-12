@@ -1099,7 +1099,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let needed_balance = t.tx().value.saturating_add(
             t.tx()
                 .gas
-                .saturating_mul(t.effective_gas_price(Some(self.info.base_fee))),
+                .saturating_mul(t.effective_gas_price(self.info.base_fee)),
         );
         if balance < needed_balance {
             // give the sender a sufficient balance
@@ -1206,14 +1206,12 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
-        if schedule.eip1559 {
-            // ensure that the user was willing to at least pay the base fee
-            if t.tx().gas_price < self.info.base_fee {
-                return Err(ExecutionError::GasPriceLowerThanBaseFee {
-                    gas_price: t.tx().gas_price,
-                    base_fee: self.info.base_fee,
-                });
-            }
+        // ensure that the user was willing to at least pay the base fee
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() {
+            return Err(ExecutionError::GasPriceLowerThanBaseFee {
+                gas_price: t.tx().gas_price,
+                base_fee: self.info.base_fee.unwrap_or_default(),
+            });
         }
 
         // TODO: we might need bigints here, or at least check overflows.
@@ -1221,7 +1219,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let gas_cost = t
             .tx()
             .gas
-            .full_mul(t.effective_gas_price(Some(self.info.base_fee)));
+            .full_mul(t.effective_gas_price(self.info.base_fee));
         let total_cost = U512::from(t.tx().value) + gas_cost;
 
         // avoid unaffordable transactions
@@ -1261,7 +1259,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.effective_gas_price(Some(self.info.base_fee)),
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: Some(Arc::new(t.tx().data.clone())),
                     data: None,
@@ -1284,7 +1282,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.effective_gas_price(Some(self.info.base_fee)),
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: self.state.code(address)?,
                     code_hash: self.state.code_hash(address)?,
@@ -1492,9 +1490,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         let gas_used = t.tx().gas.saturating_sub(gas_left);
         let (refund_value, overflow_1) =
-            gas_left.overflowing_mul(t.effective_gas_price(Some(self.info.base_fee)));
+            gas_left.overflowing_mul(t.effective_gas_price(self.info.base_fee));
         let (fees_value, overflow_2) =
-            gas_used.overflowing_mul(t.effective_gas_price(Some(self.info.base_fee)));
+            gas_used.overflowing_mul(t.effective_gas_price(self.info.base_fee));
         if overflow_1 || overflow_2 {
             return Err(ExecutionError::TransactionMalformed(
                 "U256 Overflow".to_string(),
@@ -1505,7 +1503,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         // Now, if eip1559 is activated, burn the base fee
         // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
         let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
-            let (base_fee, overflow_3) = gas_used.overflowing_mul(self.info.base_fee);
+            let (base_fee, overflow_3) = gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
             if overflow_3 {
                 return Err(ExecutionError::TransactionMalformed(
                     "U256 Overflow".to_string(),
@@ -1548,7 +1546,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let min_balance = if schedule.kill_dust != CleanDustMode::Off {
             Some(
                 U256::from(schedule.tx_gas)
-                    .overflowing_mul(t.effective_gas_price(Some(self.info.base_fee)))
+                    .overflowing_mul(t.effective_gas_price(self.info.base_fee))
                     .0,
             )
         } else {
@@ -2681,7 +2679,7 @@ mod tests {
             .unwrap();
         let mut info = EnvInfo::default();
         info.gas_limit = U256::from(100_000);
-        info.base_fee = U256::from(100);
+        info.base_fee = Some(U256::from(100));
         let machine = make_london_machine(0);
         let schedule = machine.schedule(info.number);
 

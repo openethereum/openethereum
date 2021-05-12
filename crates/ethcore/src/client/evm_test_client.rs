@@ -248,7 +248,7 @@ impl<'a> EvmTestClient<'a> {
             last_hashes: Arc::new([H256::default(); 256].to_vec()),
             gas_used: 0.into(),
             gas_limit: *genesis.gas_limit(),
-            base_fee: genesis.base_fee().unwrap_or_default(),
+            base_fee: genesis.base_fee(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)
     }

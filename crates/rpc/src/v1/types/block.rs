@@ -68,11 +68,7 @@ pub struct Block {
     /// Gas Used
     pub gas_used: U256,
     /// Gas Limit
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_limit: Option<U256>,
-    /// Gas Target
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_target: Option<U256>,
+    pub gas_limit: U256,
     /// Extra data
     pub extra_data: Bytes,
     /// Logs bloom
@@ -122,11 +118,7 @@ pub struct Header {
     /// Gas Used
     pub gas_used: U256,
     /// Gas Limit
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_limit: Option<U256>,
-    /// Gas Target
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_target: Option<U256>,
+    pub gas_limit: U256,
     /// Extra data
     pub extra_data: Bytes,
     /// Logs bloom
@@ -147,12 +139,6 @@ pub struct Header {
 impl Header {
     pub fn new(h: &EthHeader, eip1559_transition: BlockNumber) -> Self {
         let eip1559_enabled = h.number() >= eip1559_transition;
-        let (gas_limit, gas_target) = if eip1559_enabled {
-            (None, Some(h.gas_limit()))
-        } else {
-            (Some(h.gas_limit()), None)
-        };
-
         Header {
             hash: Some(h.hash()),
 			size: Some(h.rlp().as_raw().len().into()),
@@ -165,8 +151,7 @@ impl Header {
 			receipts_root: h.receipts_root(),
 			number: Some(h.number().into()),
 			gas_used: h.gas_used(),
-			gas_limit,
-            gas_target,
+			gas_limit: h.gas_limit(),
 			logs_bloom: h.log_bloom(),
 			timestamp: h.timestamp().into(),
 			difficulty: h.difficulty(),
@@ -268,8 +253,7 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: Some(U256::default()),
-            gas_target: None,
+            gas_limit: U256::default(),
             extra_data: Bytes::default(),
             logs_bloom: Some(H2048::default()),
             timestamp: U256::default(),
@@ -314,8 +298,7 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: Some(U256::default()),
-            gas_target: None,
+            gas_limit: U256::default(),
             extra_data: Bytes::default(),
             logs_bloom: Some(H2048::default()),
             timestamp: U256::default(),
@@ -360,8 +343,7 @@ mod tests {
             receipts_root: H256::default(),
             number: Some(U256::default()),
             gas_used: U256::default(),
-            gas_limit: Some(U256::default()),
-            gas_target: None,
+            gas_limit: U256::default(),
             extra_data: Bytes::default(),
             logs_bloom: H2048::default(),
             timestamp: U256::default(),

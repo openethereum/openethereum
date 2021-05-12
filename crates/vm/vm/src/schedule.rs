@@ -159,6 +159,8 @@ pub struct Schedule {
     pub eip1559: bool,
     /// Elasticity multiplier. EIP-1559 related.
     pub elasticity_multiplier: usize,
+    /// EIP-1559 bumps the gas_limit of fork block by elasticity_multiplier
+    pub gas_limit_bump: usize,
     /// Enable BASEFEE opcode
     pub eip3198: bool,
 }
@@ -310,6 +312,7 @@ impl Schedule {
             eip2930: false,
             eip1559: false,
             elasticity_multiplier: 1,
+            gas_limit_bump: 1,
             eip3198: false,
         }
     }
@@ -443,6 +446,7 @@ impl Schedule {
             eip2930: false,
             eip1559: false,
             elasticity_multiplier: 1,
+            gas_limit_bump: 1,
             eip3198: false,
         }
     }

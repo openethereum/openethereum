@@ -182,8 +182,7 @@ impl EthereumMachine {
         call_type: Option<CallType>,
     ) -> Result<Vec<u8>, Error> {
         let env_info = {
-            let mut env_info =
-                block.env_info(self.schedule(block.header.number()).elasticity_multiplier);
+            let mut env_info = block.env_info();
             env_info.gas_limit = env_info.gas_used.saturating_add(gas);
             env_info
         };
@@ -270,7 +269,7 @@ impl EthereumMachine {
         gas_ceil_target: U256,
     ) {
         header.set_difficulty(parent.difficulty().clone());
-        let gas_limit = parent.gas_limit().clone();
+        let gas_limit = parent.gas_limit() * self.schedule(header.number()).gas_limit_bump;
         assert!(!gas_limit.is_zero(), "Gas limit should be > 0");
 
         if let Some(ref ethash_params) = self.ethash_extensions {
@@ -491,7 +490,7 @@ impl EthereumMachine {
     }
 
     /// Calculates base fee for the block that should be mined next.
-    /// This base fee is calculated based on the parent header (last block in blockchain / best block).
+    /// Base fee is calculated based on the parent header (last block in blockchain / best block).
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
     pub fn calc_base_fee(&self, parent: &Header) -> Option<U256> {
@@ -506,30 +505,31 @@ impl EthereumMachine {
         }
 
         // Block eip1559_transition + 1 has base_fee = calculated
-        if parent.gas_limit() == &U256::zero() {
-            panic!("Can't calculate base fee if parent gas target is zero.");
-        }
         if self.params().base_fee_max_change_denominator == U256::zero() {
             panic!("Can't calculate base fee if base fee denominator is zero.");
         }
 
         let parent_base_fee = parent.base_fee().unwrap_or_default();
+        let parent_gas_target = parent.gas_limit() / self.params().elasticity_multiplier;
+        if parent_gas_target == U256::zero() {
+            panic!("Can't calculate base fee if parent gas target is zero.");
+        }
 
-        if parent.gas_used() == parent.gas_limit() {
+        if parent.gas_used() == &parent_gas_target {
             Some(parent_base_fee)
-        } else if parent.gas_used() > parent.gas_limit() {
-            let gas_used_delta = parent.gas_used() - parent.gas_limit();
+        } else if parent.gas_used() > &parent_gas_target {
+            let gas_used_delta = parent.gas_used() - parent_gas_target;
             let base_fee_per_gas_delta = max(
                 parent_base_fee * gas_used_delta
-                    / parent.gas_limit()
+                    / parent_gas_target
                     / self.params().base_fee_max_change_denominator,
                 U256::from(1),
             );
             Some(parent_base_fee + base_fee_per_gas_delta)
         } else {
-            let gas_used_delta = parent.gas_limit() - parent.gas_used();
+            let gas_used_delta = parent_gas_target - parent.gas_used();
             let base_fee_per_gas_delta = parent_base_fee * gas_used_delta
-                / parent.gas_limit()
+                / parent_gas_target
                 / self.params().base_fee_max_change_denominator;
             Some(max(parent_base_fee - base_fee_per_gas_delta, U256::zero()))
         }
@@ -748,16 +748,16 @@ mod tests {
             U256::from(10000000),
         ];
         let parent_gas_limit = [
-            U256::from(5000000),
-            U256::from(6000000),
-            U256::from(7000000),
-            U256::from(5000000),
-            U256::from(7000000),
-            U256::from(1000000),
-            U256::from(9000000),
-            U256::from(9000000),
-            U256::from(9000000),
-            U256::from(9000000),
+            U256::from(10000000),
+            U256::from(12000000),
+            U256::from(14000000),
+            U256::from(10000000),
+            U256::from(14000000),
+            U256::from(2000000),
+            U256::from(18000000),
+            U256::from(18000000),
+            U256::from(18000000),
+            U256::from(18000000),
         ];
         let expected_base_fee = [
             U256::from(1125000000),

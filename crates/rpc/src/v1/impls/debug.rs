@@ -52,12 +52,6 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
             .map(|(block, reason)| {
                 let number = block.header.number();
                 let hash = block.header.hash();
-                let (gas_limit, gas_target) = if block.header.base_fee().is_some() {
-                    //is 1559 enabled
-                    (None, cast(block.header.gas_limit()))
-                } else {
-                    (cast(block.header.gas_limit()), None)
-                };
                 RichBlock {
                     inner: Block {
                         hash: Some(hash),
@@ -70,8 +64,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                         receipts_root: cast(block.header.receipts_root()),
                         number: Some(number.into()),
                         gas_used: cast(block.header.gas_used()),
-                        gas_limit,
-                        gas_target,
+                        gas_limit: cast(block.header.gas_limit()),
                         logs_bloom: Some(cast(block.header.log_bloom())),
                         timestamp: block.header.timestamp().into(),
                         difficulty: cast(block.header.difficulty()),

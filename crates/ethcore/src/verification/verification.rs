@@ -85,14 +85,11 @@ pub fn verify_block_basic(
 
     // t_nb 4.6 call engine.gas_limit_override (Used only by Aura)
     if let Some(expected_gas_limit) = engine.gas_limit_override(&block.header) {
-        let gas_limit =
-            block.header.gas_limit() * engine.schedule(block.header.number()).elasticity_multiplier;
-
-        if gas_limit != expected_gas_limit {
+        if block.header.gas_limit() != &expected_gas_limit {
             return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                 min: Some(expected_gas_limit),
                 max: Some(expected_gas_limit),
-                found: gas_limit,
+                found: *block.header.gas_limit(),
             })));
         }
     }
@@ -364,31 +361,29 @@ pub fn verify_header_params(
         })));
     }
 
-    let gas_limit = header.gas_limit() * engine.schedule(header.number()).elasticity_multiplier;
-
     // check if the block used too much gas
-    if header.gas_used() > &gas_limit {
+    if header.gas_used() > header.gas_limit() {
         return Err(From::from(BlockError::TooMuchGasUsed(OutOfBounds {
-            max: Some(gas_limit),
+            max: Some(*header.gas_limit()),
             min: None,
             found: *header.gas_used(),
         })));
     }
     if engine.gas_limit_override(header).is_none() {
         let min_gas_limit = engine.min_gas_limit();
-        if gas_limit < min_gas_limit {
+        if header.gas_limit() < &min_gas_limit {
             return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                 min: Some(min_gas_limit),
                 max: None,
-                found: gas_limit,
+                found: *header.gas_limit(),
             })));
         }
         if let Some(limit) = engine.maximum_gas_limit() {
-            if gas_limit > limit {
+            if header.gas_limit() > &limit {
                 return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                     min: None,
                     max: Some(limit),
-                    found: gas_limit,
+                    found: *header.gas_limit(),
                 })));
             }
         }
@@ -483,14 +478,10 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         .into());
     }
 
-    // check if the block changed the gas target too much
-    // Comparing two blocks before eip1559 activation is based on gas_limit of those blocks
-    // Comparing EIP1559 fork block and his parent is based on comparing of gas_target of fork block
-    // and gas_limit of his parent
-    // Comparing two blocks after eip1559 activation is based on gas_target of those blocks
+    // check if the block changed the gas limit too much
     if engine.gas_limit_override(header).is_none() {
         let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
-        let parent_gas_limit = *parent.gas_limit();
+        let parent_gas_limit = parent.gas_limit() * engine.schedule(header.number()).gas_limit_bump;
         let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
         let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
         if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {

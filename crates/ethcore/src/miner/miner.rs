@@ -512,7 +512,7 @@ impl Miner {
         let engine_params = self.engine.params();
         let schedule = self.engine.schedule(block_number);
         let min_tx_gas: U256 = schedule.tx_gas.into();
-        let gas_limit = open_block.header.gas_limit() * schedule.elasticity_multiplier;
+        let gas_limit = open_block.header.gas_limit();
         let nonce_cap: Option<U256> = if chain_info.best_block_number + 1
             >= engine_params.dust_protection_transition
         {
@@ -1443,9 +1443,13 @@ impl miner::MinerService for Miner {
         }
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
-        let schedule = self.engine.schedule(chain.best_block_header().number() + 1);
         let base_fee = self.engine.calculate_base_fee(&chain.best_block_header());
-        let gas_limit = chain.best_block_header().gas_limit() * schedule.elasticity_multiplier;
+        let gas_limit = chain.best_block_header().gas_limit()
+            // multiplication neccesary only if OE nodes are the only miners in network, not really essential but wont hurt
+            * self
+                .engine
+                .schedule(chain.best_block_header().number() + 1)
+                .gas_limit_bump;
         self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).

@@ -130,9 +130,7 @@ impl ExecutedBlock {
     }
 
     /// Get the environment info concerning this block.
-    /// Elasticity multiplier is introduced by EIP1559. After 1559 activation, gas_limit field of header
-    /// is actually gas_target, therefore gas_limit = gas_target * elasticity_multiplier
-    pub fn env_info(&self, elasticity_multiplier: usize) -> EnvInfo {
+    pub fn env_info(&self) -> EnvInfo {
         // TODO: memoise.
         EnvInfo {
             number: self.header.number(),
@@ -141,8 +139,7 @@ impl ExecutedBlock {
             difficulty: self.header.difficulty().clone(),
             last_hashes: self.last_hashes.clone(),
             gas_used: self.receipts.last().map_or(U256::zero(), |r| r.gas_used),
-            gas_limit: self.header.gas_limit() * elasticity_multiplier,
-            gas_target: *self.header.gas_limit(),
+            gas_limit: *self.header.gas_limit(),
             base_fee: self.header.base_fee().unwrap_or_default(),
         }
     }
@@ -234,6 +231,11 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_gas_limit(U256::max_value());
     }
 
+    /// Set block gas limit.
+    pub fn set_gas_limit(&mut self, gas_limit: U256) {
+        self.block.header.set_gas_limit(gas_limit);
+    }
+
     // t_nb 8.4 Add an uncle to the block, if possible.
     ///
     /// NOTE Will check chain constraints and the uncle number but will NOT check
@@ -265,11 +267,7 @@ impl<'x> OpenBlock<'x> {
             return Err(TransactionError::AlreadyImported.into());
         }
 
-        let env_info = self.block.env_info(
-            self.engine
-                .schedule(self.block.header.number())
-                .elasticity_multiplier,
-        );
+        let env_info = self.block.env_info();
         let outcome = self.block.state.apply(
             &env_info,
             self.engine.machine(),

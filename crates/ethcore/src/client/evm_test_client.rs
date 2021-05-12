@@ -247,13 +247,7 @@ impl<'a> EvmTestClient<'a> {
             difficulty: *genesis.difficulty(),
             last_hashes: Arc::new([H256::default(); 256].to_vec()),
             gas_used: 0.into(),
-            gas_limit: genesis.gas_limit()
-                * self
-                    .spec
-                    .engine
-                    .schedule(genesis.number())
-                    .elasticity_multiplier,
-            gas_target: *genesis.gas_limit(),
+            gas_limit: *genesis.gas_limit(),
             base_fee: genesis.base_fee().unwrap_or_default(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)

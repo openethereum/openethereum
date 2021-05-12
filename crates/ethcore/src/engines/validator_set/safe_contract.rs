@@ -122,7 +122,6 @@ fn check_first_proof(
         author: *old_header.author(),
         difficulty: *old_header.difficulty(),
         gas_limit: PROVIDED_GAS.into(),
-        gas_target: PROVIDED_GAS.into(),
         timestamp: old_header.timestamp(),
         last_hashes: {
             // this will break if we don't inclue all 256 last hashes.

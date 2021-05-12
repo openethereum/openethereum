@@ -260,11 +260,6 @@ where
             (Some(block), Some(total_difficulty)) => {
                 let view = block.header_view();
                 let eip1559_enabled = client.engine().schedule(view.number()).eip1559;
-                let (gas_limit, gas_target) = if eip1559_enabled {
-                    (None, Some(view.gas_limit()))
-                } else {
-                    (Some(view.gas_limit()), None)
-                };
                 Ok(Some(RichBlock {
                     inner: Block {
                         hash: match is_pending {
@@ -284,8 +279,7 @@ where
                             false => Some(view.number().into()),
                         },
                         gas_used: view.gas_used(),
-                        gas_limit,
-                        gas_target,
+                        gas_limit: view.gas_limit(),
                         logs_bloom: match is_pending {
                             true => None,
                             false => Some(view.log_bloom()),
@@ -455,12 +449,6 @@ where
             .map(|block| block.into_inner().len())
             .map(U256::from);
 
-        let (gas_limit, gas_target) =
-            if uncle.number() >= self.client.engine().params().eip1559_transition {
-                (None, Some(*uncle.gas_limit()))
-            } else {
-                (Some(*uncle.gas_limit()), None)
-            };
         let block = RichBlock {
             inner: Block {
                 hash: Some(uncle.hash()),
@@ -473,8 +461,7 @@ where
                 transactions_root: *uncle.transactions_root(),
                 number: Some(uncle.number().into()),
                 gas_used: *uncle.gas_used(),
-                gas_limit,
-                gas_target,
+                gas_limit: *uncle.gas_limit(),
                 logs_bloom: Some(*uncle.log_bloom()),
                 timestamp: uncle.timestamp().into(),
                 difficulty: *uncle.difficulty(),

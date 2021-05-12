@@ -771,7 +771,6 @@ impl Importer {
                             last_hashes: client.build_last_hashes(header.parent_hash()),
                             gas_used: U256::default(),
                             gas_limit: u64::max_value().into(),
-                            gas_target: u64::max_value().into(),
                             base_fee: header.base_fee().unwrap_or_default(),
                         };
 
@@ -1154,9 +1153,7 @@ impl Client {
             difficulty: header.difficulty(),
             last_hashes: self.build_last_hashes(&header.parent_hash()),
             gas_used: U256::default(),
-            gas_limit: header.gas_limit()
-                * self.engine.schedule(header.number()).elasticity_multiplier,
-            gas_target: header.gas_limit(),
+            gas_limit: header.gas_limit(),
             base_fee: header.base_fee(),
         })
     }
@@ -1953,7 +1950,6 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
-            gas_target: U256::max_value(),
             base_fee: header.base_fee().unwrap_or_default(),
         };
         let machine = self.engine.machine();
@@ -1975,7 +1971,6 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
-            gas_target: U256::max_value(),
             base_fee: header.base_fee().unwrap_or_default(),
         };
 
@@ -1998,8 +1993,7 @@ impl Call for Client {
         header: &Header,
     ) -> Result<U256, CallError> {
         let (mut upper, max_upper, env_info) = {
-            let init =
-                header.gas_limit() * self.engine.schedule(header.number()).elasticity_multiplier;
+            let init = *header.gas_limit();
             let max = init * U256::from(10);
 
             let env_info = EnvInfo {
@@ -2010,7 +2004,6 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
-                gas_target: max,
                 base_fee: header.base_fee().unwrap_or_default(),
             };
 
@@ -2651,8 +2644,7 @@ impl BlockChainClient for Client {
         const PROPAGATE_FOR_BLOCKS: u32 = 4;
         const MIN_TX_TO_PROPAGATE: usize = 256;
 
-        let block_gas_limit =
-            self.best_block_header().gas_limit() * self.latest_schedule().elasticity_multiplier;
+        let block_gas_limit = *self.best_block_header().gas_limit();
         let min_tx_gas: U256 = self.latest_schedule().tx_gas.into();
 
         let max_len = if min_tx_gas.is_zero() {

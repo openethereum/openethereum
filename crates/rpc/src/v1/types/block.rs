@@ -159,13 +159,13 @@ impl Header {
 			seal_fields: h.view().decode_seal(eip1559_enabled)
 				.expect("Client/Miner returns only valid headers. We only serialize headers from Client/Miner; qed")
 				.into_iter().map(Into::into).collect(),
-            base_fee_per_gas: {
-                if eip1559_enabled {
-                    Some(h.base_fee())
-                } else {
-                    None
-                }
-            },
+			base_fee_per_gas: {
+				if eip1559_enabled {
+					Some(h.base_fee())
+				} else {
+					None
+				}
+			},
 		}
     }
 }

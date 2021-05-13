@@ -213,7 +213,7 @@ mod tests {
 			"from":"0x0000000000000000000000000000000000000001",
 			"to":"0x0000000000000000000000000000000000000002",
 			"maxFeePerGas":"0x01",
-            "maxPriorityFeePerGas":"0x01",
+			"maxPriorityFeePerGas":"0x01",
 			"gas":"0x2",
 			"value":"0x3",
 			"data":"0x123456",
@@ -258,14 +258,14 @@ mod tests {
 			from: Some(H160::from_str("b60e8dd61c5d32be8058bb8eb970870f07233155").unwrap()),
 			to: Some(H160::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
 			gas_price: Some(U256::from_str("9184e72a000").unwrap()),
-            max_fee_per_gas: None,
+			max_fee_per_gas: None,
 			gas: Some(U256::from_str("76c0").unwrap()),
 			value: Some(U256::from_str("9184e72a").unwrap()),
 			data: Some("d46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675".from_hex().unwrap().into()),
 			nonce: None,
-            condition: None,
-            access_list: None,
-            max_priority_fee_per_gas: None,
+			condition: None,
+			access_list: None,
+			max_priority_fee_per_gas: None,
 		});
     }
 

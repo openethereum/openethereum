@@ -50,7 +50,9 @@
 		"eip1344Transition": 12095200,
 		"eip1706Transition": 12095200,
 		"eip1884Transition": 12095200,
-		"eip2028Transition": 12095200
+		"eip2028Transition": 12095200,
+		"eip2929Transition": 21050600,
+		"eip2930Transition": 21050600
 	},
 	"genesis": {
 		"seal": {
@@ -78,6 +80,12 @@
 							"modexp": {
 								"divisor": 20
 							}
+						}
+					},
+					"21050600": {
+						"info": "EIP-2565: ModExp Gas Cost. Berlin hardfork (May 24, 2021, ~10:00 am UTC)",
+						"price": {
+							"modexp2565": {}
 						}
 					}
 				}

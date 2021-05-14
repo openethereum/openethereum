@@ -1,3 +1,8 @@
+## OpenEthereum v3.2.6
+
+Enhancement:
+* Berlin hardfork blocks: poacore (21,364,900), poasokol (21,050,600)
+
 ## OpenEthereum v3.2.5
 
 Bug fixes:

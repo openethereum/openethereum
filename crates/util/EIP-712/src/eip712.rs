@@ -30,9 +30,9 @@ lazy_static! {
     static ref IDENT_REGEX: Regex = Regex::new(r"^[a-zA-Z_$][a-zA-Z_$0-9]*$").unwrap();
 }
 
+#[derive(Deserialize, Serialize, Validate, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-#[derive(Deserialize, Serialize, Validate, Debug, Clone)]
 pub(crate) struct EIP712Domain {
     pub(crate) name: String,
     pub(crate) version: String,
@@ -42,9 +42,9 @@ pub(crate) struct EIP712Domain {
     pub(crate) salt: Option<H256>,
 }
 /// EIP-712 struct
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-#[derive(Deserialize, Debug, Clone)]
 pub struct EIP712 {
     pub(crate) types: MessageTypes,
     pub(crate) primary_type: String,

@@ -831,10 +831,10 @@ impl<Cost: CostType> Interpreter<Cost> {
                         true,
                         ActionType::StaticCall,
                     ),
-                    _ => panic!(format!(
+                    _ => panic!(
                         "Unexpected instruction {:?} in CALL branch.",
                         instruction
-                    )),
+                    ),
                 };
 
                 // clear return data buffer before creating new call frame.

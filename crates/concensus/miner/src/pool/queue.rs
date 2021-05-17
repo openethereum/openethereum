@@ -276,6 +276,8 @@ impl TransactionQueue {
                 },
                 ScoringEvent::BlockBaseFeeChanged,
             );
+
+            self.cached_pending.write().clear();
         }
     }
 

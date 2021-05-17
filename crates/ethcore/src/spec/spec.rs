@@ -677,6 +677,7 @@ impl Spec {
             params.eip2315_transition,
             params.eip2929_transition,
             params.eip2930_transition,
+            params.eip3529_transition,
             params.dust_protection_transition,
             params.wasm_activation_transition,
             params.wasm_disable_transition,

@@ -31,7 +31,7 @@ pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
 /// Gas used per transaction divided by this number is the maximum refundable amount
 pub const MAX_REFUND_QUOTIENT: usize = 2;
 pub const EIP3529_MAX_REFUND_QUOTIENT: usize = 5;
-///
+/// Reduced SSTORE refund as by EIP-3529
 pub const EIP3529_SSTORE_CLEARS_SCHEDULE: usize =
     EIP2929_SSTORE_RESET_GAS + EIP2930_ACCESS_LIST_STORAGE_KEY_COST;
 

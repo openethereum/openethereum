@@ -1480,12 +1480,18 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             U256::from(schedule.suicide_refund_gas) * U256::from(substate.suicides.len());
         let refunds_bound = sstore_refunds + suicide_refunds;
 
-        // real ammount to refund
+        // real amount to refund
         let gas_left_prerefund = match result {
             Ok(FinalizationResult { gas_left, .. }) => gas_left,
             _ => 0.into(),
         };
-        let refunded = cmp::min(refunds_bound, (t.tx().gas - gas_left_prerefund) >> 1);
+        let refunded = if refunds_bound.is_zero() {
+            refunds_bound
+        } else {
+            let gas_used = t.tx().gas - gas_left_prerefund;
+            let max_refund = gas_used / schedule.max_refund_quotient;
+            cmp::min(max_refund, refunds_bound)
+        };
         let gas_left = gas_left_prerefund + refunded;
 
         let gas_used = t.tx().gas.saturating_sub(gas_left);

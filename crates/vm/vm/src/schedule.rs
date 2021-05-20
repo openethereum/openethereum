@@ -28,6 +28,12 @@ pub const EIP2929_SSTORE_RESET_GAS: usize = 5000 - EIP2929_COLD_SLOAD_COST;
 pub const EIP2930_ACCESS_LIST_STORAGE_KEY_COST: usize = 1900;
 /// Gas per received address
 pub const EIP2930_ACCESS_LIST_ADDRESS_COST: usize = 2400;
+/// Gas used per transaction divided by this number is the maximum refundable amount
+pub const MAX_REFUND_QUOTIENT: usize = 2;
+pub const EIP3529_MAX_REFUND_QUOTIENT: usize = 5;
+/// Reduced SSTORE refund as by EIP-3529
+pub const EIP3529_SSTORE_CLEARS_SCHEDULE: usize =
+    EIP2929_SSTORE_RESET_GAS + EIP2930_ACCESS_LIST_STORAGE_KEY_COST;
 
 /// Definition of the cost schedule and other parameterisations for the EVM.
 #[derive(Debug)]
@@ -163,6 +169,8 @@ pub struct Schedule {
     pub gas_limit_bump: usize,
     /// Enable BASEFEE opcode
     pub eip3198: bool,
+    /// Gas used in transaction divided by this number is the maximum refundable amount.
+    pub max_refund_quotient: usize,
 }
 
 /// Wasm cost table
@@ -314,6 +322,7 @@ impl Schedule {
             elasticity_multiplier: 1,
             gas_limit_bump: 1,
             eip3198: false,
+            max_refund_quotient: MAX_REFUND_QUOTIENT,
         }
     }
 
@@ -374,9 +383,14 @@ impl Schedule {
     /// Schedule for the London fork of the Ethereum main net.
     pub fn new_london() -> Schedule {
         let mut schedule = Self::new_berlin();
+
         schedule.eip1559 = true;
         schedule.elasticity_multiplier = 2;
         schedule.eip3198 = true;
+
+        schedule.suicide_refund_gas = 0;
+        schedule.sstore_refund_gas = EIP3529_SSTORE_CLEARS_SCHEDULE;
+        schedule.max_refund_quotient = EIP3529_MAX_REFUND_QUOTIENT;
 
         schedule
     }
@@ -448,6 +462,7 @@ impl Schedule {
             elasticity_multiplier: 1,
             gas_limit_bump: 1,
             eip3198: false,
+            max_refund_quotient: MAX_REFUND_QUOTIENT,
         }
     }
 

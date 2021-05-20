@@ -143,6 +143,8 @@ pub struct CommonParams {
     pub eip1559_transition: BlockNumber,
     /// Number of first block where EIP-3198 rules begin. Basefee opcode.
     pub eip3198_transition: BlockNumber,
+    /// Number of first block where EIP-3529 rules begin.
+    pub eip3529_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -265,6 +267,11 @@ impl CommonParams {
 
             schedule.sload_gas = ::vm::schedule::EIP2929_WARM_STORAGE_READ_COST;
             schedule.sstore_reset_gas = ::vm::schedule::EIP2929_SSTORE_RESET_GAS;
+        }
+        if block_number >= self.eip3529_transition {
+            schedule.suicide_refund_gas = 0;
+            schedule.sstore_refund_gas = ::vm::schedule::EIP3529_SSTORE_CLEARS_SCHEDULE;
+            schedule.max_refund_quotient = ::vm::schedule::EIP3529_MAX_REFUND_QUOTIENT;
         }
 
         if block_number >= self.dust_protection_transition {
@@ -404,6 +411,9 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             eip3198_transition: p
                 .eip3198_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3529_transition: p
+                .eip3529_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
             dust_protection_transition: p
                 .dust_protection_transition
@@ -701,6 +711,7 @@ impl Spec {
             params.eip2930_transition,
             params.eip1559_transition,
             params.eip3198_transition,
+            params.eip3529_transition,
             params.dust_protection_transition,
             params.wasm_activation_transition,
             params.wasm_disable_transition,

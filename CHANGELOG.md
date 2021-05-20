@@ -1,9 +1,34 @@
-## OpenEthereum v3.2.5-rc.1
+## OpenEthereum v3.2.6
+
+Enhancement:
+* Berlin hardfork blocks: poacore (21,364,900), poasokol (21,050,600)
+
+## OpenEthereum v3.2.5
+
+Bug fixes:
+* Backport: Block sync stopped without any errors. #277 (#286)
+* Strict memory order (#306)
 
 Enhancements:
+* Executable queue for ancient blocks inclusion (#208)
+* Backport AuRa commits for xdai (#330)
+* Add Nethermind to clients that accept service transactions (#324)
+* Implement the filter argument in parity_pendingTransactions (#295)
+* Ethereum-types and various libs upgraded (#315)
+* [evmbin] Omit storage output, now for std-json (#311)
+* Freeze pruning while creating snapshot (#205)
+* AuRa multi block reward (#290)
+* Improved metrics. DB read/write. prometheus prefix config (#240)
+* Send RLPx auth in EIP-8 format (#287)
+* rpc module reverted for RPC JSON api (#284)
+* Revert "Remove eth/63 protocol version (#252)"
 * Support for eth/65 protocol version (#366)
 * Berlin hardfork blocks: kovan (24,770,900), xdai (16,101,500)
 * Bump ethereum/tests to v8.0.3
+
+devops:
+* Upgrade docker alpine to `v1.13.2`. for rust `v1.47`.
+* Send SIGTERM instead of SIGHUP to OE daemon (#317)
 
 ## OpenEthereum v3.2.4
 

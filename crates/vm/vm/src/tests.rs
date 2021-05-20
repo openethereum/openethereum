@@ -63,6 +63,7 @@ pub struct FakeCall {
 /// Can't do recursive calls.
 #[derive(Default)]
 pub struct FakeExt {
+    pub initial_store: HashMap<H256, H256>,
     pub store: HashMap<H256, H256>,
     pub suicides: HashSet<Address>,
     pub calls: HashSet<FakeCall>,
@@ -131,8 +132,8 @@ impl FakeExt {
     }
 
     /// New fake externalities with London schedule rules
-    pub fn new_london() -> Self {
-        let mut ext = FakeExt::default();
+    pub fn new_london(from: Address, to: Address, builtins: &[Address]) -> Self {
+        let mut ext = FakeExt::new_berlin(from, to, builtins);
         ext.schedule = Schedule::new_london();
         ext
     }
@@ -148,11 +149,30 @@ impl FakeExt {
         self.chain_id = chain_id;
         self
     }
+
+    pub fn set_initial_storage(&mut self, key: H256, value: H256) {
+        self.initial_store.insert(key, value);
+    }
+
+    /// Fill the storage before the transaction with `data`, i. e. set
+    /// both original and current values, beginning from address 0.
+    pub fn prefill(&mut self, data: &[u64]) {
+        for (k, v) in data.iter().enumerate() {
+            let key = H256::from_low_u64_be(k as u64);
+            let value = H256::from_low_u64_be(*v);
+            self.set_initial_storage(key, value);
+            self.set_storage(key, value)
+                .expect("FakeExt::set_storage() never returns an Err.");
+        }
+    }
 }
 
 impl Ext for FakeExt {
-    fn initial_storage_at(&self, _key: &H256) -> Result<H256> {
-        Ok(H256::default())
+    fn initial_storage_at(&self, key: &H256) -> Result<H256> {
+        match self.initial_store.get(key) {
+            Some(value) => Ok(*value),
+            None => Ok(H256::default()),
+        }
     }
 
     fn storage_at(&self, key: &H256) -> Result<H256> {

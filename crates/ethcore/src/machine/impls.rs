@@ -269,7 +269,7 @@ impl EthereumMachine {
         gas_ceil_target: U256,
     ) {
         header.set_difficulty(parent.difficulty().clone());
-        let gas_limit = parent.gas_limit() * self.schedule(header.number()).gas_limit_bump;
+        let gas_limit = parent.gas_limit() * self.schedule(header.number()).eip1559_gas_limit_bump;
         assert!(!gas_limit.is_zero(), "Gas limit should be > 0");
 
         if let Some(ref ethash_params) = self.ethash_extensions {
@@ -499,18 +499,18 @@ impl EthereumMachine {
             return None;
         }
 
-        // Block eip1559_transition has base_fee = self.params().base_fee_initial_value
+        // Block eip1559_transition has base_fee = self.params().eip1559_base_fee_initial_value
         if parent.number() + 1 == self.params().eip1559_transition {
-            return Some(self.params().base_fee_initial_value);
+            return Some(self.params().eip1559_base_fee_initial_value);
         }
 
         // Block eip1559_transition + 1 has base_fee = calculated
-        if self.params().base_fee_max_change_denominator == U256::zero() {
+        if self.params().eip1559_base_fee_max_change_denominator == U256::zero() {
             panic!("Can't calculate base fee if base fee denominator is zero.");
         }
 
         let parent_base_fee = parent.base_fee().unwrap_or_default();
-        let parent_gas_target = parent.gas_limit() / self.params().elasticity_multiplier;
+        let parent_gas_target = parent.gas_limit() / self.params().eip1559_elasticity_multiplier;
         if parent_gas_target == U256::zero() {
             panic!("Can't calculate base fee if parent gas target is zero.");
         }
@@ -522,7 +522,7 @@ impl EthereumMachine {
             let base_fee_per_gas_delta = max(
                 parent_base_fee * gas_used_delta
                     / parent_gas_target
-                    / self.params().base_fee_max_change_denominator,
+                    / self.params().eip1559_base_fee_max_change_denominator,
                 U256::from(1),
             );
             Some(parent_base_fee + base_fee_per_gas_delta)
@@ -530,7 +530,7 @@ impl EthereumMachine {
             let gas_used_delta = parent_gas_target - parent.gas_used();
             let base_fee_per_gas_delta = parent_base_fee * gas_used_delta
                 / parent_gas_target
-                / self.params().base_fee_max_change_denominator;
+                / self.params().eip1559_base_fee_max_change_denominator;
             Some(max(parent_base_fee - base_fee_per_gas_delta, U256::zero()))
         }
     }

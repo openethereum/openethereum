@@ -163,10 +163,10 @@ pub struct Schedule {
     pub eip2930: bool,
     /// Enable EIP-1559 rules
     pub eip1559: bool,
-    /// Elasticity multiplier. EIP-1559 related.
-    pub elasticity_multiplier: usize,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: usize,
     /// EIP-1559 bumps the gas_limit of fork block by elasticity_multiplier
-    pub gas_limit_bump: usize,
+    pub eip1559_gas_limit_bump: usize,
     /// Enable BASEFEE opcode
     pub eip3198: bool,
     /// Gas used in transaction divided by this number is the maximum refundable amount.
@@ -319,8 +319,8 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
-            elasticity_multiplier: 1,
-            gas_limit_bump: 1,
+            eip1559_elasticity_multiplier: 1,
+            eip1559_gas_limit_bump: 1,
             eip3198: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
         }
@@ -385,7 +385,7 @@ impl Schedule {
         let mut schedule = Self::new_berlin();
 
         schedule.eip1559 = true;
-        schedule.elasticity_multiplier = 2;
+        schedule.eip1559_elasticity_multiplier = 2;
         schedule.eip3198 = true;
 
         schedule.suicide_refund_gas = 0;
@@ -459,8 +459,8 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             eip1559: false,
-            elasticity_multiplier: 1,
-            gas_limit_bump: 1,
+            eip1559_elasticity_multiplier: 1,
+            eip1559_gas_limit_bump: 1,
             eip3198: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
         }

@@ -175,12 +175,12 @@ pub struct CommonParams {
     pub transaction_permission_contract_transition: BlockNumber,
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
-    /// Base fee max change denominator, EIP1559 related
-    pub base_fee_max_change_denominator: U256,
-    /// Elasticity multiplier, EIP1559 related
-    pub elasticity_multiplier: U256,
-    /// Default value for the block base fee, EIP1559 related
-    pub base_fee_initial_value: U256,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: U256,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: U256,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: U256,
 }
 
 impl CommonParams {
@@ -230,10 +230,10 @@ impl CommonParams {
         schedule.eip1559 = block_number >= self.eip1559_transition;
         schedule.eip3198 = block_number >= self.eip3198_transition;
         if schedule.eip1559 {
-            schedule.elasticity_multiplier = self.elasticity_multiplier.as_usize();
+            schedule.eip1559_elasticity_multiplier = self.eip1559_elasticity_multiplier.as_usize();
 
-            schedule.gas_limit_bump = if block_number == self.eip1559_transition {
-                schedule.elasticity_multiplier
+            schedule.eip1559_gas_limit_bump = if block_number == self.eip1559_transition {
+                schedule.eip1559_elasticity_multiplier
             } else {
                 1
             };
@@ -444,11 +444,11 @@ impl From<ethjson::spec::Params> for CommonParams {
             kip6_transition: p
                 .kip6_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            base_fee_max_change_denominator: p
-                .base_fee_max_change_denominator
+            eip1559_base_fee_max_change_denominator: p
+                .eip1559_base_fee_max_change_denominator
                 .map_or_else(U256::zero, Into::into),
-            elasticity_multiplier: p.elasticity_multiplier.map_or_else(U256::zero, Into::into),
-            base_fee_initial_value: p.base_fee_initial_value.map_or_else(U256::zero, Into::into),
+            eip1559_elasticity_multiplier: p.eip1559_elasticity_multiplier.map_or_else(U256::zero, Into::into),
+                eip1559_base_fee_initial_value: p.eip1559_base_fee_initial_value.map_or_else(U256::zero, Into::into),
         }
     }
 }

@@ -1449,7 +1449,7 @@ impl miner::MinerService for Miner {
             * self
                 .engine
                 .schedule(chain.best_block_header().number() + 1)
-                .gas_limit_bump;
+                .eip1559_gas_limit_bump;
         self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).

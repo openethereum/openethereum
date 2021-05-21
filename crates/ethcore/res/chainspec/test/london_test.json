@@ -1,5 +1,5 @@
 {
-	"name": "Berlin (test)",
+	"name": "London (test)",
 	"engine": {
 		"Ethash": {
 			"params": {
@@ -48,9 +48,9 @@
 		"eip2930Transition": "0x0",
 		"eip1559Transition": "0x0",
 		"eip3198Transition": "0x0",
-		"baseFeeMaxChangeDenominator": "0x8",
-		"elasticityMultiplier": "0x2",
-		"baseFeeInitialValue": "0x3B9ACA00"
+		"eip1559BaseFeeMaxChangeDenominator": "0x8",
+		"eip1559ElasticityMultiplier": "0x2",
+		"eip1559BaseFeeInitialValue": "0x3B9ACA00"
 	},
 	"genesis": {
 		"seal": {

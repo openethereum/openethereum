@@ -150,12 +150,12 @@ pub struct Params {
     pub kip4_transition: Option<Uint>,
     /// KIP6 activiation block height.
     pub kip6_transition: Option<Uint>,
-    /// Base fee max change denominator, EIP1559 related
-    pub base_fee_max_change_denominator: Option<Uint>,
-    /// Elasticity multiplier, EIP1559 related
-    pub elasticity_multiplier: Option<Uint>,
-    /// Default value for the block base fee, EIP1559 related
-    pub base_fee_initial_value: Option<Uint>,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: Option<Uint>,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: Option<Uint>,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: Option<Uint>,
 }
 
 #[cfg(test)]

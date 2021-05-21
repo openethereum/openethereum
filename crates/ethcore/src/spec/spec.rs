@@ -447,8 +447,12 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip1559_base_fee_max_change_denominator: p
                 .eip1559_base_fee_max_change_denominator
                 .map_or_else(U256::zero, Into::into),
-            eip1559_elasticity_multiplier: p.eip1559_elasticity_multiplier.map_or_else(U256::zero, Into::into),
-                eip1559_base_fee_initial_value: p.eip1559_base_fee_initial_value.map_or_else(U256::zero, Into::into),
+            eip1559_elasticity_multiplier: p
+                .eip1559_elasticity_multiplier
+                .map_or_else(U256::zero, Into::into),
+            eip1559_base_fee_initial_value: p
+                .eip1559_base_fee_initial_value
+                .map_or_else(U256::zero, Into::into),
         }
     }
 }

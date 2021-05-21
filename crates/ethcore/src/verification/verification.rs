@@ -481,7 +481,8 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
     // check if the block changed the gas limit too much
     if engine.gas_limit_override(header).is_none() {
         let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
-        let parent_gas_limit = parent.gas_limit() * engine.schedule(header.number()).eip1559_gas_limit_bump;
+        let parent_gas_limit =
+            parent.gas_limit() * engine.schedule(header.number()).eip1559_gas_limit_bump;
         let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
         let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
         if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {

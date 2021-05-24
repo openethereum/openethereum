@@ -124,7 +124,7 @@ impl<D: Dispatcher + 'static> SignerClient<D> {
                             // Altering sender should always reset the nonce.
                             request.nonce = None;
                         }
-                        if let Some(_gas_price) = modification.gas_price {
+                        if modification.gas_price.is_some() {
                             request.gas_price = modification.gas_price;
                         }
                         if let Some(gas) = modification.gas {

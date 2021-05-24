@@ -176,7 +176,7 @@ pub struct CommonParams {
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
     /// Base fee max change denominator
-    pub eip1559_base_fee_max_change_denominator: U256,
+    pub eip1559_base_fee_max_change_denominator: Option<U256>,
     /// Elasticity multiplier
     pub eip1559_elasticity_multiplier: U256,
     /// Default value for the block base fee
@@ -446,7 +446,7 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             eip1559_base_fee_max_change_denominator: p
                 .eip1559_base_fee_max_change_denominator
-                .map_or_else(U256::zero, Into::into),
+                .map(Into::into),
             eip1559_elasticity_multiplier: p
                 .eip1559_elasticity_multiplier
                 .map_or_else(U256::zero, Into::into),

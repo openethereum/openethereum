@@ -431,6 +431,12 @@ where
                         false => Ok(*gas),
                     };
                 }
+                if self.schedule.eip3541 && data.get(0) == Some(&0xefu8) {
+                    return match self.schedule.exceptional_failed_code_deposit {
+                        true => Err(vm::Error::InvalidCode),
+                        false => Ok(*gas),
+                    }
+                }
                 self.state
                     .init_code(&self.origin_info.address, data.to_vec())?;
                 Ok(*gas - return_cost)

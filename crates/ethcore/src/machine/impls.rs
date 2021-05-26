@@ -47,9 +47,6 @@ use state::{CleanupMode, Substate};
 use trace::{NoopTracer, NoopVMTracer};
 use tx_filter::TransactionFilter;
 
-/// Open tries to round block.gas_limit to multiple of this constant
-pub const GAS_LIMIT_DETERMINANT: U256 = U256([37, 0, 0, 0]);
-
 /// Ethash-specific extensions.
 #[derive(Debug, Clone)]
 pub struct EthashExtensions {
@@ -265,59 +262,29 @@ impl EthereumMachine {
         &self,
         header: &mut Header,
         parent: &Header,
-        gas_floor_target: U256,
+        _gas_floor_target: U256,
         gas_ceil_target: U256,
     ) {
         header.set_difficulty(parent.difficulty().clone());
         let gas_limit = parent.gas_limit() * self.schedule(header.number()).eip1559_gas_limit_bump;
         assert!(!gas_limit.is_zero(), "Gas limit should be > 0");
 
-        if let Some(ref ethash_params) = self.ethash_extensions {
-            let gas_limit = {
-                let bound_divisor = self.params().gas_limit_bound_divisor;
-                let lower_limit = gas_limit - gas_limit / bound_divisor + 1;
-                let upper_limit = gas_limit + gas_limit / bound_divisor - 1;
-                let gas_limit = if gas_limit < gas_floor_target {
-                    let gas_limit = cmp::min(gas_floor_target, upper_limit);
-                    round_block_gas_limit(gas_limit, lower_limit, upper_limit)
-                } else if gas_limit > gas_ceil_target {
-                    let gas_limit = cmp::max(gas_ceil_target, lower_limit);
-                    round_block_gas_limit(gas_limit, lower_limit, upper_limit)
-                } else {
-                    let total_lower_limit = cmp::max(lower_limit, gas_floor_target);
-                    let total_upper_limit = cmp::min(upper_limit, gas_ceil_target);
-                    let gas_limit = cmp::max(
-                        gas_floor_target,
-                        cmp::min(
-                            total_upper_limit,
-                            lower_limit + (header.gas_used().clone() * 6u32 / 5) / bound_divisor,
-                        ),
-                    );
-                    round_block_gas_limit(gas_limit, total_lower_limit, total_upper_limit)
-                };
-                // ensure that we are not violating protocol limits
-                debug_assert!(gas_limit >= lower_limit);
-                debug_assert!(gas_limit <= upper_limit);
-                gas_limit
-            };
+        header.set_gas_limit({
+            let bound_divisor = self.params().gas_limit_bound_divisor;
+            if gas_limit < gas_ceil_target {
+                cmp::min(gas_ceil_target, gas_limit + gas_limit / bound_divisor - 1)
+            } else {
+                cmp::max(gas_ceil_target, gas_limit - gas_limit / bound_divisor + 1)
+            }
+        });
 
-            header.set_gas_limit(gas_limit);
+        if let Some(ref ethash_params) = self.ethash_extensions {
             if header.number() >= ethash_params.dao_hardfork_transition
                 && header.number() <= ethash_params.dao_hardfork_transition + 9
             {
                 header.set_extra_data(b"dao-hard-fork"[..].to_owned());
             }
-            return;
         }
-
-        header.set_gas_limit({
-            let bound_divisor = self.params().gas_limit_bound_divisor;
-            if gas_limit < gas_floor_target {
-                cmp::min(gas_floor_target, gas_limit + gas_limit / bound_divisor - 1)
-            } else {
-                cmp::max(gas_floor_target, gas_limit - gas_limit / bound_divisor + 1)
-            }
-        });
     }
 
     /// Get the general parameters of the chain.
@@ -583,24 +550,6 @@ impl super::Machine for EthereumMachine {
     }
 }
 
-// Try to round gas_limit a bit so that:
-// 1) it will still be in desired range
-// 2) it will be a nearest (with tendency to increase) multiple of GAS_LIMIT_DETERMINANT
-fn round_block_gas_limit(gas_limit: U256, lower_limit: U256, upper_limit: U256) -> U256 {
-    let increased_gas_limit =
-        gas_limit + (GAS_LIMIT_DETERMINANT - gas_limit % GAS_LIMIT_DETERMINANT);
-    if increased_gas_limit > upper_limit {
-        let decreased_gas_limit = increased_gas_limit - GAS_LIMIT_DETERMINANT;
-        if decreased_gas_limit < lower_limit {
-            gas_limit
-        } else {
-            decreased_gas_limit
-        }
-    } else {
-        increased_gas_limit
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -641,83 +590,6 @@ mod tests {
                 "invalid EC signature".into()
             ))
         );
-    }
-
-    #[test]
-    fn ethash_gas_limit_is_multiple_of_determinant() {
-        use ethereum_types::U256;
-
-        let spec = ::ethereum::new_homestead_test();
-        let ethparams = get_default_ethash_extensions();
-
-        let machine = EthereumMachine::with_ethash_extensions(
-            spec.params().clone(),
-            Default::default(),
-            ethparams,
-        );
-
-        let mut parent = ::types::header::Header::new();
-        let mut header = ::types::header::Header::new();
-        header.set_number(1);
-
-        // this test will work for this constant only
-        assert_eq!(GAS_LIMIT_DETERMINANT, U256::from(37));
-
-        // when parent.gas_limit < gas_floor_target:
-        parent.set_gas_limit(U256::from(50_000));
-        machine.populate_from_parent(
-            &mut header,
-            &parent,
-            U256::from(100_000),
-            U256::from(200_000),
-        );
-        assert_eq!(*header.gas_limit(), U256::from(50_024));
-
-        // when parent.gas_limit > gas_ceil_target:
-        parent.set_gas_limit(U256::from(250_000));
-        machine.populate_from_parent(
-            &mut header,
-            &parent,
-            U256::from(100_000),
-            U256::from(200_000),
-        );
-        assert_eq!(*header.gas_limit(), U256::from(249_787));
-
-        // when parent.gas_limit is in miner's range
-        header.set_gas_used(U256::from(150_000));
-        parent.set_gas_limit(U256::from(150_000));
-        machine.populate_from_parent(
-            &mut header,
-            &parent,
-            U256::from(100_000),
-            U256::from(200_000),
-        );
-        assert_eq!(*header.gas_limit(), U256::from(150_035));
-
-        // when parent.gas_limit is in miner's range
-        // && we can NOT increase it to be multiple of constant
-        header.set_gas_used(U256::from(150_000));
-        parent.set_gas_limit(U256::from(150_000));
-        machine.populate_from_parent(
-            &mut header,
-            &parent,
-            U256::from(100_000),
-            U256::from(150_002),
-        );
-        assert_eq!(*header.gas_limit(), U256::from(149_998));
-
-        // when parent.gas_limit is in miner's range
-        // && we can NOT increase it to be multiple of constant
-        // && we can NOT decrease it to be multiple of constant
-        header.set_gas_used(U256::from(150_000));
-        parent.set_gas_limit(U256::from(150_000));
-        machine.populate_from_parent(
-            &mut header,
-            &parent,
-            U256::from(150_000),
-            U256::from(150_002),
-        );
-        assert_eq!(*header.gas_limit(), U256::from(150_002));
     }
 
     #[test]

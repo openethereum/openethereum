@@ -1446,10 +1446,14 @@ impl miner::MinerService for Miner {
         let base_fee = self.engine.calculate_base_fee(&chain.best_block_header());
         let gas_limit = chain.best_block_header().gas_limit()
             // multiplication neccesary only if OE nodes are the only miners in network, not really essential but wont hurt
-            * self
+            *  if self.engine.gas_limit_override(&chain.best_block_header()).is_none() {
+                self
                 .engine
                 .schedule(chain.best_block_header().number() + 1)
-                .eip1559_gas_limit_bump;
+                .eip1559_gas_limit_bump
+                } else {
+                    1
+                };
         self.update_transaction_queue_limits(gas_limit, base_fee);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).

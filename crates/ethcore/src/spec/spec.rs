@@ -1203,7 +1203,7 @@ mod tests {
         let genesis = test_spec.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            H256::from_str("811c49439086935d1351a464476d8f2c939d325a109c2cc442c1eb7c500b5082")
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
                 .unwrap()
         );
     }

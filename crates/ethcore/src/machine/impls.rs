@@ -262,19 +262,25 @@ impl EthereumMachine {
         &self,
         header: &mut Header,
         parent: &Header,
-        _gas_floor_target: U256,
+        gas_floor_target: U256,
         gas_ceil_target: U256,
     ) {
         header.set_difficulty(parent.difficulty().clone());
         let gas_limit = parent.gas_limit() * self.schedule(header.number()).eip1559_gas_limit_bump;
         assert!(!gas_limit.is_zero(), "Gas limit should be > 0");
 
+        let gas_limit_target = if self.schedule(header.number()).eip1559 {
+            gas_ceil_target
+        } else {
+            gas_floor_target
+        };
+
         header.set_gas_limit({
             let bound_divisor = self.params().gas_limit_bound_divisor;
-            if gas_limit < gas_ceil_target {
-                cmp::min(gas_ceil_target, gas_limit + gas_limit / bound_divisor - 1)
+            if gas_limit < gas_limit_target {
+                cmp::min(gas_limit_target, gas_limit + gas_limit / bound_divisor - 1)
             } else {
-                cmp::max(gas_ceil_target, gas_limit - gas_limit / bound_divisor + 1)
+                cmp::max(gas_limit_target, gas_limit - gas_limit / bound_divisor + 1)
             }
         });
 

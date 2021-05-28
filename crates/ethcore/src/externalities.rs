@@ -435,7 +435,7 @@ where
                     return match self.schedule.exceptional_failed_code_deposit {
                         true => Err(vm::Error::InvalidCode),
                         false => Ok(*gas),
-                    }
+                    };
                 }
                 self.state
                     .init_code(&self.origin_info.address, data.to_vec())?;
@@ -961,5 +961,4 @@ mod tests {
         let result = call_ret(Schedule::new_london(), &data);
         assert!(result.is_ok());
     }
-
 }

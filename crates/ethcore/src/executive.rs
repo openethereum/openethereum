@@ -444,6 +444,7 @@ impl<'a> CallCreateExecutive<'a> {
             | Err(vm::Error::SubStackUnderflow { .. })
             | Err(vm::Error::OutOfSubStack { .. })
             | Err(vm::Error::InvalidSubEntry)
+            | Err(vm::Error::InvalidCode)
             | Ok(FinalizationResult {
                 apply_state: false, ..
             }) => {

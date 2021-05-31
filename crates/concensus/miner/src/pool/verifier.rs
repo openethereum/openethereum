@@ -297,7 +297,9 @@ impl<C: Client> txpool::Verifier<Transaction>
         let sender = transaction.sender();
         let account_details = self.client.account_details(&sender);
 
-        if transaction.tx().gas_price < self.options.minimal_gas_price {
+        let gas_price = transaction.tx().gas_price;
+
+        if gas_price < self.options.minimal_gas_price {
             let transaction_type = self.client.transaction_type(&transaction);
             if let TransactionType::Service = transaction_type {
                 debug!(target: "txqueue", "Service tx {:?} below minimal gas price accepted", hash);
@@ -308,17 +310,22 @@ impl<C: Client> txpool::Verifier<Transaction>
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    transaction.tx().gas_price,
+                    gas_price,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: transaction.tx().gas_price,
+                    got: gas_price,
                 });
             }
         }
 
-        let gas_price = transaction.tx().gas_price;
+        if gas_price < transaction.max_priority_fee_per_gas() {
+            bail!(transaction::Error::InsufficientGasPrice {
+                minimal: transaction.max_priority_fee_per_gas(),
+                got: gas_price,
+            });
+        }
 
         let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);

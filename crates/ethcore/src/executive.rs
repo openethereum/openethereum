@@ -1096,11 +1096,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     {
         let sender = t.sender();
         let balance = self.state.balance(&sender)?;
-        let needed_balance = t.tx().value.saturating_add(
-            t.tx()
-                .gas
-                .saturating_mul(t.effective_gas_price(self.info.base_fee)),
-        );
+        let needed_balance = t
+            .tx()
+            .value
+            .saturating_add(t.tx().gas.saturating_mul(t.tx().gas_price));
         if balance < needed_balance {
             // give the sender a sufficient balance
             self.state
@@ -1214,19 +1213,27 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
+        // verify that transaction max_fee_per_gas is higher or equal to max_priority_fee_per_gas
+        if t.tx().gas_price < t.max_priority_fee_per_gas() {
+            return Err(ExecutionError::TransactionMalformed(
+                "maxPriorityFeePerGas higher than maxFeePerGas".into(),
+            ));
+        }
+
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
-        let gas_cost = t
+        let gas_cost_effective = t
             .tx()
             .gas
             .full_mul(t.effective_gas_price(self.info.base_fee));
-        let total_cost = U512::from(t.tx().value) + gas_cost;
+        let gas_cost_max = t.tx().gas.full_mul(t.tx().gas_price);
+        let needed_balance = U512::from(t.tx().value) + gas_cost_max;
 
         // avoid unaffordable transactions
         let balance512 = U512::from(balance);
-        if balance512 < total_cost {
+        if balance512 < needed_balance {
             return Err(ExecutionError::NotEnoughCash {
-                required: total_cost,
+                required: needed_balance,
                 got: balance512,
             });
         }
@@ -1239,7 +1246,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
         self.state.sub_balance(
             &sender,
-            &U256::try_from(gas_cost).expect("Total cost (value + gas_cost) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
+            &U256::try_from(gas_cost_effective).expect("Total cost (value + gas_cost_effective) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
@@ -2662,7 +2669,7 @@ mod tests {
                     action: Action::Create,
                     value: U256::from(17),
                     data: "3331600055".from_hex().unwrap(),
-                    gas: U256::from(80_001),
+                    gas: U256::from(100_000),
                     gas_price: U256::from(150),
                     nonce: U256::zero(),
                 },
@@ -2682,7 +2689,7 @@ mod tests {
 
         let mut state = get_temp_state_with_factory(factory);
         state
-            .add_balance(&sender, &U256::from(10400147), CleanupMode::NoEmpty)
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
             .unwrap();
         let mut info = EnvInfo::default();
         info.gas_limit = U256::from(100_000);
@@ -2696,8 +2703,8 @@ mod tests {
             ex.transact(&t, opts).unwrap()
         };
 
-        assert_eq!(res.gas, U256::from(80_001));
-        assert_eq!(res.gas_used, U256::from(63973));
+        assert_eq!(res.gas, U256::from(100_000));
+        assert_eq!(res.gas_used, U256::from(83873));
     }
 
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}

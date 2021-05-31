@@ -163,6 +163,8 @@ pub struct Schedule {
     pub eip2930: bool,
     /// Gas used in transaction divided by this number is the maximum refundable amount.
     pub max_refund_quotient: usize,
+    // Enable EIP-3541 rule
+    pub eip3541: bool,
 }
 
 /// Wasm cost table
@@ -311,6 +313,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
+            eip3541: false,
         }
     }
 
@@ -375,6 +378,8 @@ impl Schedule {
         schedule.suicide_refund_gas = 0;
         schedule.sstore_refund_gas = EIP3529_SSTORE_CLEARS_SCHEDULE;
         schedule.max_refund_quotient = EIP3529_MAX_REFUND_QUOTIENT;
+
+        schedule.eip3541 = true;
 
         schedule
     }
@@ -443,6 +448,7 @@ impl Schedule {
             eip2929: false,
             eip2930: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
+            eip3541: false,
         }
     }
 

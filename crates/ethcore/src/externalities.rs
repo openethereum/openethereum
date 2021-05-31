@@ -431,6 +431,12 @@ where
                         false => Ok(*gas),
                     };
                 }
+                if self.schedule.eip3541 && data.get(0) == Some(&0xefu8) {
+                    return match self.schedule.exceptional_failed_code_deposit {
+                        true => Err(vm::Error::InvalidCode),
+                        false => Ok(*gas),
+                    };
+                }
                 self.state
                     .init_code(&self.origin_info.address, data.to_vec())?;
                 Ok(*gas - return_cost)
@@ -912,5 +918,47 @@ mod tests {
             address,
             Address::from_str("e33c0c7f7df4809055c3eba6c09cfe4baf1bd9e0").unwrap()
         );
+    }
+
+    #[test]
+    fn eip_3541() {
+        let call_ret = |schedule: Schedule, data: &ReturnData| {
+            let mut setup = TestSetup::default();
+            setup.schedule = schedule;
+            let mut tracer = NoopTracer;
+            let mut vm_tracer = NoopVMTracer;
+            let origin = get_test_origin();
+            let ext = Externalities::new(
+                &mut setup.state,
+                &setup.env_info,
+                &setup.machine,
+                &setup.schedule,
+                0,
+                0,
+                &origin,
+                &mut setup.sub_state,
+                OutputPolicy::InitContract,
+                &mut tracer,
+                &mut vm_tracer,
+                false,
+            );
+            ext.ret(&U256::from(10000), &data, true)
+        };
+
+        let data = ReturnData::new(vec![0xefu8], 0, 1);
+
+        let result = call_ret(Schedule::new_berlin(), &data);
+        assert!(result.is_ok());
+
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_err());
+
+        let data = ReturnData::new(vec![0xefu8, 0x00u8, 0x00u8], 0, 3);
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_err());
+
+        let data = ReturnData::new(vec![0xee], 0, 1);
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_ok());
     }
 }

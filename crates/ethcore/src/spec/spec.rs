@@ -145,6 +145,8 @@ pub struct CommonParams {
     pub eip3198_transition: BlockNumber,
     /// Number of first block where EIP-3529 rules begin.
     pub eip3529_transition: BlockNumber,
+    /// Number of first block where EIP-3541 rule begins.
+    pub eip3541_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -227,6 +229,7 @@ impl CommonParams {
         schedule.have_subs = block_number >= self.eip2315_transition;
         schedule.eip2929 = block_number >= self.eip2929_transition;
         schedule.eip2930 = block_number >= self.eip2930_transition;
+        schedule.eip3541 = block_number >= self.eip3541_transition;
         schedule.eip1559 = block_number >= self.eip1559_transition;
         schedule.eip3198 = block_number >= self.eip3198_transition;
         if schedule.eip1559 {
@@ -414,6 +417,9 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             eip3529_transition: p
                 .eip3529_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3541_transition: p
+                .eip3541_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
             dust_protection_transition: p
                 .dust_protection_transition
@@ -716,6 +722,7 @@ impl Spec {
             params.eip1559_transition,
             params.eip3198_transition,
             params.eip3529_transition,
+            params.eip3541_transition,
             params.dust_protection_transition,
             params.wasm_activation_transition,
             params.wasm_disable_transition,

@@ -600,7 +600,6 @@ mod tests {
 
     #[test]
     fn calculate_base_fee_success() {
-        //ds todo move these tests to json_tests
         let machine = new_london_test_machine();
         let parent_base_fees = [
             U256::from(1000000000),

@@ -107,6 +107,7 @@ impl<'a> EvmTestClient<'a> {
                 Some(ethereum::new_byzantium_to_constantinoplefixat5_test())
             }
             ForkSpec::Berlin => Some(ethereum::new_berlin_test()),
+            ForkSpec::London => Some(ethereum::new_london_test()),
             ForkSpec::FrontierToHomesteadAt5
             | ForkSpec::HomesteadToDaoAt5
             | ForkSpec::HomesteadToEIP150At5

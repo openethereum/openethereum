@@ -533,6 +533,8 @@ pub struct Spec {
     pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
+    /// Base fee,
+    pub base_fee: Option<U256>,
 
     /// List of hard forks in the network.
     pub hard_forks: BTreeSet<BlockNumber>,
@@ -569,6 +571,7 @@ impl Clone for Spec {
             constructors: self.constructors.clone(),
             state_root_memo: RwLock::new(*self.state_root_memo.read()),
             genesis_state: self.genesis_state.clone(),
+            base_fee: self.base_fee.clone(),
         }
     }
 }
@@ -627,6 +630,7 @@ fn load_from(spec_params: SpecParams, s: ethjson::spec::Spec) -> Result<Spec, Er
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp: seal_rlp,
+        base_fee: g.base_fee,
         hard_forks,
         constructors: s
             .accounts
@@ -936,6 +940,7 @@ impl Spec {
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()
         });
+        header.set_base_fee(self.base_fee.clone());
         trace!(target: "spec", "Header hash is {}", header.hash());
         header
     }
@@ -964,6 +969,7 @@ impl Spec {
         self.timestamp = g.timestamp;
         self.extra_data = g.extra_data;
         self.seal_rlp = seal_rlp;
+        self.base_fee = g.base_fee;
     }
 
     /// Alter the value of the genesis state.

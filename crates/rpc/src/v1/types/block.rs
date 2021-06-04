@@ -18,7 +18,7 @@ use std::{collections::BTreeMap, ops::Deref};
 
 use ethereum_types::{Bloom as H2048, H160, H256, U256};
 use serde::{ser::Error, Serialize, Serializer};
-use types::encoded::Header as EthHeader;
+use types::{encoded::Header as EthHeader, BlockNumber};
 use v1::types::{Bytes, Transaction};
 
 /// Block Transactions
@@ -81,6 +81,9 @@ pub struct Block {
     pub total_difficulty: Option<U256>,
     /// Seal fields
     pub seal_fields: Vec<Bytes>,
+    /// Base fee
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_fee_per_gas: Option<U256>,
     /// Uncles' hashes
     pub uncles: Vec<H256>,
     /// Transactions
@@ -126,20 +129,18 @@ pub struct Header {
     pub difficulty: U256,
     /// Seal fields
     pub seal_fields: Vec<Bytes>,
+    /// Base fee
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_fee_per_gas: Option<U256>,
     /// Size in bytes
     pub size: Option<U256>,
 }
 
-impl From<EthHeader> for Header {
-    fn from(h: EthHeader) -> Self {
-        (&h).into()
-    }
-}
-
-impl<'a> From<&'a EthHeader> for Header {
-    fn from(h: &'a EthHeader) -> Self {
+impl Header {
+    pub fn new(h: &EthHeader, eip1559_transition: BlockNumber) -> Self {
+        let eip1559_enabled = h.number() >= eip1559_transition;
         Header {
-			hash: Some(h.hash()),
+            hash: Some(h.hash()),
 			size: Some(h.rlp().as_raw().len().into()),
 			parent_hash: h.parent_hash(),
 			uncles_hash: h.uncles_hash(),
@@ -155,9 +156,16 @@ impl<'a> From<&'a EthHeader> for Header {
 			timestamp: h.timestamp().into(),
 			difficulty: h.difficulty(),
 			extra_data: h.extra_data().into(),
-			seal_fields: h.view().decode_seal()
+			seal_fields: h.view().decode_seal(eip1559_enabled)
 				.expect("Client/Miner returns only valid headers. We only serialize headers from Client/Miner; qed")
 				.into_iter().map(Into::into).collect(),
+			base_fee_per_gas: {
+				if eip1559_enabled {
+					Some(h.base_fee())
+				} else {
+					None
+				}
+			},
 		}
     }
 }
@@ -221,7 +229,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"[{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null}]"#
+            r#"[{"hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null}]"#
         );
 
         let t = BlockTransactions::Hashes(vec![H256::default().into()]);
@@ -252,6 +260,7 @@ mod tests {
             difficulty: U256::default(),
             total_difficulty: Some(U256::default()),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             uncles: vec![],
             transactions: BlockTransactions::Hashes(vec![].into()),
             size: Some(69.into()),
@@ -296,6 +305,7 @@ mod tests {
             difficulty: U256::default(),
             total_difficulty: Some(U256::default()),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             uncles: vec![],
             transactions: BlockTransactions::Hashes(vec![].into()),
             size: None,
@@ -339,6 +349,7 @@ mod tests {
             timestamp: U256::default(),
             difficulty: U256::default(),
             seal_fields: vec![Bytes::default(), Bytes::default()],
+            base_fee_per_gas: None,
             size: Some(69.into()),
         };
         let serialized_header = serde_json::to_string(&header).unwrap();

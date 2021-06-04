@@ -112,6 +112,10 @@ pub struct Params {
     /// See `CommonParams` docs.
     pub eip2930_transition: Option<Uint>,
     /// See `CommonParams` docs.
+    pub eip1559_transition: Option<Uint>,
+    /// See `CommonParams` docs.
+    pub eip3198_transition: Option<Uint>,
+    /// See `CommonParams` docs.
     pub eip3529_transition: Option<Uint>,
     /// See `CommonParams` docs.
     pub eip3541_transition: Option<Uint>,
@@ -148,6 +152,12 @@ pub struct Params {
     pub kip4_transition: Option<Uint>,
     /// KIP6 activiation block height.
     pub kip6_transition: Option<Uint>,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: Option<Uint>,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: Option<Uint>,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: Option<Uint>,
 }
 
 #[cfg(test)]

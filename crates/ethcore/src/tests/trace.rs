@@ -100,14 +100,17 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    if let Err(e) = client.import_block(Unverified::from_rlp(root_block.rlp_bytes()).unwrap()) {
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(root_block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    ) {
         panic!(
             "error importing block which is valid by definition: {:?}",
             e
         );
     }
 
-    last_header = view!(BlockView, &root_block.rlp_bytes()).header();
+    last_header =
+        view!(BlockView, &root_block.rlp_bytes()).header(spec.params().eip1559_transition);
     let root_header = last_header.clone();
     db = root_block.drain().state.drop().1;
 
@@ -137,14 +140,17 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    if let Err(e) = client.import_block(Unverified::from_rlp(parent_block.rlp_bytes()).unwrap()) {
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(parent_block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    ) {
         panic!(
             "error importing block which is valid by definition: {:?}",
             e
         );
     }
 
-    last_header = view!(BlockView, &parent_block.rlp_bytes()).header();
+    last_header =
+        view!(BlockView, &parent_block.rlp_bytes()).header(spec.params().eip1559_transition);
     db = parent_block.drain().state.drop().1;
 
     last_hashes.push(last_header.hash());
@@ -201,7 +207,9 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    let res = client.import_block(Unverified::from_rlp(block.rlp_bytes()).unwrap());
+    let res = client.import_block(
+        Unverified::from_rlp(block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    );
     if res.is_err() {
         panic!("error importing block: {:#?}", res.err().unwrap());
     }

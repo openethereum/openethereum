@@ -49,6 +49,7 @@ use self::finality::RollingFinality;
 use super::{
     signer::EngineSigner,
     validator_set::{new_validator_set_posdao, SimpleList, ValidatorSet},
+    EthEngine,
 };
 use block::*;
 use bytes::Bytes;
@@ -692,6 +693,7 @@ struct EpochVerifier {
     empty_steps_transition: u64,
     /// First block for which a 2/3 quorum (instead of 1/2) is required.
     two_thirds_majority_transition: BlockNumber,
+    eip1559_transition: BlockNumber,
 }
 
 impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
@@ -716,7 +718,9 @@ impl super::EpochVerifier<EthereumMachine> for EpochVerifier {
             RollingFinality::blank(signers, self.two_thirds_majority_transition);
         let mut finalized = Vec::new();
 
-        let headers: Vec<Header> = Rlp::new(proof).as_list().ok()?;
+        let proof_rlp = Rlp::new(proof);
+        let headers: Vec<Header> =
+            Header::decode_rlp_list(&proof_rlp, self.eip1559_transition).ok()?;
 
         {
             let mut push_header = |parent_header: &Header, header: Option<&Header>| {
@@ -1805,7 +1809,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 let parent = client
                     .block_header(::client::BlockId::Hash(*block.header.parent_hash()))
                     .expect("hash is from parent; parent header must exist; qed")
-                    .decode()?;
+                    .decode(self.params().eip1559_transition)?;
 
                 let parent_step = header_step(&parent, self.empty_steps_transition)?;
                 let current_step = self.step.inner.load();
@@ -2200,6 +2204,7 @@ impl Engine<EthereumMachine> for AuthorityRound {
                     subchain_validators: list,
                     empty_steps_transition: self.empty_steps_transition,
                     two_thirds_majority_transition: self.two_thirds_majority_transition,
+                    eip1559_transition: self.params().eip1559_transition,
                 });
 
                 match finalize {

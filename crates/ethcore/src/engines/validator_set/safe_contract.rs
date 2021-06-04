@@ -70,8 +70,9 @@ impl ::engines::StateDependentProof<EthereumMachine> for StateProof {
     }
 
     fn check_proof(&self, machine: &EthereumMachine, proof: &[u8]) -> Result<(), String> {
-        let (header, state_items) = decode_first_proof(&Rlp::new(proof))
-            .map_err(|e| format!("proof incorrectly encoded: {}", e))?;
+        let (header, state_items) =
+            decode_first_proof(&Rlp::new(proof), machine.params().eip1559_transition)
+                .map_err(|e| format!("proof incorrectly encoded: {}", e))?;
         if &header != &self.header {
             return Err("wrong header in proof".into());
         }
@@ -129,6 +130,7 @@ fn check_first_proof(
             Arc::new(last_hashes)
         },
         gas_used: 0.into(),
+        base_fee: old_header.base_fee(),
     };
 
     // check state proof using given machine.
@@ -163,8 +165,11 @@ fn check_first_proof(
     }
 }
 
-fn decode_first_proof(rlp: &Rlp) -> Result<(Header, Vec<DBValue>), ::error::Error> {
-    let header = rlp.val_at(0)?;
+fn decode_first_proof(
+    rlp: &Rlp,
+    eip1559_transition: BlockNumber,
+) -> Result<(Header, Vec<DBValue>), ::error::Error> {
+    let header = Header::decode_rlp(&rlp.at(0)?, eip1559_transition)?;
     let state_items = rlp
         .at(1)?
         .iter()
@@ -188,8 +193,14 @@ fn encode_proof(header: &Header, receipts: &[TypedReceipt]) -> Bytes {
     stream.drain()
 }
 
-fn decode_proof(rlp: &Rlp) -> Result<(Header, Vec<TypedReceipt>), ::error::Error> {
-    Ok((rlp.val_at(0)?, TypedReceipt::decode_rlp_list(&rlp.at(1)?)?))
+fn decode_proof(
+    rlp: &Rlp,
+    eip1559_transition: BlockNumber,
+) -> Result<(Header, Vec<TypedReceipt>), ::error::Error> {
+    Ok((
+        Header::decode_rlp(&rlp.at(0)?, eip1559_transition)?,
+        TypedReceipt::decode_rlp_list(&rlp.at(1)?)?,
+    ))
 }
 
 // given a provider and caller, generate proof. this will just be a state proof
@@ -554,7 +565,8 @@ impl ValidatorSet for ValidatorSafeContract {
         if first {
             trace!(target: "engine", "Recovering initial epoch set");
 
-            let (old_header, state_items) = decode_first_proof(&rlp)?;
+            let (old_header, state_items) =
+                decode_first_proof(&rlp, machine.params().eip1559_transition)?;
             let number = old_header.number();
             let old_hash = old_header.hash();
             let addresses =
@@ -566,7 +578,7 @@ impl ValidatorSet for ValidatorSafeContract {
 
             Ok((SimpleList::new(addresses), Some(old_hash)))
         } else {
-            let (old_header, receipts) = decode_proof(&rlp)?;
+            let (old_header, receipts) = decode_proof(&rlp, machine.params().eip1559_transition)?;
 
             // ensure receipts match header.
             // TODO: optimize? these were just decoded.
@@ -830,8 +842,11 @@ mod tests {
         for i in 1..4 {
             sync_client
                 .import_block(
-                    Unverified::from_rlp(client.block(BlockId::Number(i)).unwrap().into_inner())
-                        .unwrap(),
+                    Unverified::from_rlp(
+                        client.block(BlockId::Number(i)).unwrap().into_inner(),
+                        client.engine().params().eip1559_transition,
+                    )
+                    .unwrap(),
                 )
                 .unwrap();
         }

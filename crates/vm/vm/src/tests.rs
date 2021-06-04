@@ -131,6 +131,7 @@ impl FakeExt {
         ext
     }
 
+    /// New fake externalities with London schedule rules
     pub fn new_london(from: Address, to: Address, builtins: &[Address]) -> Self {
         let mut ext = FakeExt::new_berlin(from, to, builtins);
         ext.schedule = Schedule::new_london();

@@ -112,6 +112,7 @@ impl LegacyReceipt {
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
     AccessList(LegacyReceipt),
+    EIP1559Transaction(LegacyReceipt),
 }
 
 impl TypedReceipt {
@@ -119,6 +120,7 @@ impl TypedReceipt {
     pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
         //curently we are using same receipt for both legacy and typed transaction
         match type_id {
+            TypedTxId::EIP1559Transaction => Self::EIP1559Transaction(legacy_receipt),
             TypedTxId::AccessList => Self::AccessList(legacy_receipt),
             TypedTxId::Legacy => Self::Legacy(legacy_receipt),
         }
@@ -128,6 +130,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,
             Self::AccessList(_) => TypedTxId::AccessList,
+            Self::EIP1559Transaction(_) => TypedTxId::EIP1559Transaction,
         }
     }
 
@@ -135,6 +138,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
@@ -142,6 +146,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
@@ -156,6 +161,10 @@ impl TypedReceipt {
         }
         //other transaction types
         match id.unwrap() {
+            TypedTxId::EIP1559Transaction => {
+                let rlp = Rlp::new(&tx[1..]);
+                Ok(Self::EIP1559Transaction(LegacyReceipt::decode(&rlp)?))
+            }
             TypedTxId::AccessList => {
                 let rlp = Rlp::new(&tx[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
@@ -193,6 +202,11 @@ impl TypedReceipt {
                 receipt.rlp_append(&mut rlps);
                 s.append(&[&[TypedTxId::AccessList as u8], rlps.as_raw()].concat());
             }
+            Self::EIP1559Transaction(receipt) => {
+                let mut rlps = RlpStream::new();
+                receipt.rlp_append(&mut rlps);
+                s.append(&[&[TypedTxId::EIP1559Transaction as u8], rlps.as_raw()].concat());
+            }
         }
     }
 
@@ -214,6 +228,11 @@ impl TypedReceipt {
                 let mut rlps = RlpStream::new();
                 receipt.rlp_append(&mut rlps);
                 [&[TypedTxId::AccessList as u8], rlps.as_raw()].concat()
+            }
+            Self::EIP1559Transaction(receipt) => {
+                let mut rlps = RlpStream::new();
+                receipt.rlp_append(&mut rlps);
+                [&[TypedTxId::EIP1559Transaction as u8], rlps.as_raw()].concat()
             }
         }
     }
@@ -351,6 +370,32 @@ mod tests {
         let expected = ::rustc_hex::FromHex::from_hex("01f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
         let r = TypedReceipt::new(
             TypedTxId::AccessList,
+            LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
+            ),
+        );
+        let encoded = r.encode();
+        assert_eq!(&encoded, &expected);
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
+        assert_eq!(decoded, r);
+    }
+
+    #[test]
+    fn test_basic_eip1559() {
+        let expected = ::rustc_hex::FromHex::from_hex("02f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let r = TypedReceipt::new(
+            TypedTxId::EIP1559Transaction,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
                     H256::from_str(

@@ -260,13 +260,15 @@ mod test {
             from: Address::from_low_u64_be(1),
             used_default_from: false,
             to: Some(Address::from_low_u64_be(2)),
-            gas_price: 0.into(),
+            gas_price: Some(U256::from(0)),
+            max_fee_per_gas: None,
             gas: 10_000.into(),
             value: 10_000_000.into(),
             data: vec![],
             nonce: None,
             condition: None,
             access_list: None,
+            max_priority_fee_per_gas: None,
         })
     }
 

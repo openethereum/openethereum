@@ -16,6 +16,8 @@
 
 //! View onto block rlp.
 
+use crate::BlockNumber;
+
 use super::ViewRlp;
 use crate::{
     bytes::Bytes,
@@ -64,8 +66,13 @@ impl<'a> BlockView<'a> {
     }
 
     /// Create new Header object from header rlp.
-    pub fn header(&self) -> Header {
-        self.rlp.val_at(0)
+    pub fn header(&self, eip1559_transition: BlockNumber) -> Header {
+        Header::decode_rlp(&self.rlp.at(0).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block header, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return header rlp.
@@ -165,8 +172,13 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return list of uncles of given block.
-    pub fn uncles(&self) -> Vec<Header> {
-        self.rlp.list_at(2)
+    pub fn uncles(&self, eip1559_transition: BlockNumber) -> Vec<Header> {
+        Header::decode_rlp_list(&self.rlp.at(2).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block uncles, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return number of uncles in given block, without deserializing them.
@@ -188,8 +200,15 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return nth uncle.
-    pub fn uncle_at(&self, index: usize) -> Option<Header> {
-        self.uncles_rlp().iter().nth(index).map(|rlp| rlp.as_val())
+    pub fn uncle_at(&self, index: usize, eip1559_transition: BlockNumber) -> Option<Header> {
+        self.uncles_rlp().iter().nth(index).map(|rlp| {
+            Header::decode_rlp(&rlp.rlp, eip1559_transition).unwrap_or_else(|e| {
+                panic!(
+                    "block uncle_at, view rlp is trusted and should be valid.{:?}",
+                    e
+                )
+            })
+        })
     }
 
     /// Return nth uncle rlp.

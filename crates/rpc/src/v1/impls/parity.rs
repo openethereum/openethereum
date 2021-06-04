@@ -19,7 +19,7 @@ use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
-    client::{BlockChainClient, Call, StateClient},
+    client::{BlockChainClient, Call, EngineInfo, StateClient},
     miner::{self, MinerService, TransactionFilter},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
@@ -43,7 +43,7 @@ use v1::{
     metadata::Metadata,
     traits::Parity,
     types::{
-        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
+        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Header, Histogram,
         LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
         Transaction, TransactionStats,
     },
@@ -69,7 +69,7 @@ where
 
 impl<C, M> ParityClient<C, M>
 where
-    C: BlockChainClient + PrometheusMetrics,
+    C: BlockChainClient + PrometheusMetrics + EngineInfo,
 {
     /// Creates new `ParityClient`.
     pub fn new(
@@ -105,6 +105,7 @@ where
         + PrometheusMetrics
         + StateClient<State = S>
         + Call<State = S>
+        + EngineInfo
         + 'static,
     M: MinerService<State = S> + 'static,
 {
@@ -386,7 +387,7 @@ where
         };
 
         Box::new(future::ok(RichHeader {
-            inner: header.into(),
+            inner: Header::new(&header, self.client.engine().params().eip1559_transition),
             extra_info: extra.unwrap_or_default(),
         }))
     }
@@ -449,7 +450,7 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)?
-                .decode()
+                .decode(self.client.engine().params().eip1559_transition)
                 .map_err(errors::decode)?;
 
             (state, header)

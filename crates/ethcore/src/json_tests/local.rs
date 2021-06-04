@@ -4,7 +4,10 @@ use ethjson::{self, blockchain::Block};
 use log::warn;
 use rlp::RlpStream;
 use std::path::Path;
-use types::transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction};
+use types::{
+    transaction::{TypedTransaction, TypedTxId, UnverifiedTransaction},
+    BlockNumber,
+};
 use verification::queue::kind::blocks::Unverified;
 
 pub fn json_local_block_en_de_test<H: FnMut(&str, HookType)>(
@@ -22,7 +25,7 @@ pub fn json_local_block_en_de_test<H: FnMut(&str, HookType)>(
     for (name, ref_block) in tests.into_iter() {
         start_stop_hook(&name, HookType::OnStart);
 
-        let block = Unverified::from_rlp(ref_block.rlp());
+        let block = Unverified::from_rlp(ref_block.rlp(), BlockNumber::max_value());
         let block = match block {
             Ok(block) => block,
             Err(decoder_err) => {
@@ -148,10 +151,11 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
                     TypedTxId::Legacy => {
                         test_exp(tx.legacy_v() == ref_tx.v.0.as_u64(), "Original Sig V")
                     }
-                    TypedTxId::AccessList => {
+                    TypedTxId::AccessList | TypedTxId::EIP1559Transaction => {
                         test_exp(tx.standard_v() as u64 == ref_tx.v.0.as_u64(), "Sig V");
                         let al = match tx.as_unsigned() {
                             TypedTransaction::AccessList(tx) => &tx.access_list,
+                            TypedTransaction::EIP1559Transaction(tx) => &tx.transaction.access_list,
                             _ => {
                                 println!("Wrong data in tx type");
                                 continue;

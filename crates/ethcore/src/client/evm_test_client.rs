@@ -107,6 +107,7 @@ impl<'a> EvmTestClient<'a> {
                 Some(ethereum::new_byzantium_to_constantinoplefixat5_test())
             }
             ForkSpec::Berlin => Some(ethereum::new_berlin_test()),
+            ForkSpec::London => Some(ethereum::new_london_test()),
             ForkSpec::FrontierToHomesteadAt5
             | ForkSpec::HomesteadToDaoAt5
             | ForkSpec::HomesteadToEIP150At5
@@ -248,6 +249,7 @@ impl<'a> EvmTestClient<'a> {
             last_hashes: Arc::new([H256::default(); 256].to_vec()),
             gas_used: 0.into(),
             gas_limit: *genesis.gas_limit(),
+            base_fee: genesis.base_fee(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)
     }

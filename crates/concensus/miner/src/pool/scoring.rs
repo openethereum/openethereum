@@ -42,13 +42,25 @@ const GAS_PRICE_BUMP_SHIFT: usize = 3; // 2 = 25%, 3 = 12.5%, 4 = 6.25%
 fn bump_gas_price(old_gp: U256) -> U256 {
     old_gp.saturating_add(old_gp >> GAS_PRICE_BUMP_SHIFT)
 }
-
+/// List of events that trigger updating of scores
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum ScoringEvent {
+    /// Penalize transactions
+    Penalize,
+    /// Every time new block is added to blockchain, block base fee is changed and triggers score change.
+    BlockBaseFeeChanged,
+}
 /// Simple, gas-price based scoring for transactions.
 ///
 /// NOTE: Currently penalization does not apply to new transactions that enter the pool.
 /// We might want to store penalization status in some persistent state.
 #[derive(Debug, Clone)]
-pub struct NonceAndGasPrice(pub PrioritizationStrategy);
+pub struct NonceAndGasPrice {
+    /// Strategy for prioritization
+    pub strategy: PrioritizationStrategy,
+    /// Block base fee. Exists if the EIP 1559 is activated.
+    pub block_base_fee: Option<U256>,
+}
 
 impl NonceAndGasPrice {
     /// Decide if the transaction should even be considered into the pool (if the pool is full).
@@ -67,7 +79,7 @@ impl NonceAndGasPrice {
             return true;
         }
 
-        &old.transaction.tx().gas_price > new.gas_price()
+        old.effective_gas_price(self.block_base_fee) > new.effective_gas_price(self.block_base_fee)
     }
 }
 
@@ -76,7 +88,7 @@ where
     P: ScoredTransaction + txpool::VerifiedTransaction,
 {
     type Score = U256;
-    type Event = ();
+    type Event = ScoringEvent;
 
     fn compare(&self, old: &P, other: &P) -> cmp::Ordering {
         old.nonce().cmp(&other.nonce())
@@ -87,10 +99,10 @@ where
             return scoring::Choice::InsertNew;
         }
 
-        let old_gp = old.gas_price();
-        let new_gp = new.gas_price();
+        let old_gp = old.effective_gas_price(self.block_base_fee);
+        let new_gp = new.effective_gas_price(self.block_base_fee);
 
-        let min_required_gp = bump_gas_price(*old_gp);
+        let min_required_gp = bump_gas_price(old_gp);
 
         match min_required_gp.cmp(&new_gp) {
             cmp::Ordering::Greater => scoring::Choice::RejectNew,
@@ -102,7 +114,7 @@ where
         &self,
         txs: &[txpool::Transaction<P>],
         scores: &mut [U256],
-        change: scoring::Change,
+        change: scoring::Change<ScoringEvent>,
     ) {
         use self::scoring::Change;
 
@@ -113,7 +125,7 @@ where
                 assert!(i < txs.len());
                 assert!(i < scores.len());
 
-                scores[i] = *txs[i].transaction.gas_price();
+                scores[i] = txs[i].effective_gas_price(self.block_base_fee);
                 let boost = match txs[i].priority() {
                     super::Priority::Local => 15,
                     super::Priority::Retracted => 10,
@@ -123,11 +135,20 @@ where
             }
             // We are only sending an event in case of penalization.
             // So just lower the priority of all non-local transactions.
-            Change::Event(_) => {
-                for (score, tx) in scores.iter_mut().zip(txs) {
-                    // Never penalize local transactions.
-                    if !tx.priority().is_local() {
-                        *score = *score >> 3;
+            Change::Event(event) => {
+                match event {
+                    ScoringEvent::Penalize => {
+                        for (score, tx) in scores.iter_mut().zip(txs) {
+                            // Never penalize local transactions.
+                            if !tx.priority().is_local() {
+                                *score = *score >> 3;
+                            }
+                        }
+                    }
+                    ScoringEvent::BlockBaseFeeChanged => {
+                        for i in 0..txs.len() {
+                            scores[i] = txs[i].transaction.effective_gas_price(self.block_base_fee);
+                        }
                     }
                 }
             }
@@ -150,7 +171,10 @@ mod tests {
     #[test]
     fn should_calculate_score_correctly() {
         // given
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let (tx1, tx2, tx3) = Tx::default().signed_triple();
         let transactions = vec![tx1, tx2, tx3]
             .into_iter()
@@ -200,7 +224,11 @@ mod tests {
         assert_eq!(scores, vec![32768.into(), 1024.into(), 1.into()]);
 
         // Check penalization
-        scoring.update_scores(&transactions, &mut *scores, scoring::Change::Event(()));
+        scoring.update_scores(
+            &transactions,
+            &mut *scores,
+            scoring::Change::Event(ScoringEvent::Penalize),
+        );
         assert_eq!(scores, vec![32768.into(), 128.into(), 0.into()]);
     }
 }

@@ -254,6 +254,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         _ => sync::WarpSync::Disabled,
     };
     sync_config.download_old_blocks = cmd.download_old_blocks;
+    sync_config.eip1559_transition = spec.params().eip1559_transition;
 
     let passwords = passwords_from_files(&cmd.acc_conf.password_files)?;
 
@@ -365,8 +366,11 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     // take handle to client
     let client = service.client();
-    // Update miners block gas limit
-    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit());
+    // Update miners block gas limit and base_fee
+    let base_fee = client
+        .engine()
+        .calculate_base_fee(&client.best_block_header());
+    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit(), base_fee);
 
     let connection_filter = connection_filter_address.map(|a| {
         Arc::new(NodeFilter::new(

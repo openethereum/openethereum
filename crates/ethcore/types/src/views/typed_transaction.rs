@@ -28,6 +28,8 @@ use rlp::Rlp;
 
 /// View onto transaction rlp. Assumption is this is part of block.
 /// Typed Transaction View. It handles raw bytes to search for particular field.
+/// EIP1559 tx:
+/// 2 | [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]
 /// Access tx:
 /// 1 | [chainId, nonce, gasPrice, gasLimit, to, value, data, access_list, senderV, senderR, senderS]
 /// Legacy tx:
@@ -81,7 +83,10 @@ impl<'a> TypedTransactionView<'a> {
             }
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
-                .val_at(1),
+                .val_at(0),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(0),
         }
     }
 
@@ -90,6 +95,9 @@ impl<'a> TypedTransactionView<'a> {
         match self.transaction_type {
             TypedTxId::Legacy => self.rlp.val_at(0),
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(1),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(1),
         }
@@ -102,6 +110,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(2),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(3),
         }
     }
 
@@ -112,6 +123,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(3),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(4),
         }
     }
 
@@ -122,6 +136,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(5),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(6),
         }
     }
 
@@ -132,6 +149,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(6),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(7),
         }
     }
 
@@ -151,6 +171,18 @@ impl<'a> TypedTransactionView<'a> {
                     chain_id,
                 )
             }
+            TypedTxId::EIP1559Transaction => {
+                let chain_id = match self.chain_id() {
+                    0 => None,
+                    n => Some(n),
+                };
+                signature::add_chain_replay_protection(
+                    view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                        .rlp
+                        .val_at(9),
+                    chain_id,
+                )
+            }
         };
         r as u8
     }
@@ -161,6 +193,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(8),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(9),
         }
     }
 
@@ -171,6 +206,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(9),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(10),
         }
     }
 
@@ -181,6 +219,9 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::AccessList => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(10),
+            TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                .rlp
+                .val_at(11),
         }
     }
 }
@@ -219,7 +260,26 @@ mod tests {
     #[test]
     fn test_access_list_transaction_view() {
         let rlp = "b8c101f8be01010a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
+        let view = view!(TypedTransactionView, &rlp);
+        assert_eq!(view.nonce(), 0x1.into());
+        assert_eq!(view.gas_price(), 0xa.into());
+        assert_eq!(view.gas(), 0x1e241.into());
+        assert_eq!(view.value(), 0x0.into());
+        assert_eq!(view.data(), "".from_hex().unwrap());
+        assert_eq!(
+            view.r(),
+            "82dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234db".into()
+        );
+        assert_eq!(
+            view.s(),
+            "72228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".into()
+        );
+        assert_eq!(view.standard_v(), 0x0);
+    }
 
+    #[test]
+    fn test_eip1559_transaction_view() {
+        let rlp = "b8c202f8bf01010a0a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
         let view = view!(TypedTransactionView, &rlp);
         assert_eq!(view.nonce(), 0x1.into());
         assert_eq!(view.gas_price(), 0xa.into());

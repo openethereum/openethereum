@@ -89,6 +89,7 @@ impl BlockChain {
             state_root: Some(self.genesis_block.state_root.clone()),
             gas_used: Some(self.genesis_block.gas_used),
             extra_data: Some(self.genesis_block.extra_data.clone()),
+            base_fee: self.genesis_block.base_fee,
         }
     }
 }

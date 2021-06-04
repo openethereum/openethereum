@@ -171,7 +171,12 @@ pub fn restore(
 
     let mut state = StateRebuilder::new(db.key_value().clone(), journaldb::Algorithm::Archive);
     let mut secondary = {
-        let chain = BlockChain::new(Default::default(), genesis, db.clone());
+        let chain = BlockChain::new(
+            Default::default(),
+            genesis,
+            db.clone(),
+            engine.params().eip1559_transition,
+        );
         components.rebuilder(chain, db, manifest).unwrap()
     };
 

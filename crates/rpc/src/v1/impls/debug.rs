@@ -76,6 +76,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                             .cloned()
                             .map(Into::into)
                             .collect(),
+                        base_fee_per_gas: block.header.base_fee(),
                         uncles: block.uncles.iter().map(Header::hash).collect(),
                         transactions: BlockTransactions::Full(
                             block

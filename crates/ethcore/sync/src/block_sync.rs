@@ -250,6 +250,7 @@ impl BlockDownloader {
         io: &mut dyn SyncIo,
         r: &Rlp,
         expected_hash: H256,
+        eip1559_transition: BlockNumber,
     ) -> Result<DownloadAction, BlockDownloaderImportError> {
         let item_count = r.item_count().unwrap_or(0);
         if self.state == State::Idle {
@@ -276,7 +277,7 @@ impl BlockDownloader {
         let mut hashes = Vec::new();
         let mut last_header = None;
         for i in 0..item_count {
-            let info = SyncHeader::from_rlp(r.at(i)?.as_raw().to_vec())?;
+            let info = SyncHeader::from_rlp(r.at(i)?.as_raw().to_vec(), eip1559_transition)?;
             let number = BlockNumber::from(info.header.number());
             let hash = info.header.hash();
 
@@ -421,6 +422,7 @@ impl BlockDownloader {
         &mut self,
         r: &Rlp,
         expected_hashes: &[H256],
+        eip1559_transition: BlockNumber,
     ) -> Result<(), BlockDownloaderImportError> {
         let item_count = r.item_count().unwrap_or(0);
         if item_count == 0 {
@@ -430,7 +432,7 @@ impl BlockDownloader {
         } else {
             let mut bodies = Vec::with_capacity(item_count);
             for i in 0..item_count {
-                let body = SyncBody::from_rlp(r.at(i)?.as_raw())?;
+                let body = SyncBody::from_rlp(r.at(i)?.as_raw(), eip1559_transition)?;
                 bodies.push(body);
             }
 
@@ -796,21 +798,23 @@ mod tests {
         headers: &[BlockHeader],
         downloader: &mut BlockDownloader,
         io: &mut dyn SyncIo,
+        eip1559_transition: BlockNumber,
     ) -> Result<DownloadAction, BlockDownloaderImportError> {
         let mut stream = RlpStream::new();
         stream.append_list(headers);
         let bytes = stream.out();
         let rlp = Rlp::new(&bytes);
         let expected_hash = headers.first().unwrap().hash();
-        downloader.import_headers(io, &rlp, expected_hash)
+        downloader.import_headers(io, &rlp, expected_hash, eip1559_transition)
     }
 
     fn import_headers_ok(
         headers: &[BlockHeader],
         downloader: &mut BlockDownloader,
         io: &mut dyn SyncIo,
+        eip1559_transition: BlockNumber,
     ) {
-        let res = import_headers(headers, downloader, io);
+        let res = import_headers(headers, downloader, io, eip1559_transition);
         assert!(res.is_ok());
     }
 
@@ -838,7 +842,12 @@ mod tests {
         let rlp_data = encode_list(&valid_headers);
         let valid_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &valid_rlp, genesis_hash) {
+        match downloader.import_headers(
+            &mut io,
+            &valid_rlp,
+            genesis_hash,
+            spec.params().eip1559_transition,
+        ) {
             Ok(DownloadAction::Reset) => assert_eq!(downloader.state, State::Blocks),
             _ => panic!("expected transition to Blocks state"),
         };
@@ -852,7 +861,12 @@ mod tests {
         let rlp_data = encode_list(&invalid_start_block_headers);
         let invalid_start_block_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &invalid_start_block_rlp, genesis_hash) {
+        match downloader.import_headers(
+            &mut io,
+            &invalid_start_block_rlp,
+            genesis_hash,
+            spec.params().eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -866,7 +880,12 @@ mod tests {
         let rlp_data = encode_list(&invalid_skip_headers);
         let invalid_skip_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &invalid_skip_rlp, genesis_hash) {
+        match downloader.import_headers(
+            &mut io,
+            &invalid_skip_rlp,
+            genesis_hash,
+            spec.params().eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -883,7 +902,12 @@ mod tests {
         let rlp_data = encode_list(&too_many_headers);
 
         let too_many_rlp = Rlp::new(&rlp_data);
-        match downloader.import_headers(&mut io, &too_many_rlp, genesis_hash) {
+        match downloader.import_headers(
+            &mut io,
+            &too_many_rlp,
+            genesis_hash,
+            spec.params().eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -894,6 +918,7 @@ mod tests {
         ::env_logger::try_init().ok();
 
         let mut chain = TestBlockChainClient::new();
+        let eip1559_transition = BlockNumber::default();
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
         let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
@@ -913,7 +938,12 @@ mod tests {
         let rlp_data = encode_list(&headers);
         let headers_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &headers_rlp, headers[0].hash()) {
+        match downloader.import_headers(
+            &mut io,
+            &headers_rlp,
+            headers[0].hash(),
+            eip1559_transition,
+        ) {
             Ok(DownloadAction::None) => (),
             _ => panic!("expected successful import"),
         };
@@ -923,7 +953,12 @@ mod tests {
         let rlp_data = encode_list(&headers);
         let headers_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &headers_rlp, headers[0].hash()) {
+        match downloader.import_headers(
+            &mut io,
+            &headers_rlp,
+            headers[0].hash(),
+            eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -933,7 +968,12 @@ mod tests {
         let rlp_data = encode_list(&headers);
         let headers_rlp = Rlp::new(&rlp_data);
 
-        match downloader.import_headers(&mut io, &headers_rlp, headers[0].hash()) {
+        match downloader.import_headers(
+            &mut io,
+            &headers_rlp,
+            headers[0].hash(),
+            eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -944,6 +984,7 @@ mod tests {
         ::env_logger::try_init().ok();
 
         let mut chain = TestBlockChainClient::new();
+        let eip1559_transition = chain.spec.params().eip1559_transition;
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
         let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
@@ -992,7 +1033,7 @@ mod tests {
         let rlp_data = encode_list(&headers[0..3]);
         let headers_rlp = Rlp::new(&rlp_data);
         assert!(downloader
-            .import_headers(&mut io, &headers_rlp, headers[0].hash())
+            .import_headers(&mut io, &headers_rlp, headers[0].hash(), eip1559_transition)
             .is_ok());
 
         // Import first body successfully.
@@ -1000,7 +1041,11 @@ mod tests {
         rlp_data.append_raw(&bodies[0], 1);
         let bodies_rlp = Rlp::new(rlp_data.as_raw());
         assert!(downloader
-            .import_bodies(&bodies_rlp, &[headers[0].hash(), headers[1].hash()])
+            .import_bodies(
+                &bodies_rlp,
+                &[headers[0].hash(), headers[1].hash()],
+                eip1559_transition
+            )
             .is_ok());
 
         // Import second body successfully.
@@ -1008,14 +1053,22 @@ mod tests {
         rlp_data.append_raw(&bodies[1], 1);
         let bodies_rlp = Rlp::new(rlp_data.as_raw());
         assert!(downloader
-            .import_bodies(&bodies_rlp, &[headers[0].hash(), headers[1].hash()])
+            .import_bodies(
+                &bodies_rlp,
+                &[headers[0].hash(), headers[1].hash()],
+                eip1559_transition
+            )
             .is_ok());
 
         // Import unexpected third body.
         let mut rlp_data = RlpStream::new_list(1);
         rlp_data.append_raw(&bodies[2], 1);
         let bodies_rlp = Rlp::new(rlp_data.as_raw());
-        match downloader.import_bodies(&bodies_rlp, &[headers[0].hash(), headers[1].hash()]) {
+        match downloader.import_bodies(
+            &bodies_rlp,
+            &[headers[0].hash(), headers[1].hash()],
+            eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -1026,6 +1079,7 @@ mod tests {
         ::env_logger::try_init().ok();
 
         let mut chain = TestBlockChainClient::new();
+        let eip1559_transition = chain.spec.params().eip1559_transition;
         let snapshot_service = TestSnapshotService::new();
         let queue = RwLock::new(VecDeque::new());
         let mut io = TestIo::new(&mut chain, &snapshot_service, &queue, None);
@@ -1069,7 +1123,7 @@ mod tests {
         let rlp_data = encode_list(&headers[0..3]);
         let headers_rlp = Rlp::new(&rlp_data);
         assert!(downloader
-            .import_headers(&mut io, &headers_rlp, headers[0].hash())
+            .import_headers(&mut io, &headers_rlp, headers[0].hash(), eip1559_transition)
             .is_ok());
 
         // Import second and third receipts successfully.
@@ -1085,7 +1139,11 @@ mod tests {
         let mut rlp_data = RlpStream::new_list(1);
         rlp_data.append_raw(&receipts[3], 1);
         let bodies_rlp = Rlp::new(rlp_data.as_raw());
-        match downloader.import_bodies(&bodies_rlp, &[headers[1].hash(), headers[2].hash()]) {
+        match downloader.import_bodies(
+            &bodies_rlp,
+            &[headers[1].hash(), headers[2].hash()],
+            eip1559_transition,
+        ) {
             Err(BlockDownloaderImportError::Invalid) => (),
             _ => panic!("expected BlockDownloaderImportError"),
         };
@@ -1114,8 +1172,18 @@ mod tests {
 
         let short_subchain = [dummy_header(1, genesis_hash)];
 
-        import_headers_ok(&heads, &mut downloader, &mut io);
-        import_headers_ok(&short_subchain, &mut downloader, &mut io);
+        import_headers_ok(
+            &heads,
+            &mut downloader,
+            &mut io,
+            spec.params().eip1559_transition,
+        );
+        import_headers_ok(
+            &short_subchain,
+            &mut downloader,
+            &mut io,
+            spec.params().eip1559_transition,
+        );
 
         assert_eq!(downloader.state, State::Blocks);
         assert!(!downloader.blocks.is_empty());
@@ -1123,7 +1191,12 @@ mod tests {
         // simulate receiving useless headers
         let head = vec![short_subchain.last().unwrap().clone()];
         for _ in 0..MAX_USELESS_HEADERS_PER_ROUND {
-            let res = import_headers(&head, &mut downloader, &mut io);
+            let res = import_headers(
+                &head,
+                &mut downloader,
+                &mut io,
+                spec.params().eip1559_transition,
+            );
             assert!(res.is_err());
         }
 
@@ -1150,8 +1223,18 @@ mod tests {
 
         let short_subchain = [dummy_header(1, genesis_hash)];
 
-        import_headers_ok(&heads, &mut downloader, &mut io);
-        import_headers_ok(&short_subchain, &mut downloader, &mut io);
+        import_headers_ok(
+            &heads,
+            &mut downloader,
+            &mut io,
+            spec.params().eip1559_transition,
+        );
+        import_headers_ok(
+            &short_subchain,
+            &mut downloader,
+            &mut io,
+            spec.params().eip1559_transition,
+        );
 
         assert_eq!(downloader.state, State::Blocks);
         assert!(!downloader.blocks.is_empty());
@@ -1159,7 +1242,12 @@ mod tests {
         // simulate receiving useless headers
         let head = vec![short_subchain.last().unwrap().clone()];
         for _ in 0..MAX_USELESS_HEADERS_PER_ROUND {
-            let res = import_headers(&head, &mut downloader, &mut io);
+            let res = import_headers(
+                &head,
+                &mut downloader,
+                &mut io,
+                spec.params().eip1559_transition,
+            );
             assert!(res.is_err());
         }
 

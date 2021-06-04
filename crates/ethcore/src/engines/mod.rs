@@ -648,6 +648,14 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
         self.machine().decode_transaction(transaction, &schedule)
     }
 
+    /// Calculates base fee for the block that should be mined next.
+    /// This base fee is calculated based on the parent header (last block in blockchain / best block).
+    ///
+    /// Introduced by EIP1559 to support new market fee mechanism.
+    fn calculate_base_fee(&self, parent: &Header) -> Option<U256> {
+        self.machine().calc_base_fee(parent)
+    }
+
     /// The configured minimum gas limit. Used by AuRa Engine.
     fn min_gas_limit(&self) -> U256 {
         self.params().min_gas_limit

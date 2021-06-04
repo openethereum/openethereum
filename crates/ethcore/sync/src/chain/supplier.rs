@@ -464,14 +464,18 @@ mod test {
             rlp.append(&if reverse { 1u32 } else { 0u32 });
             rlp.out()
         }
-        fn to_header_vec(rlp: ::chain::RlpResponseResult) -> Vec<SyncHeader> {
+        fn to_header_vec(
+            rlp: ::chain::RlpResponseResult,
+            eip1559_transition: BlockNumber,
+        ) -> Vec<SyncHeader> {
             Rlp::new(&rlp.unwrap().unwrap().1.out())
                 .iter()
-                .map(|r| SyncHeader::from_rlp(r.as_raw().to_vec()).unwrap())
+                .map(|r| SyncHeader::from_rlp(r.as_raw().to_vec(), eip1559_transition).unwrap())
                 .collect()
         }
 
         let mut client = TestBlockChainClient::new();
+        let eip1559_transition = client.spec.params().eip1559_transition;
         client.add_blocks(100, EachBlockWith::Nothing);
         let blocks: Vec<_> = (0..100)
             .map(|i| {
@@ -483,7 +487,13 @@ mod test {
             .collect();
         let headers: Vec<_> = blocks
             .iter()
-            .map(|b| SyncHeader::from_rlp(Rlp::new(b).at(0).unwrap().as_raw().to_vec()).unwrap())
+            .map(|b| {
+                SyncHeader::from_rlp(
+                    Rlp::new(b).at(0).unwrap().as_raw().to_vec(),
+                    eip1559_transition,
+                )
+                .unwrap()
+            })
             .collect();
         let hashes: Vec<_> = headers.iter().map(|h| h.header.hash()).collect();
 
@@ -497,27 +507,33 @@ mod test {
             &Rlp::new(&make_hash_req(&unknown, 1, 0, false)),
             0,
         );
-        assert!(to_header_vec(result).is_empty());
+        assert!(to_header_vec(result, eip1559_transition).is_empty(),);
         let result = SyncSupplier::return_block_headers(
             &io,
             &Rlp::new(&make_hash_req(&unknown, 1, 0, true)),
             0,
         );
-        assert!(to_header_vec(result).is_empty());
+        assert!(to_header_vec(result, eip1559_transition).is_empty());
 
         let result = SyncSupplier::return_block_headers(
             &io,
             &Rlp::new(&make_hash_req(&hashes[2], 1, 0, true)),
             0,
         );
-        assert_eq!(to_header_vec(result), vec![headers[2].clone()]);
+        assert_eq!(
+            to_header_vec(result, eip1559_transition),
+            vec![headers[2].clone()]
+        );
 
         let result = SyncSupplier::return_block_headers(
             &io,
             &Rlp::new(&make_hash_req(&hashes[2], 1, 0, false)),
             0,
         );
-        assert_eq!(to_header_vec(result), vec![headers[2].clone()]);
+        assert_eq!(
+            to_header_vec(result, eip1559_transition),
+            vec![headers[2].clone()]
+        );
 
         let result = SyncSupplier::return_block_headers(
             &io,
@@ -525,7 +541,7 @@ mod test {
             0,
         );
         assert_eq!(
-            to_header_vec(result),
+            to_header_vec(result, eip1559_transition),
             vec![
                 headers[50].clone(),
                 headers[56].clone(),
@@ -539,7 +555,7 @@ mod test {
             0,
         );
         assert_eq!(
-            to_header_vec(result),
+            to_header_vec(result, eip1559_transition),
             vec![
                 headers[50].clone(),
                 headers[44].clone(),
@@ -549,16 +565,22 @@ mod test {
 
         let result =
             SyncSupplier::return_block_headers(&io, &Rlp::new(&make_num_req(2, 1, 0, true)), 0);
-        assert_eq!(to_header_vec(result), vec![headers[2].clone()]);
+        assert_eq!(
+            to_header_vec(result, eip1559_transition),
+            vec![headers[2].clone()]
+        );
 
         let result =
             SyncSupplier::return_block_headers(&io, &Rlp::new(&make_num_req(2, 1, 0, false)), 0);
-        assert_eq!(to_header_vec(result), vec![headers[2].clone()]);
+        assert_eq!(
+            to_header_vec(result, eip1559_transition),
+            vec![headers[2].clone()]
+        );
 
         let result =
             SyncSupplier::return_block_headers(&io, &Rlp::new(&make_num_req(50, 3, 5, false)), 0);
         assert_eq!(
-            to_header_vec(result),
+            to_header_vec(result, eip1559_transition),
             vec![
                 headers[50].clone(),
                 headers[56].clone(),
@@ -569,7 +591,7 @@ mod test {
         let result =
             SyncSupplier::return_block_headers(&io, &Rlp::new(&make_num_req(50, 3, 5, true)), 0);
         assert_eq!(
-            to_header_vec(result),
+            to_header_vec(result, eip1559_transition),
             vec![
                 headers[50].clone(),
                 headers[44].clone(),

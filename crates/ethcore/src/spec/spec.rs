@@ -139,6 +139,10 @@ pub struct CommonParams {
     pub eip2929_transition: BlockNumber,
     /// Number of first block where EIP-2930 rules begin.
     pub eip2930_transition: BlockNumber,
+    /// Number of first block where EIP-1559 rules begin.
+    pub eip1559_transition: BlockNumber,
+    /// Number of first block where EIP-3198 rules begin. Basefee opcode.
+    pub eip3198_transition: BlockNumber,
     /// Number of first block where EIP-3529 rules begin.
     pub eip3529_transition: BlockNumber,
     /// Number of first block where EIP-3541 rule begins.
@@ -173,6 +177,12 @@ pub struct CommonParams {
     pub transaction_permission_contract_transition: BlockNumber,
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: Option<U256>,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: U256,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: U256,
 }
 
 impl CommonParams {
@@ -220,6 +230,17 @@ impl CommonParams {
         schedule.eip2929 = block_number >= self.eip2929_transition;
         schedule.eip2930 = block_number >= self.eip2930_transition;
         schedule.eip3541 = block_number >= self.eip3541_transition;
+        schedule.eip1559 = block_number >= self.eip1559_transition;
+        schedule.eip3198 = block_number >= self.eip3198_transition;
+        if schedule.eip1559 {
+            schedule.eip1559_elasticity_multiplier = self.eip1559_elasticity_multiplier.as_usize();
+
+            schedule.eip1559_gas_limit_bump = if block_number == self.eip1559_transition {
+                schedule.eip1559_elasticity_multiplier
+            } else {
+                1
+            };
+        }
 
         if block_number >= self.eip1884_transition {
             schedule.have_selfbalance = true;
@@ -388,6 +409,12 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip2930_transition: p
                 .eip2930_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_transition: p
+                .eip1559_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3198_transition: p
+                .eip3198_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
             eip3529_transition: p
                 .eip3529_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
@@ -423,6 +450,15 @@ impl From<ethjson::spec::Params> for CommonParams {
             kip6_transition: p
                 .kip6_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_base_fee_max_change_denominator: p
+                .eip1559_base_fee_max_change_denominator
+                .map(Into::into),
+            eip1559_elasticity_multiplier: p
+                .eip1559_elasticity_multiplier
+                .map_or_else(U256::zero, Into::into),
+            eip1559_base_fee_initial_value: p
+                .eip1559_base_fee_initial_value
+                .map_or_else(U256::zero, Into::into),
         }
     }
 }
@@ -497,6 +533,8 @@ pub struct Spec {
     pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
+    /// Base fee,
+    pub base_fee: Option<U256>,
 
     /// List of hard forks in the network.
     pub hard_forks: BTreeSet<BlockNumber>,
@@ -533,6 +571,7 @@ impl Clone for Spec {
             constructors: self.constructors.clone(),
             state_root_memo: RwLock::new(*self.state_root_memo.read()),
             genesis_state: self.genesis_state.clone(),
+            base_fee: self.base_fee.clone(),
         }
     }
 }
@@ -591,6 +630,7 @@ fn load_from(spec_params: SpecParams, s: ethjson::spec::Spec) -> Result<Spec, Er
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp: seal_rlp,
+        base_fee: g.base_fee,
         hard_forks,
         constructors: s
             .accounts
@@ -683,6 +723,8 @@ impl Spec {
             params.eip2315_transition,
             params.eip2929_transition,
             params.eip2930_transition,
+            params.eip1559_transition,
+            params.eip3198_transition,
             params.eip3529_transition,
             params.eip3541_transition,
             params.dust_protection_transition,
@@ -789,6 +831,7 @@ impl Spec {
                 last_hashes: Default::default(),
                 gas_used: U256::zero(),
                 gas_limit: U256::max_value(),
+                base_fee: None,
             };
 
             if !self.constructors.is_empty() {
@@ -897,6 +940,7 @@ impl Spec {
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()
         });
+        header.set_base_fee(self.base_fee.clone());
         trace!(target: "spec", "Header hash is {}", header.hash());
         header
     }
@@ -925,6 +969,7 @@ impl Spec {
         self.timestamp = g.timestamp;
         self.extra_data = g.extra_data;
         self.seal_rlp = seal_rlp;
+        self.base_fee = g.base_fee;
     }
 
     /// Alter the value of the genesis state.
@@ -1008,6 +1053,7 @@ impl Spec {
                 gas_limit: U256::max_value(),
                 last_hashes: Arc::new(Vec::new()),
                 gas_used: 0.into(),
+                base_fee: genesis.base_fee(),
             };
 
             let from = Address::default();

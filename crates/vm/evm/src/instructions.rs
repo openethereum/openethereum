@@ -153,6 +153,8 @@ enum_with_from_u8! {
         CHAINID = 0x46,
         #[doc = "get balance of own account"]
         SELFBALANCE = 0x47,
+        #[doc = "get the block's base fee"]
+        BASEFEE = 0x48,
 
         #[doc = "remove item from stack"]
         POP = 0x50,
@@ -517,6 +519,7 @@ lazy_static! {
         arr[GASLIMIT as usize] = Some(InstructionInfo::new("GASLIMIT", 0, 1, GasPriceTier::Base));
         arr[CHAINID as usize] = Some(InstructionInfo::new("CHAINID", 0, 1, GasPriceTier::Base));
         arr[SELFBALANCE as usize] = Some(InstructionInfo::new("SELFBALANCE", 0, 1, GasPriceTier::Low));
+        arr[BASEFEE as usize] = Some(InstructionInfo::new("BASEFEE", 0, 1, GasPriceTier::Base));
         arr[POP as usize] = Some(InstructionInfo::new("POP", 1, 0, GasPriceTier::Base));
         arr[MLOAD as usize] = Some(InstructionInfo::new("MLOAD", 1, 1, GasPriceTier::VeryLow));
         arr[MSTORE as usize] = Some(InstructionInfo::new("MSTORE", 2, 0, GasPriceTier::VeryLow));

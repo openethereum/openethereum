@@ -117,7 +117,12 @@ impl Restoration {
 
         let raw_db = params.db;
 
-        let chain = BlockChain::new(Default::default(), params.genesis, raw_db.clone());
+        let chain = BlockChain::new(
+            Default::default(),
+            params.genesis,
+            raw_db.clone(),
+            params.engine.params().eip1559_transition,
+        );
         let components = params
             .engine
             .snapshot_components()
@@ -386,7 +391,12 @@ impl Service {
         let cur_chain_info = self.client.chain_info();
 
         let next_db = self.restoration_db_handler.open(&rest_db)?;
-        let next_chain = BlockChain::new(Default::default(), &[], next_db.clone());
+        let next_chain = BlockChain::new(
+            Default::default(),
+            &[],
+            next_db.clone(),
+            self.engine.params().eip1559_transition,
+        );
         let next_chain_info = next_chain.chain_info();
 
         // The old database looks like this:

@@ -39,12 +39,18 @@ use txpool::{
 pub struct ReplaceByScoreAndReadiness<S, C> {
     scoring: S,
     client: C,
+    /// Block base fee of the latest block, exists if the EIP 1559 is activated
+    block_base_fee: Option<U256>,
 }
 
 impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     /// Create a new `ReplaceByScoreAndReadiness`
-    pub fn new(scoring: S, client: C) -> Self {
-        ReplaceByScoreAndReadiness { scoring, client }
+    pub fn new(scoring: S, client: C, block_base_fee: Option<U256>) -> Self {
+        ReplaceByScoreAndReadiness {
+            scoring,
+            client,
+            block_base_fee,
+        }
     }
 }
 
@@ -67,8 +73,9 @@ where
         } else if both_local {
             Choice::InsertNew
         } else {
-            let old_score = (old.priority(), old.gas_price());
-            let new_score = (new.priority(), new.gas_price());
+            let old_score = (old.priority(), old.effective_gas_price(self.block_base_fee));
+            let new_score = (new.priority(), new.effective_gas_price(self.block_base_fee));
+
             if new_score > old_score {
                 // Check if this is a replacement transaction.
                 //
@@ -155,9 +162,12 @@ mod tests {
 
     #[test]
     fn should_always_accept_local_transactions_unless_same_sender_and_nonce() {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // same sender txs
         let keypair = Random.generate();
@@ -249,9 +259,12 @@ mod tests {
 
     #[test]
     fn should_replace_same_sender_by_nonce() {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         let tx1 = Tx {
             nonce: 1,
@@ -311,9 +324,12 @@ mod tests {
     #[test]
     fn should_replace_different_sender_by_priority_and_gas_price() {
         // given
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(0);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         let tx_regular_low_gas = {
             let tx = Tx {
@@ -406,9 +422,12 @@ mod tests {
 
     #[test]
     fn should_not_replace_ready_transaction_with_future_transaction() {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         let tx_ready_low_score = {
             let tx = Tx {
@@ -436,9 +455,12 @@ mod tests {
     #[test]
     fn should_compute_readiness_with_pooled_transactions_from_the_same_sender_as_the_existing_transaction(
     ) {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         let old_sender = Random.generate();
         let tx_old_ready_1 = {
@@ -504,9 +526,12 @@ mod tests {
     #[test]
     fn should_compute_readiness_with_pooled_transactions_from_the_same_sender_as_the_new_transaction(
     ) {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // current transaction is ready but has a lower gas price than the new one
         let old_tx = {
@@ -572,9 +597,12 @@ mod tests {
 
     #[test]
     fn should_accept_local_tx_with_same_sender_and_nonce_with_better_gas_price() {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // current transaction is ready
         let old_tx = {
@@ -627,9 +655,12 @@ mod tests {
 
     #[test]
     fn should_reject_local_tx_with_same_sender_and_nonce_with_worse_gas_price() {
-        let scoring = NonceAndGasPrice(PrioritizationStrategy::GasPriceOnly);
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // current transaction is ready
         let old_tx = {

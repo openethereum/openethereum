@@ -385,6 +385,9 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		InsufficientGasPrice { minimal, got } => {
 			format!("Transaction gas price is too low. It does not satisfy your node's minimal gas price (minimal: {}, got: {}). Try increasing the gas price.", minimal, got)
 		}
+		GasPriceLowerThanBaseFee { gas_price, base_fee} => {
+			format!("Transaction max gas price is lower then the required base fee (gas_price: {}, base_fee: {}). Try increasing the max gas price.", gas_price, base_fee)
+		}
 		InsufficientBalance { balance, cost } => {
 			format!("Insufficient funds. The account you tried to send transaction from does not have enough funds. Required {} and got: {}.", cost, balance)
 		}

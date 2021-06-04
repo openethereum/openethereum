@@ -46,6 +46,8 @@ pub struct Options {
     pub minimal_gas_price: U256,
     /// Current block gas limit.
     pub block_gas_limit: U256,
+    /// Block base fee. Exists if the EIP 1559 is activated.
+    pub block_base_fee: Option<U256>,
     /// Maximal gas limit for a single transaction.
     pub tx_gas_limit: U256,
     /// Skip checks for early rejection, to make sure that local transactions are always imported.
@@ -58,6 +60,7 @@ impl Default for Options {
         Options {
             minimal_gas_price: 0.into(),
             block_gas_limit: U256::max_value(),
+            block_base_fee: None,
             tx_gas_limit: U256::max_value(),
             no_early_reject: false,
         }
@@ -93,7 +96,7 @@ impl Transaction {
         }
     }
 
-    /// Return transaction gas price
+    /// Return transaction gas price for non 1559 transactions or maxFeePerGas for 1559 transactions.
     pub fn gas_price(&self) -> &U256 {
         match *self {
             Transaction::Unverified(ref tx) => &tx.tx().gas_price,
@@ -107,6 +110,15 @@ impl Transaction {
             Transaction::Unverified(ref tx) => &tx.tx().gas,
             Transaction::Retracted(ref tx) => &tx.tx().gas,
             Transaction::Local(ref tx) => &tx.tx().gas,
+        }
+    }
+
+    /// Return actual gas price of the transaction depending on the current block base fee
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match *self {
+            Transaction::Unverified(ref tx) => tx.effective_gas_price(block_base_fee),
+            Transaction::Retracted(ref tx) => tx.effective_gas_price(block_base_fee),
+            Transaction::Local(ref tx) => tx.effective_gas_price(block_base_fee),
         }
     }
 
@@ -213,22 +225,24 @@ impl<C: Client> txpool::Verifier<Transaction>
         }
 
         let is_own = tx.is_local();
+        let gas_price = tx.effective_gas_price(self.options.block_base_fee);
         // Quick exit for non-service and non-local transactions
         //
         // We're checking if the transaction is below configured minimal gas price
         // or the effective minimal gas price in case the pool is full.
-        if !tx.gas_price().is_zero() && !is_own {
-            if tx.gas_price() < &self.options.minimal_gas_price {
+
+        if !gas_price.is_zero() && !is_own {
+            if gas_price < self.options.minimal_gas_price {
                 trace!(
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    tx.gas_price(),
+                    gas_price,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: *tx.gas_price(),
+                    got: gas_price,
                 });
             }
 
@@ -238,12 +252,15 @@ impl<C: Client> txpool::Verifier<Transaction>
                         target: "txqueue",
                         "[{:?}] Rejected tx early, cause it doesn't have any chance to get to the pool: (gas price: {} < {})",
                         hash,
-                        tx.gas_price(),
-                        vtx.transaction.tx().gas_price,
+                        gas_price,
+                        vtx.transaction.effective_gas_price(self.options.block_base_fee),
                     );
                     return Err(transaction::Error::TooCheapToReplace {
-                        prev: Some(vtx.transaction.tx().gas_price),
-                        new: Some(*tx.gas_price()),
+                        prev: Some(
+                            vtx.transaction
+                                .effective_gas_price(self.options.block_base_fee),
+                        ),
+                        new: Some(gas_price),
                     });
                 }
             }
@@ -280,7 +297,9 @@ impl<C: Client> txpool::Verifier<Transaction>
         let sender = transaction.sender();
         let account_details = self.client.account_details(&sender);
 
-        if transaction.tx().gas_price < self.options.minimal_gas_price {
+        let gas_price = transaction.tx().gas_price;
+
+        if gas_price < self.options.minimal_gas_price {
             let transaction_type = self.client.transaction_type(&transaction);
             if let TransactionType::Service = transaction_type {
                 debug!(target: "txqueue", "Service tx {:?} below minimal gas price accepted", hash);
@@ -291,20 +310,24 @@ impl<C: Client> txpool::Verifier<Transaction>
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    transaction.tx().gas_price,
+                    gas_price,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: transaction.tx().gas_price,
+                    got: gas_price,
                 });
             }
         }
 
-        let (full_gas_price, overflow_1) = transaction
-            .tx()
-            .gas_price
-            .overflowing_mul(transaction.tx().gas);
+        if gas_price < transaction.max_priority_fee_per_gas() {
+            bail!(transaction::Error::InsufficientGasPrice {
+                minimal: transaction.max_priority_fee_per_gas(),
+                got: gas_price,
+            });
+        }
+
+        let (full_gas_price, overflow_1) = gas_price.overflowing_mul(transaction.tx().gas);
         let (cost, overflow_2) = transaction.tx().value.overflowing_add(full_gas_price);
         if overflow_1 || overflow_2 {
             trace!(

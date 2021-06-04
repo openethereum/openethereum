@@ -1134,6 +1134,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     ));
                 }
             }
+            TypedTransaction::EIP1559Transaction(_) => {
+                if !schedule.eip1559 {
+                    return Err(ExecutionError::TransactionMalformed(
+                        "1559 type of transactions not enabled".into(),
+                    ));
+                }
+            }
             TypedTransaction::Legacy(_) => (), //legacy transactions are allways valid
         };
 
@@ -1151,17 +1158,15 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     access_list.insert_address(*address);
                 }
             }
-            if schedule.eip2930 {
-                // optional access list
-                if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
-                    for item in al_tx.access_list.iter() {
-                        access_list.insert_address(item.0);
-                        base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
-                        for key in item.1.iter() {
-                            access_list.insert_storage_key(item.0, *key);
-                            base_gas_required +=
-                                vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
-                        }
+
+            if let Some(al) = t.access_list() {
+                for item in al.iter() {
+                    access_list.insert_address(item.0);
+                    base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                    for key in item.1.iter() {
+                        access_list.insert_storage_key(item.0, *key);
+                        base_gas_required +=
+                            vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
                     }
                 }
             }
@@ -1201,16 +1206,35 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
+        // ensure that the user was willing to at least pay the base fee
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() {
+            return Err(ExecutionError::GasPriceLowerThanBaseFee {
+                gas_price: t.tx().gas_price,
+                base_fee: self.info.base_fee.unwrap_or_default(),
+            });
+        }
+
+        // verify that transaction max_fee_per_gas is higher or equal to max_priority_fee_per_gas
+        if t.tx().gas_price < t.max_priority_fee_per_gas() {
+            return Err(ExecutionError::TransactionMalformed(
+                "maxPriorityFeePerGas higher than maxFeePerGas".into(),
+            ));
+        }
+
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
-        let gas_cost = t.tx().gas.full_mul(t.tx().gas_price);
-        let total_cost = U512::from(t.tx().value) + gas_cost;
+        let gas_cost_effective = t
+            .tx()
+            .gas
+            .full_mul(t.effective_gas_price(self.info.base_fee));
+        let gas_cost_max = t.tx().gas.full_mul(t.tx().gas_price);
+        let needed_balance = U512::from(t.tx().value) + gas_cost_max;
 
         // avoid unaffordable transactions
         let balance512 = U512::from(balance);
-        if balance512 < total_cost {
+        if balance512 < needed_balance {
             return Err(ExecutionError::NotEnoughCash {
-                required: total_cost,
+                required: needed_balance,
                 got: balance512,
             });
         }
@@ -1223,7 +1247,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
         self.state.sub_balance(
             &sender,
-            &U256::try_from(gas_cost).expect("Total cost (value + gas_cost) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
+            &U256::try_from(gas_cost_effective).expect("Total cost (value + gas_cost_effective) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
@@ -1243,7 +1267,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.tx().gas_price,
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: Some(Arc::new(t.tx().data.clone())),
                     data: None,
@@ -1266,7 +1290,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.tx().gas_price,
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: self.state.code(address)?,
                     code_hash: self.state.code_hash(address)?,
@@ -1479,13 +1503,31 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let gas_left = gas_left_prerefund + refunded;
 
         let gas_used = t.tx().gas.saturating_sub(gas_left);
-        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.tx().gas_price);
-        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.tx().gas_price);
+        let (refund_value, overflow_1) =
+            gas_left.overflowing_mul(t.effective_gas_price(self.info.base_fee));
+        let (fees_value, overflow_2) =
+            gas_used.overflowing_mul(t.effective_gas_price(self.info.base_fee));
         if overflow_1 || overflow_2 {
             return Err(ExecutionError::TransactionMalformed(
                 "U256 Overflow".to_string(),
             ));
         }
+
+        // Up until now, fees_value is calculated for each type of transaction based on their gas prices
+        // Now, if eip1559 is activated, burn the base fee
+        // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
+        let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
+            let (base_fee, overflow_3) =
+                gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
+            if overflow_3 {
+                return Err(ExecutionError::TransactionMalformed(
+                    "U256 Overflow".to_string(),
+                ));
+            }
+            base_fee
+        } else {
+            U256::from(0)
+        });
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
 			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
@@ -1519,7 +1561,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let min_balance = if schedule.kill_dust != CleanDustMode::Off {
             Some(
                 U256::from(schedule.tx_gas)
-                    .overflowing_mul(t.tx().gas_price)
+                    .overflowing_mul(t.effective_gas_price(self.info.base_fee))
                     .0,
             )
         } else {
@@ -1585,7 +1627,9 @@ mod tests {
         trace, ExecutiveTracer, ExecutiveVMTracer, FlatTrace, MemoryDiff, NoopTracer, NoopVMTracer,
         StorageDiff, Tracer, VMExecutedOperation, VMOperation, VMTrace, VMTracer,
     };
-    use types::transaction::{Action, Transaction, TypedTransaction};
+    use types::transaction::{
+        AccessListTx, Action, EIP1559TransactionTx, Transaction, TypedTransaction,
+    };
     use vm::{ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo};
 
     fn make_frontier_machine(max_depth: usize) -> EthereumMachine {
@@ -1596,6 +1640,12 @@ mod tests {
 
     fn make_byzantium_machine(max_depth: usize) -> EthereumMachine {
         let mut machine = ::ethereum::new_byzantium_test_machine();
+        machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
+        machine
+    }
+
+    fn make_london_machine(max_depth: usize) -> EthereumMachine {
+        let mut machine = ::ethereum::new_london_test_machine();
         machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
         machine
     }
@@ -2609,6 +2659,53 @@ mod tests {
             }
             _ => assert!(false, "Expected block gas limit error."),
         }
+    }
+
+    evm_test! {test_transact_eip1559: test_transact_eip1559_int}
+    fn test_transact_eip1559(factory: Factory) {
+        let keypair = Random.generate();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: U256::from(150),
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: U256::from(30),
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts).unwrap()
+        };
+
+        assert_eq!(res.gas, U256::from(100_000));
+        assert_eq!(res.gas_used, U256::from(83873));
     }
 
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}

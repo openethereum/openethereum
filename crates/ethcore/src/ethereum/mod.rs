@@ -274,6 +274,14 @@ pub fn new_berlin_test() -> Spec {
     )
 }
 
+/// Create a new Foundation London era spec.
+pub fn new_london_test() -> Spec {
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/london_test.json"),
+    )
+}
+
 /// Create a new Musicoin-MCIP3-era spec.
 pub fn new_mcip3_test() -> Spec {
     load(
@@ -296,6 +304,11 @@ pub fn new_homestead_test_machine() -> EthereumMachine {
     load_machine(include_bytes!(
         "../../res/chainspec/test/homestead_test.json"
     ))
+}
+
+/// Create a new Foundation London era chain spec.
+pub fn new_london_test_machine() -> EthereumMachine {
+    load_machine(include_bytes!("../../res/chainspec/test/london_test.json"))
 }
 
 /// Create a new Foundation Homestead-EIP210-era chain spec as though it never changed from Homestead/Frontier.

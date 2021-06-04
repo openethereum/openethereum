@@ -38,6 +38,7 @@ use itertools::{Itertools, Position};
 use rlp::{Rlp, RlpStream};
 use types::{
     encoded, header::Header, ids::BlockId, receipt::TypedReceipt, transaction::TypedTransaction,
+    BlockNumber,
 };
 
 /// Snapshot creation and restoration for PoA chains.
@@ -61,6 +62,7 @@ impl SnapshotComponents for PoaSnapshot {
         sink: &mut ChunkSink,
         _progress: &Progress,
         preferred_size: usize,
+        eip1559_transition: BlockNumber,
     ) -> Result<(), Error> {
         let number = chain
             .block_number(&block_at)
@@ -107,7 +109,7 @@ impl SnapshotComponents for PoaSnapshot {
             .block(&block_at)
             .and_then(|b| chain.block_receipts(&block_at).map(|r| (b, r)))
             .ok_or_else(|| Error::BlockNotFound(block_at))?;
-        let block = block.decode()?;
+        let block = block.decode(eip1559_transition)?;
 
         let parent_td = chain
             .block_details(block.header.parent_hash())
@@ -200,7 +202,8 @@ impl ChunkRebuilder {
         use engines::ConstructedVerifier;
 
         // decode.
-        let header: Header = transition_rlp.val_at(0)?;
+        let header =
+            Header::decode_rlp(&transition_rlp.at(0)?, engine.params().eip1559_transition)?;
         let epoch_data: Bytes = transition_rlp.val_at(1)?;
 
         trace!(target: "snapshot", "verifying transition to epoch at block {}", header.number());
@@ -350,9 +353,12 @@ impl Rebuilder for ChunkRebuilder {
 
             let last_rlp = rlp.at(num_items - 1)?;
             let block = Block {
-                header: last_rlp.val_at(0)?,
+                header: Header::decode_rlp(&last_rlp.at(0)?, engine.params().eip1559_transition)?,
                 transactions: TypedTransaction::decode_rlp_list(&last_rlp.at(1)?)?,
-                uncles: last_rlp.list_at(2)?,
+                uncles: Header::decode_rlp_list(
+                    &last_rlp.at(2)?,
+                    engine.params().eip1559_transition,
+                )?,
             };
             let block_data = block.rlp_bytes();
             let receipts = TypedReceipt::decode_rlp_list(&last_rlp.at(3)?)?;

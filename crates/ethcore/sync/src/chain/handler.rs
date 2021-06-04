@@ -159,7 +159,7 @@ impl SyncHandler {
             return Ok(());
         }
         // t_nb 1.0 decode RLP
-        let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec())?;
+        let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec(), sync.eip1559_transition)?;
         let hash = block.header.hash();
         let number = block.header.number();
         trace!(target: "sync", "{} -> NewBlock ({})", peer_id, hash);
@@ -360,7 +360,7 @@ impl SyncHandler {
                         Some(ref mut blocks) => blocks,
                     },
                 };
-                downloader.import_bodies(r, expected_blocks.as_slice())?;
+                downloader.import_bodies(r, expected_blocks.as_slice(), sync.eip1559_transition)?;
             }
             sync.collect_blocks(io, block_set);
             Ok(())
@@ -479,7 +479,7 @@ impl SyncHandler {
                     Some(ref mut blocks) => blocks,
                 },
             };
-            downloader.import_headers(io, r, expected_hash)?
+            downloader.import_headers(io, r, expected_hash, sync.eip1559_transition)?
         };
 
         if result == DownloadAction::Reset {

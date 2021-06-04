@@ -461,6 +461,35 @@ fn test_difficulty(factory: super::Factory) {
     );
 }
 
+evm_test! {test_base_fee: test_base_fee_int}
+fn test_base_fee(factory: super::Factory) {
+    let base_fee = Some(U256::from(0x07));
+    let code = "48600055".from_hex().unwrap();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(100_000);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_london(
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[],
+    );
+    ext.info.base_fee = base_fee;
+
+    let gas_left = {
+        let vm = factory.create(params, ext.schedule(), ext.depth());
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(77_895));
+    println!("elements {}", ext.store.len());
+    assert_store(
+        &ext,
+        0,
+        "0000000000000000000000000000000000000000000000000000000000000007",
+    );
+}
+
 evm_test! {test_gas_limit: test_gas_limit_int}
 fn test_gas_limit(factory: super::Factory) {
     let gas_limit = U256::from(0x1234);

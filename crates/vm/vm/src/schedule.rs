@@ -161,6 +161,14 @@ pub struct Schedule {
     pub eip2929: bool,
     /// Enable EIP-2930 rules for optional access list transactions. it depends on EIP-2929
     pub eip2930: bool,
+    /// Enable EIP-1559 rules
+    pub eip1559: bool,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: usize,
+    /// EIP-1559 bumps the gas_limit of fork block by elasticity_multiplier
+    pub eip1559_gas_limit_bump: usize,
+    /// Enable BASEFEE opcode
+    pub eip3198: bool,
     /// Gas used in transaction divided by this number is the maximum refundable amount.
     pub max_refund_quotient: usize,
     // Enable EIP-3541 rule
@@ -312,6 +320,10 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            eip1559: false,
+            eip1559_elasticity_multiplier: 1,
+            eip1559_gas_limit_bump: 1,
+            eip3198: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
             eip3541: false,
         }
@@ -371,10 +383,14 @@ impl Schedule {
         schedule
     }
 
+    /// Schedule for the London fork of the Ethereum main net.
     pub fn new_london() -> Schedule {
         let mut schedule = Self::new_berlin();
 
-        // EIP-3529 changes
+        schedule.eip1559 = true;
+        schedule.eip1559_elasticity_multiplier = 2;
+        schedule.eip3198 = true;
+
         schedule.suicide_refund_gas = 0;
         schedule.sstore_refund_gas = EIP3529_SSTORE_CLEARS_SCHEDULE;
         schedule.max_refund_quotient = EIP3529_MAX_REFUND_QUOTIENT;
@@ -447,6 +463,10 @@ impl Schedule {
             wasm: None,
             eip2929: false,
             eip2930: false,
+            eip1559: false,
+            eip1559_elasticity_multiplier: 1,
+            eip1559_gas_limit_bump: 1,
+            eip3198: false,
             max_refund_quotient: MAX_REFUND_QUOTIENT,
             eip3541: false,
         }

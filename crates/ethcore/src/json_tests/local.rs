@@ -136,11 +136,19 @@ pub fn is_same_block(ref_block: &Block, block: &Unverified) -> bool {
             is_ok = is_ok
                 && {
                     match ref_tx.gas_price {
-                        Some(gas_price) => test_exp(tx.tx().gas_price == gas_price.0, "Tx gas price"),
+                        Some(gas_price) => {
+                            test_exp(tx.tx().gas_price == gas_price.0, "Tx gas price")
+                        }
                         None => {
-                            test_exp(tx.tx().gas_price == ref_tx.max_fee_per_gas.unwrap_or_default().0, "Tx max fee per gas") &&
-                            test_exp(tx.max_priority_fee_per_gas() == ref_tx.max_priority_fee_per_gas.unwrap_or_default().0, "Tx max priority fee per gas")
-                        },
+                            test_exp(
+                                tx.tx().gas_price == ref_tx.max_fee_per_gas.unwrap_or_default().0,
+                                "Tx max fee per gas",
+                            ) && test_exp(
+                                tx.max_priority_fee_per_gas()
+                                    == ref_tx.max_priority_fee_per_gas.unwrap_or_default().0,
+                                "Tx max priority fee per gas",
+                            )
+                        }
                     }
                 }
                 && test_exp(tx.tx().nonce == ref_tx.nonce.0, "Tx nonce")

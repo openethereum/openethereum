@@ -39,6 +39,7 @@ pub enum ForkSpec {
     ByzantiumToConstantinopleFixAt5,
     Berlin,
     London,
+	BerlinToLondonAt5,
 }
 
 /// Spec deserialization.

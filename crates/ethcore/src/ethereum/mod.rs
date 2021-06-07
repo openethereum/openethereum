@@ -282,6 +282,14 @@ pub fn new_london_test() -> Spec {
     )
 }
 
+/// Create a new BerlinToLondonAt5 era spec.
+pub fn new_berlin_to_london_test() -> Spec {
+    load(
+        None,
+        include_bytes!("../../res/chainspec/test/berlin_to_londonat5_test.json"),
+    )
+}
+
 /// Create a new Musicoin-MCIP3-era spec.
 pub fn new_mcip3_test() -> Spec {
     load(

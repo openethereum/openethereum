@@ -63,7 +63,7 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
 
         {
             let multitransaction = test.transaction;
-            let mut env: EnvInfo = test.env.into();
+            let env: EnvInfo = test.env.into();
             let pre: PodState = test.pre_state.into();
 
             for (spec_name, states) in test.post_states {
@@ -77,11 +77,12 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
                     }
                 };
 
-                //remove if newer version of tests get support for base fee in env context
+                //hardcode base fee for part of the london tests, that miss base fee field in env
+                let mut test_env = env.clone();
                 if spec_name >= ForkSpec::London {
-                    env.base_fee = Some(0x0a.into());
-                } else {
-                    env.base_fee = None;
+                    if test_env.base_fee.is_none() {
+                        test_env.base_fee = Some(0x0a.into());
+                    }
                 }
 
                 for (i, state) in states.into_iter().enumerate() {
@@ -101,7 +102,7 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
 
                     let result = || -> Result<_, EvmTestError> {
                         Ok(EvmTestClient::from_pod_state(&spec, pre.clone())?.transact(
-                            &env,
+                            &test_env,
                             transaction,
                             trace::NoopTracer,
                             trace::NoopVMTracer,

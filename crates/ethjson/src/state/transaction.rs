@@ -32,7 +32,7 @@ pub struct Transaction {
     /// Gas limit.
     pub gas_limit: Uint,
     /// Gas price.
-    pub gas_price: Uint,
+    pub gas_price: Option<Uint>,
     /// Nonce.
     pub nonce: Uint,
     /// Secret key.
@@ -42,6 +42,10 @@ pub struct Transaction {
     pub to: MaybeEmpty<Address>,
     /// Value.
     pub value: Uint,
+    /// Max fee per gas.
+    pub max_fee_per_gas: Option<Uint>,
+    /// Max priority fee per gas.
+    pub max_priority_fee_per_gas: Option<Uint>,
 }
 
 #[cfg(test)]

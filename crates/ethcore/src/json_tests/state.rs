@@ -16,7 +16,7 @@
 
 use super::{test_common::*, HookType};
 use client::{EvmTestClient, EvmTestError, TransactErr, TransactSuccess};
-use ethjson;
+use ethjson::{self, spec::ForkSpec};
 use pod_state::PodState;
 use std::path::Path;
 use trace;
@@ -63,7 +63,7 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
 
         {
             let multitransaction = test.transaction;
-            let env: EnvInfo = test.env.into();
+            let mut env: EnvInfo = test.env.into();
             let pre: PodState = test.pre_state.into();
 
             for (spec_name, states) in test.post_states {
@@ -76,6 +76,13 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
                         );
                     }
                 };
+
+                //remove if newer version of tests get support for base fee in env context
+                if spec_name >= ForkSpec::London {
+                    env.base_fee = Some(0x0a.into());
+                } else {
+                    env.base_fee = None;
+                }
 
                 for (i, state) in states.into_iter().enumerate() {
                     let info = format!(

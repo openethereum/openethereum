@@ -16,7 +16,7 @@
 
 use super::{test_common::*, HookType};
 use client::{EvmTestClient, EvmTestError, TransactErr, TransactSuccess};
-use ethjson;
+use ethjson::{self, spec::ForkSpec};
 use pod_state::PodState;
 use std::path::Path;
 use trace;
@@ -77,6 +77,14 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
                     }
                 };
 
+                //hardcode base fee for part of the london tests, that miss base fee field in env
+                let mut test_env = env.clone();
+                if spec_name >= ForkSpec::London {
+                    if test_env.base_fee.is_none() {
+                        test_env.base_fee = Some(0x0a.into());
+                    }
+                }
+
                 for (i, state) in states.into_iter().enumerate() {
                     let info = format!(
                         "TestState/{}/{:?}/{}/trie",
@@ -94,7 +102,7 @@ pub fn json_state_test<H: FnMut(&str, HookType)>(
 
                     let result = || -> Result<_, EvmTestError> {
                         Ok(EvmTestClient::from_pod_state(&spec, pre.clone())?.transact(
-                            &env,
+                            &test_env,
                             transaction,
                             trace::NoopTracer,
                             trace::NoopVMTracer,

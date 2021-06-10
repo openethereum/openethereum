@@ -226,7 +226,7 @@ pub trait MinerService: Send + Sync {
         ordering: PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
-        C: ChainInfo + Nonce + Sync;
+        C: BlockChain + Nonce + Sync;
 
     /// Get an unfiltered list of all ready transactions.
     fn ready_transactions<C>(
@@ -236,7 +236,7 @@ pub trait MinerService: Send + Sync {
         ordering: PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
-        C: ChainInfo + Nonce + Sync,
+        C: BlockChain + Nonce + Sync,
     {
         self.ready_transactions_filtered(chain, max_len, None, ordering)
     }

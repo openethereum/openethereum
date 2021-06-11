@@ -131,7 +131,11 @@ where
                     super::Priority::Retracted => 10,
                     super::Priority::Regular => 0,
                 };
-                scores[i] = scores[i] << boost;
+
+                //boost local and retracted only if they are currently includable (base fee criteria)
+                if self.block_base_fee.is_none() || scores[i] >= self.block_base_fee.unwrap() {
+                    scores[i] = scores[i] << boost;
+                }
             }
             // We are only sending an event in case of penalization.
             // So just lower the priority of all non-local transactions.
@@ -148,6 +152,18 @@ where
                     ScoringEvent::BlockBaseFeeChanged => {
                         for i in 0..txs.len() {
                             scores[i] = txs[i].transaction.effective_gas_price(self.block_base_fee);
+                            let boost = match txs[i].priority() {
+                                super::Priority::Local => 15,
+                                super::Priority::Retracted => 10,
+                                super::Priority::Regular => 0,
+                            };
+
+                            //boost local and retracted only if they are currently includable (base fee criteria)
+                            if self.block_base_fee.is_none()
+                                || scores[i] >= self.block_base_fee.unwrap()
+                            {
+                                scores[i] = scores[i] << boost;
+                            }
                         }
                     }
                 }

@@ -1169,7 +1169,7 @@ impl miner::MinerService for Miner {
         ordering: miner::PendingOrdering,
     ) -> Vec<Arc<VerifiedTransaction>>
     where
-        C: ChainInfo + Nonce + Sync,
+        C: BlockChain + Nonce + Sync,
     {
         let chain_info = chain.chain_info();
 
@@ -1186,7 +1186,10 @@ impl miner::MinerService for Miner {
                 nonce_cap,
                 max_len,
                 ordering,
-                includable_boundary: Default::default(),
+                includable_boundary: self
+                    .engine
+                    .calculate_base_fee(&chain.best_block_header())
+                    .unwrap_or_default(),
             };
 
             if let Some(ref f) = filter {

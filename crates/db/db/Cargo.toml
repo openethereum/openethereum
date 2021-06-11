@@ -18,3 +18,4 @@ parking_lot = "0.11.1"
 rlp = { version = "0.4.6" }
 rlp_derive = { path = "../../util/rlp-derive" }
 stats = { path = "../../util/stats" }
+parity-db = "0.2.3"

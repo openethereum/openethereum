@@ -65,6 +65,7 @@ impl ClientService {
         );
 
         let pruning = config.pruning;
+        // TODO: reconfigure DB there
         let client = Client::new(
             config,
             &spec,

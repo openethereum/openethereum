@@ -103,10 +103,13 @@ pub fn open_database(
 
     let blooms_path = path.join("blooms");
     let trace_blooms_path = path.join("trace_blooms");
+    let state_path = path.join("state");
     fs::create_dir_all(&blooms_path)?;
     fs::create_dir_all(&trace_blooms_path)?;
 
-    let db = Database::open(&config, client_path)?;
+    // let db = Database::open(&config, client_path)?;
+    // TODO: it move somewhere
+    let db = parity_db::Db::with_columns(state_path, 7);
     let db_with_metrics = ethcore_db::DatabaseWithMetrics::new(db);
 
     let db = AppDB {

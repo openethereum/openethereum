@@ -18,7 +18,7 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
-use ethcore_db::KeyValueDB;
+use ethcore_db::{KeyValueDB,};
 use io::IoHandler;
 use types::transaction::{
     Condition as TransactionCondition, PendingTransaction, SignedTransaction, TypedTransaction,
@@ -200,14 +200,16 @@ impl<T: NodeInfo> LocalDataStore<T> {
     }
 
     // helper for writing a vector of transaction entries to disk.
-    fn write_txs(&self, txs: &[TransactionEntry]) -> Result<(), Error> {
-        let mut batch = self.db.transaction();
+    fn write_txs(&self, _txs: &[TransactionEntry]) -> Result<(), Error> {
+        // TODO: restore
+        Ok(())
+        // let mut batch = Trasaction
 
-        let local_json = ::serde_json::to_value(txs).map_err(Error::Json)?;
-        let json_str = format!("{}", local_json);
+        // let local_json = ::serde_json::to_value(txs).map_err(Error::Json)?;
+        // let json_str = format!("{}", local_json);
 
-        batch.put_vec(self.col, LOCAL_TRANSACTIONS_KEY, json_str.into_bytes());
-        self.db.write(batch).map_err(Error::Io)
+        // batch.put_vec(self.col, LOCAL_TRANSACTIONS_KEY, json_str.into_bytes());
+        // self.db.write(batch).map_err(Error::Io)
     }
 }
 

@@ -418,7 +418,7 @@ impl Engine<EthereumMachine> for Clique {
 
             if !votes.is_empty() {
                 // Pick a random vote.
-                let random_vote = rand::thread_rng().gen_range(0 as usize, votes.len());
+                let random_vote = rand::thread_rng().gen_range((0 as usize)..votes.len());
                 let (beneficiary, vote_type) = votes[random_vote];
 
                 trace!(target: "engine", "Casting vote: beneficiary {}, type {:?} ", beneficiary, vote_type);

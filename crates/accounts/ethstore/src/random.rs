@@ -43,5 +43,6 @@ impl Random for [u8; 32] {
 /// Generate a random string of given length.
 pub fn random_string(length: usize) -> String {
     let rng = OsRng;
-    rng.sample_iter(&Alphanumeric).take(length).collect()
+    let bytes: Vec<u8> = rng.sample_iter(&Alphanumeric).take(length).collect();
+    unsafe { String::from_utf8_unchecked(bytes) }
 }

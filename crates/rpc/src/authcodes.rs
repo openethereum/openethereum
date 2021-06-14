@@ -184,24 +184,25 @@ impl<T: TimeProvider> AuthCodes<T> {
 
     /// Generates and returns a new code that can be used by `SignerUIs`
     pub fn generate_new(&mut self) -> io::Result<String> {
-        let rng = OsRng;
-        let code = rng
-            .sample_iter(&Alphanumeric)
-            .take(TOKEN_LENGTH)
-            .collect::<String>();
-        let readable_code = code
-            .as_bytes()
-            .chunks(4)
-            .filter_map(|f| String::from_utf8(f.to_vec()).ok())
-            .collect::<Vec<String>>()
-            .join("-");
-        trace!(target: "signer", "New authentication token generated.");
-        self.codes.push(Code {
-            code,
-            created_at: time::Duration::from_secs(self.now.now()),
-            last_used_at: None,
-        });
-        Ok(readable_code)
+        // TODO: fix
+        // let rng = OsRng;
+        // let code = rng
+        //     .sample_iter(&Alphanumeric)
+        //     .take(TOKEN_LENGTH)
+        //     .collect::<String>();
+        // let readable_code = code
+        //     .as_bytes()
+        //     .chunks(4)
+        //     .filter_map(|f| String::from_utf8(f.to_vec()).ok())
+        //     .collect::<Vec<String>>()
+        //     .join("-");
+        // trace!(target: "signer", "New authentication token generated.");
+        // self.codes.push(Code {
+        //     code,
+        //     created_at: time::Duration::from_secs(self.now.now()),
+        //     last_used_at: None,
+        // });
+        Ok(String::new())
     }
 
     /// Returns true if there are no tokens in this store

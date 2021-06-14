@@ -32,7 +32,7 @@ use snapshot::{Error, ManifestData, Progress};
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
-use db::KeyValueDB;
+use db::{KeyValueDB, DBTransaction};
 use ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
 use rlp::{Rlp, RlpStream};
@@ -334,7 +334,8 @@ impl Rebuilder for ChunkRebuilder {
             }
 
             // write epoch transition into database.
-            let mut batch = self.db.transaction();
+            let mut batch = DBTransaction::new();
+
             self.chain.insert_epoch_transition(
                 &mut batch,
                 verified.header.number(),
@@ -369,7 +370,8 @@ impl Rebuilder for ChunkRebuilder {
 
             let parent_td: U256 = last_rlp.val_at(4)?;
 
-            let mut batch = self.db.transaction();
+            let mut batch = DBTransaction::new();
+
             self.chain.insert_unordered_block(
                 &mut batch,
                 encoded::Block::new(block_data),

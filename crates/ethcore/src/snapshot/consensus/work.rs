@@ -32,7 +32,7 @@ use std::{
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
-use db::KeyValueDB;
+use db::{KeyValueDB, DBTransaction};
 use engines::EthEngine;
 use ethereum_types::H256;
 use rand::rngs::OsRng;
@@ -324,7 +324,7 @@ impl Rebuilder for PowRebuilder {
 
             verify_old_block(&mut self.rng, &block.header, engine, &self.chain, is_best)?;
 
-            let mut batch = self.db.transaction();
+            let mut batch = DBTransaction::new();
 
             // special-case the first block in each chunk.
             if idx == 3 {
@@ -362,7 +362,7 @@ impl Rebuilder for PowRebuilder {
 
     /// Glue together any disconnected chunks and check that the chain is complete.
     fn finalize(&mut self, _: &dyn EthEngine) -> Result<(), ::error::Error> {
-        let mut batch = self.db.transaction();
+        let mut batch = DBTransaction::new();
 
         for (first_num, first_hash) in self.disconnected.drain(..) {
             let parent_num = first_num - 1;

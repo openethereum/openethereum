@@ -97,23 +97,8 @@ impl HashDB<KeccakHasher, DBValue> for ArchiveDB {
 
 impl ::traits::KeyedHashDB for ArchiveDB {
     fn keys(&self) -> HashMap<H256, i32> {
-        let mut ret: HashMap<H256, i32> = self
-            .backing
-            .iter(self.column)
-            .map(|(key, _)| (H256::from_slice(&*key), 1))
-            .collect();
-
-        for (key, refs) in self.overlay.keys() {
-            match ret.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() += refs;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(refs);
-                }
-            }
-        }
-        ret
+        // TODO: restore
+        HashMap::new()
     }
 }
 

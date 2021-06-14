@@ -257,23 +257,8 @@ fn to_short_key(key: &H256) -> H256 {
 
 impl ::traits::KeyedHashDB for OverlayRecentDB {
     fn keys(&self) -> HashMap<H256, i32> {
-        let mut ret: HashMap<H256, i32> = self
-            .backing
-            .iter(self.column)
-            .map(|(key, _)| (H256::from_slice(&*key), 1))
-            .collect();
-
-        for (key, refs) in self.transaction_overlay.keys() {
-            match ret.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() += refs;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(refs);
-                }
-            }
-        }
-        ret
+        // TODO: restore
+        unimplemented!("TODO: restore")
     }
 }
 

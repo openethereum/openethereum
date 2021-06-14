@@ -1558,7 +1558,7 @@ impl ChainSync {
 
         if !is_syncing && !enacted.is_empty() && !self.peers.is_empty() {
             // t_nb 11.4.5 Select random peer to re-broadcast transactions to.
-            let peer = random::new().gen_range(0, self.peers.len());
+            let peer = random::new().gen_range(0..self.peers.len());
             trace!(target: "sync", "Re-broadcasting transactions to a random peer.");
             self.peers.values_mut().nth(peer).map(|peer_info| {
                 peer_info.last_sent_transactions.clear();

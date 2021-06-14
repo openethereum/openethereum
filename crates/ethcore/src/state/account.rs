@@ -269,6 +269,7 @@ impl Account {
         }
     }
 
+    // TODO: DB READ ACCESS 
     fn get_and_cache_storage(
         storage_root: &H256,
         storage_cache: &mut LruCache<H256, H256>,

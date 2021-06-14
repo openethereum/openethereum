@@ -213,7 +213,7 @@ impl RandomnessPhase {
                 // Generate a new random number, but don't reveal it yet. Instead, we publish its hash to the
                 // randomness contract, together with the number encrypted to ourselves. That way we will later be
                 // able to decrypt and reveal it, and other parties are able to verify it against the hash.
-                let number: RandNumber = rng.gen();
+                let number: RandNumber = H256::random();
                 let number_hash: Hash = keccak(number.0);
                 let public = signer.public().ok_or(PhaseError::MissingPublicKey)?;
                 let cipher = ecies::encrypt(&public, number_hash.as_bytes(), number.as_bytes())?;

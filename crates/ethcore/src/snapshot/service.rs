@@ -464,7 +464,7 @@ impl Service {
             if block_number % 1_000 == 0 {
                 next_db.key_value().write_buffered(batch);
                 next_chain.commit();
-                next_db.key_value().flush().expect("DB flush failed.");
+                // next_db.key_value().flush().expect("DB flush failed.");
                 batch = DBTransaction::new();
             }
 
@@ -476,7 +476,7 @@ impl Service {
         // Final commit to the DB
         next_db.key_value().write_buffered(batch);
         next_chain.commit();
-        next_db.key_value().flush().expect("DB flush failed.");
+        // next_db.key_value().flush().expect("DB flush failed.");
 
         // We couldn't reach the targeted hash
         if parent_hash != target_hash {
@@ -823,7 +823,7 @@ impl Service {
 
                             match is_done {
                                 true => {
-                                    db.key_value().flush()?;
+                                    // db.key_value().flush()?;
                                     drop(db);
                                     return self.finalize_restoration(&mut *restoration);
                                 }
@@ -838,7 +838,7 @@ impl Service {
         };
 
         result?;
-        db.key_value().flush()?;
+        // db.key_value().flush()?;
         Ok(())
     }
 

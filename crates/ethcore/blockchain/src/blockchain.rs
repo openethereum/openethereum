@@ -83,8 +83,9 @@ pub trait BlockChainDB: Send + Sync + PrometheusMetrics {
         self.blooms().close()?;
         self.trace_blooms().close()?;
 
+        // TODO: REStore Restore
         // Restore the key_value DB
-        self.key_value().restore(new_db)?;
+        // self.key_value().restore(new_db)?;
 
         // Re-open the Blooms databases
         self.blooms().reopen()?;
@@ -767,7 +768,7 @@ impl BlockChain {
 
                     if hash != bc.genesis_hash() {
                         info!("First new block calculated: {:?}", hash);
-                        let mut batch = db.key_value().transaction();
+                        let mut batch = DBTransaction::new();
                         batch.put(db::COL_EXTRA, b"first", hash.as_bytes());
                         db.key_value().write(batch).expect("Low level database error when writing 'first' block. Some issue with disk?");
                         bc.first_block = Some(hash);
@@ -1103,7 +1104,7 @@ impl BlockChain {
             }
         }
 
-        let mut batch = self.db.key_value().transaction();
+        let mut batch = DBTransaction::new();
         self.set_best_ancient_block(block_view.number(), hash, &mut batch);
         self.db
             .key_value()
@@ -1172,14 +1173,15 @@ impl BlockChain {
     /// Iterate over all epoch transitions.
     /// This will only return transitions within the canonical chain.
     pub fn epoch_transitions(&self) -> EpochTransitionIter {
-        let iter = self
-            .db
-            .key_value()
-            .iter_from_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
-        EpochTransitionIter {
-            chain: self,
-            prefix_iter: iter,
-        }
+        // let iter = self
+        //     .db
+        //     .key_value()
+        //     .iter_from_prefix(db::COL_EXTRA, &EPOCH_KEY_PREFIX[..]);
+        // EpochTransitionIter {
+        //     chain: self,
+        //     prefix_iter: iter,
+        // }
+        unimplemented!("NOT IMPL");
     }
 
     /// Get a specific epoch transition by block number and provided block hash.

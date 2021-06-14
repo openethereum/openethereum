@@ -35,7 +35,7 @@ use engines::EthEngine;
 use types::{header::Header, ids::BlockId};
 
 use bytes::Bytes;
-use db::{DBValue, KeyValueDB};
+use db::{DBValue, KeyValueDB, DBTransaction};
 use ethereum_types::H256;
 use ethtrie::{TrieDB, TrieDBMut};
 use hash_db::HashDB;
@@ -502,7 +502,7 @@ impl StateRebuilder {
         trace!(target: "snapshot", "current state root: {:?}", self.state_root);
 
         let backing = self.db.backing().clone();
-        let mut batch = backing.transaction();
+        let mut batch = DBTransaction::new();
         // Drain the transaction overlay and put the data into the batch.
         self.db.inject(&mut batch)?;
         backing.write_buffered(batch);
@@ -518,7 +518,7 @@ impl StateRebuilder {
             return Err(Error::MissingCode(missing).into());
         }
 
-        let mut batch = self.db.backing().transaction();
+        let mut batch = DBTransaction::new();
         self.db.journal_under(&mut batch, era, &id)?;
         self.db.backing().write_buffered(batch);
 

@@ -317,7 +317,7 @@ impl Handshake {
         rlp.append(&self.nonce);
         rlp.append(&PROTOCOL_VERSION);
         let mut encoded = rlp.out();
-        encoded.resize(encoded.len() + rand::thread_rng().gen_range(100, 301), 0);
+        encoded.resize(encoded.len() + rand::thread_rng().gen_range(100..301), 0);
         let len = (encoded.len() + ECIES_OVERHEAD) as u16;
         let prefix = len.to_be_bytes();
         let message = ecies::encrypt(&self.id, &prefix, &encoded)?;

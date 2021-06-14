@@ -109,7 +109,7 @@ pub fn open_database(
 
     // let db = Database::open(&config, client_path)?;
     // TODO: it move somewhere
-    let db = parity_db::Db::with_columns(state_path, 7);
+    let db = parity_db::Db::with_columns(&state_path, 7).expect("to be ok");
     let db_with_metrics = ethcore_db::DatabaseWithMetrics::new(db);
 
     let db = AppDB {

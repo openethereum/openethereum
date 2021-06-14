@@ -412,7 +412,8 @@ impl Importer {
         }
         trace!(target:"block_import","Flush block to db");
         let db = client.db.read();
-        db.key_value().flush().expect("DB flush failed.");
+        // TODO: restore
+        // db.key_value().flush().expect("DB flush failed.");
 
         self.block_queue.resignal_verification();
         trace!(target:"block_import","Resignal verifier");
@@ -574,7 +575,8 @@ impl Importer {
             db.write_buffered(batch);
             chain.commit();
         }
-        db.flush().expect("DB flush failed.");
+        // TODO: restore
+        // db.flush().expect("DB flush failed.");
         Ok(())
     }
 
@@ -1065,7 +1067,9 @@ impl Client {
         }
 
         // ensure buffered changes are flushed.
-        client.db.read().key_value().flush()?;
+
+        // TODO: restore
+        // client.db.read().key_value().flush()?;
         Ok(client)
     }
 
@@ -2975,11 +2979,12 @@ impl ImportSealedBlock for Client {
                 false,
             ));
         });
-        self.db
-            .read()
-            .key_value()
-            .flush()
-            .expect("DB flush failed.");
+        // TODO: restore flush
+        // self.db
+            // .read()
+            // .key_value()
+            // .flush()
+            // .expect("DB flush failed.");
         Ok(hash)
     }
 }

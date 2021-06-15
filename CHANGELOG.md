@@ -1,3 +1,15 @@
+## OpenEthereum v3.3.0-rc.1
+
+Enhancements:
+* EIP-1559: Fee market change for ETH 1.0 chain
+* EIP-3198: BASEFEE opcode
+* EIP-3529: Reduction in gas refunds
+* EIP-3541: Reject new contracts starting with the 0xEF byte
+* Delay difficulty bomb to December 2021 (EIP-3554)
+* London hardfork blocks: mainnet (12,833,000), goerli (5,062,605), rinkeby (8,897,988), ropsten (10,499,401)
+* Add chainspecs for aleut and baikal
+* Bump ethereum/tests to v9.0.1
+
 ## OpenEthereum v3.2.6
 
 Enhancement:

@@ -63,7 +63,7 @@ pub struct Header {
     #[serde(rename = "uncleHash")]
     pub uncles_hash: H256,
     /// Base fee
-    pub base_fee: Option<Uint>,
+    pub base_fee_per_gas: Option<Uint>,
 }
 
 #[cfg(test)]

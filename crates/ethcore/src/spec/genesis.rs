@@ -65,7 +65,7 @@ impl From<ethjson::spec::Genesis> for Genesis {
             state_root: g.state_root.map(Into::into),
             gas_used: g.gas_used.map_or_else(U256::zero, Into::into),
             extra_data: g.extra_data.map_or_else(Vec::new, Into::into),
-            base_fee: g.base_fee.map(Into::into),
+            base_fee: g.base_fee_per_gas.map(Into::into),
         }
     }
 }

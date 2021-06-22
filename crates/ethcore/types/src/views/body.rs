@@ -147,8 +147,13 @@ impl<'a> BodyView<'a> {
     }
 
     /// Return list of uncles of given block.
-    pub fn uncles(&self) -> Vec<Header> {
-        self.rlp.list_at(1)
+    pub fn uncles(&self, eip1559_transition: BlockNumber) -> Vec<Header> {
+        Header::decode_rlp_list(&self.rlp.at(1).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block uncles, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return number of uncles in given block, without deserializing them.
@@ -170,8 +175,15 @@ impl<'a> BodyView<'a> {
     }
 
     /// Return nth uncle.
-    pub fn uncle_at(&self, index: usize) -> Option<Header> {
-        self.uncles_rlp().iter().nth(index).map(|rlp| rlp.as_val())
+    pub fn uncle_at(&self, index: usize, eip1559_transition: BlockNumber) -> Option<Header> {
+        self.uncles_rlp().iter().nth(index).map(|rlp| {
+            Header::decode_rlp(&rlp.rlp, eip1559_transition).unwrap_or_else(|e| {
+                panic!(
+                    "block uncle_at, view rlp is trusted and should be valid.{:?}",
+                    e
+                )
+            })
+        })
     }
 
     /// Return nth uncle rlp.

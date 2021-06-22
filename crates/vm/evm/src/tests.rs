@@ -461,6 +461,35 @@ fn test_difficulty(factory: super::Factory) {
     );
 }
 
+evm_test! {test_base_fee: test_base_fee_int}
+fn test_base_fee(factory: super::Factory) {
+    let base_fee = Some(U256::from(0x07));
+    let code = "48600055".from_hex().unwrap();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(100_000);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_london(
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[],
+    );
+    ext.info.base_fee = base_fee;
+
+    let gas_left = {
+        let vm = factory.create(params, ext.schedule(), ext.depth());
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(77_895));
+    println!("elements {}", ext.store.len());
+    assert_store(
+        &ext,
+        0,
+        "0000000000000000000000000000000000000000000000000000000000000007",
+    );
+}
+
 evm_test! {test_gas_limit: test_gas_limit_int}
 fn test_gas_limit(factory: super::Factory) {
     let gas_limit = U256::from(0x1234);
@@ -1659,6 +1688,61 @@ fn test_access_list_cheap_expensive_cheap(factory: super::Factory) {
     };
 
     assert_eq!(gas_left, U256::from(0));
+}
+
+evm_test! {test_refund_post_london: test_refund_post_london_int}
+fn test_refund_post_london(factory: super::Factory) {
+    // Compare EIP-3529 for the test cases
+
+    let code = hex!("60006000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 0);
+
+    let code = hex!("60006000556001600055").to_vec();
+    london_refund_test(&factory, code, &[], 0);
+
+    let code = hex!("60016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 19900);
+
+    let code = hex!("60006000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 4800);
+
+    let code = hex!("60006000556001600055").to_vec();
+    london_refund_test(&factory, code, &[1], 2800);
+
+    let code = hex!("60006000556002600055").to_vec();
+    london_refund_test(&factory, code, &[1], 0);
+
+    let code = hex!("60026000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 4800);
+
+    let code = hex!("60026000556001600055").to_vec();
+    london_refund_test(&factory, code, &[1], 2800);
+
+    let code = hex!("60016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 19900);
+
+    let code = hex!("600060005560016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 7600);
+}
+
+fn london_refund_test(
+    factory: &super::Factory,
+    code: Vec<u8>,
+    fill: &[u64],
+    expected_refund: i128,
+) {
+    let mut params = ActionParams::default();
+    params.gas = U256::from(22318);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_london(
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[],
+    );
+    ext.prefill(fill);
+    let vm = factory.create(params, ext.schedule(), ext.depth());
+    vm.exec(&mut ext).ok().unwrap().unwrap();
+    assert_eq!(ext.sstore_clears, expected_refund);
 }
 
 fn push_two_pop_one_constantinople_test(

@@ -37,6 +37,13 @@ pub enum Error {
         /// Transaction gas price
         got: U256,
     },
+    /// Transaction's max gas price is lower then block base fee.
+    GasPriceLowerThanBaseFee {
+        /// Transaction max gas price
+        gas_price: U256,
+        /// Current block base fee
+        base_fee: U256,
+    },
     /// Transaction has too low fee
     /// (there is already a transaction with the same sender-nonce but higher gas price)
     TooCheapToReplace {
@@ -113,6 +120,15 @@ impl fmt::Display for Error {
             LimitReached => "Transaction limit reached".into(),
             InsufficientGasPrice { minimal, got } => {
                 format!("Insufficient gas price. Min={}, Given={}", minimal, got)
+            }
+            GasPriceLowerThanBaseFee {
+                gas_price,
+                base_fee,
+            } => {
+                format!(
+                    "Max gas price is lower then required base fee. Gas price={}, Base fee={}",
+                    gas_price, base_fee
+                )
             }
             InsufficientGas { minimal, got } => {
                 format!("Insufficient gas. Min={}, Given={}", minimal, got)

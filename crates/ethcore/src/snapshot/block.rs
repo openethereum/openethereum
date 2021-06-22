@@ -17,15 +17,17 @@
 //! Block RLP compression.
 
 use bytes::Bytes;
-use ethereum_types::H256;
+use ethereum_types::{H256, U256};
 use hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 use triehash::ordered_trie_root;
-use types::{block::Block, header::Header, transaction::TypedTransaction, views::BlockView};
+use types::{
+    block::Block, header::Header, transaction::TypedTransaction, views::BlockView, BlockNumber,
+};
 
 const HEADER_FIELDS: usize = 8;
 const BLOCK_FIELDS: usize = 2;
-
+#[derive(Debug)]
 pub struct AbridgedBlock {
     rlp: Bytes,
 }
@@ -43,12 +45,19 @@ impl AbridgedBlock {
 
     /// Given a full block view, trim out the parent hash and block number,
     /// producing new rlp.
-    pub fn from_block_view(block_view: &BlockView) -> Self {
+    pub fn from_block_view(block_view: &BlockView, eip1559_transition: BlockNumber) -> Self {
         let header = block_view.header_view();
-        let seal_fields = header.seal();
+        let eip1559 = header.number() >= eip1559_transition;
+        let seal_fields = header.seal(eip1559);
+
+        let nmb_of_elements = if eip1559 {
+            HEADER_FIELDS + seal_fields.len() + BLOCK_FIELDS + 1
+        } else {
+            HEADER_FIELDS + seal_fields.len() + BLOCK_FIELDS
+        };
 
         // 10 header fields, unknown number of seal fields, and 2 block fields.
-        let mut stream = RlpStream::new_list(HEADER_FIELDS + seal_fields.len() + BLOCK_FIELDS);
+        let mut stream = RlpStream::new_list(nmb_of_elements);
 
         // write header values.
         stream
@@ -64,11 +73,15 @@ impl AbridgedBlock {
         // write block values.
 
         TypedTransaction::rlp_append_list(&mut stream, &block_view.transactions());
-        stream.append_list(&block_view.uncles());
+        stream.append_list(&block_view.uncles(eip1559_transition));
 
         // write seal fields.
         for field in seal_fields {
             stream.append_raw(&field, 1);
+        }
+
+        if eip1559 {
+            stream.append(&header.base_fee());
         }
 
         AbridgedBlock { rlp: stream.out() }
@@ -82,6 +95,7 @@ impl AbridgedBlock {
         parent_hash: H256,
         number: u64,
         receipts_root: H256,
+        eip1559_transition: BlockNumber,
     ) -> Result<Block, DecoderError> {
         let rlp = Rlp::new(&self.rlp);
 
@@ -98,7 +112,7 @@ impl AbridgedBlock {
         header.set_extra_data(rlp.val_at(7)?);
 
         let transactions = TypedTransaction::decode_rlp_list(&rlp.at(8)?)?;
-        let uncles: Vec<Header> = rlp.list_at(9)?;
+        let uncles = Header::decode_rlp_list(&rlp.at(9)?, eip1559_transition)?;
 
         header.set_transactions_root(ordered_trie_root(rlp.at(8)?.iter().map(|r| {
             if r.is_list() {
@@ -115,12 +129,20 @@ impl AbridgedBlock {
         header.set_uncles_hash(keccak(uncles_rlp.as_raw()));
 
         let mut seal_fields = Vec::new();
-        for i in (HEADER_FIELDS + BLOCK_FIELDS)..rlp.item_count()? {
+        let last_seal_index = if number >= eip1559_transition {
+            rlp.item_count()? - 1
+        } else {
+            rlp.item_count()?
+        };
+        for i in (HEADER_FIELDS + BLOCK_FIELDS)..last_seal_index {
             let seal_rlp = rlp.at(i)?;
             seal_fields.push(seal_rlp.as_raw().to_owned());
         }
-
         header.set_seal(seal_fields);
+
+        if number >= eip1559_transition {
+            header.set_base_fee(Some(rlp.val_at::<U256>(rlp.item_count()? - 1)?));
+        }
 
         Ok(Block {
             header: header,
@@ -141,6 +163,7 @@ mod tests {
         transaction::{Action, Transaction, TypedTransaction},
         view,
         views::BlockView,
+        BlockNumber,
     };
 
     fn encode_block(b: &Block) -> Bytes {
@@ -153,10 +176,29 @@ mod tests {
         let receipts_root = b.header.receipts_root().clone();
         let encoded = encode_block(&b);
 
-        let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
+        let abridged =
+            AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::max_value());
         assert_eq!(
             abridged
-                .to_block(H256::default(), 0, receipts_root)
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::max_value())
+                .unwrap(),
+            b
+        );
+    }
+
+    #[test]
+    fn eip1559_block_abridging() {
+        let mut b = Block::default();
+        b.header.set_base_fee(Some(U256::from(100)));
+        b.header.set_seal(vec![vec![50u8], vec![60u8]]);
+        let receipts_root = b.header.receipts_root().clone();
+        let encoded = encode_block(&b);
+
+        let abridged =
+            AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::default());
+        assert_eq!(
+            abridged
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::default())
                 .unwrap(),
             b
         );
@@ -169,10 +211,11 @@ mod tests {
         let receipts_root = b.header.receipts_root().clone();
         let encoded = encode_block(&b);
 
-        let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded));
+        let abridged =
+            AbridgedBlock::from_block_view(&view!(BlockView, &encoded), BlockNumber::max_value());
         assert_eq!(
             abridged
-                .to_block(H256::default(), 2, receipts_root)
+                .to_block(H256::default(), 2, receipts_root, BlockNumber::max_value())
                 .unwrap(),
             b
         );
@@ -213,10 +256,13 @@ mod tests {
 
         let encoded = encode_block(&b);
 
-        let abridged = AbridgedBlock::from_block_view(&view!(BlockView, &encoded[..]));
+        let abridged = AbridgedBlock::from_block_view(
+            &view!(BlockView, &encoded[..]),
+            BlockNumber::max_value(),
+        );
         assert_eq!(
             abridged
-                .to_block(H256::default(), 0, receipts_root)
+                .to_block(H256::default(), 0, receipts_root, BlockNumber::max_value())
                 .unwrap(),
             b
         );

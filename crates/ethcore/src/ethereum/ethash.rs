@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{cmp, collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+    cmp::{self},
+    collections::BTreeMap,
+    path::Path,
+    sync::Arc,
+};
 
 use ethereum_types::{H256, H64, U256};
 use ethjson::{self, uint::Uint};

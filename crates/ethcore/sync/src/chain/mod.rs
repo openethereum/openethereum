@@ -693,6 +693,8 @@ pub struct ChainSync {
     download_old_blocks: bool,
     /// Enable warp sync.
     warp_sync: WarpSync,
+    /// New block encoding/decoding format is introduced by the EIP1559
+    eip1559_transition: BlockNumber,
 }
 
 #[derive(Debug, Default)]
@@ -778,6 +780,7 @@ impl ChainSync {
             sync_start_time: None,
             transactions_stats: TransactionsStats::default(),
             warp_sync: config.warp_sync,
+            eip1559_transition: config.eip1559_transition,
         };
         sync.update_targets(chain);
         sync

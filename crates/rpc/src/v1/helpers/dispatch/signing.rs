@@ -22,7 +22,8 @@ use crypto::{publickey::Signature, DEFAULT_MAC};
 use ethereum_types::{Address, H256, U256};
 use jsonrpc_core::{Error, ErrorCode};
 use types::transaction::{
-    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,
+    AccessListTx, Action, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,
+    TypedTxId,
 };
 
 use jsonrpc_core::Result;
@@ -50,11 +51,11 @@ impl super::Accounts for Signer {
         nonce: U256,
         password: SignWith,
     ) -> Result<WithToken<SignedTransaction>> {
-        let legacy_tx = Transaction {
+        let mut legacy_tx = Transaction {
             nonce,
             action: filled.to.map_or(Action::Create, Action::Call),
             gas: filled.gas,
-            gas_price: filled.gas_price,
+            gas_price: filled.gas_price.unwrap_or_default(),
             value: filled.value,
             data: filled.data,
         };
@@ -73,6 +74,31 @@ impl super::Accounts for Signer {
                         .map(Into::into)
                         .collect(),
                 ))
+            }
+            Some(TypedTxId::EIP1559Transaction) => {
+                if let Some(max_fee_per_gas) = filled.max_fee_per_gas {
+                    legacy_tx.gas_price = max_fee_per_gas;
+                } else {
+                    return Err(Error::new(ErrorCode::InvalidParams));
+                }
+
+                if let Some(max_priority_fee_per_gas) = filled.max_priority_fee_per_gas {
+                    let transaction = AccessListTx::new(
+                        legacy_tx,
+                        filled
+                            .access_list
+                            .unwrap_or_default()
+                            .into_iter()
+                            .map(Into::into)
+                            .collect(),
+                    );
+                    TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                        transaction,
+                        max_priority_fee_per_gas,
+                    })
+                } else {
+                    return Err(Error::new(ErrorCode::InvalidParams));
+                }
             }
             None => return Err(Error::new(ErrorCode::InvalidParams)),
         };

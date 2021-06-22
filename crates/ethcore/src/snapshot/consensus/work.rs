@@ -38,7 +38,7 @@ use ethereum_types::H256;
 use rand::rngs::OsRng;
 use rlp::{Rlp, RlpStream};
 use snapshot::{block::AbridgedBlock, Error, ManifestData, Progress};
-use types::encoded;
+use types::{encoded, BlockNumber};
 
 /// Snapshot creation and restoration for PoW chains.
 /// This includes blocks from the head of the chain as a
@@ -70,6 +70,7 @@ impl SnapshotComponents for PowSnapshot {
         chunk_sink: &mut ChunkSink,
         progress: &Progress,
         preferred_size: usize,
+        eip1559_transition: BlockNumber,
     ) -> Result<(), Error> {
         PowWorker {
             chain: chain,
@@ -79,7 +80,7 @@ impl SnapshotComponents for PowSnapshot {
             progress: progress,
             preferred_size: preferred_size,
         }
-        .chunk_all(self.blocks)
+        .chunk_all(self.blocks, eip1559_transition)
     }
 
     fn rebuilder(
@@ -119,7 +120,11 @@ struct PowWorker<'a> {
 impl<'a> PowWorker<'a> {
     // Repeatedly fill the buffers and writes out chunks, moving backwards from starting block hash.
     // Loops until we reach the first desired block, and writes out the remainder.
-    fn chunk_all(&mut self, snapshot_blocks: u64) -> Result<(), Error> {
+    fn chunk_all(
+        &mut self,
+        snapshot_blocks: u64,
+        eip1559_transition: BlockNumber,
+    ) -> Result<(), Error> {
         let mut loaded_size = 0;
         let mut last = self.current_hash;
 
@@ -140,7 +145,8 @@ impl<'a> PowWorker<'a> {
                 })
                 .ok_or_else(|| Error::BlockNotFound(self.current_hash))?;
 
-            let abridged_rlp = AbridgedBlock::from_block_view(&block.view()).into_inner();
+            let abridged_rlp =
+                AbridgedBlock::from_block_view(&block.view(), eip1559_transition).into_inner();
 
             let pair = {
                 let mut pair_stream = RlpStream::new_list(2);
@@ -301,7 +307,12 @@ impl Rebuilder for PowRebuilder {
                 }
             }));
 
-            let block = abridged_block.to_block(parent_hash, cur_number, receipts_root)?;
+            let block = abridged_block.to_block(
+                parent_hash,
+                cur_number,
+                receipts_root,
+                engine.params().eip1559_transition,
+            )?;
             let block_bytes = encoded::Block::new(block.rlp_bytes());
             let is_best = cur_number == self.best_number;
 

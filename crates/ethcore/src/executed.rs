@@ -91,6 +91,13 @@ pub enum ExecutionError {
         /// Amount of gas in block.
         gas: U256,
     },
+    /// Transaction's max gas price is lower then block base fee.
+    GasPriceLowerThanBaseFee {
+        /// Max gas price of the transaction.
+        gas_price: U256,
+        /// Block base fee.
+        base_fee: U256,
+    },
     /// Returned when transaction nonce does not match state nonce.
     InvalidNonce {
         /// Nonce expected.
@@ -147,6 +154,13 @@ impl fmt::Display for ExecutionError {
                 "Block gas limit reached. The limit is {}, {} has \
 					already been used, and {} more is required",
                 gas_limit, gas_used, gas
+            ),
+            GasPriceLowerThanBaseFee {
+                ref gas_price,
+                ref base_fee,
+            } => format!(
+                "Max gas price is lowert than block base fee. Gas price is {}, while base fee is {}",
+                gas_price, base_fee
             ),
             InvalidNonce {
                 ref expected,

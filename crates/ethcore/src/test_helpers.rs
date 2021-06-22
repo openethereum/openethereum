@@ -39,6 +39,7 @@ use types::{
     transaction::{Action, SignedTransaction, Transaction, TypedTransaction},
     view,
     views::BlockView,
+    BlockNumber,
 };
 
 use block::{Drain, OpenBlock};
@@ -222,14 +223,17 @@ where
             .seal(test_engine, vec![])
             .unwrap();
 
-        if let Err(e) = client.import_block(Unverified::from_rlp(b.rlp_bytes()).unwrap()) {
+        if let Err(e) = client.import_block(
+            Unverified::from_rlp(b.rlp_bytes(), test_engine.params().eip1559_transition).unwrap(),
+        ) {
             panic!(
                 "error importing block which is valid by definition: {:?}",
                 e
             );
         }
 
-        last_header = view!(BlockView, &b.rlp_bytes()).header();
+        last_header =
+            view!(BlockView, &b.rlp_bytes()).header(test_engine.params().eip1559_transition);
         db = b.drain().state.drop().1;
     }
     client.flush_queue();
@@ -266,9 +270,13 @@ pub fn push_blocks_to_client(
         rolling_block_number = rolling_block_number + 1;
         rolling_timestamp = rolling_timestamp + 10;
 
-        if let Err(e) =
-            client.import_block(Unverified::from_rlp(create_test_block(&header)).unwrap())
-        {
+        if let Err(e) = client.import_block(
+            Unverified::from_rlp(
+                create_test_block(&header),
+                test_spec.params().eip1559_transition,
+            )
+            .unwrap(),
+        ) {
             panic!(
                 "error importing block which is valid by definition: {:?}",
                 e
@@ -297,7 +305,9 @@ pub fn push_block_with_transactions(client: &Arc<Client>, transactions: &[Signed
         .seal(test_engine, vec![])
         .unwrap();
 
-    if let Err(e) = client.import_block(Unverified::from_rlp(b.rlp_bytes()).unwrap()) {
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(b.rlp_bytes(), test_spec.params().eip1559_transition).unwrap(),
+    ) {
         panic!(
             "error importing block which is valid by definition: {:?}",
             e
@@ -323,7 +333,9 @@ pub fn get_test_client_with_blocks(blocks: Vec<Bytes>) -> Arc<Client> {
     .unwrap();
 
     for block in blocks {
-        if let Err(e) = client.import_block(Unverified::from_rlp(block).unwrap()) {
+        if let Err(e) = client.import_block(
+            Unverified::from_rlp(block, test_spec.params().eip1559_transition).unwrap(),
+        ) {
             panic!("error importing block which is well-formed: {:?}", e);
         }
     }
@@ -456,6 +468,7 @@ pub fn generate_dummy_blockchain(block_number: u32) -> BlockChain {
         BlockChainConfig::default(),
         &create_unverifiable_block(0, H256::zero()),
         db.clone(),
+        BlockNumber::max_value(),
     );
 
     let mut batch = db.key_value().transaction();
@@ -483,6 +496,7 @@ pub fn generate_dummy_blockchain_with_extra(block_number: u32) -> BlockChain {
         BlockChainConfig::default(),
         &create_unverifiable_block(0, H256::zero()),
         db.clone(),
+        BlockNumber::max_value(),
     );
 
     let mut batch = db.key_value().transaction();
@@ -514,6 +528,7 @@ pub fn generate_dummy_empty_blockchain() -> BlockChain {
         BlockChainConfig::default(),
         &create_unverifiable_block(0, H256::zero()),
         db.clone(),
+        BlockNumber::max_value(),
     );
     bc
 }

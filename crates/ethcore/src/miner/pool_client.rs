@@ -155,9 +155,8 @@ where
     ) -> Result<SignedTransaction, transaction::Error> {
         self.engine
             .verify_transaction_basic(&tx, &self.best_block_header)?;
-        let tx = self
-            .engine
-            .verify_transaction_unordered(tx, &self.best_block_header)?;
+
+        let tx = SignedTransaction::new(tx)?;
 
         self.engine
             .machine()

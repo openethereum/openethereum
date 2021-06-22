@@ -25,7 +25,7 @@ use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
 use parity_util_mem::MallocSizeOf;
 
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::ops::Deref;
+use std::{cmp::min, ops::Deref};
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
@@ -130,7 +130,7 @@ pub mod signature {
 pub struct Transaction {
     /// Nonce.
     pub nonce: U256,
-    /// Gas price.
+    /// Gas price for non 1559 transactions. MaxFeePerGas for 1559 transactions.
     pub gas_price: U256,
     /// Gas paid up front for transaction execution.
     pub gas: U256,
@@ -365,10 +365,148 @@ impl AccessListTx {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
+pub struct EIP1559TransactionTx {
+    pub transaction: AccessListTx,
+    pub max_priority_fee_per_gas: U256,
+}
+
+impl EIP1559TransactionTx {
+    pub fn tx_type(&self) -> TypedTxId {
+        TypedTxId::EIP1559Transaction
+    }
+
+    pub fn tx(&self) -> &Transaction {
+        &self.transaction.tx()
+    }
+
+    pub fn tx_mut(&mut self) -> &mut Transaction {
+        self.transaction.tx_mut()
+    }
+
+    // decode bytes by this payload spec: rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        let tx_rlp = &Rlp::new(tx);
+
+        // we need to have 12 items in this list
+        if tx_rlp.item_count()? != 12 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+
+        let chain_id = Some(tx_rlp.val_at(0)?);
+
+        let max_priority_fee_per_gas = tx_rlp.val_at(2)?;
+
+        let tx = Transaction {
+            nonce: tx_rlp.val_at(1)?,
+            gas_price: tx_rlp.val_at(3)?, //taken from max_fee_per_gas
+            gas: tx_rlp.val_at(4)?,
+            action: tx_rlp.val_at(5)?,
+            value: tx_rlp.val_at(6)?,
+            data: tx_rlp.val_at(7)?,
+        };
+
+        // access list we get from here
+        let accl_rlp = tx_rlp.at(8)?;
+
+        // access_list pattern: [[{20 bytes}, [{32 bytes}...]]...]
+        let mut accl: AccessList = Vec::new();
+
+        for i in 0..accl_rlp.item_count()? {
+            let accounts = accl_rlp.at(i)?;
+
+            // check if there is list of 2 items
+            if accounts.item_count()? != 2 {
+                return Err(DecoderError::Custom("Unknown access list length"));
+            }
+            accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
+        }
+
+        // we get signature part from here
+        let signature = SignatureComponents {
+            standard_v: tx_rlp.val_at(9)?,
+            r: tx_rlp.val_at(10)?,
+            s: tx_rlp.val_at(11)?,
+        };
+
+        // and here we create UnverifiedTransaction and calculate its hash
+        Ok(UnverifiedTransaction::new(
+            TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                transaction: AccessListTx::new(tx, accl),
+                max_priority_fee_per_gas,
+            }),
+            chain_id,
+            signature,
+            H256::zero(),
+        )
+        .compute_hash())
+    }
+
+    fn encode_payload(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> RlpStream {
+        let mut stream = RlpStream::new();
+
+        let list_size = if signature.is_some() { 12 } else { 9 };
+        stream.begin_list(list_size);
+
+        // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
+        stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
+
+        stream.append(&self.tx().nonce);
+        stream.append(&self.max_priority_fee_per_gas);
+        stream.append(&self.tx().gas_price);
+        stream.append(&self.tx().gas);
+        stream.append(&self.tx().action);
+        stream.append(&self.tx().value);
+        stream.append(&self.tx().data);
+
+        // access list
+        stream.begin_list(self.transaction.access_list.len());
+        for access in self.transaction.access_list.iter() {
+            stream.begin_list(2);
+            stream.append(&access.0);
+            stream.begin_list(access.1.len());
+            for storage_key in access.1.iter() {
+                stream.append(storage_key);
+            }
+        }
+
+        // append signature if any
+        if let Some(signature) = signature {
+            signature.rlp_append(&mut stream);
+        }
+        stream
+    }
+
+    // encode by this payload spec: 0x02 | rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn encode(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> Vec<u8> {
+        let stream = self.encode_payload(chain_id, signature);
+        // make as vector of bytes
+        [&[TypedTxId::EIP1559Transaction as u8], stream.as_raw()].concat()
+    }
+
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        rlp.append(&self.encode(chain_id, Some(signature)));
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub enum TypedTransaction {
-    Legacy(Transaction), // old legacy RLP encoded transaction
+    Legacy(Transaction),      // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
-                              // Accesses outside the list are possible, but become more expensive.
+    // Accesses outside the list are possible, but become more expensive.
+    EIP1559Transaction(EIP1559TransactionTx),
 }
 
 impl TypedTransaction {
@@ -376,6 +514,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,
             Self::AccessList(_) => TypedTxId::AccessList,
+            Self::EIP1559Transaction(_) => TypedTxId::EIP1559Transaction,
         }
     }
 
@@ -384,6 +523,7 @@ impl TypedTransaction {
         keccak(match self {
             Self::Legacy(tx) => tx.encode(chain_id, None),
             Self::AccessList(tx) => tx.encode(chain_id, None),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, None),
         })
     }
 
@@ -472,6 +612,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx(),
+            Self::EIP1559Transaction(tx) => tx.tx(),
         }
     }
 
@@ -479,6 +620,34 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx_mut(),
+            Self::EIP1559Transaction(tx) => tx.tx_mut(),
+        }
+    }
+
+    pub fn access_list(&self) -> Option<&AccessList> {
+        match self {
+            Self::EIP1559Transaction(tx) => Some(&tx.transaction.access_list),
+            Self::AccessList(tx) => Some(&tx.access_list),
+            Self::Legacy(_) => None,
+        }
+    }
+
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match self {
+            Self::EIP1559Transaction(tx) => min(
+                self.tx().gas_price,
+                tx.max_priority_fee_per_gas + block_base_fee.unwrap_or_default(),
+            ),
+            Self::AccessList(_) => self.tx().gas_price,
+            Self::Legacy(_) => self.tx().gas_price,
+        }
+    }
+
+    pub fn max_priority_fee_per_gas(&self) -> U256 {
+        match self {
+            Self::EIP1559Transaction(tx) => tx.max_priority_fee_per_gas,
+            Self::AccessList(tx) => tx.tx().gas_price,
+            Self::Legacy(tx) => tx.gas_price,
         }
     }
 
@@ -493,6 +662,7 @@ impl TypedTransaction {
         }
         // other transaction types
         match id.unwrap() {
+            TypedTxId::EIP1559Transaction => EIP1559TransactionTx::decode(&tx[1..]),
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
             TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
         }
@@ -543,6 +713,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.rlp_append(s, chain_id, signature),
             Self::AccessList(opt) => opt.rlp_append(s, chain_id, signature),
+            Self::EIP1559Transaction(tx) => tx.rlp_append(s, chain_id, signature),
         }
     }
 
@@ -558,6 +729,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.encode(chain_id, signature),
             Self::AccessList(opt) => opt.encode(chain_id, signature),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, signature),
         }
     }
 }
@@ -990,8 +1162,6 @@ mod tests {
         })
         .null_sign(1);
 
-        println!("transaction {:?}", t);
-
         let res = SignedTransaction::new(t.transaction);
         match res {
             Err(publickey::Error::InvalidSignature) => {}
@@ -1048,7 +1218,49 @@ mod tests {
     }
 
     #[test]
+    fn should_encode_decode_eip1559_tx() {
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    nonce: U256::from(42),
+                    gas_price: U256::from(3000),
+                    gas: U256::from(50_000),
+                    value: U256::from(1),
+                    data: b"Hello!".to_vec(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: U256::from(100),
+        })
+        .sign(&key.secret(), Some(69));
+        let encoded = t.encode();
+
+        let t_new =
+            TypedTransaction::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
+        if t_new.unsigned != t.unsigned {
+            assert!(true, "encoded/decoded tx differs from original");
+        }
+    }
+
+    #[test]
     fn should_decode_access_list_in_rlp() {
+        use rustc_hex::FromHex;
+        let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
+        let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
+            .expect("decoding tx data failed");
+    }
+
+    #[test]
+    fn should_decode_eip1559_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
         let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
@@ -1096,7 +1308,6 @@ mod tests {
                 .expect("decoding tx data failed");
             let signed = SignedTransaction::new(signed).unwrap();
             assert_eq!(signed.sender(), H160::from_str(address).unwrap());
-            println!("chainid: {:?}", signed.chain_id());
         };
 
         test_vector("f864808504a817c800825208943535353535353535353535353535353535353535808025a0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116da0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d", "f0f6f18bca1b28cd68e4357452947e021241e9ce");

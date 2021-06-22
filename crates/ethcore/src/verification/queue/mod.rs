@@ -876,7 +876,7 @@ mod tests {
     use io::*;
     use spec::Spec;
     use test_helpers::{get_good_dummy_block, get_good_dummy_block_seq};
-    use types::{view, views::BlockView};
+    use types::{view, views::BlockView, BlockNumber};
 
     // create a test block queue.
     // auto_scaling enables verifier adjustment.
@@ -897,7 +897,7 @@ mod tests {
     }
 
     fn new_unverified(bytes: Bytes) -> Unverified {
-        Unverified::from_rlp(bytes).expect("Should be valid rlp")
+        Unverified::from_rlp(bytes, BlockNumber::max_value()).expect("Should be valid rlp")
     }
 
     #[test]
@@ -941,7 +941,10 @@ mod tests {
     fn returns_total_difficulty() {
         let queue = get_test_queue(false);
         let block = get_good_dummy_block();
-        let hash = view!(BlockView, &block).header().hash().clone();
+        let hash = view!(BlockView, &block)
+            .header(BlockNumber::max_value())
+            .hash()
+            .clone();
         if let Err(e) = queue.import(new_unverified(block)) {
             panic!("error importing block that is valid by definition({:?})", e);
         }
@@ -957,7 +960,10 @@ mod tests {
     fn returns_ok_for_drained_duplicates() {
         let queue = get_test_queue(false);
         let block = get_good_dummy_block();
-        let hash = view!(BlockView, &block).header().hash().clone();
+        let hash = view!(BlockView, &block)
+            .header(BlockNumber::max_value())
+            .hash()
+            .clone();
         if let Err(e) = queue.import(new_unverified(block)) {
             panic!("error importing block that is valid by definition({:?})", e);
         }

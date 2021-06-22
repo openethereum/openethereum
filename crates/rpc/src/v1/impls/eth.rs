@@ -259,6 +259,7 @@ where
         match (block, difficulty) {
             (Some(block), Some(total_difficulty)) => {
                 let view = block.header_view();
+                let eip1559_enabled = client.engine().schedule(view.number()).eip1559;
                 Ok(Some(RichBlock {
                     inner: Block {
                         hash: match is_pending {
@@ -286,7 +287,18 @@ where
                         timestamp: view.timestamp().into(),
                         difficulty: view.difficulty(),
                         total_difficulty: Some(total_difficulty),
-                        seal_fields: view.seal().into_iter().map(Into::into).collect(),
+                        seal_fields: view
+                            .seal(eip1559_enabled)
+                            .into_iter()
+                            .map(Into::into)
+                            .collect(),
+                        base_fee_per_gas: {
+                            if eip1559_enabled {
+                                Some(view.base_fee())
+                            } else {
+                                None
+                            }
+                        },
                         uncles: block.uncle_hashes(),
                         transactions: match include_txs {
                             true => BlockTransactions::Full(
@@ -408,7 +420,8 @@ where
                 };
 
                 let uncle = match client.uncle(uncle_id) {
-                    Some(hdr) => match hdr.decode() {
+                    Some(hdr) => match hdr.decode(self.client.engine().params().eip1559_transition)
+                    {
                         Ok(h) => h,
                         Err(e) => return Err(errors::decode(e)),
                     },
@@ -456,6 +469,7 @@ where
                 receipts_root: *uncle.receipts_root(),
                 extra_data: uncle.extra_data().clone().into(),
                 seal_fields: uncle.seal().iter().cloned().map(Into::into).collect(),
+                base_fee_per_gas: uncle.base_fee(),
                 uncles: vec![],
                 transactions: BlockTransactions::Hashes(vec![]),
             },
@@ -1125,7 +1139,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
 
             (state, header)
         };
@@ -1166,7 +1182,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
             (state, header)
         };
 

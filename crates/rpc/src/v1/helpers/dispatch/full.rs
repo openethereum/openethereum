@@ -125,9 +125,10 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             used_default_from: request.from.is_none(),
             to: request.to,
             nonce,
-            gas_price: request.gas_price.unwrap_or_else(|| {
+            gas_price: Some(request.gas_price.unwrap_or_else(|| {
                 default_gas_price(&*self.client, &*self.miner, self.gas_price_percentile)
-            }),
+            })),
+            max_fee_per_gas: request.max_fee_per_gas,
             gas: request
                 .gas
                 .unwrap_or_else(|| self.miner.sensible_gas_limit()),
@@ -135,6 +136,7 @@ impl<C: miner::BlockChainClient + BlockChainClient, M: MinerService> Dispatcher
             data: request.data.unwrap_or_else(Vec::new),
             condition: request.condition,
             access_list: request.access_list,
+            max_priority_fee_per_gas: request.max_priority_fee_per_gas,
         }))
     }
 

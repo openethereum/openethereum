@@ -1,0 +1,21 @@
+# Copyright 2021 Gnosis Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "txpool"
+version = "1.0.0-alpha"
+authors = ["Dragan Rakita <dragan0rakita@gmail.com","Karim Agha <karim.agha@gnosis.io>"]
+edition = "2018"
+description = "Generic transaction pool."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies.log]
+version = "0.4"
+
+[dependencies.smallvec]
+version = "0.6"
+
+[dependencies.trace-time]
+version = "0.1"
+[dev-dependencies.ethereum-types]
+version = "0.7"

@@ -153,8 +153,9 @@ pub trait BlockProvider {
 
     /// Get a list of uncles for a given block.
     /// Returns None if block does not exist.
-    fn uncles(&self, hash: &H256) -> Option<Vec<Header>> {
-        self.block_body(hash).map(|body| body.uncles())
+    fn uncles(&self, hash: &H256, eip1559_transition: BlockNumber) -> Option<Vec<Header>> {
+        self.block_body(hash)
+            .map(|body| body.uncles(eip1559_transition))
     }
 
     /// Get a list of uncle hashes for a given block.
@@ -272,6 +273,9 @@ pub struct BlockChain {
     pending_block_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_block_details: RwLock<HashMap<H256, BlockDetails>>,
     pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
+
+    /// Number of first block where EIP-1559 rules begin. New encoding/decoding block format.
+    pub eip1559_transition: BlockNumber,
 }
 
 impl BlockProvider for BlockChain {
@@ -559,7 +563,7 @@ impl<'a> Iterator for AncestryWithMetadataIter<'a> {
         } else {
             let details = self.chain.block_details(&self.current);
             let header = self.chain.block_header_data(&self.current).map(|h| {
-                h.decode()
+                h.decode(self.chain.eip1559_transition)
                     .expect("Stored block header data is valid RLP; qed")
             });
 
@@ -630,7 +634,12 @@ impl<'a> Iterator for EpochTransitionIter<'a> {
 
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(config: Config, genesis: &[u8], db: Arc<dyn BlockChainDB>) -> BlockChain {
+    pub fn new(
+        config: Config,
+        genesis: &[u8],
+        db: Arc<dyn BlockChainDB>,
+        eip1559_transition: BlockNumber,
+    ) -> BlockChain {
         // 400 is the average size of the key
         let cache_man = CacheManager::new(config.pref_cache_size, config.max_cache_size, 400);
 
@@ -656,6 +665,7 @@ impl BlockChain {
             pending_block_hashes: RwLock::new(HashMap::new()),
             pending_block_details: RwLock::new(HashMap::new()),
             pending_transaction_addresses: RwLock::new(HashMap::new()),
+            eip1559_transition,
         };
 
         // load best block
@@ -715,7 +725,7 @@ impl BlockChain {
             let mut best_block = bc.best_block.write();
             *best_block = BestBlock {
                 total_difficulty: best_block_total_difficulty,
-                header: best_block_rlp.decode_header(),
+                header: best_block_rlp.decode_header(eip1559_transition),
                 block: best_block_rlp,
             };
         }
@@ -1044,7 +1054,7 @@ impl BlockChain {
         let mut best_block = self.best_block.write();
         *best_block = BestBlock {
             total_difficulty: best_block_total_difficulty,
-            header: best_block_rlp.decode_header(),
+            header: best_block_rlp.decode_header(self.eip1559_transition),
             block: best_block_rlp,
         };
     }
@@ -1463,7 +1473,7 @@ impl BlockChain {
                 batch.put(db::COL_EXTRA, b"best", update.info.hash.as_bytes());
                 *best_block = Some(BestBlock {
                     total_difficulty: update.info.total_difficulty,
-                    header: update.block.decode_header(),
+                    header: update.block.decode_header(self.eip1559_transition),
                     block: update.block,
                 });
             }
@@ -1991,8 +2001,12 @@ mod tests {
         Arc::new(db)
     }
 
-    fn new_chain(genesis: encoded::Block, db: Arc<dyn BlockChainDB>) -> BlockChain {
-        BlockChain::new(Config::default(), genesis.raw(), db)
+    fn new_chain(
+        genesis: encoded::Block,
+        db: Arc<dyn BlockChainDB>,
+        eip1559_transition: BlockNumber,
+    ) -> BlockChain {
+        BlockChain::new(Config::default(), genesis.raw(), db, eip1559_transition)
     }
 
     fn insert_block(
@@ -2058,7 +2072,11 @@ mod tests {
         let first = genesis.add_block();
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
         assert_eq!(bc.best_block_number(), 0);
 
         // when
@@ -2086,7 +2104,7 @@ mod tests {
         let first_hash = first.hash();
 
         let db = new_db();
-        let bc = new_chain(genesis.encoded(), db.clone());
+        let bc = new_chain(genesis.encoded(), db.clone(), BlockNumber::max_value());
 
         assert_eq!(bc.genesis_hash(), genesis_hash);
         assert_eq!(bc.best_block_hash(), genesis_hash);
@@ -2118,7 +2136,11 @@ mod tests {
         let generator = BlockGenerator::new(vec![first_10]);
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let mut block_hashes = vec![genesis.last().hash()];
         let mut batch = db.key_value().transaction();
@@ -2165,7 +2187,11 @@ mod tests {
         let generator = BlockGenerator::new(vec![b1a, b1b, b2a, b2b, b3a, b3b, b4a, b4b, b5a, b5b]);
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         for b in generator {
             insert_block(&db, &bc, b.encoded(), vec![]);
@@ -2204,7 +2230,11 @@ mod tests {
         let b2_hash = b2.last().hash();
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let mut batch = db.key_value().transaction();
         let _ = insert_block_batch(&mut batch, &bc, b1a.last().encoded(), vec![]);
@@ -2291,7 +2321,11 @@ mod tests {
         let t3_hash = t3.hash();
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let mut batch = db.key_value().transaction();
         let _ = insert_block_batch(&mut batch, &bc, b1a.last().encoded(), vec![]);
@@ -2364,7 +2398,11 @@ mod tests {
         let best_block_hash = b3a_hash;
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let mut batch = db.key_value().transaction();
         let ir1 = insert_block_batch(&mut batch, &bc, b1.last().encoded(), vec![]);
@@ -2490,7 +2528,11 @@ mod tests {
         let db = new_db();
 
         {
-            let bc = new_chain(genesis.last().encoded(), db.clone());
+            let bc = new_chain(
+                genesis.last().encoded(),
+                db.clone(),
+                BlockNumber::max_value(),
+            );
             assert_eq!(bc.best_block_hash(), genesis_hash);
             let mut batch = db.key_value().transaction();
             insert_block_batch(&mut batch, &bc, first.last().encoded(), vec![]);
@@ -2500,7 +2542,11 @@ mod tests {
         }
 
         {
-            let bc = new_chain(genesis.last().encoded(), db.clone());
+            let bc = new_chain(
+                genesis.last().encoded(),
+                db.clone(),
+                BlockNumber::max_value(),
+            );
 
             assert_eq!(bc.best_block_hash(), first_hash);
         }
@@ -2515,7 +2561,11 @@ mod tests {
                 .unwrap();
 
         let db = new_db();
-        let bc = new_chain(encoded::Block::new(genesis), db.clone());
+        let bc = new_chain(
+            encoded::Block::new(genesis),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
         let mut batch = db.key_value().transaction();
         insert_block_batch(&mut batch, &bc, encoded::Block::new(b1), vec![]);
         db.key_value().write(batch).unwrap();
@@ -2599,7 +2649,11 @@ mod tests {
         let b3_number = b3.last().number();
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
         insert_block(
             &db,
             &bc,
@@ -2783,7 +2837,11 @@ mod tests {
         let b2a = b1a.add_block_with_bloom(bloom_ba);
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let blocks_b1 = bc.blocks_with_bloom(Some(&bloom_b1), 0, 5);
         let blocks_b2 = bc.blocks_with_bloom(Some(&bloom_b2), 0, 5);
@@ -2845,7 +2903,11 @@ mod tests {
         let b1_total_difficulty = genesis.last().difficulty() + b1.last().difficulty();
 
         let db = new_db();
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
         let mut batch = db.key_value().transaction();
         bc.insert_unordered_block(
             &mut batch,
@@ -2885,7 +2947,11 @@ mod tests {
 
         let db = new_db();
         {
-            let bc = new_chain(genesis.last().encoded(), db.clone());
+            let bc = new_chain(
+                genesis.last().encoded(),
+                db.clone(),
+                BlockNumber::max_value(),
+            );
 
             let mut batch = db.key_value().transaction();
             // create a longer fork
@@ -2901,7 +2967,7 @@ mod tests {
         }
 
         // re-loading the blockchain should load the correct best block.
-        let bc = new_chain(genesis.last().encoded(), db);
+        let bc = new_chain(genesis.last().encoded(), db, BlockNumber::max_value());
         assert_eq!(bc.best_block_number(), 5);
     }
 
@@ -2916,7 +2982,11 @@ mod tests {
 
         let db = new_db();
         {
-            let bc = new_chain(genesis.last().encoded(), db.clone());
+            let bc = new_chain(
+                genesis.last().encoded(),
+                db.clone(),
+                BlockNumber::max_value(),
+            );
 
             let mut batch = db.key_value().transaction();
             // create a longer fork
@@ -2958,7 +3028,7 @@ mod tests {
         }
 
         // re-loading the blockchain should load the correct best block.
-        let bc = new_chain(genesis.last().encoded(), db);
+        let bc = new_chain(genesis.last().encoded(), db, BlockNumber::max_value());
 
         assert_eq!(bc.best_block_number(), 5);
         assert_eq!(
@@ -2982,7 +3052,11 @@ mod tests {
 
         let db = new_db();
 
-        let bc = new_chain(genesis.last().encoded(), db.clone());
+        let bc = new_chain(
+            genesis.last().encoded(),
+            db.clone(),
+            BlockNumber::max_value(),
+        );
 
         let mut batch = db.key_value().transaction();
         bc.insert_epoch_transition(
@@ -3067,7 +3141,11 @@ mod tests {
 
         let bootstrap_chain = |blocks: Vec<&BlockBuilder>| {
             let db = new_db();
-            let bc = new_chain(genesis.last().encoded(), db.clone());
+            let bc = new_chain(
+                genesis.last().encoded(),
+                db.clone(),
+                BlockNumber::max_value(),
+            );
             let mut batch = db.key_value().transaction();
             for block in blocks {
                 insert_block_batch(&mut batch, &bc, block.last().encoded(), vec![]);

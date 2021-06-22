@@ -16,7 +16,8 @@
 
 use std::cmp::min;
 use types::transaction::{
-    AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction, TypedTxId,
+    AccessListTx, Action, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,
+    TypedTxId,
 };
 
 use ethereum_types::U256;
@@ -27,7 +28,7 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
     let max_gas = U256::from(500_000_000);
     let gas = min(request.gas.unwrap_or(max_gas), max_gas);
     let from = request.from.unwrap_or_default();
-    let tx_legacy = Transaction {
+    let mut tx_legacy = Transaction {
         nonce: request.nonce.unwrap_or_default(),
         action: request.to.map_or(Action::Create, Action::Call),
         gas,
@@ -50,6 +51,31 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
                     .map(Into::into)
                     .collect(),
             ))
+        }
+        Some(TypedTxId::EIP1559Transaction) => {
+            if let Some(max_fee_per_gas) = request.max_fee_per_gas {
+                tx_legacy.gas_price = max_fee_per_gas;
+            } else {
+                return Err(Error::new(ErrorCode::InvalidParams));
+            }
+
+            if let Some(max_priority_fee_per_gas) = request.max_priority_fee_per_gas {
+                let transaction = AccessListTx::new(
+                    tx_legacy,
+                    request
+                        .access_list
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                );
+                TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                    transaction,
+                    max_priority_fee_per_gas,
+                })
+            } else {
+                return Err(Error::new(ErrorCode::InvalidParams));
+            }
         }
         _ => return Err(Error::new(ErrorCode::InvalidParams)),
     };

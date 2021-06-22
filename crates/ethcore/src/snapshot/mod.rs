@@ -273,6 +273,7 @@ pub fn chunk_secondary<'a>(
             &mut chunk_sink,
             progress,
             PREFERRED_CHUNK_SIZE,
+            chain.eip1559_transition,
         )?;
     }
 
@@ -621,7 +622,8 @@ pub fn verify_old_block(
     if always || rng.gen::<f32>() <= POW_VERIFY_RATE {
         engine.verify_block_unordered(header)?;
         match chain.block_header_data(header.parent_hash()) {
-            Some(parent) => engine.verify_block_family(header, &parent.decode()?),
+            Some(parent) => engine
+                .verify_block_family(header, &parent.decode(engine.params().eip1559_transition)?),
             None => Ok(()),
         }
     } else {

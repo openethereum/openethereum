@@ -118,7 +118,7 @@ impl From<RichReceipt> for Receipt {
 impl From<TypedReceipt> for Receipt {
     fn from(r: TypedReceipt) -> Self {
         let transaction_type = r.tx_type().to_U64_option_id();
-        let r = r.receipt().clone();
+        let legacy_receipt = r.receipt().clone();
         Receipt {
             from: None,
             to: None,
@@ -127,13 +127,13 @@ impl From<TypedReceipt> for Receipt {
             transaction_index: None,
             block_hash: None,
             block_number: None,
-            cumulative_gas_used: r.gas_used,
+            cumulative_gas_used: legacy_receipt.gas_used,
             gas_used: None,
             contract_address: None,
-            logs: r.logs.into_iter().map(Into::into).collect(),
-            status_code: Self::outcome_to_status_code(&r.outcome),
-            state_root: Self::outcome_to_state_root(r.outcome),
-            logs_bloom: r.log_bloom,
+            logs: legacy_receipt.logs.into_iter().map(Into::into).collect(),
+            status_code: Self::outcome_to_status_code(&legacy_receipt.outcome),
+            state_root: Self::outcome_to_state_root(legacy_receipt.outcome),
+            logs_bloom: legacy_receipt.log_bloom,
         }
     }
 }

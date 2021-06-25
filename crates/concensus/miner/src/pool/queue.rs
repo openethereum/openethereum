@@ -656,7 +656,9 @@ impl TransactionQueue {
     /// Returns gas price of currently the worst transaction in the pool.
     pub fn current_worst_gas_price(&self) -> U256 {
         match self.pool.read().worst_transaction() {
-            Some(tx) => tx.signed().tx().gas_price,
+            Some(tx) => tx
+                .signed()
+                .effective_gas_price(self.options.read().block_base_fee),
             None => self.options.read().minimal_gas_price,
         }
     }

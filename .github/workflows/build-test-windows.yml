@@ -13,7 +13,7 @@ jobs:
         platform:
           - windows2019 # custom runner
         toolchain:
-          - stable
+          - 1.52.1
     runs-on:                    ${{ matrix.platform }}
     steps:
       - name:                   Checkout sources

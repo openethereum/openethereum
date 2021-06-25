@@ -55,6 +55,9 @@ pub struct Receipt {
     // NOTE(niklasad1): Unknown after EIP98 rules, if it's missing then skip serializing it
     #[serde(skip_serializing_if = "Option::is_none", rename = "status")]
     pub status_code: Option<U64>,
+    /// Effective gas price
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_gas_price: Option<U256>,
 }
 
 impl Receipt {
@@ -90,6 +93,7 @@ impl From<LocalizedReceipt> for Receipt {
             status_code: Self::outcome_to_status_code(&r.outcome),
             state_root: Self::outcome_to_state_root(r.outcome),
             logs_bloom: r.log_bloom,
+            effective_gas_price: r.effective_gas_price,
         }
     }
 }
@@ -111,6 +115,7 @@ impl From<RichReceipt> for Receipt {
             status_code: Self::outcome_to_status_code(&r.outcome),
             state_root: Self::outcome_to_state_root(r.outcome),
             logs_bloom: r.log_bloom,
+            effective_gas_price: r.effective_gas_price,
         }
     }
 }
@@ -134,6 +139,7 @@ impl From<TypedReceipt> for Receipt {
             status_code: Self::outcome_to_status_code(&legacy_receipt.outcome),
             state_root: Self::outcome_to_state_root(legacy_receipt.outcome),
             logs_bloom: legacy_receipt.log_bloom,
+            effective_gas_price: None,
         }
     }
 }
@@ -191,6 +197,7 @@ mod tests {
             logs_bloom: Bloom::from_low_u64_be(15),
             state_root: Some(H256::from_low_u64_be(10)),
             status_code: Some(1u64.into()),
+            effective_gas_price: None,
         };
 
         let serialized = serde_json::to_string(&receipt).unwrap();

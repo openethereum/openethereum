@@ -561,6 +561,7 @@ fn rpc_parity_block_receipts() {
             outcome: TransactionOutcome::Unknown,
             to: None,
             from: Address::from_low_u64_be(9),
+            effective_gas_price: None,
         },
     );
     let io = deps.default_client();

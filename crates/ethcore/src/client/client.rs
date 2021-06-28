@@ -2392,6 +2392,7 @@ impl BlockChainClient for Client {
         let chain = self.chain.read();
         let number = chain.block_number(&hash)?;
         let body = chain.block_body(&hash)?;
+        let header = chain.block_header_data(&hash)?;
         let mut receipts = chain.block_receipts(&hash)?.receipts;
         receipts.truncate(address.index + 1);
 
@@ -2404,6 +2405,11 @@ impl BlockChainClient for Client {
             .into_iter()
             .map(|receipt| receipt.logs.len())
             .sum::<usize>();
+        let base_fee = if number >= self.engine().params().eip1559_transition {
+            Some(header.base_fee())
+        } else {
+            None
+        };
 
         let receipt = transaction_receipt(
             self.engine().machine(),
@@ -2411,6 +2417,7 @@ impl BlockChainClient for Client {
             receipt,
             gas_used,
             no_of_logs,
+            base_fee,
         );
         Some(receipt)
     }
@@ -2422,7 +2429,13 @@ impl BlockChainClient for Client {
         let receipts = chain.block_receipts(&hash)?;
         let number = chain.block_number(&hash)?;
         let body = chain.block_body(&hash)?;
+        let header = chain.block_header_data(&hash)?;
         let engine = self.engine.clone();
+        let base_fee = if number >= engine.params().eip1559_transition {
+            Some(header.base_fee())
+        } else {
+            None
+        };
 
         let mut gas_used = 0.into();
         let mut no_of_logs = 0;
@@ -2439,6 +2452,7 @@ impl BlockChainClient for Client {
                         receipt,
                         gas_used,
                         no_of_logs,
+                        base_fee,
                     );
                     gas_used = result.cumulative_gas_used;
                     no_of_logs += result.logs.len();
@@ -3264,6 +3278,7 @@ fn transaction_receipt(
     receipt: TypedReceipt,
     prior_gas_used: U256,
     prior_no_of_logs: usize,
+    base_fee: Option<U256>,
 ) -> LocalizedReceipt {
     let sender = tx.sender();
     let transaction_hash = tx.hash();
@@ -3315,6 +3330,10 @@ fn transaction_receipt(
             .collect(),
         log_bloom: receipt.log_bloom,
         outcome: receipt.outcome.clone(),
+        effective_gas_price: match base_fee {
+            Some(_) => Some(tx.effective_gas_price(base_fee)),
+            None => None,
+        },
     }
 }
 
@@ -3643,7 +3662,7 @@ mod tests {
         });
 
         // when
-        let receipt = transaction_receipt(&machine, transaction, receipt, 5.into(), 1);
+        let receipt = transaction_receipt(&machine, transaction, receipt, 5.into(), 1, None);
 
         // then
         assert_eq!(
@@ -3684,6 +3703,7 @@ mod tests {
                 ],
                 log_bloom: Default::default(),
                 outcome: TransactionOutcome::StateRoot(state_root),
+                effective_gas_price: None,
             }
         );
     }

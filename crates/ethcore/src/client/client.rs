@@ -2020,7 +2020,11 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
-                base_fee: header.base_fee(),
+                base_fee: if t.effective_gas_price(header.base_fee()) == 0.into() {
+                    Some(0.into())
+                } else {
+                    header.base_fee()
+                },
             };
 
             (init, max, env_info)

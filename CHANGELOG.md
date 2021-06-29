@@ -1,3 +1,10 @@
+## OpenEthereum v3.3.0-rc.3
+
+Bug fixes:
+* Add effective_gas_price to eth_getTransactionReceipt #445 (#450)
+* Update eth_gasPrice to support EIP-1559 #449 (#458)
+* eth_estimateGas returns "Requires higher than upper limit of X" after London Ropsten Hard Fork #459 (#460)
+
 ## OpenEthereum v3.3.0-rc.2
 
 Enhancements:

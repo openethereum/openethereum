@@ -1954,7 +1954,12 @@ impl Call for Client {
             last_hashes: self.build_last_hashes(header.parent_hash()),
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
-            base_fee: header.base_fee(),
+            //if gas pricing is not defined, force base_fee to zero
+            base_fee: if transaction.effective_gas_price(header.base_fee()) == 0.into() {
+                Some(0.into())
+            } else {
+                header.base_fee()
+            },
         };
         let machine = self.engine.machine();
 
@@ -1982,6 +1987,13 @@ impl Call for Client {
         let machine = self.engine.machine();
 
         for &(ref t, analytics) in transactions {
+            //if gas pricing is not defined, force base_fee to zero
+            if t.effective_gas_price(header.base_fee()) == 0.into() {
+                env_info.base_fee = Some(0.into());
+            } else {
+                env_info.base_fee = header.base_fee()
+            }
+
             let ret = Self::do_virtual_call(machine, &env_info, state, t, analytics)?;
             env_info.gas_used = ret.cumulative_gas_used;
             results.push(ret);
@@ -2008,7 +2020,11 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
-                base_fee: header.base_fee(),
+                base_fee: if t.effective_gas_price(header.base_fee()) == 0.into() {
+                    Some(0.into())
+                } else {
+                    header.base_fee()
+                },
             };
 
             (init, max, env_info)

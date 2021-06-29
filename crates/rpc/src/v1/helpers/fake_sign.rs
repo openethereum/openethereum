@@ -53,29 +53,22 @@ pub fn sign_call(request: CallRequest) -> Result<SignedTransaction, Error> {
             ))
         }
         Some(TypedTxId::EIP1559Transaction) => {
-            if let Some(max_fee_per_gas) = request.max_fee_per_gas {
-                tx_legacy.gas_price = max_fee_per_gas;
-            } else {
-                return Err(Error::new(ErrorCode::InvalidParams));
-            }
+            tx_legacy.gas_price = request.max_fee_per_gas.unwrap_or_default();
 
-            if let Some(max_priority_fee_per_gas) = request.max_priority_fee_per_gas {
-                let transaction = AccessListTx::new(
-                    tx_legacy,
-                    request
-                        .access_list
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(Into::into)
-                        .collect(),
-                );
-                TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
-                    transaction,
-                    max_priority_fee_per_gas,
-                })
-            } else {
-                return Err(Error::new(ErrorCode::InvalidParams));
-            }
+            let transaction = AccessListTx::new(
+                tx_legacy,
+                request
+                    .access_list
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            );
+
+            TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                transaction,
+                max_priority_fee_per_gas: request.max_priority_fee_per_gas.unwrap_or_default(),
+            })
         }
         _ => return Err(Error::new(ErrorCode::InvalidParams)),
     };

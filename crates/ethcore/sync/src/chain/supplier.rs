@@ -31,15 +31,15 @@ use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
 
-use super::request_id::{RequestId, prepend_request_id, strip_request_id};
+use super::request_id::{prepend_request_id, strip_request_id, RequestId};
 use super::sync_packet::{PacketInfo, SyncPacket, SyncPacket::*};
 
 use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
-use std::borrow::Borrow;
 use block_sync::BlockDownloaderImportError;
+use std::borrow::Borrow;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
 pub struct SyncSupplier;
@@ -93,7 +93,7 @@ impl SyncSupplier {
                         peer,
                         request_id,
                         SyncSupplier::return_receipts,
-                        |e| format!("Error sending receipts: {:?}", e) ,
+                        |e| format!("Error sending receipts: {:?}", e),
                     ),
 
                     GetSnapshotManifestPacket => SyncSupplier::return_rlp(
@@ -146,7 +146,7 @@ impl SyncSupplier {
                         Ok(())
                     }
                 },
-                Err(e) => Err(e.into())
+                Err(e) => Err(e.into()),
             };
 
             match result {
@@ -189,8 +189,8 @@ impl SyncSupplier {
                     _ => {
                         debug!(target: "sync", "Unexpected packet {} was dispatched for delayed processing", packet_id);
                         Ok(())
-                    },
-                }
+                    }
+                },
                 Err(e) => Err(e.into()),
             };
 

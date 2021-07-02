@@ -90,10 +90,10 @@
 pub mod fork_filter;
 mod handler;
 mod propagator;
+pub mod request_id;
 mod requester;
 mod supplier;
 pub mod sync_packet;
-pub mod request_id;
 
 pub use self::fork_filter::ForkFilterApi;
 use super::{SyncConfig, WarpSync};

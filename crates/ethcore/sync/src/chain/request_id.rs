@@ -1,9 +1,9 @@
 use bytes::Bytes;
-use chain::sync_packet::{SyncPacket, PacketInfo};
+use chain::sync_packet::{PacketInfo, SyncPacket};
 use chain::ChainSync;
 use chain::PeerInfo;
 use network::PeerId;
-use rlp::{Rlp, DecoderError, RlpStream};
+use rlp::{DecoderError, Rlp, RlpStream};
 
 pub type RequestId = u64;
 
@@ -27,7 +27,7 @@ pub fn strip_request_id<'a>(
 
 fn do_strip_request_id<'a>(
     data: &'a [u8],
-    has_request_id: bool
+    has_request_id: bool,
 ) -> Result<(Rlp<'a>, Option<RequestId>), DecoderError> {
     let rlp = Rlp::new(data);
 
@@ -41,18 +41,15 @@ fn do_strip_request_id<'a>(
 }
 
 // Add a given eth/66 request id to a packet being built.
-pub fn prepend_request_id(
-    rlp: RlpStream,
-    request_id: Option<RequestId>
-)  -> RlpStream {
+pub fn prepend_request_id(rlp: RlpStream, request_id: Option<RequestId>) -> RlpStream {
     match request_id {
         Some(ref id) => {
             let mut stream = RlpStream::new_list(2);
             stream.append(id);
             stream.append_raw(&rlp.out(), 1);
             stream
-        },
-        None => rlp
+        }
+        None => rlp,
     }
 }
 
@@ -70,13 +67,13 @@ pub fn generate_request_id(
 }
 
 fn do_generate_request_id(packet: &Bytes) -> (Bytes, Option<RequestId>) {
-        let request_id: RequestId = rand::random();
+    let request_id: RequestId = rand::random();
 
-        let mut rlp = RlpStream::new_list(2);
-        rlp.append(&request_id);
-        rlp.append_raw(packet, 1);
+    let mut rlp = RlpStream::new_list(2);
+    rlp.append(&request_id);
+    rlp.append_raw(packet, 1);
 
-        (rlp.out(), Some(request_id))
+    (rlp.out(), Some(request_id))
 }
 
 #[cfg(test)]
@@ -96,7 +93,10 @@ mod tests {
         let recovered_request: Vec<H256> = rlp.at(1).unwrap().as_list().unwrap();
 
         assert_eq!(recovered_id, 10);
-        assert_eq!(recovered_request, [H256::from_low_u64_be(1), H256::from_low_u64_be(2)]);
+        assert_eq!(
+            recovered_request,
+            [H256::from_low_u64_be(1), H256::from_low_u64_be(2)]
+        );
     }
 
     #[test]
@@ -140,5 +140,4 @@ mod tests {
         assert_eq!(recovered_id, id.unwrap());
         assert_eq!(recovered_request, request);
     }
-
 }

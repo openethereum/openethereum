@@ -27,7 +27,6 @@ use super::request_id::generate_request_id;
 use super::sync_packet::{SyncPacket::*, *};
 
 use super::{BlockSet, ChainSync, PeerAsking};
-use chain::PeerInfo;
 
 /// The Chain Sync Requester: requesting data to other peers
 pub struct SyncRequester;

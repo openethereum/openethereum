@@ -38,7 +38,6 @@ use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
-use block_sync::BlockDownloaderImportError;
 use std::borrow::Borrow;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
@@ -170,8 +169,6 @@ impl SyncSupplier {
         packet_id: u8,
         data: &[u8],
     ) {
-        let rlp = Rlp::new(data);
-
         if let Some(id) = SyncPacket::from_u8(packet_id) {
             let rlp_result = strip_request_id(data, sync.read().borrow(), &peer, &id);
 

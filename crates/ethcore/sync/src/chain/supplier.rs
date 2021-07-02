@@ -31,8 +31,10 @@ use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
 
-use super::request_id::{prepend_request_id, strip_request_id, RequestId};
-use super::sync_packet::{PacketInfo, SyncPacket, SyncPacket::*};
+use super::{
+    request_id::{prepend_request_id, strip_request_id, RequestId},
+    sync_packet::{PacketInfo, SyncPacket, SyncPacket::*},
+};
 
 use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,

@@ -1,7 +1,8 @@
 use bytes::Bytes;
-use chain::sync_packet::{PacketInfo, SyncPacket};
-use chain::ChainSync;
-use chain::PeerInfo;
+use chain::{
+    sync_packet::{PacketInfo, SyncPacket},
+    ChainSync, PeerInfo,
+};
 use network::PeerId;
 use rlp::{DecoderError, Rlp, RlpStream};
 

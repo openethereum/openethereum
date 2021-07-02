@@ -32,10 +32,12 @@ use std::{cmp, mem, time::Instant};
 use sync_io::SyncIo;
 use types::{block_status::BlockStatus, ids::BlockId, BlockNumber};
 
-use super::request_id::strip_request_id;
-use super::sync_packet::{
-    PacketInfo,
-    SyncPacket::{self, *},
+use super::{
+    request_id::strip_request_id,
+    sync_packet::{
+        PacketInfo,
+        SyncPacket::{self, *},
+    },
 };
 
 use super::{

@@ -23,8 +23,10 @@ use std::time::Instant;
 use sync_io::SyncIo;
 use types::BlockNumber;
 
-use super::request_id::generate_request_id;
-use super::sync_packet::{SyncPacket::*, *};
+use super::{
+    request_id::generate_request_id,
+    sync_packet::{SyncPacket::*, *},
+};
 
 use super::{BlockSet, ChainSync, PeerAsking};
 

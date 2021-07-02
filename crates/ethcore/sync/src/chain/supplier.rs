@@ -41,6 +41,7 @@ use super::{
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
 use std::borrow::Borrow;
+use chain::MAX_NODE_DATA_TO_SEND;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
 pub struct SyncSupplier;
@@ -349,8 +350,29 @@ impl SyncSupplier {
         Ok(Some((BlockBodiesPacket, rlp)))
     }
 
-    fn return_node_data(_io: &dyn SyncIo, _rlp: &Rlp, _peer_id: PeerId) -> RlpResponseResult {
-        let rlp = RlpStream::new_list(0);
+    fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
+        let count =  cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
+        if count == 0 {
+            debug!(target: "sync", "Empty GetNodeData request, ignoring.");
+            return Ok(None);
+        }
+
+        let mut data = Bytes::new();
+
+        let mut added = 0usize;
+        for i in 0..count {
+            if let Some(ref mut node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
+                data.append(node_data);
+                added += 1;
+                if data.len() > PAYLOAD_SOFT_LIMIT {
+                    break;
+                }
+            }
+        }
+
+        let mut rlp = RlpStream::new_list(added);
+        rlp.append_raw(&data, added);
+        trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
         Ok(Some((NodeDataPacket, rlp)))
     }
 

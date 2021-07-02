@@ -1078,6 +1078,10 @@ impl BlockChainClient for TestBlockChainClient {
     fn registrar_address(&self) -> Option<Address> {
         None
     }
+
+    fn state_data(&self, hash: &H256) -> Option<Bytes> {
+        None // TODO
+    }
 }
 
 impl IoClient for TestBlockChainClient {

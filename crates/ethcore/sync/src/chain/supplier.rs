@@ -88,6 +88,15 @@ impl SyncSupplier {
                         |e| format!("Error sending block headers: {:?}", e),
                     ),
 
+                    GetNodeDataPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_node_data,
+                        |e| format!("Error sending node data: {:?}", e),
+                    ),
+
                     GetReceiptsPacket => SyncSupplier::return_rlp(
                         io,
                         &rlp,
@@ -338,6 +347,11 @@ impl SyncSupplier {
         rlp.append_raw(&data, added);
         trace!(target: "sync", "{} -> GetBlockBodies: returned {} entries", peer_id, added);
         Ok(Some((BlockBodiesPacket, rlp)))
+    }
+
+    fn return_node_data(_io: &dyn SyncIo, _rlp: &Rlp, _peer_id: PeerId) -> RlpResponseResult {
+        let rlp = RlpStream::new_list(0);
+        Ok(Some((NodeDataPacket, rlp)))
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {

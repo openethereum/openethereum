@@ -1080,7 +1080,12 @@ impl BlockChainClient for TestBlockChainClient {
     }
 
     fn state_data(&self, hash: &H256) -> Option<Bytes> {
-        None // TODO
+        if *hash > H256::from("f000000000000000000000000000000000000000000000000000000000000000") {
+            let mut rlp = RlpStream::new();
+            rlp.append(&hash.clone());
+            return Some(rlp.out());
+        }
+        None
     }
 }
 

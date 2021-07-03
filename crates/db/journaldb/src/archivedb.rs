@@ -505,4 +505,22 @@ mod tests {
 
         assert!(jdb.get(&key).is_none());
     }
+
+    #[test]
+    fn returns_state() {
+        let shared_db = Arc::new(kvdb_memorydb::create(0));
+
+        let key = {
+            let mut jdb = ArchiveDB::new(shared_db.clone(), None);
+            let key = jdb.insert(b"foo");
+            jdb.commit_batch(0, &keccak(b"0"), None).unwrap();
+            key
+        };
+
+        {
+            let jdb = ArchiveDB::new(shared_db, None);
+            let state = jdb.state(&key);
+            assert!(state.is_some());
+        }
+    }
 }

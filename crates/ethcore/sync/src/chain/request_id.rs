@@ -8,20 +8,24 @@ use rlp::{DecoderError, Rlp, RlpStream};
 
 pub type RequestId = u64;
 
-// Seperate the eth/66 request id from a packet, if it exists.
+// Separate the eth/66 request id from a packet, if it exists.
 pub fn strip_request_id<'a>(
     data: &'a [u8],
     sync: &ChainSync,
     peer: &PeerId,
     packet_id: &SyncPacket,
 ) -> Result<(Rlp<'a>, Option<RequestId>), DecoderError> {
-    let has_request_id = match sync.peers.get(peer) {
-        Some(info) => info.protocol_version >= 66 && packet_id.has_request_id_in_eth_66(),
-        None => {
-            error!("Peer info for peer {} not found", peer);
-            false
-        }
+    let protocol_version = if let Some(peer_info) = sync.peers.get(peer) {
+        peer_info.protocol_version
+    } else {
+        trace!(
+            "Peer info missing for peer {}, assuming protocol version 66",
+            peer
+        );
+        66
     };
+
+    let has_request_id = protocol_version >= 66 && packet_id.has_request_id_in_eth_66();
 
     do_strip_request_id(data, has_request_id)
 }

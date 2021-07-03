@@ -764,20 +764,23 @@ mod test {
     fn return_nodes() {
         let mut client = TestBlockChainClient::new();
         let queue = RwLock::new(VecDeque::new());
-        let sync = dummy_sync_with_peer(H256::new(), &client);
+        let sync = dummy_sync_with_peer(H256::zero(), &client);
         let ss = TestSnapshotService::new();
         let mut io = TestIo::new(&mut client, &ss, &queue, None);
 
         let mut node_list = RlpStream::new_list(3);
-        node_list.append(&H256::from(
-            "0000000000000000000000000000000000000000000000005555555555555555",
-        ));
-        node_list.append(&H256::from(
-            "ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa",
-        ));
-        node_list.append(&H256::from(
-            "aff0000000000000000000000000000000000000000000000000000000000000",
-        ));
+        node_list.append(
+            &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
+                .unwrap()
+        );
+        node_list.append(
+            &H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa")
+                .unwrap()
+        );
+        node_list.append(
+            &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap()
+        );
 
         let node_request = node_list.out();
         // it returns rlp ONLY for hashes started with "f"

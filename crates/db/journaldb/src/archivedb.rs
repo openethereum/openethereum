@@ -231,6 +231,7 @@ mod tests {
     use hash_db::HashDB;
     use keccak::keccak;
     use JournalDB;
+    use ethcore_db::InMemoryWithMetrics;
 
     #[test]
     fn insert_same_in_fork() {
@@ -508,7 +509,7 @@ mod tests {
 
     #[test]
     fn returns_state() {
-        let shared_db = Arc::new(kvdb_memorydb::create(0));
+        let shared_db = Arc::new(InMemoryWithMetrics::create(0));
 
         let key = {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);

@@ -40,8 +40,8 @@ use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
-use std::borrow::Borrow;
 use chain::MAX_NODE_DATA_TO_SEND;
+use std::borrow::Borrow;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
 pub struct SyncSupplier;
@@ -351,7 +351,7 @@ impl SyncSupplier {
     }
 
     fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        let count =  cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
+        let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
         if count == 0 {
             debug!(target: "sync", "Empty GetNodeData request, ignoring.");
             return Ok(None);

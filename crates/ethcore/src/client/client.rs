@@ -2778,7 +2778,7 @@ impl BlockChainClient for Client {
     }
 
     fn state_data(&self, hash: &H256) -> Option<Bytes> {
-        None // TODO
+        self.state_db.read().journal_db().state(hash)
     }
 }
 

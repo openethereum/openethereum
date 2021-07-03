@@ -25,12 +25,14 @@ use std::{
 use super::{
     error_key_already_exists, error_negatively_reference_hash, memory_db::*, LATEST_ERA_KEY,
 };
+use bytes::Bytes;
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use rlp::{decode, encode};
 use traits::JournalDB;
+use DB_PREFIX_LEN;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -213,6 +215,12 @@ impl JournalDB for ArchiveDB {
 
     fn consolidate(&mut self, with: MemoryDB<KeccakHasher, DBValue>) {
         self.overlay.consolidate(with);
+    }
+
+    fn state(&self, id: &H256) -> Option<Bytes> {
+        self.backing
+            .get_by_prefix(self.column, &id[0..DB_PREFIX_LEN])
+            .map(|b| b.into_vec())
     }
 }
 

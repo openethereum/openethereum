@@ -228,10 +228,10 @@ impl JournalDB for ArchiveDB {
 mod tests {
 
     use super::*;
+    use ethcore_db::InMemoryWithMetrics;
     use hash_db::HashDB;
     use keccak::keccak;
     use JournalDB;
-    use ethcore_db::InMemoryWithMetrics;
 
     #[test]
     fn insert_same_in_fork() {

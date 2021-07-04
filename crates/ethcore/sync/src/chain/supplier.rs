@@ -771,15 +771,15 @@ mod test {
         let mut node_list = RlpStream::new_list(3);
         node_list.append(
             &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
-                .unwrap()
+                .unwrap(),
         );
         node_list.append(
             &H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa")
-                .unwrap()
+                .unwrap(),
         );
         node_list.append(
             &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
-                .unwrap()
+                .unwrap(),
         );
 
         let node_request = node_list.out();

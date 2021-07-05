@@ -48,8 +48,8 @@ pub enum SyncPacket {
     GetPooledTransactionsPacket = 0x09,
     PooledTransactionsPacket = 0x0a,
 
-    //GetNodeDataPacket = 0x0d,
-    //NodeDataPacket = 0x0e,
+    GetNodeDataPacket = 0x0d,
+    NodeDataPacket = 0x0e,
     GetReceiptsPacket = 0x0f,
     ReceiptsPacket = 0x10,
 
@@ -87,8 +87,8 @@ impl PacketInfo for SyncPacket {
             | NewPooledTransactionHashesPacket
             | GetPooledTransactionsPacket
             | PooledTransactionsPacket
-            //| GetNodeDataPacket
-            //| NodeDataPacket
+            | GetNodeDataPacket
+            | NodeDataPacket
             | GetReceiptsPacket
             | ReceiptsPacket => ETH_PROTOCOL,
 
@@ -105,7 +105,6 @@ impl PacketInfo for SyncPacket {
     }
 
     fn has_request_id_in_eth_66(&self) -> bool {
-        // Note: NodeDataPacket and GetNodeDataPacket also get a request id in eth-66.
         match self {
             GetBlockHeadersPacket
             | BlockHeadersPacket
@@ -113,6 +112,8 @@ impl PacketInfo for SyncPacket {
             | BlockBodiesPacket
             | GetPooledTransactionsPacket
             | PooledTransactionsPacket
+            | GetNodeDataPacket
+            | NodeDataPacket
             | GetReceiptsPacket
             | ReceiptsPacket => true,
             _ => false,

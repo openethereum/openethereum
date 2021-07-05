@@ -25,12 +25,14 @@ use std::{
 use super::{
     error_key_already_exists, error_negatively_reference_hash, memory_db::*, LATEST_ERA_KEY,
 };
+use bytes::Bytes;
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use rlp::{decode, encode};
 use traits::JournalDB;
+use DB_PREFIX_LEN;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -214,12 +216,19 @@ impl JournalDB for ArchiveDB {
     fn consolidate(&mut self, with: MemoryDB<KeccakHasher, DBValue>) {
         self.overlay.consolidate(with);
     }
+
+    fn state(&self, id: &H256) -> Option<Bytes> {
+        self.backing
+            .get_by_prefix(self.column, &id[0..DB_PREFIX_LEN])
+            .map(|b| b.into_vec())
+    }
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
+    use ethcore_db::InMemoryWithMetrics;
     use hash_db::HashDB;
     use keccak::keccak;
     use JournalDB;
@@ -496,5 +505,23 @@ mod tests {
         jdb.inject_batch().unwrap();
 
         assert!(jdb.get(&key).is_none());
+    }
+
+    #[test]
+    fn returns_state() {
+        let shared_db = Arc::new(InMemoryWithMetrics::create(0));
+
+        let key = {
+            let mut jdb = ArchiveDB::new(shared_db.clone(), None);
+            let key = jdb.insert(b"foo");
+            jdb.commit_batch(0, &keccak(b"0"), None).unwrap();
+            key
+        };
+
+        {
+            let jdb = ArchiveDB::new(shared_db, None);
+            let state = jdb.state(&key);
+            assert!(state.is_some());
+        }
     }
 }

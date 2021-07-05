@@ -90,6 +90,7 @@
 pub mod fork_filter;
 mod handler;
 mod propagator;
+pub mod request_id;
 mod requester;
 mod supplier;
 pub mod sync_packet;
@@ -153,6 +154,8 @@ impl From<DecoderError> for PacketProcessError {
     }
 }
 
+/// Version 66 of the Ethereum protocol and number of packet IDs reserved by the protocol (packet count).
+pub const ETH_PROTOCOL_VERSION_66: (u8, u8) = (66, 0x11);
 /// Version 65 of the Ethereum protocol and number of packet IDs reserved by the protocol (packet count).
 pub const ETH_PROTOCOL_VERSION_65: (u8, u8) = (65, 0x11);
 /// 64 version of Ethereum protocol.

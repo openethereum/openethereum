@@ -68,6 +68,7 @@ use self::SyncPacket::*;
 pub trait PacketInfo {
     fn id(&self) -> PacketId;
     fn protocol(&self) -> ProtocolId;
+    fn has_request_id_in_eth_66(&self) -> bool;
 }
 
 // The mechanism to match packet ids and protocol may be improved
@@ -101,6 +102,21 @@ impl PacketInfo for SyncPacket {
 
     fn id(&self) -> PacketId {
         (*self) as PacketId
+    }
+
+    fn has_request_id_in_eth_66(&self) -> bool {
+        // Note: NodeDataPacket and GetNodeDataPacket also get a request id in eth-66.
+        match self {
+            GetBlockHeadersPacket
+            | BlockHeadersPacket
+            | GetBlockBodiesPacket
+            | BlockBodiesPacket
+            | GetPooledTransactionsPacket
+            | PooledTransactionsPacket
+            | GetReceiptsPacket
+            | ReceiptsPacket => true,
+            _ => false,
+        }
     }
 }
 

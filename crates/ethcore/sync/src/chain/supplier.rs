@@ -40,6 +40,7 @@ use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
+use chain::MAX_NODE_DATA_TO_SEND;
 use std::borrow::Borrow;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
@@ -86,6 +87,15 @@ impl SyncSupplier {
                         request_id,
                         SyncSupplier::return_block_headers,
                         |e| format!("Error sending block headers: {:?}", e),
+                    ),
+
+                    GetNodeDataPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_node_data,
+                        |e| format!("Error sending node data: {:?}", e),
                     ),
 
                     GetReceiptsPacket => SyncSupplier::return_rlp(
@@ -338,6 +348,32 @@ impl SyncSupplier {
         rlp.append_raw(&data, added);
         trace!(target: "sync", "{} -> GetBlockBodies: returned {} entries", peer_id, added);
         Ok(Some((BlockBodiesPacket, rlp)))
+    }
+
+    fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
+        let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
+        if count == 0 {
+            debug!(target: "sync", "Empty GetNodeData request, ignoring.");
+            return Ok(None);
+        }
+
+        let mut data = Bytes::new();
+
+        let mut added = 0usize;
+        for i in 0..count {
+            if let Some(ref mut node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
+                data.append(node_data);
+                added += 1;
+                if data.len() > PAYLOAD_SOFT_LIMIT {
+                    break;
+                }
+            }
+        }
+
+        let mut rlp = RlpStream::new_list(added);
+        rlp.append_raw(&data, added);
+        trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
+        Ok(Some((NodeDataPacket, rlp)))
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
@@ -720,6 +756,53 @@ mod test {
             0usize,
             GetReceiptsPacket.id(),
             &receipts_request,
+        );
+        assert_eq!(1, io.packets.len());
+    }
+
+    #[test]
+    fn return_nodes() {
+        let mut client = TestBlockChainClient::new();
+        let queue = RwLock::new(VecDeque::new());
+        let sync = dummy_sync_with_peer(H256::zero(), &client);
+        let ss = TestSnapshotService::new();
+        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+
+        let mut node_list = RlpStream::new_list(3);
+        node_list.append(
+            &H256::from_str("0000000000000000000000000000000000000000000000005555555555555555")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaa")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("aff0000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+        );
+
+        let node_request = node_list.out();
+        // it returns rlp ONLY for hashes started with "f"
+        let result = SyncSupplier::return_node_data(&io, &Rlp::new(&node_request.clone()), 0);
+
+        assert!(result.is_ok());
+        let rlp_result = result.unwrap();
+        assert!(rlp_result.is_some());
+
+        // the length of one rlp-encoded hashe
+        let rlp = rlp_result.unwrap().1.out();
+        let rlp = Rlp::new(&rlp);
+        assert_eq!(Ok(1), rlp.item_count());
+
+        io.sender = Some(2usize);
+
+        SyncSupplier::dispatch_packet(
+            &RwLock::new(sync),
+            &mut io,
+            0usize,
+            GetNodeDataPacket.id(),
+            &node_request,
         );
         assert_eq!(1, io.packets.len());
     }

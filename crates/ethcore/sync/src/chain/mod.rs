@@ -169,6 +169,7 @@ pub const PAR_PROTOCOL_VERSION_2: (u8, u8) = (2, 0x16);
 
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
+pub const MAX_NODE_DATA_TO_SEND: usize = 1024;
 pub const MAX_RECEIPTS_HEADERS_TO_SEND: usize = 256;
 pub const MAX_TRANSACTIONS_TO_REQUEST: usize = 256;
 const MIN_PEERS_PROPAGATION: usize = 4;

@@ -31,12 +31,16 @@ use types::{ids::BlockId, BlockNumber};
 
 use sync_io::SyncIo;
 
-use super::sync_packet::{PacketInfo, SyncPacket, SyncPacket::*};
+use super::{
+    request_id::{prepend_request_id, strip_request_id, RequestId},
+    sync_packet::{PacketInfo, SyncPacket, SyncPacket::*},
+};
 
 use super::{
     ChainSync, PacketProcessError, RlpResponseResult, SyncHandler, MAX_BODIES_TO_SEND,
     MAX_HEADERS_TO_SEND, MAX_RECEIPTS_HEADERS_TO_SEND,
 };
+use std::borrow::Borrow;
 
 /// The Chain Sync Supplier: answers requests from peers with available data
 pub struct SyncSupplier;
@@ -52,87 +56,98 @@ impl SyncSupplier {
         packet_id: u8,
         data: &[u8],
     ) {
-        let rlp = Rlp::new(data);
-
         if let Some(id) = SyncPacket::from_u8(packet_id) {
-            let result = match id {
-                GetPooledTransactionsPacket => SyncSupplier::return_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_pooled_transactions,
-                    |e| format!("Error sending pooled transactions: {:?}", e),
-                ),
+            let rlp_result = strip_request_id(data, sync.read().borrow(), &peer, &id);
 
-                GetBlockBodiesPacket => SyncSupplier::return_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_block_bodies,
-                    |e| format!("Error sending block bodies: {:?}", e),
-                ),
+            let result = match rlp_result {
+                Ok((rlp, request_id)) => match id {
+                    GetPooledTransactionsPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_pooled_transactions,
+                        |e| format!("Error sending pooled transactions: {:?}", e),
+                    ),
 
-                GetBlockHeadersPacket => SyncSupplier::return_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_block_headers,
-                    |e| format!("Error sending block headers: {:?}", e),
-                ),
+                    GetBlockBodiesPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_block_bodies,
+                        |e| format!("Error sending block bodies: {:?}", e),
+                    ),
 
-                GetReceiptsPacket => {
-                    SyncSupplier::return_rlp(io, &rlp, peer, SyncSupplier::return_receipts, |e| {
-                        format!("Error sending receipts: {:?}", e)
-                    })
-                }
-                GetSnapshotManifestPacket => SyncSupplier::return_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_snapshot_manifest,
-                    |e| format!("Error sending snapshot manifest: {:?}", e),
-                ),
+                    GetBlockHeadersPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_block_headers,
+                        |e| format!("Error sending block headers: {:?}", e),
+                    ),
 
-                GetSnapshotDataPacket => SyncSupplier::return_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_snapshot_data,
-                    |e| format!("Error sending snapshot data: {:?}", e),
-                ),
+                    GetReceiptsPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_receipts,
+                        |e| format!("Error sending receipts: {:?}", e),
+                    ),
 
-                StatusPacket => {
-                    sync.write().on_packet(io, peer, packet_id, data);
-                    Ok(())
-                }
-                // Packets that require the peer to be confirmed
-                _ => {
-                    if !sync.read().peers.contains_key(&peer) {
-                        debug!(target:"sync", "Unexpected packet {} from unregistered peer: {}:{}", packet_id, peer, io.peer_version(peer));
-                        return;
+                    GetSnapshotManifestPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_snapshot_manifest,
+                        |e| format!("Error sending snapshot manifest: {:?}", e),
+                    ),
+
+                    GetSnapshotDataPacket => SyncSupplier::return_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_snapshot_data,
+                        |e| format!("Error sending snapshot data: {:?}", e),
+                    ),
+
+                    StatusPacket => {
+                        sync.write().on_packet(io, peer, packet_id, data);
+                        Ok(())
                     }
-                    debug!(target: "sync", "{} -> Dispatching packet: {}", peer, packet_id);
+                    // Packets that require the peer to be confirmed
+                    _ => {
+                        if !sync.read().peers.contains_key(&peer) {
+                            debug!(target: "sync", "Unexpected packet {} from unregistered peer: {}:{}", packet_id, peer, io.peer_version(peer));
+                            return;
+                        }
+                        debug!(target: "sync", "{} -> Dispatching packet: {}", peer, packet_id);
 
-                    match id {
-                        ConsensusDataPacket => SyncHandler::on_consensus_packet(io, peer, &rlp),
-                        TransactionsPacket => {
-                            let res = {
-                                let sync_ro = sync.read();
-                                SyncHandler::on_peer_transactions(&*sync_ro, io, peer, &rlp)
-                            };
-                            if res.is_err() {
-                                // peer sent invalid data, disconnect.
-                                io.disable_peer(peer);
-                                sync.write().deactivate_peer(io, peer);
+                        match id {
+                            ConsensusDataPacket => SyncHandler::on_consensus_packet(io, peer, &rlp),
+                            TransactionsPacket => {
+                                let res = {
+                                    let sync_ro = sync.read();
+                                    SyncHandler::on_peer_transactions(&*sync_ro, io, peer, &rlp)
+                                };
+                                if res.is_err() {
+                                    // peer sent invalid data, disconnect.
+                                    io.disable_peer(peer);
+                                    sync.write().deactivate_peer(io, peer);
+                                }
+                            }
+                            _ => {
+                                sync.write().on_packet(io, peer, packet_id, data);
                             }
                         }
-                        _ => {
-                            sync.write().on_packet(io, peer, packet_id, data);
-                        }
+                        Ok(())
                     }
-
-                    Ok(())
-                }
+                },
+                Err(e) => Err(e.into()),
             };
 
             match result {
@@ -156,22 +171,26 @@ impl SyncSupplier {
         packet_id: u8,
         data: &[u8],
     ) {
-        let rlp = Rlp::new(data);
-
         if let Some(id) = SyncPacket::from_u8(packet_id) {
-            let result = match id {
-                GetBlockHeadersPacket => SyncSupplier::send_rlp(
-                    io,
-                    &rlp,
-                    peer,
-                    SyncSupplier::return_block_headers,
-                    |e| format!("Error sending block headers: {:?}", e),
-                ),
+            let rlp_result = strip_request_id(data, sync.read().borrow(), &peer, &id);
 
-                _ => {
-                    debug!(target:"sync", "Unexpected packet {} was dispatched for delayed processing", packet_id);
-                    Ok(())
-                }
+            let result = match rlp_result {
+                Ok((rlp, request_id)) => match id {
+                    GetBlockHeadersPacket => SyncSupplier::send_rlp(
+                        io,
+                        &rlp,
+                        peer,
+                        request_id,
+                        SyncSupplier::return_block_headers,
+                        |e| format!("Error sending block headers: {:?}", e),
+                    ),
+
+                    _ => {
+                        debug!(target: "sync", "Unexpected packet {} was dispatched for delayed processing", packet_id);
+                        Ok(())
+                    }
+                },
+                Err(e) => Err(e.into()),
             };
 
             match result {
@@ -394,6 +413,7 @@ impl SyncSupplier {
         io: &mut dyn SyncIo,
         rlp: &Rlp,
         peer: PeerId,
+        request_id: Option<RequestId>,
         rlp_func: FRlp,
         error_func: FError,
     ) -> Result<(), PacketProcessError>
@@ -403,6 +423,7 @@ impl SyncSupplier {
     {
         let response = rlp_func(io, rlp, peer);
         if let Some((packet_id, rlp_stream)) = response? {
+            let rlp_stream = prepend_request_id(rlp_stream, request_id);
             io.respond(packet_id.id(), rlp_stream.out())
                 .unwrap_or_else(|e| debug!(target: "sync", "{:?}", error_func(e)));
         }
@@ -413,6 +434,7 @@ impl SyncSupplier {
         io: &mut dyn SyncIo,
         rlp: &Rlp,
         peer: PeerId,
+        request_id: Option<RequestId>,
         rlp_func: FRlp,
         error_func: FError,
     ) -> Result<(), PacketProcessError>
@@ -424,6 +446,7 @@ impl SyncSupplier {
         match response {
             Err(e) => Err(e),
             Ok(Some((packet_id, rlp_stream))) => {
+                let rlp_stream = prepend_request_id(rlp_stream, request_id);
                 io.send(peer, packet_id, rlp_stream.out())
                     .unwrap_or_else(|e| debug!(target: "sync", "{:?}", error_func(e)));
                 Ok(())

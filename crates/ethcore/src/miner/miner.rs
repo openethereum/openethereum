@@ -1295,13 +1295,7 @@ impl miner::MinerService for Miner {
                             logs: receipt.logs.clone(),
                             log_bloom: receipt.log_bloom,
                             outcome: receipt.outcome.clone(),
-                            effective_gas_price: if pending.header.number()
-                                >= self.engine.params().eip1559_transition
-                            {
-                                Some(tx.effective_gas_price(pending.header.base_fee()))
-                            } else {
-                                None
-                            },
+                            effective_gas_price: tx.effective_gas_price(pending.header.base_fee()),
                         }
                     })
                     .collect()

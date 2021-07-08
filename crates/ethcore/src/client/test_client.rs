@@ -1078,6 +1078,18 @@ impl BlockChainClient for TestBlockChainClient {
     fn registrar_address(&self) -> Option<Address> {
         None
     }
+
+    fn state_data(&self, hash: &H256) -> Option<Bytes> {
+        let begins_with_f =
+            H256::from_str("f000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
+        if *hash > begins_with_f {
+            let mut rlp = RlpStream::new();
+            rlp.append(&hash.clone());
+            return Some(rlp.out());
+        }
+        None
+    }
 }
 
 impl IoClient for TestBlockChainClient {

@@ -2776,6 +2776,10 @@ impl BlockChainClient for Client {
     fn registrar_address(&self) -> Option<Address> {
         self.registrar_address.clone()
     }
+
+    fn state_data(&self, hash: &H256) -> Option<Bytes> {
+        self.state_db.read().journal_db().state(hash)
+    }
 }
 
 impl IoClient for Client {

@@ -35,6 +35,7 @@ use parity_util_mem::MallocSizeOf;
 use parking_lot::RwLock;
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
+use DB_PREFIX_LEN;
 
 #[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 struct RefInfo {
@@ -607,6 +608,12 @@ impl JournalDB for EarlyMergeDB {
 
     fn consolidate(&mut self, with: MemoryDB<KeccakHasher, DBValue>) {
         self.overlay.consolidate(with);
+    }
+
+    fn state(&self, id: &H256) -> Option<Bytes> {
+        self.backing
+            .get_by_prefix(self.column, &id[0..DB_PREFIX_LEN])
+            .map(|b| b.into_vec())
     }
 }
 

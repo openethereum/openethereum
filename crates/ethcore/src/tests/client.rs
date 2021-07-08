@@ -591,3 +591,12 @@ fn import_export_binary() {
     assert!(client.block_header(BlockId::Number(17)).is_some());
     assert!(client.block_header(BlockId::Number(16)).is_some());
 }
+
+#[test]
+fn returns_state_root_basic() {
+    let client = generate_dummy_client(6);
+    let test_spec = Spec::new_test();
+    let genesis_header = test_spec.genesis_header();
+
+    assert!(client.state_data(genesis_header.state_root()).is_some());
+}

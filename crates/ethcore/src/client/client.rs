@@ -3350,10 +3350,7 @@ fn transaction_receipt(
             .collect(),
         log_bloom: receipt.log_bloom,
         outcome: receipt.outcome.clone(),
-        effective_gas_price: match base_fee {
-            Some(_) => Some(tx.effective_gas_price(base_fee)),
-            None => None,
-        },
+        effective_gas_price: tx.effective_gas_price(base_fee),
     }
 }
 
@@ -3723,7 +3720,7 @@ mod tests {
                 ],
                 log_bloom: Default::default(),
                 outcome: TransactionOutcome::StateRoot(state_root),
-                effective_gas_price: None,
+                effective_gas_price: Default::default(),
             }
         );
     }

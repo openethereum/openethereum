@@ -280,7 +280,7 @@ pub struct RichReceipt {
     /// Sender
     pub from: H160,
     /// Effective gas price
-    pub effective_gas_price: Option<U256>,
+    pub effective_gas_price: U256,
 }
 
 /// Receipt with additional info.
@@ -315,7 +315,7 @@ pub struct LocalizedReceipt {
     /// Sender
     pub from: H160,
     /// Effective gas price
-    pub effective_gas_price: Option<U256>,
+    pub effective_gas_price: U256,
 }
 
 #[cfg(test)]

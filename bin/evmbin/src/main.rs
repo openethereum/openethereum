@@ -194,7 +194,7 @@ fn run_state_test(args: Args) {
         }
 
         let multitransaction = test.transaction;
-        let env_info:EnvInfo = test.env.into();
+        let env_info: EnvInfo = test.env.into();
         let pre = test.pre_state.into();
 
         for (spec, states) in test.post_states {
@@ -204,8 +204,8 @@ fn run_state_test(args: Args) {
                 if test_env.base_fee.is_none() {
                     test_env.base_fee = Some(0x0a.into());
                 }
-            } 
-            
+            }
+
             if let Some(false) = only_chain
                 .as_ref()
                 .map(|only_chain| &format!("{:?}", spec).to_lowercase() == only_chain)

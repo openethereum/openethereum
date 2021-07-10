@@ -50,8 +50,7 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
     /// Gas Price
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_price: Option<U256>,
+    pub gas_price: U256,
     /// Max fee per gas
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_fee_per_gas: Option<U256>,
@@ -190,7 +189,7 @@ impl RichRawTransaction {
 
 impl Transaction {
     /// Convert `LocalizedTransaction` into RPC Transaction.
-    pub fn from_localized(mut t: LocalizedTransaction) -> Transaction {
+    pub fn from_localized(mut t: LocalizedTransaction, base_fee: Option<U256>) -> Transaction {
         let signature = t.signature();
         let scheme = CreateContractAddress::FromSenderAndNonce;
 
@@ -209,17 +208,11 @@ impl Transaction {
             TypedTransaction::Legacy(_) => None,
         };
 
-        let (gas_price, max_fee_per_gas) = match t.as_unsigned() {
-            TypedTransaction::Legacy(_) => (Some(t.tx().gas_price), None),
-            TypedTransaction::AccessList(_) => (Some(t.tx().gas_price), None),
-            TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
-        };
-
-        let max_priority_fee_per_gas =
+        let (max_fee_per_gas, max_priority_fee_per_gas) =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
-                Some(tx.max_priority_fee_per_gas)
+                (Some(tx.tx().gas_price), Some(tx.max_priority_fee_per_gas))
             } else {
-                None
+                (None, None)
             };
 
         let standard_v = if t.tx_type() == TypedTxId::Legacy {
@@ -240,7 +233,7 @@ impl Transaction {
                 Action::Call(ref address) => Some(*address),
             },
             value: t.tx().value,
-            gas_price,
+            gas_price: t.effective_gas_price(base_fee),
             max_fee_per_gas,
             gas: t.tx().gas,
             input: Bytes::new(t.tx().data.clone()),
@@ -284,17 +277,11 @@ impl Transaction {
             TypedTransaction::Legacy(_) => None,
         };
 
-        let (gas_price, max_fee_per_gas) = match t.as_unsigned() {
-            TypedTransaction::Legacy(_) => (Some(t.tx().gas_price), None),
-            TypedTransaction::AccessList(_) => (Some(t.tx().gas_price), None),
-            TypedTransaction::EIP1559Transaction(_) => (None, Some(t.tx().gas_price)),
-        };
-
-        let max_priority_fee_per_gas =
+        let (max_fee_per_gas, max_priority_fee_per_gas) =
             if let TypedTransaction::EIP1559Transaction(tx) = t.as_unsigned() {
-                Some(tx.max_priority_fee_per_gas)
+                (Some(tx.tx().gas_price), Some(tx.max_priority_fee_per_gas))
             } else {
-                None
+                (None, None)
             };
 
         let standard_v = if t.tx_type() == TypedTxId::Legacy {
@@ -315,7 +302,7 @@ impl Transaction {
                 Action::Call(ref address) => Some(*address),
             },
             value: t.tx().value,
-            gas_price,
+            gas_price: t.tx().gas_price,
             max_fee_per_gas,
             gas: t.tx().gas,
             input: Bytes::new(t.tx().data.clone()),
@@ -387,7 +374,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
+            r#"{"type":"0x1","hash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0","blockHash":null,"blockNumber":null,"transactionIndex":null,"from":"0x0000000000000000000000000000000000000000","to":null,"value":"0x0","gasPrice":"0x0","gas":"0x0","input":"0x","creates":null,"raw":"0x","publicKey":null,"chainId":null,"v":"0x0","r":"0x0","s":"0x0","condition":null,"accessList":[{"address":"0x0000000000000000000000000000000000000000","storageKeys":[]}]}"#
         );
     }
 

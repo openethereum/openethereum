@@ -260,6 +260,11 @@ where
             (Some(block), Some(total_difficulty)) => {
                 let view = block.header_view();
                 let eip1559_enabled = client.engine().schedule(view.number()).eip1559;
+                let base_fee = if eip1559_enabled {
+                    Some(view.base_fee())
+                } else {
+                    None
+                };
                 Ok(Some(RichBlock {
                     inner: Block {
                         hash: match is_pending {
@@ -292,13 +297,7 @@ where
                             .into_iter()
                             .map(Into::into)
                             .collect(),
-                        base_fee_per_gas: {
-                            if eip1559_enabled {
-                                Some(view.base_fee())
-                            } else {
-                                None
-                            }
-                        },
+                        base_fee_per_gas: base_fee,
                         uncles: block.uncle_hashes(),
                         transactions: match include_txs {
                             true => BlockTransactions::Full(
@@ -306,7 +305,7 @@ where
                                     .view()
                                     .localized_transactions()
                                     .into_iter()
-                                    .map(Transaction::from_localized)
+                                    .map(|t| Transaction::from_localized(t, base_fee))
                                     .collect(),
                             ),
                             false => BlockTransactions::Hashes(block.transaction_hashes()),
@@ -322,7 +321,23 @@ where
 
     fn transaction(&self, id: PendingTransactionId) -> Result<Option<Transaction>> {
         let client_transaction = |id| match self.client.block_transaction(id) {
-            Some(t) => Ok(Some(Transaction::from_localized(t))),
+            Some(t) => {
+                let block = self
+                    .rich_block(BlockNumber::Num(t.block_number).into(), false)
+                    .and_then(errors::check_block_number_existence(
+                        &*self.client,
+                        BlockNumber::Num(t.block_number).into(),
+                        self.options,
+                    ));
+                let base_fee = match block {
+                    Ok(block) => match block {
+                        Some(block) => block.base_fee_per_gas,
+                        None => return Ok(None),
+                    },
+                    Err(_) => return Ok(None),
+                };
+                Ok(Some(Transaction::from_localized(t, base_fee)))
+            }
             None => Ok(None),
         };
 
@@ -361,7 +376,7 @@ where
                             cached_sender,
                         }
                     })
-                    .map(Transaction::from_localized);
+                    .map(|t| Transaction::from_localized(t, pending_block.header.base_fee()));
 
                 Ok(transaction)
             }

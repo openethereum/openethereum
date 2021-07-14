@@ -29,6 +29,7 @@ pub use self::{
     },
     derivation::{Derive, DeriveHash, DeriveHierarchical},
     eip191::{EIP191Version, PresignedTransaction},
+    fee_history::EthFeeHistory,
     filter::{Filter, FilterChanges},
     histogram::Histogram,
     index::Index,
@@ -62,6 +63,7 @@ mod call_request;
 mod confirmations;
 mod derivation;
 mod eip191;
+mod fee_history;
 mod filter;
 mod histogram;
 mod index;

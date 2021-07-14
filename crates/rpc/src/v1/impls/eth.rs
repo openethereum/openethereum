@@ -794,24 +794,21 @@ where
                                 let mut gas_and_reward: Vec<(U256, U256)> = vec![];
                                 if let Some(txs) = get_block_transactions(i) {
                                     if let Some(receipt) = self.client.block_receipts(&h.hash()) {
-                                        assert!(
-                                            txs.len() == receipt.receipts.len(),
-                                            "Txs and receipts should be the same length!"
-                                        );
+                                        if txs.len() == receipt.receipts.len() {
+                                            for i in 0..txs.len() {
+                                                let gas_used = if i == 0 {
+                                                    receipt.receipts[i].gas_used
+                                                } else {
+                                                    receipt.receipts[i].gas_used
+                                                        - receipt.receipts[i - 1].gas_used
+                                                };
 
-                                        for i in 0..txs.len() {
-                                            let gas_used = if i == 0 {
-                                                receipt.receipts[i].gas_used
-                                            } else {
-                                                receipt.receipts[i].gas_used
-                                                    - receipt.receipts[i - 1].gas_used
-                                            };
-
-                                            gas_and_reward.push((
-                                                gas_used,
-                                                txs[i].effective_gas_price(base_fee)
-                                                    - base_fee.unwrap_or_default(),
-                                            ));
+                                                gas_and_reward.push((
+                                                    gas_used,
+                                                    txs[i].effective_gas_price(base_fee)
+                                                        - base_fee.unwrap_or_default(),
+                                                ));
+                                            }
                                         }
                                     }
                                 }

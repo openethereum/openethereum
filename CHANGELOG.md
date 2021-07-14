@@ -1,3 +1,17 @@
+## OpenEthereum v3.3.0-rc.4
+
+Enhancements:
+* London hardfork block: mainnet (12,965,000) (#475)
+* Support for eth/66 protocol version (#465)
+* Bump ethereum/tests to v9.0.3
+* Add eth_feeHistory
+
+Bug fixes:
+* GetNodeData from eth63 is missing (#466)
+* Effective gas price not omitting (#477)
+* London support in openethereum-evm (#479)
+* gasPrice is required field for Transaction object (#481)
+
 ## OpenEthereum v3.3.0-rc.3
 
 Bug fixes:

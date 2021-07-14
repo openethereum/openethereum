@@ -40,7 +40,7 @@ use types::{
     pruning_info::PruningInfo,
     receipt::LocalizedReceipt,
     trace_filter::Filter as TraceFilter,
-    transaction::{self, Action, LocalizedTransaction, SignedTransaction},
+    transaction::{self, Action, LocalizedTransaction, SignedTransaction, TypedTxId},
     BlockNumber,
 };
 use vm::LastHashes;
@@ -395,10 +395,15 @@ pub trait BlockChainClient:
                 if block.number() == 0 {
                     return corpus.into();
                 }
-                block
-                    .transaction_views()
-                    .iter()
-                    .foreach(|t| corpus.push(t.gas_price()));
+                block.transaction_views().iter().foreach(|t| {
+                    corpus.push(t.effective_gas_price({
+                        match t.transaction_type() {
+                            TypedTxId::Legacy => None,
+                            TypedTxId::AccessList => None,
+                            TypedTxId::EIP1559Transaction => Some(block.header().base_fee()),
+                        }
+                    }))
+                });
                 h = block.parent_hash().clone();
             }
         }

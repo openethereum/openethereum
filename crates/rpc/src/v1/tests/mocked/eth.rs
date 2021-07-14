@@ -1184,6 +1184,7 @@ fn rpc_eth_transaction_receipt() {
         }],
         log_bloom: Bloom::zero(),
         outcome: TransactionOutcome::StateRoot(H256::zero()),
+        effective_gas_price: None,
     };
 
     let hash =
@@ -1242,6 +1243,7 @@ fn rpc_eth_pending_receipt() {
         logs: Vec::new(),
         log_bloom: Bloom::zero(),
         outcome: TransactionOutcome::Unknown,
+        effective_gas_price: None,
     };
     let tester = EthTester::default();
 

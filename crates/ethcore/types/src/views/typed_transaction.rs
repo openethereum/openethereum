@@ -16,6 +16,8 @@
 
 //! View onto transaction rlp
 
+use std::cmp::min;
+
 use crate::{
     bytes::Bytes,
     hash::keccak,
@@ -113,6 +115,25 @@ impl<'a> TypedTransactionView<'a> {
             TypedTxId::EIP1559Transaction => view!(Self, &self.rlp.rlp.data().unwrap()[1..])
                 .rlp
                 .val_at(3),
+        }
+    }
+
+    /// Get the effective_gas_price field of the transaction.
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match self.transaction_type {
+            TypedTxId::Legacy => self.gas_price(),
+            TypedTxId::AccessList => self.gas_price(),
+            TypedTxId::EIP1559Transaction => {
+                let max_priority_fee_per_gas: U256 =
+                    view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                        .rlp
+                        .val_at(2);
+
+                min(
+                    self.gas_price(),
+                    max_priority_fee_per_gas + block_base_fee.unwrap_or_default(),
+                )
+            }
         }
     }
 
@@ -238,6 +259,7 @@ mod tests {
         let view = view!(TypedTransactionView, &rlp);
         assert_eq!(view.nonce(), 0.into());
         assert_eq!(view.gas_price(), 1.into());
+        assert_eq!(view.effective_gas_price(None), 1.into());
         assert_eq!(view.gas(), 0x61a8.into());
         assert_eq!(view.value(), 0xa.into());
         assert_eq!(
@@ -279,10 +301,11 @@ mod tests {
 
     #[test]
     fn test_eip1559_transaction_view() {
-        let rlp = "b8c202f8bf01010a0a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
+        let rlp = "b8c202f8bf0101010a8301e24194000000000000000000000000000000000000aaaa8080f85bf859940000000000000000000000000000000000000000f842a00000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000080a082dc119130f280bd72e3fd4e10220e35b767031b84b8dd1f64085e0158f234dba072228551e678a8a6c6e9bae0ae786b8839c7fda0a994caddd23910f45f385cc0".from_hex().unwrap();
         let view = view!(TypedTransactionView, &rlp);
         assert_eq!(view.nonce(), 0x1.into());
         assert_eq!(view.gas_price(), 0xa.into());
+        assert_eq!(view.effective_gas_price(Some(0x07.into())), 0x08.into());
         assert_eq!(view.gas(), 0x1e241.into());
         assert_eq!(view.value(), 0x0.into());
         assert_eq!(view.data(), "".from_hex().unwrap());

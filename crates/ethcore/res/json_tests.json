@@ -1,0 +1,61 @@
+{
+	"local": [
+		{
+			"path": "res/local_tests/block_en_de",
+			"test_type": "block_en_de"
+		}
+	],
+	"chain": [
+		{
+			"path": "res/json_tests/BlockchainTests",
+			"skip": []
+		},
+		{
+			"path": "res/json_tests/LegacyTests/Constantinople/BlockchainTests",
+			"skip": []
+		}
+	],
+	"state": [
+		{
+			"path": "res/json_tests/GeneralStateTests",
+			"skip": []
+		},
+		{
+			"path": "res/json_tests/LegacyTests/Constantinople/GeneralStateTests",
+			"skip": []
+		}
+	],
+	"difficulty": [
+		{
+			"path": [
+				"res/json_tests/BasicTests/difficulty.json",
+				"res/json_tests/BasicTests/difficultyMainNetwork.json"
+			],
+			"chainspec": "Foundation"
+		}
+	],
+	"executive": [
+		{
+			"path": "res/json_tests/LegacyTests/Constantinople/VMTests"
+		}
+	],
+	"transaction": [
+		{
+			"path": "res/json_tests/TransactionTests"
+		}
+	],
+	"trie": [
+		{
+			"path": ["res/json_tests/TrieTests/trietest.json", "res/json_tests/TrieTests/trieanyorder.json"],
+			"triespec": "Generic"
+		},
+		{
+			"path": [
+				"res/json_tests/TrieTests/hex_encoded_securetrie_test.json",
+				"res/json_tests/TrieTests/trietest_secureTrie.json",
+				"res/json_tests/TrieTests/trieanyorder_secureTrie.json"
+			],
+			"triespec": "Secure"
+		}
+	]
+}

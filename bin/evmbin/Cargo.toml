@@ -1,0 +1,33 @@
+[package]
+description = "Parity EVM Implementation"
+name = "evmbin"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[[bin]]
+name = "openethereum-evm"
+path = "./src/main.rs"
+
+[dependencies]
+common-types = { path = "../../crates/ethcore/types", features = ["test-helpers"] }
+docopt = "1.0"
+env_logger = "0.5"
+ethcore = { path = "../../crates/ethcore", features = ["test-helpers", "json-tests", "to-pod-full"] }
+ethereum-types = "0.9.2"
+ethjson = { path = "../../crates/ethjson" }
+evm = { path = "../../crates/vm/evm" }
+panic_hook = { path = "../../crates/util/panic-hook" }
+parity-bytes = "0.1"
+rustc-hex = "1.0"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+vm = { path = "../../crates/vm/vm" }
+
+[dev-dependencies]
+criterion = "0.3.0"
+pretty_assertions = "0.1"
+tempdir = "0.3"
+
+[features]
+evm-debug = ["ethcore/evm-debug-tests"]

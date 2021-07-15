@@ -1,0 +1,31 @@
+[package]
+description = "Parity Ethereum Common Types"
+name = "common-types"
+version = "0.1.0"
+edition = "2018"
+authors = [
+  "Gnosis Ltd <openethereum@gnosis.io>",
+  "Parity Technologies <admin@parity.io>",
+]
+
+[dependencies]
+ethkey = { path = "../../accounts/ethkey" }
+ethereum-types = "0.9.2"
+keccak-hash = "0.5.0"
+parity-bytes = "0.1"
+parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
+parity-util-mem = "0.7"
+rlp = { version = "0.4.6" }
+rlp_derive = { path = "../../util/rlp-derive" }
+unexpected = { path = "../../util/unexpected" }
+serde = "1.0"
+serde_json = "1.0"
+serde_repr = "0.1"
+hex = "0.4.3"
+inflate = "0.4.5"
+
+[dev-dependencies]
+rustc-hex = "1.0"
+
+[features]
+test-helpers = []

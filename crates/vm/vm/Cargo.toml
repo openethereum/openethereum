@@ -1,0 +1,13 @@
+[package]
+description = "Virtual Machines (VM) Support Library"
+name = "vm"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[dependencies]
+parity-bytes = "0.1"
+ethereum-types = "0.9.2"
+patricia-trie-ethereum = { path = "../../db/patricia-trie-ethereum" }
+ethjson = { path = "../../ethjson" }
+rlp = { version = "0.4.6" }
+keccak-hash = "0.5.0"

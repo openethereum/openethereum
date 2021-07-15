@@ -8,13 +8,14 @@ ERR=0
 echo "________Validate chainspecs________"
 time cargo build --release -p chainspec --verbose --color=always
 
-for spec in ethcore/res/*.json; do
+for spec in crates/ethcore/res/chainspec/*.json; do
     if ! ./target/release/chainspec "$spec"; then ERR=1; fi
 done
 
-for spec in ethcore/res/ethereum/*.json; do
+for spec in crates/ethcore/res/chainspec/test/*.json; do
     if ! ./target/release/chainspec "$spec"; then ERR=1; fi
 done
+
 #show sccache statistics
-sccache --stop-server
+#sccache --stop-server
 exit $ERR

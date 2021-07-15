@@ -1,6 +1,8 @@
+For questions please use https://discord.io/openethereum, issues are for bugs and feature requests.
+
 _Before filing a new issue, please **provide the following information**._
 
-- **OpenEthereum version**: 0.0.0
+- **OpenEthereum version (>=3.1.0)**: 0.0.0
 - **Operating system**: Windows / MacOS / Linux
 - **Installation**: homebrew / one-line installer / built from source
 - **Fully synchronized**: no / yes

@@ -1,0 +1,23 @@
+[package]
+description = "Parity Ethereum (EthCore) Client & Network Service Creation & Registration with the I/O Subsystem"
+name = "ethcore-service"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[dependencies]
+ansi_term = "0.10"
+error-chain = { version = "0.12", default-features = false }
+ethcore = { path = ".." }
+ethcore-blockchain = { path = "../blockchain" }
+ethcore-io = { path = "../../runtime/io" }
+ethcore-sync = { path = "../sync" }
+ethereum-types = "0.9.2"
+kvdb = "0.1"
+log = "0.4"
+trace-time = "0.1"
+
+[dev-dependencies]
+ethcore-db = { path = "../../db/db" }
+ethcore = { path = "..", features = ["test-helpers"] }
+tempdir = "0.3"
+kvdb-rocksdb = "0.1.3"

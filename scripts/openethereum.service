@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenEthereum Daemon
+After=network.target
+
+[Service]
+# run as root, set base_path in config.toml
+ExecStart=/usr/bin/openethereum --config /etc/openethereum/config.toml
+# To run as user, comment out above and uncomment below, fill in user and group
+# picks up users default config.toml in $HOME/.local/share/openethereum/
+# User=username
+# Group=groupname
+# ExecStart=/usr/bin/openethereum
+Restart=on-failure
+
+# Specifies which signal to use when killing a service. Defaults to SIGTERM.
+# SIGTERM gives openethereum time to exit cleanly before sending SIGKILL
+KillSignal=SIGTERM
+TimeoutStopSec=300
+
+[Install]
+WantedBy=default.target
+
+

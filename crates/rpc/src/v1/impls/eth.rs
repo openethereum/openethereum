@@ -16,17 +16,16 @@
 
 //! Eth rpc implementation.
 
-use std::{
+ std::{
     sync::Arc,
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64};
-use parking_lot::Mutex;
+ ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64}; parking_lot::Mutex;
 
-use ethash::{self, SeedHashCompute};
-use ethcore::{
+ ethash::{self, SeedHashCompute};
+ ethcore::{
     client::{
         BlockChainClient, BlockId, Call, EngineInfo, ProvingBlockChainClient, StateClient,
         StateInfo, StateOrBlock, TransactionId, UncleId,
@@ -34,10 +33,10 @@ use ethcore::{
     miner::{self, MinerService},
     snapshot::SnapshotService,
 };
-use hash::keccak;
-use miner::external::ExternalMinerService;
-use sync::SyncProvider;
-use types::{
+ hash::keccak;
+ Miner::external::ExternalMinerService;
+ sync::SyncProvider;
+ types::{
     encoded,
     filter::Filter as EthcoreFilter,
     header::Header,
@@ -45,9 +44,9 @@ use types::{
     BlockNumber as EthBlockNumber,
 };
 
-use jsonrpc_core::{futures::future, BoxFuture, Result};
+ jsonrpc_core::{futures::future, BoxFuture, Result};
 
-use v1::{
+ v1::{
     helpers::{
         self,
         block_import::is_major_importing,
@@ -63,21 +62,21 @@ use v1::{
         Transaction, Work,
     },
 };
-
-const EXTRA_INFO_PROOF: &str = "Object exists in blockchain (fetched earlier), extra_info is always available if object exists; qed";
+ 
+ EXTRA_INFO_PROOF: &str = "Object exists in blockchain (fetched earlier), extra_info is always available if object exists; qed";
 
 /// Eth RPC options
 #[derive(Copy, Clone)]
-pub struct EthClientOptions {
+ EthClientOptions {
     /// Gas Price Percentile used as default gas price.
-    pub gas_price_percentile: usize,
+    gas_price_percentile: usize,
     /// Return 'null' instead of an error if ancient block sync is still in
     /// progress and the block information requested could not be found.
-    pub allow_missing_blocks: bool,
+    allow_missing_blocks: bool,
     /// Enable Experimental RPC-Calls
-    pub allow_experimental_rpcs: bool,
+    allow_experimental_rpcs: bool,
     /// flag for ancient block sync
-    pub no_ancient_blocks: bool,
+    no_ancient_blocks: bool,
 }
 
 impl EthClientOptions {

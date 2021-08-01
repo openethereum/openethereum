@@ -39,10 +39,7 @@ use_contract!(
     transact_acl_gas_price,
     "res/contracts/tx_acl_gas_price.json"
 );
-use_contract!(
-    transact_acl_1559,
-    "res/contracts/tx_acl_1559.json"
-);
+use_contract!(transact_acl_1559, "res/contracts/tx_acl_1559.json");
 
 const MAX_CACHE_SIZE: usize = 4096;
 
@@ -169,16 +166,15 @@ impl TransactionFilter {
                     }
                     4 => {
                         trace!(target: "tx_filter", "Using filter with maxFeePerGas and maxPriorityFeePerGas and data");
-                        let (data, decoder) =
-                            transact_acl_1559::functions::allowed_tx_types::call(
-                                sender,
-                                to,
-                                value,
-                                gas_price,
-                                max_priority_fee_per_gas,
-                                gas_limit,
-                                transaction.tx().data.clone(),
-                            );
+                        let (data, decoder) = transact_acl_1559::functions::allowed_tx_types::call(
+                            sender,
+                            to,
+                            value,
+                            gas_price,
+                            max_priority_fee_per_gas,
+                            gas_limit,
+                            transaction.tx().data.clone(),
+                        );
                         client.call_contract(BlockId::Hash(*parent_hash), contract_address, data)
 							.and_then(|value| decoder.decode(&value).map_err(|e| e.to_string()))
 							.map(|(p, f)| (p.low_u32(), f))
@@ -227,7 +223,9 @@ mod test {
     use std::{str::FromStr, sync::Arc};
     use tempdir::TempDir;
     use test_helpers;
-    use types::transaction::{Action, Transaction, TypedTransaction, AccessListTx, EIP1559TransactionTx};
+    use types::transaction::{
+        AccessListTx, Action, EIP1559TransactionTx, Transaction, TypedTransaction,
+    };
 
     /// Contract code: https://gist.github.com/VladLupashevskyi/84f18eabb1e4afadf572cf92af3e7e7f
     #[test]
@@ -628,10 +626,7 @@ mod test {
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
         let mut tx = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
-            transaction: AccessListTx::new(
-                Transaction::default(),
-                vec![],
-            ),
+            transaction: AccessListTx::new(Transaction::default(), vec![]),
             max_priority_fee_per_gas: U256::from(0),
         });
         tx.tx_mut().action =

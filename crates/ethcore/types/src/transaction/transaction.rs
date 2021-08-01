@@ -660,10 +660,10 @@ impl TypedTransaction {
     pub fn is_service(&self) -> bool {
         match self {
             Self::EIP1559Transaction(tx) => {
-                tx.tx().gas_price == 0.into() && tx.max_priority_fee_per_gas == 0.into()
+                tx.tx().gas_price.is_zero() && tx.max_priority_fee_per_gas.is_zero()
             }
-            Self::AccessList(tx) => tx.tx().gas_price == 0.into(),
-            Self::Legacy(tx) => tx.gas_price == 0.into(),
+            Self::AccessList(tx) => tx.tx().gas_price.is_zero(),
+            Self::Legacy(tx) => tx.gas_price.is_zero(),
         }
     }
 

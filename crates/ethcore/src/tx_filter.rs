@@ -39,6 +39,7 @@ use_contract!(
     transact_acl_gas_price,
     "res/contracts/tx_acl_gas_price.json"
 );
+use_contract!(transact_acl_1559, "res/contracts/tx_acl_1559.json");
 
 const MAX_CACHE_SIZE: usize = 4096;
 
@@ -104,6 +105,8 @@ impl TransactionFilter {
         let sender = transaction.sender();
         let value = transaction.tx().value;
         let gas_price = transaction.tx().gas_price;
+        let max_priority_fee_per_gas = transaction.max_priority_fee_per_gas();
+        let gas_limit = transaction.tx().gas;
         let key = (*parent_hash, sender);
 
         if let Some(permissions) = permission_cache.get_mut(&key) {
@@ -161,6 +164,25 @@ impl TransactionFilter {
 								(tx_permissions::NONE, true)
 							})
                     }
+                    4 => {
+                        trace!(target: "tx_filter", "Using filter with maxFeePerGas and maxPriorityFeePerGas and data");
+                        let (data, decoder) = transact_acl_1559::functions::allowed_tx_types::call(
+                            sender,
+                            to,
+                            value,
+                            gas_price,
+                            max_priority_fee_per_gas,
+                            gas_limit,
+                            transaction.tx().data.clone(),
+                        );
+                        client.call_contract(BlockId::Hash(*parent_hash), contract_address, data)
+							.and_then(|value| decoder.decode(&value).map_err(|e| e.to_string()))
+							.map(|(p, f)| (p.low_u32(), f))
+							.unwrap_or_else(|e| {
+								error!(target: "tx_filter", "Error calling tx permissions contract: {:?}", e);
+								(tx_permissions::NONE, true)
+							})
+                    }
                     _ => {
                         error!(target: "tx_filter", "Unknown version of tx permissions contract is used");
                         (tx_permissions::NONE, true)
@@ -201,7 +223,9 @@ mod test {
     use std::{str::FromStr, sync::Arc};
     use tempdir::TempDir;
     use test_helpers;
-    use types::transaction::{Action, Transaction, TypedTransaction};
+    use types::transaction::{
+        AccessListTx, Action, EIP1559TransactionTx, Transaction, TypedTransaction,
+    };
 
     /// Contract code: https://gist.github.com/VladLupashevskyi/84f18eabb1e4afadf572cf92af3e7e7f
     #[test]
@@ -438,7 +462,7 @@ mod test {
         ));
     }
 
-    /// Contract code: res/tx_permission_tests/contract_ver_3.sol
+    /// Contract code: res/chainspec/test/contract_ver_3.sol
     #[test]
     fn transaction_filter_ver_3() {
         let spec_data = include_str!("../res/chainspec/test/contract_ver_3_genesis.json");
@@ -466,6 +490,145 @@ mod test {
 
         let filter = TransactionFilter::from_params(spec.params()).unwrap();
         let mut tx = TypedTransaction::Legacy(Transaction::default());
+        tx.tx_mut().action =
+            Action::Call(Address::from_str("0000000000000000000000000000000000000042").unwrap());
+        tx.tx_mut().data = b"01234567".to_vec();
+        tx.tx_mut().gas_price = 0.into();
+
+        let genesis = client.block_hash(BlockId::Latest).unwrap();
+        let block_number = 1;
+
+        // Data too long and gas price zero. This transaction is not allowed.
+        assert!(!filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+
+        // But if we either set a nonzero gas price or short data or both, it is allowed.
+        tx.tx_mut().gas_price = 1.into();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+        tx.tx_mut().data = b"01".to_vec();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+        tx.tx_mut().gas_price = 0.into();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+    }
+
+    /// Contract code: res/chainspec/test/contract_ver_4.sol
+    #[test]
+    fn transaction_filter_ver_4_legacy() {
+        let spec_data = include_str!("../res/chainspec/test/contract_ver_4_genesis.json");
+
+        let db = test_helpers::new_db();
+        let tempdir = TempDir::new("").unwrap();
+        let spec = Spec::load(&tempdir.path(), spec_data.as_bytes()).unwrap();
+
+        let client = Client::new(
+            ClientConfig::default(),
+            &spec,
+            db,
+            Arc::new(Miner::new_for_tests(&spec, None)),
+            IoChannel::disconnected(),
+        )
+        .unwrap();
+        let key1 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+        )
+        .unwrap();
+
+        // The only difference to version 2 is that the contract now knows the transaction's gas price and data.
+        // So we only test those: The contract allows only transactions with either nonzero gas price or short data.
+
+        let filter = TransactionFilter::from_params(spec.params()).unwrap();
+        let mut tx = TypedTransaction::Legacy(Transaction::default());
+        tx.tx_mut().action =
+            Action::Call(Address::from_str("0000000000000000000000000000000000000042").unwrap());
+        tx.tx_mut().data = b"01234567".to_vec();
+        tx.tx_mut().gas_price = 0.into();
+
+        let genesis = client.block_hash(BlockId::Latest).unwrap();
+        let block_number = 1;
+
+        // Data too long and gas price zero. This transaction is not allowed.
+        assert!(!filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+
+        // But if we either set a nonzero gas price or short data or both, it is allowed.
+        tx.tx_mut().gas_price = 1.into();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+        tx.tx_mut().data = b"01".to_vec();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+        tx.tx_mut().gas_price = 0.into();
+        assert!(filter.transaction_allowed(
+            &genesis,
+            block_number,
+            &tx.clone().sign(key1.secret(), None),
+            &*client
+        ));
+    }
+
+    /// Contract code: res/chainspec/test/contract_ver_4.sol
+    #[test]
+    fn transaction_filter_ver_4_1559() {
+        let spec_data = include_str!("../res/chainspec/test/contract_ver_4_genesis.json");
+
+        let db = test_helpers::new_db();
+        let tempdir = TempDir::new("").unwrap();
+        let spec = Spec::load(&tempdir.path(), spec_data.as_bytes()).unwrap();
+
+        let client = Client::new(
+            ClientConfig::default(),
+            &spec,
+            db,
+            Arc::new(Miner::new_for_tests(&spec, None)),
+            IoChannel::disconnected(),
+        )
+        .unwrap();
+        let key1 = KeyPair::from_secret(
+            Secret::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+        )
+        .unwrap();
+
+        // The only difference to version 2 is that the contract now knows the transaction's gas price and data.
+        // So we only test those: The contract allows only transactions with either nonzero gas price or short data.
+
+        let filter = TransactionFilter::from_params(spec.params()).unwrap();
+        let mut tx = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(Transaction::default(), vec![]),
+            max_priority_fee_per_gas: U256::from(0),
+        });
         tx.tx_mut().action =
             Action::Call(Address::from_str("0000000000000000000000000000000000000042").unwrap());
         tx.tx_mut().data = b"01234567".to_vec();

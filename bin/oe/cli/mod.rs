@@ -680,7 +680,7 @@ usage! {
 
             ARG arg_min_gas_price: (Option<u64>) = None, or |c: &Config| c.mining.as_ref()?.min_gas_price.clone(),
             "--min-gas-price=[STRING]",
-            "Minimum amount of Wei per GAS to be paid for a transaction to be accepted for mining. Overrides --usd-per-tx.",
+            "Minimum amount of Wei per GAS to be paid for a transaction on top of base fee, to be accepted for mining. Overrides --usd-per-tx.",
 
             ARG arg_gas_price_percentile: (usize) = 50usize, or |c: &Config| c.mining.as_ref()?.gas_price_percentile,
             "--gas-price-percentile=[PCT]",

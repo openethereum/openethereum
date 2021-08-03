@@ -1955,7 +1955,7 @@ impl Call for Client {
             gas_used: U256::default(),
             gas_limit: U256::max_value(),
             //if gas pricing is not defined, force base_fee to zero
-            base_fee: if transaction.effective_gas_price(header.base_fee()).is_zero() {
+            base_fee: if transaction.effective_gas_price(header.base_fee()) == 0.into() {
                 Some(0.into())
             } else {
                 header.base_fee()
@@ -1988,7 +1988,7 @@ impl Call for Client {
 
         for &(ref t, analytics) in transactions {
             //if gas pricing is not defined, force base_fee to zero
-            if t.effective_gas_price(header.base_fee()).is_zero() {
+            if t.effective_gas_price(header.base_fee()) == 0.into() {
                 env_info.base_fee = Some(0.into());
             } else {
                 env_info.base_fee = header.base_fee()
@@ -2020,7 +2020,7 @@ impl Call for Client {
                 last_hashes: self.build_last_hashes(header.parent_hash()),
                 gas_used: U256::default(),
                 gas_limit: max,
-                base_fee: if t.effective_gas_price(header.base_fee()).is_zero() {
+                base_fee: if t.effective_gas_price(header.base_fee()) == 0.into() {
                     Some(0.into())
                 } else {
                     header.base_fee()

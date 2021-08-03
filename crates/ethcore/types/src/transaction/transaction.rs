@@ -651,22 +651,6 @@ impl TypedTransaction {
         }
     }
 
-    pub fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256 {
-        self.effective_gas_price(block_base_fee)
-            .checked_sub(block_base_fee.unwrap_or_default())
-            .unwrap_or_default()
-    }
-
-    pub fn is_service(&self) -> bool {
-        match self {
-            Self::EIP1559Transaction(tx) => {
-                tx.tx().gas_price.is_zero() && tx.max_priority_fee_per_gas.is_zero()
-            }
-            Self::AccessList(tx) => tx.tx().gas_price.is_zero(),
-            Self::Legacy(tx) => tx.gas_price.is_zero(),
-        }
-    }
-
     fn decode_new(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
         if tx.is_empty() {
             // at least one byte needs to be present

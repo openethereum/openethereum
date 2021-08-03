@@ -659,10 +659,7 @@ impl TransactionQueue {
             Some(tx) => tx
                 .signed()
                 .effective_gas_price(self.options.read().block_base_fee),
-            None => {
-                self.options.read().minimal_gas_price
-                    + self.options.read().block_base_fee.unwrap_or_default()
-            }
+            None => self.options.read().minimal_gas_price,
         }
     }
 

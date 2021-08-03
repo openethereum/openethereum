@@ -59,6 +59,7 @@
 		"eip214Transition": "0x4d50f8",
 		"eip658Transition": "0x4d50f8",
 		"wasmActivationTransition": "0x64b540",
+		"wasmDisableTransition": "0x198096c",
 		"eip145Transition": "0x8c6180",
 		"eip1014Transition": "0x8c6180",
 		"eip1052Transition": "0x8c6180",

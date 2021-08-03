@@ -71,6 +71,13 @@
 		"eip2028Transition": "0xd751a5",
 		"eip2929Transition": "0x179f954",
 		"eip2930Transition": "0x179f954",
+		"eip1559Transition": "0x198096c",
+		"eip3198Transition": "0x198096c",
+		"eip3541Transition": "0x198096c",
+		"eip3529Transition": "0x198096c",
+		"eip1559BaseFeeMaxChangeDenominator": "0x8",
+		"eip1559ElasticityMultiplier": "0x2",
+		"eip1559BaseFeeInitialValue": "0x3B9ACA00",
 		"kip4Transition": "0x8c6180",
 		"kip6Transition": "0x8c6180"
 	},

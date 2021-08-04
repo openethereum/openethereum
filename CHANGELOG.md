@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.6
+
+Enhancements:
+* London hardfork block: kovan (26741100) (#502)
+
 ## OpenEthereum v3.3.0-rc.4
 
 Enhancements:

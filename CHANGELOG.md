@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.7
+
+Bug fixes:
+* GetPooledTransactions is sent in invalid form (wrong packet id)
+
 ## OpenEthereum v3.3.0-rc.6
 
 Enhancements:

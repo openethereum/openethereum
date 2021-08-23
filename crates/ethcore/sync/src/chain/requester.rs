@@ -124,7 +124,7 @@ impl SyncRequester {
             io,
             peer_id,
             PeerAsking::PooledTransactions,
-            PooledTransactionsPacket,
+            GetPooledTransactionsPacket,
             rlp.out(),
         )
     }

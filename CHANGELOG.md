@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.8
+
+Bug fixes:
+* Ignore GetNodeData requests (#519)
+
 ## OpenEthereum v3.3.0-rc.7
 
 Bug fixes:

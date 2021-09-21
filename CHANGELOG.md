@@ -1,3 +1,13 @@
+## OpenEthereum v3.3.0-rc.8
+
+Bug fixes:
+* Ignore GetNodeData requests (#519)
+
+## OpenEthereum v3.3.0-rc.7
+
+Bug fixes:
+* GetPooledTransactions is sent in invalid form (wrong packet id)
+
 ## OpenEthereum v3.3.0-rc.6
 
 Enhancements:

@@ -351,29 +351,10 @@ impl SyncSupplier {
     }
 
     fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
-        if count == 0 {
-            debug!(target: "sync", "Empty GetNodeData request, ignoring.");
-            return Ok(None);
-        }
-
-        let mut data = Bytes::new();
-
-        let mut added = 0usize;
-        for i in 0..count {
-            if let Some(ref mut node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
-                data.append(node_data);
-                added += 1;
-                if data.len() > PAYLOAD_SOFT_LIMIT {
-                    break;
-                }
-            }
-        }
-
-        let mut rlp = RlpStream::new_list(added);
-        rlp.append_raw(&data, added);
-        trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
-        Ok(Some((NodeDataPacket, rlp)))
+        // GetNodeData requests are ignored since we don't have a correct
+        // implementation of the NodeData response, see issue #508
+        debug!("Ignoring GetNodeData request");
+        Ok(None)
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {

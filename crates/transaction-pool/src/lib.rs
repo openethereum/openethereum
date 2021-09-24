@@ -113,4 +113,7 @@ pub trait VerifiedTransaction: fmt::Debug {
 
     /// Transaction sender
     fn sender(&self) -> &Self::Sender;
+
+    /// Is it a service transaction?
+    fn is_service(&self) -> bool;
 }

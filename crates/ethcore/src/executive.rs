@@ -1207,7 +1207,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         // ensure that the user was willing to at least pay the base fee
-        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() {
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() && !t.is_service() {
             return Err(ExecutionError::GasPriceLowerThanBaseFee {
                 gas_price: t.tx().gas_price,
                 base_fee: self.info.base_fee.unwrap_or_default(),

@@ -376,7 +376,7 @@ impl EthereumMachine {
         header: &Header,
     ) -> Result<SignedTransaction, transaction::Error> {
         // ensure that the user was willing to at least pay the base fee
-        if t.tx().gas_price < header.base_fee().unwrap_or_default() {
+        if t.tx().gas_price < header.base_fee().unwrap_or_default() && !t.is_service() {
             return Err(transaction::Error::GasPriceLowerThanBaseFee {
                 gas_price: t.tx().gas_price,
                 base_fee: header.base_fee().unwrap_or_default(),

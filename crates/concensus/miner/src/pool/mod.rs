@@ -188,6 +188,10 @@ impl txpool::VerifiedTransaction for VerifiedTransaction {
     fn sender(&self) -> &Address {
         &self.sender
     }
+
+    fn is_service(&self) -> bool {
+        self.transaction.is_service()
+    }
 }
 
 impl ScoredTransaction for VerifiedTransaction {

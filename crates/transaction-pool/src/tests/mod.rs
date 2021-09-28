@@ -50,6 +50,9 @@ impl VerifiedTransaction for Transaction {
     fn sender(&self) -> &Address {
         &self.sender
     }
+    fn is_service(&self) -> bool {
+        false
+    }
 }
 
 pub type SharedTransaction = Arc<Transaction>;

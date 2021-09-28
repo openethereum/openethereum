@@ -650,7 +650,9 @@ where
                                 match self.ready.is_ready(&tx) {
                                     Readiness::Ready => {
                                         //return transaction with score higher or equal to desired
-                                        if score >= &self.includable_boundary || tx.transaction.is_service() {
+                                        if score >= &self.includable_boundary
+                                            || tx.transaction.is_service()
+                                        {
                                             return Some(tx.transaction.clone());
                                         }
                                     }
@@ -737,7 +739,9 @@ where
 
             if tx_state == Readiness::Ready {
                 //return transaction with score higher or equal to desired
-                if best.score >= self.includable_boundary || best.transaction.transaction.is_service() {
+                if best.score >= self.includable_boundary
+                    || best.transaction.transaction.is_service()
+                {
                     return Some(best.transaction.transaction);
                 }
             }

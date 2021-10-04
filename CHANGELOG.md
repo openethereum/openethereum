@@ -1,3 +1,13 @@
+## OpenEthereum v3.3.0-rc.9
+
+Bug fixes:
+* Add service transactions support for EIP-1559
+* Fix MinGasPrice config option for POSDAO and EIP-1559
+
+Enhancements:
+* min_gas_price becomes min_effective_priority_fee
+* added version 4 for TxPermission contract
+
 ## OpenEthereum v3.3.0-rc.8
 
 Bug fixes:

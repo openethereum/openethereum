@@ -1516,18 +1516,20 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         // Up until now, fees_value is calculated for each type of transaction based on their gas prices
         // Now, if eip1559 is activated, burn the base fee
         // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
-        let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
-            let (base_fee, overflow_3) =
+        let burnt_fee = if schedule.eip1559 && !t.is_service() {
+            let (fee, overflow_3) =
                 gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
             if overflow_3 {
                 return Err(ExecutionError::TransactionMalformed(
                     "U256 Overflow".to_string(),
                 ));
             }
-            base_fee
+            fee
         } else {
             U256::from(0)
-        });
+        };
+
+        let fees_value = fees_value.saturating_sub(burnt_fee);
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
 			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
@@ -1551,6 +1553,17 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             &fees_value,
             substate.to_cleanup_mode(&schedule),
         )?;
+
+        if burnt_fee > U256::from(0)
+            && self.machine.params().eip1559_fee_collector.is_some()
+            && self.info.number >= self.machine.params().eip1559_fee_collector_transition
+        {
+            self.state.add_balance(
+                &self.machine.params().eip1559_fee_collector.unwrap(),
+                &burnt_fee,
+                substate.to_cleanup_mode(&schedule),
+            )?;
+        };
 
         // perform suicides
         for address in &substate.suicides {

@@ -158,6 +158,10 @@ pub struct Params {
     pub eip1559_elasticity_multiplier: Option<Uint>,
     /// Default value for the block base fee
     pub eip1559_base_fee_initial_value: Option<Uint>,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: Option<Uint>,
 }
 
 #[cfg(test)]

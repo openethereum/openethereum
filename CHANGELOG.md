@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.10
+
+Enhancements:
+* Add eip1559FeeCollector and eip1559FeeCollectorTransition spec options
+
 ## OpenEthereum v3.3.0-rc.9
 
 Bug fixes:

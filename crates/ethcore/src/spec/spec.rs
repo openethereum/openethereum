@@ -183,6 +183,10 @@ pub struct CommonParams {
     pub eip1559_elasticity_multiplier: U256,
     /// Default value for the block base fee
     pub eip1559_base_fee_initial_value: U256,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: BlockNumber,
 }
 
 impl CommonParams {
@@ -459,6 +463,10 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip1559_base_fee_initial_value: p
                 .eip1559_base_fee_initial_value
                 .map_or_else(U256::zero, Into::into),
+            eip1559_fee_collector: p.eip1559_fee_collector.map(Into::into),
+            eip1559_fee_collector_transition: p
+                .eip1559_fee_collector_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
         }
     }
 }
@@ -734,6 +742,7 @@ impl Spec {
             params.kip6_transition,
             params.max_code_size_transition,
             params.transaction_permission_contract_transition,
+            params.eip1559_fee_collector_transition,
         ];
         // BUG: Rinkeby has homestead transition at block 1 but we can't reflect that in specs for non-Ethash networks
         if params.network_id == 0x4 {

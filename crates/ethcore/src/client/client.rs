@@ -2234,6 +2234,11 @@ impl BlockChainClient for Client {
         }
     }
 
+    fn is_aura(&self) -> bool {
+        let engine = self.engine.clone();
+        engine.name() == "AuthorityRound"
+    }
+
     fn is_processing_fork(&self) -> bool {
         let chain = self.chain.read();
         self.importer

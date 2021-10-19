@@ -258,6 +258,9 @@ pub trait BlockChainClient:
     /// Get block total difficulty.
     fn block_total_difficulty(&self, id: BlockId) -> Option<U256>;
 
+    /// Is it AuRa engine?
+    fn is_aura(&self) -> bool;
+
     /// Attempt to get address storage root at given block.
     /// May not fail on BlockId::Latest.
     fn storage_root(&self, address: &Address, id: BlockId) -> Option<H256>;

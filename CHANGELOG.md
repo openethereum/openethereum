@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.11
+
+Bug fixes:
+* Ignore GetNodeData requests only for non-AuRa chains
+
 ## OpenEthereum v3.3.0-rc.10
 
 Enhancements:

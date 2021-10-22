@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.12
+
+Enhancements:
+* London hardfork block: xDai (19040000)
+
 ## OpenEthereum v3.3.0-rc.11
 
 Bug fixes:

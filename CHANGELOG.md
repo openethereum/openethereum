@@ -1,8 +1,8 @@
 ## OpenEthereum v3.3.0-rc.14
 
 Enhancements:
-* Add eip1559BaseFeeFixedValue and eip1559BaseFeeFixedValueTransition spec options
-* Activate eip1559BaseFeeFixedValue on xDai at London hardfork block (19040000)
+* Add eip1559BaseFeeMinValue and eip1559BaseFeeMinValueTransition spec options
+* Activate eip1559BaseFeeMinValue on xDai at London hardfork block (19040000)
 * Delay difficulty bomb to June 2022 (EIP-4345)
 
 ## OpenEthereum v3.3.0-rc.13

@@ -467,8 +467,8 @@ impl EthereumMachine {
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
     ///
-    /// Modified for xDai chain to have an ability to set constant base fee
-    /// through eip1559BaseFeeFixedValue spec option. The modification made
+    /// Modified for xDai chain to have an ability to set min base fee
+    /// through eip1559BaseFeeMinValue spec option. The modification made
     /// in v3.3.0-rc.14
     pub fn calc_base_fee(&self, parent: &Header) -> Option<U256> {
         // Block eip1559_transition - 1 has base_fee = None
@@ -476,22 +476,22 @@ impl EthereumMachine {
             return None;
         }
 
-        // If we use base fee constant value, ignore the code below
-        if parent.number() + 1 >= self.params().eip1559_base_fee_fixed_value_transition {
-            let base_fee_fixed_value = match self.params().eip1559_base_fee_fixed_value {
-                None => panic!("Base fee fixed value must be set in spec."),
-                Some(fixed_value) => fixed_value,
+        let base_fee_min_value =
+            if parent.number() + 1 >= self.params().eip1559_base_fee_min_value_transition {
+                match self.params().eip1559_base_fee_min_value {
+                    None => panic!("Base fee min value must be set in spec."),
+                    Some(min_value) => min_value,
+                }
+            } else {
+                U256::zero()
             };
-            return Some(base_fee_fixed_value);
-        }
 
         // Block eip1559_transition has base_fee = self.params().eip1559_base_fee_initial_value
         if parent.number() + 1 == self.params().eip1559_transition {
-            let base_fee_initial_value = match self.params().eip1559_base_fee_initial_value {
-                None => panic!("Base fee initial value must be set in spec."),
-                Some(initial_value) => initial_value,
-            };
-            return Some(base_fee_initial_value);
+            return Some(max(
+                self.params().eip1559_base_fee_initial_value,
+                base_fee_min_value,
+            ));
         }
 
         // Block eip1559_transition + 1 has base_fee = calculated
@@ -509,21 +509,23 @@ impl EthereumMachine {
             panic!("Can't calculate base fee if parent gas target is zero.");
         }
 
-        if parent.gas_used() == &parent_gas_target {
-            Some(parent_base_fee)
+        let result = if parent.gas_used() == &parent_gas_target {
+            parent_base_fee
         } else if parent.gas_used() > &parent_gas_target {
             let gas_used_delta = parent.gas_used() - parent_gas_target;
             let base_fee_per_gas_delta = max(
                 parent_base_fee * gas_used_delta / parent_gas_target / base_fee_denominator,
                 U256::from(1),
             );
-            Some(parent_base_fee + base_fee_per_gas_delta)
+            parent_base_fee + base_fee_per_gas_delta
         } else {
             let gas_used_delta = parent_gas_target - parent.gas_used();
             let base_fee_per_gas_delta =
                 parent_base_fee * gas_used_delta / parent_gas_target / base_fee_denominator;
-            Some(max(parent_base_fee - base_fee_per_gas_delta, U256::zero()))
-        }
+            max(parent_base_fee - base_fee_per_gas_delta, U256::zero())
+        };
+
+        Some(max(result, base_fee_min_value))
     }
 }
 

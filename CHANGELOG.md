@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.13
+
+Enhancements:
+* London hardfork block: POA Core (24090200)
+
 ## OpenEthereum v3.3.0-rc.12
 
 Enhancements:

@@ -466,15 +466,32 @@ impl EthereumMachine {
     /// Base fee is calculated based on the parent header (last block in blockchain / best block).
     ///
     /// Introduced by EIP1559 to support new market fee mechanism.
+    ///
+    /// Modified for xDai chain to have an ability to set constant base fee
+    /// through eip1559BaseFeeFixedValue spec option. The modification made
+    /// in v3.3.0-rc.14
     pub fn calc_base_fee(&self, parent: &Header) -> Option<U256> {
         // Block eip1559_transition - 1 has base_fee = None
         if parent.number() + 1 < self.params().eip1559_transition {
             return None;
         }
 
+        // If we use base fee constant value, ignore the code below
+        if parent.number() + 1 >= self.params().eip1559_base_fee_fixed_value_transition {
+            let base_fee_fixed_value = match self.params().eip1559_base_fee_fixed_value {
+                None => panic!("Base fee fixed value must be set in spec."),
+                Some(fixed_value) => fixed_value,
+            };
+            return Some(base_fee_fixed_value);
+        }
+
         // Block eip1559_transition has base_fee = self.params().eip1559_base_fee_initial_value
         if parent.number() + 1 == self.params().eip1559_transition {
-            return Some(self.params().eip1559_base_fee_initial_value);
+            let base_fee_initial_value = match self.params().eip1559_base_fee_initial_value {
+                None => panic!("Base fee initial value must be set in spec."),
+                Some(initial_value) => initial_value,
+            };
+            return Some(base_fee_initial_value);
         }
 
         // Block eip1559_transition + 1 has base_fee = calculated

@@ -2,8 +2,9 @@
 
 Enhancements:
 * Add eip1559BaseFeeMinValue and eip1559BaseFeeMinValueTransition spec options
-* Activate eip1559BaseFeeMinValue on xDai at London hardfork block (19040000)
-* Delay difficulty bomb to June 2022 (EIP-4345)
+* Activate eip1559BaseFeeMinValue on xDai at London hardfork block (19040000), set it to 20 GWei
+* Activate eip1559BaseFeeMinValue on POA Core at block 24199500 (November 8, 2021), set it to 10 GWei
+* Delay difficulty bomb to June 2022 for Ethereum Mainnet (EIP-4345)
 
 ## OpenEthereum v3.3.0-rc.13
 

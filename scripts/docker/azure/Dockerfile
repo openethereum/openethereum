@@ -13,7 +13,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 # rustup directory
 ENV PATH /root/.cargo/bin:$PATH
 
-RUN rustup override set 1.51.0
+RUN rustup override set 1.52.0
 
 # show tools
 RUN rustc -vV && cargo -V

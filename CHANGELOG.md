@@ -1,3 +1,7 @@
+## OpenEthereum v3.3.0-rc.15
+
+* Revert eip1559BaseFeeMinValue activation on xDai at London hardfork block
+
 ## OpenEthereum v3.3.0-rc.14
 
 Enhancements:

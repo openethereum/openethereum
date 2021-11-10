@@ -72,7 +72,7 @@ impl ServiceTransactionChecker {
                 SERVICE_TRANSACTION_CONTRACT_REGISTRY_NAME.to_owned(),
                 BlockId::Latest,
             )
-            .ok_or_else(|| "contract is not configured")?;
+            .ok_or_else(|| "Certifier contract is not configured")?;
         self.call_contract(client, contract_address, sender)
             .and_then(|allowed| {
                 if let Some(mut cache) = self.certified_addresses_cache.try_write() {

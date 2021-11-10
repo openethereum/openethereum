@@ -1,3 +1,8 @@
+## OpenEthereum v3.3.0-rc.16
+
+Enhancements:
+* Additionally check zero gas price transactions by block verifier
+
 ## OpenEthereum v3.3.0-rc.15
 
 * Revert eip1559BaseFeeMinValue activation on xDai at London hardfork block

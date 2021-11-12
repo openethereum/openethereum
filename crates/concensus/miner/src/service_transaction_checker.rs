@@ -45,7 +45,7 @@ impl ServiceTransactionChecker {
     ) -> Result<bool, String> {
         let sender = tx.sender();
         // Skip checking the contract if the transaction does not have zero gas price
-        if !tx.tx().gas_price.is_zero() {
+        if !tx.has_zero_gas_price() {
             return Ok(false);
         }
 

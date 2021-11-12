@@ -191,6 +191,8 @@ pub struct CommonParams {
     pub eip1559_fee_collector: Option<Address>,
     /// Block at which the fee collector should start being used.
     pub eip1559_fee_collector_transition: BlockNumber,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: BlockNumber,
 }
 
 impl CommonParams {
@@ -475,6 +477,9 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip1559_fee_collector_transition: p
                 .eip1559_fee_collector_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            validate_service_transactions_transition: p
+                .validate_service_transactions_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
         }
     }
 }
@@ -752,6 +757,7 @@ impl Spec {
             params.transaction_permission_contract_transition,
             params.eip1559_fee_collector_transition,
             params.eip1559_base_fee_min_value_transition,
+            params.validate_service_transactions_transition,
         ];
         // BUG: Rinkeby has homestead transition at block 1 but we can't reflect that in specs for non-Ethash networks
         if params.network_id == 0x4 {

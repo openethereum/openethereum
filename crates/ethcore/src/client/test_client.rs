@@ -1090,6 +1090,10 @@ impl BlockChainClient for TestBlockChainClient {
         }
         None
     }
+
+    fn is_aura(&self) -> bool {
+        false
+    }
 }
 
 impl IoClient for TestBlockChainClient {

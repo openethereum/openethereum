@@ -1,7 +1,7 @@
-## OpenEthereum v3.3.0-rc.16
+## OpenEthereum v3.3.0
 
 Enhancements:
-* Additionally check zero gas price transactions by block verifier
+* Add `validateServiceTransactionsTransition` spec option to be able to enable additional checking of zero gas price transactions by block verifier
 
 ## OpenEthereum v3.3.0-rc.15
 

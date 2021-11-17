@@ -137,6 +137,24 @@ impl<'a> TypedTransactionView<'a> {
         }
     }
 
+    /// Get the actual priority gas price paid to the miner
+    pub fn effective_priority_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match self.transaction_type {
+            TypedTxId::Legacy => self.gas_price() - block_base_fee.unwrap_or_default(),
+            TypedTxId::AccessList => self.gas_price() - block_base_fee.unwrap_or_default(),
+            TypedTxId::EIP1559Transaction => {
+                let max_priority_fee_per_gas: U256 =
+                    view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                        .rlp
+                        .val_at(2);
+                min(
+                    max_priority_fee_per_gas,
+                    self.gas_price() - block_base_fee.unwrap_or_default()
+                )
+            }
+        }
+    }
+
     /// Get the gas field of the transaction.
     pub fn gas(&self) -> U256 {
         match self.transaction_type {

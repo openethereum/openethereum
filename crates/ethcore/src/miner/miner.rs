@@ -1001,10 +1001,6 @@ impl miner::MinerService for Miner {
         }
     }
 
-    fn block_base_fee(&self) -> Option<U256> {
-        self.options.pool_verification_options.block_base_fee
-    }
-
     fn sensible_gas_price(&self) -> U256 {
         // 10% above our minimum.
         self.transaction_queue.current_worst_gas_price() * 110u32 / 100

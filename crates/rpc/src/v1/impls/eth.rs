@@ -701,7 +701,7 @@ where
             &*self.client,
             &*self.miner,
             self.options.gas_price_percentile,
-            self.client.engine().params().eip1559_transition
+            self.client.engine().params().eip1559_transition,
         )))
     }
 

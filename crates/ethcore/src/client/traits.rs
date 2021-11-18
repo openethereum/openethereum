@@ -417,7 +417,11 @@ pub trait BlockChainClient:
     }
 
     /// Sorted list of transaction priority gas prices from at least last sample_size blocks.
-    fn priority_gas_price_corpus(&self, sample_size: usize, eip1559_transition: BlockNumber) -> ::stats::Corpus<U256> {
+    fn priority_gas_price_corpus(
+        &self,
+        sample_size: usize,
+        eip1559_transition: BlockNumber,
+    ) -> ::stats::Corpus<U256> {
         let mut h = self.chain_info().best_block_hash;
         let mut corpus = Vec::new();
         while corpus.is_empty() {
@@ -431,13 +435,13 @@ pub trait BlockChainClient:
                     return corpus.into();
                 }
                 block.transaction_views().iter().foreach(|t| {
-                   corpus.push(t.effective_priority_gas_price({
-                       if block.header().number() >= eip1559_transition {
-                           Some(block.header().base_fee())
-                       } else {
-                           None
-                       }
-                   }))
+                    corpus.push(t.effective_priority_gas_price({
+                        if block.header().number() >= eip1559_transition {
+                            Some(block.header().base_fee())
+                        } else {
+                            None
+                        }
+                    }))
                 });
                 h = block.parent_hash().clone();
             }

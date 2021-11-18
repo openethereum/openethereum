@@ -149,7 +149,7 @@ impl<'a> TypedTransactionView<'a> {
                         .val_at(2);
                 min(
                     max_priority_fee_per_gas,
-                    self.gas_price() - block_base_fee.unwrap_or_default()
+                    self.gas_price() - block_base_fee.unwrap_or_default(),
                 )
             }
         }

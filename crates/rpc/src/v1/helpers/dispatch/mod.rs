@@ -91,7 +91,10 @@ use ethcore::{client::BlockChainClient, miner::MinerService};
 use ethereum_types::{Address, H256, H520, U256};
 use ethkey::Password;
 use hash::keccak;
-use types::{BlockNumber, transaction::{PendingTransaction, SignedTransaction}};
+use types::{
+    transaction::{PendingTransaction, SignedTransaction},
+    BlockNumber,
+};
 
 use jsonrpc_core::{
     futures::{future, Future, IntoFuture},
@@ -398,13 +401,18 @@ where
 }
 
 /// Extract the default priority gas price from a client and miner.
-pub fn default_max_priority_fee_per_gas<C, M>(client: &C, miner: &M, percentile: usize, eip1559_transition: BlockNumber) -> U256
+pub fn default_max_priority_fee_per_gas<C, M>(
+    client: &C,
+    miner: &M,
+    percentile: usize,
+    eip1559_transition: BlockNumber,
+) -> U256
 where
     C: BlockChainClient,
     M: MinerService,
 {
-    client.
-        priority_gas_price_corpus(100, eip1559_transition)
+    client
+        .priority_gas_price_corpus(100, eip1559_transition)
         .percentile(percentile)
         .cloned()
         .unwrap_or_else(|| miner.sensible_gas_price() - miner.block_base_fee().unwrap_or_default())

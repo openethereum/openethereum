@@ -50,7 +50,7 @@ impl VerifiedTransaction for Transaction {
     fn sender(&self) -> &Address {
         &self.sender
     }
-    fn is_service(&self) -> bool {
+    fn has_zero_gas_price(&self) -> bool {
         false
     }
 }

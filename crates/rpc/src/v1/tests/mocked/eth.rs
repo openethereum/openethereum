@@ -538,6 +538,19 @@ fn rpc_eth_gas_price() {
 }
 
 #[test]
+fn rpc_eth_get_max_priority_fee_per_gas() {
+    let tester = EthTester::default();
+
+    let request = r#"{"method":"eth_maxPriorityFeePerGas","params":[],"id":1,"jsonrpc":"2.0"}"#;
+    let response = r#"{"jsonrpc":"2.0","result":"0x77359400","id":1}"#; // 2 GWei
+
+    assert_eq!(
+        tester.io.handle_request_sync(request),
+        Some(response.to_owned())
+    );
+}
+
+#[test]
 fn rpc_eth_accounts() {
     let tester = EthTester::default();
     let address = tester.accounts_provider.new_account(&"".into()).unwrap();

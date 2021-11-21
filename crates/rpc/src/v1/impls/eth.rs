@@ -52,7 +52,7 @@ use v1::{
         self,
         block_import::is_major_importing,
         deprecated::{self, DeprecationNotice},
-        dispatch::{default_gas_price, FullDispatcher},
+        dispatch::{default_gas_price, default_max_priority_fee_per_gas, FullDispatcher},
         errors, fake_sign, limit_logs,
     },
     metadata::Metadata,
@@ -693,6 +693,15 @@ where
             &*self.client,
             &*self.miner,
             self.options.gas_price_percentile,
+        )))
+    }
+
+    fn max_priority_fee_per_gas(&self) -> BoxFuture<U256> {
+        Box::new(future::ok(default_max_priority_fee_per_gas(
+            &*self.client,
+            &*self.miner,
+            self.options.gas_price_percentile,
+            self.client.engine().params().eip1559_transition,
         )))
     }
 

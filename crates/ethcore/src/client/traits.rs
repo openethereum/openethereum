@@ -416,6 +416,39 @@ pub trait BlockChainClient:
         corpus.into()
     }
 
+    /// Sorted list of transaction priority gas prices from at least last sample_size blocks.
+    fn priority_gas_price_corpus(
+        &self,
+        sample_size: usize,
+        eip1559_transition: BlockNumber,
+    ) -> ::stats::Corpus<U256> {
+        let mut h = self.chain_info().best_block_hash;
+        let mut corpus = Vec::new();
+        while corpus.is_empty() {
+            for _ in 0..sample_size {
+                let block = match self.block(BlockId::Hash(h)) {
+                    Some(block) => block,
+                    None => return corpus.into(),
+                };
+
+                if block.number() == 0 {
+                    return corpus.into();
+                }
+                block.transaction_views().iter().foreach(|t| {
+                    corpus.push(t.effective_priority_gas_price({
+                        if block.header().number() >= eip1559_transition {
+                            Some(block.header().base_fee())
+                        } else {
+                            None
+                        }
+                    }))
+                });
+                h = block.parent_hash().clone();
+            }
+        }
+        corpus.into()
+    }
+
     /// Get the preferred chain ID to sign on
     fn signing_chain_id(&self) -> Option<u64>;
 

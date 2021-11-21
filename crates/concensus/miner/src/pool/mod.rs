@@ -189,8 +189,8 @@ impl txpool::VerifiedTransaction for VerifiedTransaction {
         &self.sender
     }
 
-    fn is_service(&self) -> bool {
-        self.transaction.is_service()
+    fn has_zero_gas_price(&self) -> bool {
+        self.transaction.has_zero_gas_price()
     }
 }
 

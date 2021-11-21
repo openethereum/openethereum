@@ -166,6 +166,8 @@ pub struct Params {
     pub eip1559_fee_collector: Option<Address>,
     /// Block at which the fee collector should start being used.
     pub eip1559_fee_collector_transition: Option<Uint>,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: Option<Uint>,
 }
 
 #[cfg(test)]

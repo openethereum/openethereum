@@ -657,7 +657,7 @@ impl TypedTransaction {
             .unwrap_or_default()
     }
 
-    pub fn is_service(&self) -> bool {
+    pub fn has_zero_gas_price(&self) -> bool {
         match self {
             Self::EIP1559Transaction(tx) => {
                 tx.tx().gas_price.is_zero() && tx.max_priority_fee_per_gas.is_zero()

@@ -131,12 +131,12 @@ impl Transaction {
         }
     }
 
-    /// Cheeck if transaction is service transaction
-    pub fn is_service(&self) -> bool {
+    /// Check if transaction has zero gas price
+    pub fn has_zero_gas_price(&self) -> bool {
         match *self {
-            Transaction::Unverified(ref tx) => tx.is_service(),
-            Transaction::Retracted(ref tx) => tx.is_service(),
-            Transaction::Local(ref tx) => tx.is_service(),
+            Transaction::Unverified(ref tx) => tx.has_zero_gas_price(),
+            Transaction::Retracted(ref tx) => tx.has_zero_gas_price(),
+            Transaction::Local(ref tx) => tx.has_zero_gas_price(),
         }
     }
 
@@ -243,13 +243,13 @@ impl<C: Client> txpool::Verifier<Transaction>
         }
 
         let is_own = tx.is_local();
-        let is_service = tx.is_service();
+        let has_zero_gas_price = tx.has_zero_gas_price();
         // Quick exit for non-service and non-local transactions
         //
         // We're checking if the transaction is below configured minimal gas price
         // or the effective minimal gas price in case the pool is full.
 
-        if !is_service && !is_own {
+        if !has_zero_gas_price && !is_own {
             let effective_priority_fee = tx.effective_priority_fee(self.options.block_base_fee);
 
             if effective_priority_fee < self.options.minimal_gas_price {

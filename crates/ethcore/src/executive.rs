@@ -1207,7 +1207,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         // ensure that the user was willing to at least pay the base fee
-        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() && !t.is_service() {
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() && !t.has_zero_gas_price() {
             return Err(ExecutionError::GasPriceLowerThanBaseFee {
                 gas_price: t.tx().gas_price,
                 base_fee: self.info.base_fee.unwrap_or_default(),
@@ -1516,7 +1516,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         // Up until now, fees_value is calculated for each type of transaction based on their gas prices
         // Now, if eip1559 is activated, burn the base fee
         // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
-        let burnt_fee = if schedule.eip1559 && !t.is_service() {
+        let burnt_fee = if schedule.eip1559 && !t.has_zero_gas_price() {
             let (fee, overflow_3) =
                 gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
             if overflow_3 {

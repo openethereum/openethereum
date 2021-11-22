@@ -434,15 +434,21 @@ pub trait BlockChainClient:
                 if block.number() == 0 {
                     return corpus.into();
                 }
-                block.transaction_views().iter().foreach(|t| {
-                    corpus.push(t.effective_priority_gas_price({
-                        if block.header().number() >= eip1559_transition {
-                            Some(block.header().base_fee())
-                        } else {
-                            None
-                        }
-                    }))
-                });
+                block
+                    .transaction_views()
+                    .iter()
+                    .filter(
+                        |t| t.gas_price() > 0.into(), /* filter zero cost transactions */
+                    )
+                    .foreach(|t| {
+                        corpus.push(t.effective_priority_gas_price({
+                            if block.header().number() >= eip1559_transition {
+                                Some(block.header().base_fee())
+                            } else {
+                                None
+                            }
+                        }))
+                    });
                 h = block.parent_hash().clone();
             }
         }

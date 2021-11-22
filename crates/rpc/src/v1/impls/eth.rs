@@ -697,12 +697,19 @@ where
     }
 
     fn max_priority_fee_per_gas(&self) -> BoxFuture<U256> {
-        Box::new(future::ok(default_max_priority_fee_per_gas(
-            &*self.client,
-            &*self.miner,
-            self.options.gas_price_percentile,
-            self.client.engine().params().eip1559_transition,
-        )))
+        let latest_block = self.client.chain_info().best_block_number;
+        let eip1559_transition = self.client.engine().params().eip1559_transition;
+
+        if latest_block + 1 >= eip1559_transition {
+            Box::new(future::ok(default_max_priority_fee_per_gas(
+                &*self.client,
+                &*self.miner,
+                self.options.gas_price_percentile,
+                eip1559_transition,
+            )))
+        } else {
+            Box::new(future::done(Err(errors::eip1559_not_activated())))
+        }
     }
 
     fn fee_history(

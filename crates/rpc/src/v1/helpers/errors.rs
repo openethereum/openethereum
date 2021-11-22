@@ -273,6 +273,10 @@ where
     }
 }
 
+pub fn eip1559_not_activated() -> Error {
+    unsupported("EIP-1559 is not activated", None)
+}
+
 pub fn not_enough_data() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::UNSUPPORTED_REQUEST),

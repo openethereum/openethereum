@@ -505,12 +505,12 @@ mod test {
     use blocks::SyncHeader;
     use bytes::Bytes;
     use ethcore::client::{BlockChainClient, EachBlockWith, TestBlockChainClient};
+    use ethcore::spec::Spec;
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
     use std::{collections::VecDeque, str::FromStr};
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
-    use ethcore::spec::Spec;
 
     #[test]
     fn return_block_headers() {

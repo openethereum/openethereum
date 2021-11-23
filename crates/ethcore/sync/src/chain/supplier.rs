@@ -504,8 +504,10 @@ mod test {
     use super::{super::tests::*, *};
     use blocks::SyncHeader;
     use bytes::Bytes;
-    use ethcore::client::{BlockChainClient, EachBlockWith, TestBlockChainClient};
-    use ethcore::spec::Spec;
+    use ethcore::{
+        client::{BlockChainClient, EachBlockWith, TestBlockChainClient},
+        spec::Spec,
+    };
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};

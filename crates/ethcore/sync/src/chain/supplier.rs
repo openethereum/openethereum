@@ -510,6 +510,7 @@ mod test {
     use rlp::{Rlp, RlpStream};
     use std::{collections::VecDeque, str::FromStr};
     use tests::{helpers::TestIo, snapshot::TestSnapshotService};
+    use ethcore::spec::Spec;
 
     #[test]
     fn return_block_headers() {
@@ -769,7 +770,7 @@ mod test {
 
     #[test]
     fn return_nodes() {
-        let mut client = TestBlockChainClient::new();
+        let mut client = TestBlockChainClient::new_with_spec(Spec::new_test_round());
         let queue = RwLock::new(VecDeque::new());
         let sync = dummy_sync_with_peer(H256::zero(), &client);
         let ss = TestSnapshotService::new();

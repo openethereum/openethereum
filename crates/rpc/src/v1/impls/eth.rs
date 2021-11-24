@@ -821,8 +821,11 @@ where
 
                                                 gas_and_reward.push((
                                                     gas_used,
-                                                    txs[i].effective_gas_price(base_fee)
-                                                        - base_fee.unwrap_or_default(),
+                                                    txs[i]
+                                                        .effective_gas_price(base_fee)
+                                                        .saturating_sub(
+                                                            base_fee.unwrap_or_default(),
+                                                        ),
                                                 ));
                                             }
                                         }

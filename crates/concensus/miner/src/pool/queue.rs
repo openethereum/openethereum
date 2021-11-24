@@ -676,7 +676,8 @@ impl TransactionQueue {
             .map(|tx| {
                 tx.signed()
                     .effective_priority_fee(self.options.read().block_base_fee)
-            }).unwrap_or(self.options.read().minimal_gas_price)
+            })
+            .unwrap_or(self.options.read().minimal_gas_price)
     }
 
     /// Returns a status of the queue.

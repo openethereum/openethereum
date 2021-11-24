@@ -1008,7 +1008,10 @@ impl miner::MinerService for Miner {
 
     fn sensible_max_priority_fee(&self) -> U256 {
         // 10% above our minimum.
-        self.transaction_queue.current_worst_effective_priority_fee() * 110u32 / 100
+        self.transaction_queue
+            .current_worst_effective_priority_fee()
+            * 110u32
+            / 100
     }
 
     fn sensible_gas_limit(&self) -> U256 {

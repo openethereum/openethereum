@@ -349,10 +349,6 @@ impl MinerService for TestMinerService {
         }
     }
 
-    fn block_base_fee(&self) -> Option<U256> {
-        Some(18_000_000_000u64.into())
-    }
-
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
     fn submit_seal(&self, _pow_hash: H256, _seal: Vec<Bytes>) -> Result<SealedBlock, Error> {
@@ -361,6 +357,10 @@ impl MinerService for TestMinerService {
 
     fn sensible_gas_price(&self) -> U256 {
         20_000_000_000u64.into()
+    }
+
+    fn sensible_max_priority_fee(&self) -> U256 {
+        2_000_000_000u64.into()
     }
 
     fn sensible_gas_limit(&self) -> U256 {

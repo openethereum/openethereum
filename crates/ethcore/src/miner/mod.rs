@@ -257,13 +257,11 @@ pub trait MinerService: Send + Sync {
 
     // Misc
 
-    /// Current block base fee. Exists if the EIP 1559 is activated.
-    fn block_base_fee(&self) -> Option<U256> {
-        self.queue_status().options.block_base_fee
-    }
-
     /// Suggested gas price.
     fn sensible_gas_price(&self) -> U256;
+
+    /// Suggested max priority fee gas price
+    fn sensible_max_priority_fee(&self) -> U256;
 
     /// Suggested gas limit.
     fn sensible_gas_limit(&self) -> U256;

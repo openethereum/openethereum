@@ -415,7 +415,7 @@ where
         .priority_gas_price_corpus(100, eip1559_transition)
         .percentile(percentile)
         .cloned()
-        .unwrap_or_else(|| miner.sensible_gas_price() - miner.block_base_fee().unwrap_or_default())
+        .unwrap_or_else(|| miner.sensible_max_priority_fee())
 }
 
 /// Convert RPC confirmation payload to signer confirmation payload.

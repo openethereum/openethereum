@@ -60,6 +60,10 @@ pub trait Eth {
     #[rpc(name = "eth_gasPrice")]
     fn gas_price(&self) -> BoxFuture<U256>;
 
+    /// Returns current max_priority_fee
+    #[rpc(name = "eth_maxPriorityFeePerGas")]
+    fn max_priority_fee_per_gas(&self) -> BoxFuture<U256>;
+
     /// Returns transaction fee history.
     #[rpc(name = "eth_feeHistory")]
     fn fee_history(&self, _: U256, _: BlockNumber, _: Option<Vec<f64>>)

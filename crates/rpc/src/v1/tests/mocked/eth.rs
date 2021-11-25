@@ -23,7 +23,7 @@ use std::{
 
 use accounts::AccountProvider;
 use ethcore::{
-    client::{BlockChainClient, EachBlockWith, Executed, TestBlockChainClient},
+    client::{BlockChainClient, EachBlockWith, EvmTestClient, Executed, TestBlockChainClient},
     miner::{self, MinerService},
 };
 use ethereum_types::{Address, Bloom, H160, H256, U256};
@@ -48,6 +48,12 @@ use v1::{
 
 fn blockchain_client() -> Arc<TestBlockChainClient> {
     let client = TestBlockChainClient::new();
+    Arc::new(client)
+}
+
+fn eip1559_blockchain_client() -> Arc<TestBlockChainClient> {
+    let spec = EvmTestClient::spec_from_json(&ethjson::spec::ForkSpec::London).unwrap();
+    let client = TestBlockChainClient::new_with_spec(spec);
     Arc::new(client)
 }
 
@@ -89,8 +95,25 @@ impl Default for EthTester {
 
 impl EthTester {
     pub fn new_with_options(options: EthClientOptions) -> Self {
-        let runtime = Runtime::with_thread_count(1);
         let client = blockchain_client();
+        EthTester::new_with_client_and_options(client, options)
+    }
+
+    fn new_eip1559_with_options(options: EthClientOptions) -> Self {
+        let client = eip1559_blockchain_client();
+        EthTester::new_with_client_and_options(client, options)
+    }
+
+    pub fn add_blocks(&self, count: usize, with: EachBlockWith) {
+        self.client.add_blocks(count, with);
+        self.sync.increase_imported_block_number(count as u64);
+    }
+
+    fn new_with_client_and_options(
+        client: Arc<TestBlockChainClient>,
+        options: EthClientOptions,
+    ) -> Self {
+        let runtime = Runtime::with_thread_count(1);
         let sync = sync_provider();
         let ap = accounts_provider();
         let ap2 = ap.clone();
@@ -125,11 +148,6 @@ impl EthTester {
             io,
             hashrates,
         }
-    }
-
-    pub fn add_blocks(&self, count: usize, with: EachBlockWith) {
-        self.client.add_blocks(count, with);
-        self.sync.increase_imported_block_number(count as u64);
     }
 }
 
@@ -533,6 +551,33 @@ fn rpc_eth_gas_price() {
 
     assert_eq!(
         EthTester::default().io.handle_request_sync(request),
+        Some(response.to_owned())
+    );
+}
+
+#[test]
+fn rpc_eth_get_max_priority_fee_per_gas() {
+    let tester = EthTester::new_eip1559_with_options(Default::default());
+
+    let request = r#"{"method":"eth_maxPriorityFeePerGas","params":[],"id":1,"jsonrpc":"2.0"}"#;
+    let response = r#"{"jsonrpc":"2.0","result":"0x77359400","id":1}"#; // 2 GWei
+
+    assert_eq!(
+        tester.io.handle_request_sync(request),
+        Some(response.to_owned())
+    );
+}
+
+#[test]
+fn rpc_eth_get_max_priority_fee_per_gas_error() {
+    let tester = EthTester::default();
+
+    let request = r#"{"method":"eth_maxPriorityFeePerGas","params":[],"id":1,"jsonrpc":"2.0"}"#;
+    let response =
+        r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"EIP-1559 is not activated"},"id":1}"#;
+
+    assert_eq!(
+        tester.io.handle_request_sync(request),
         Some(response.to_owned())
     );
 }

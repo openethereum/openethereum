@@ -504,7 +504,10 @@ mod test {
     use super::{super::tests::*, *};
     use blocks::SyncHeader;
     use bytes::Bytes;
-    use ethcore::client::{BlockChainClient, EachBlockWith, TestBlockChainClient};
+    use ethcore::{
+        client::{BlockChainClient, EachBlockWith, TestBlockChainClient},
+        spec::Spec,
+    };
     use ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
@@ -769,7 +772,7 @@ mod test {
 
     #[test]
     fn return_nodes() {
-        let mut client = TestBlockChainClient::new();
+        let mut client = TestBlockChainClient::new_with_spec(Spec::new_test_round());
         let queue = RwLock::new(VecDeque::new());
         let sync = dummy_sync_with_peer(H256::zero(), &client);
         let ss = TestSnapshotService::new();

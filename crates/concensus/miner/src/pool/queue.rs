@@ -666,6 +666,20 @@ impl TransactionQueue {
         }
     }
 
+    /// Returns effective priority fee gas price of currently the worst transaction in the pool.
+    /// If the worst transaction has zero gas price, the minimal gas price is returned.
+    pub fn current_worst_effective_priority_fee(&self) -> U256 {
+        self.pool
+            .read()
+            .worst_transaction()
+            .filter(|tx| !tx.signed().has_zero_gas_price())
+            .map(|tx| {
+                tx.signed()
+                    .effective_priority_fee(self.options.read().block_base_fee)
+            })
+            .unwrap_or(self.options.read().minimal_gas_price)
+    }
+
     /// Returns a status of the queue.
     pub fn status(&self) -> Status {
         let pool = self.pool.read();

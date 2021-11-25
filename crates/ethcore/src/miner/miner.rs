@@ -1006,6 +1006,14 @@ impl miner::MinerService for Miner {
         self.transaction_queue.current_worst_gas_price() * 110u32 / 100
     }
 
+    fn sensible_max_priority_fee(&self) -> U256 {
+        // 10% above our minimum.
+        self.transaction_queue
+            .current_worst_effective_priority_fee()
+            * 110u32
+            / 100
+    }
+
     fn sensible_gas_limit(&self) -> U256 {
         self.params.read().gas_range_target.0 / 5
     }

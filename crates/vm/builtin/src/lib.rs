@@ -1743,6 +1743,21 @@ mod tests {
             assert_eq!(f.cost(&input[..], 0), expected_cost);
         }
 
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e
+				fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(f.cost(&input[..], 0), expected_cost);
+        }
+
         // test for potential gas cost multiplication overflow
         {
             let input = hex!("0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000003b27bafd00000000000000000000000000000000000000000000000000000000503c8ac3");
@@ -1869,6 +1884,21 @@ mod tests {
                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
                 03
                 ff"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(pricer.cost(&input[..]), expected_cost);
+        }
+
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e
+				fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
             );
             let expected_cost = U256::max_value();
             assert_eq!(pricer.cost(&input[..]), expected_cost);

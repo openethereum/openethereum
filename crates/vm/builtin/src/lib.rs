@@ -203,11 +203,11 @@ impl ModexpPricer {
         let (base_len, exp_len) = (base_len_u256.low_u64(), exp_len_u256.low_u64());
 
         // read fist 32-byte word of the exponent.
-        let exp_low = if base_len + 96 >= input.len() as u64 {
+        let exp_low = if base_len.wrapping_add(96) >= input.len() as u64 {
             U256::zero()
         } else {
             buf.iter_mut().for_each(|b| *b = 0);
-            let mut reader = input[(96 + base_len as usize)..].chain(io::repeat(0));
+            let mut reader = input[(base_len as usize).wrapping_add(96)..].chain(io::repeat(0));
             let len = min(exp_len, 32) as usize;
             reader
                 .read_exact(&mut buf[(32 - len)..])
@@ -1728,6 +1728,33 @@ mod tests {
             native: EthereumBuiltin::from_str("modexp").unwrap(),
         };
 
+        // test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000001
+                0000000000000000000000000000000000000000000000000000000000000001
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                03
+                ff"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(f.cost(&input[..], 0), expected_cost);
+        }
+
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(f.cost(&input[..], 0), expected_cost);
+        }
+
         // test for potential gas cost multiplication overflow
         {
             let input = hex!("0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000003b27bafd00000000000000000000000000000000000000000000000000000000503c8ac3");
@@ -1837,6 +1864,38 @@ mod tests {
                 .expect("Builtin should not fail");
             assert_eq!(output.len(), 0); // shouldn't have written any output.
             assert_eq!(f.cost(&input[..], 0), expected_cost.into());
+        }
+    }
+
+    #[test]
+    fn modexp2565() {
+        let pricer = Modexp2565Pricer {};
+
+        // test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000001
+                0000000000000000000000000000000000000000000000000000000000000001
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                03
+                ff"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(pricer.cost(&input[..]), expected_cost);
+        }
+
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(pricer.cost(&input[..]), expected_cost);
         }
     }
 

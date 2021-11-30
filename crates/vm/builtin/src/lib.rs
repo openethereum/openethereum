@@ -1749,10 +1749,7 @@ mod tests {
                 "
                 00000000000000000000000000000000ffffffffffffffffffffffffffffffff
                 0000000000000000000000000000000000000000000000000000000000000020
-                0000000000000000000000000000000000000000000000000000000000000020
-                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-                fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e
-				fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+                0000000000000000000000000000000000000000000000000000000000000020"
             );
             let expected_cost = U256::max_value();
             assert_eq!(f.cost(&input[..], 0), expected_cost);
@@ -1895,10 +1892,7 @@ mod tests {
                 "
                 00000000000000000000000000000000ffffffffffffffffffffffffffffffff
                 0000000000000000000000000000000000000000000000000000000000000020
-                0000000000000000000000000000000000000000000000000000000000000020
-                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-                fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e
-				fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+                0000000000000000000000000000000000000000000000000000000000000020"
             );
             let expected_cost = U256::max_value();
             assert_eq!(pricer.cost(&input[..]), expected_cost);

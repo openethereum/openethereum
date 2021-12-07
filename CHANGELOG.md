@@ -1,3 +1,11 @@
+## OpenEthereum v3.3.2
+
+Enhancements:
+* London hardfork block: Sokol (24114400)
+
+Bug fixes:
+* Fix for maxPriorityFeePerGas overflow
+
 ## OpenEthereum v3.3.1
 
 Enhancements:

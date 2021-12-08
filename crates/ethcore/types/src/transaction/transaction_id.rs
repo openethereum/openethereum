@@ -92,7 +92,6 @@ mod tests {
     #[test]
     fn typed_tx_id_to_u64_option_id() {
         assert_eq!(Some(U64::from(0x00)), TypedTxId::Legacy.to_U64_option_id());
-        assert_eq!(None, TypedTxId::Legacy.to_U64_option_id());
         assert_eq!(
             Some(U64::from(0x01)),
             TypedTxId::AccessList.to_U64_option_id()

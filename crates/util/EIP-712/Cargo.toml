@@ -23,6 +23,6 @@ lazy_static = "1.1"
 regex = "1.0"
 validator = "0.8"
 validator_derive = "0.8"
-lunarity-lexer = "0.2"
+lunarity-lexer = { git = "https://github.com/rimrakhimov/lunarity", branch = "rimrakhimov/update-logos-version" }
 rustc-hex = "2.0"
 indexmap = "1.0.2"

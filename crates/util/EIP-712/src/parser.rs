@@ -78,8 +78,9 @@ pub fn parse_type(field_type: &str) -> Result<Type> {
     let mut array_depth = 0;
     let mut current_array_length: Option<u64> = None;
 
-    while lexer.token != Token::EndOfProgram {
-        let type_ = match lexer.token {
+    let mut lex_token = lexer.next();
+    while let Some(lex_token_) = lex_token {
+        let type_ = match lex_token_ {
             Token::Identifier => Type::Custom(lexer.slice().to_owned()),
             Token::TypeByte => Type::Byte(lexer.extras.0),
             Token::TypeBytes => Type::Bytes,
@@ -95,12 +96,12 @@ pub fn parse_type(field_type: &str) -> Result<Type> {
                         .parse()
                         .map_err(|_| ErrorKind::InvalidArraySize(length.into()))?,
                 );
-                lexer.advance();
+                lex_token = lexer.next();
                 continue;
             }
             Token::BracketOpen if token.is_some() && state == State::Close => {
                 state = State::Open;
-                lexer.advance();
+                lex_token = lexer.next();
                 continue;
             }
             Token::BracketClose if array_depth < 10 => {
@@ -111,7 +112,7 @@ pub fn parse_type(field_type: &str) -> Result<Type> {
                         inner: Box::new(token.expect("if statement checks for some; qed")),
                         length,
                     });
-                    lexer.advance();
+                    lex_token = lexer.next();
                     array_depth += 1;
                     continue;
                 } else {
@@ -133,7 +134,7 @@ pub fn parse_type(field_type: &str) -> Result<Type> {
         };
 
         token = Some(type_);
-        lexer.advance();
+        lex_token = lexer.next();
     }
 
     Ok(token.ok_or(ErrorKind::NonExistentType)?)

@@ -1381,7 +1381,7 @@ impl miner::MinerService for Miner {
     }
 
     fn is_currently_sealing(&self) -> bool {
-        self.sealing.lock().enabled
+        self.sealing.lock().enabled && self.engine.is_allowed_to_seal()
     }
 
     fn work_package<C>(&self, chain: &C) -> Option<(H256, BlockNumber, u64, U256)>
@@ -1615,7 +1615,9 @@ mod tests {
 
     use client::{ChainInfo, EachBlockWith, ImportSealedBlock, TestBlockChainClient};
     use miner::{MinerService, PendingOrdering};
-    use test_helpers::{generate_dummy_client, generate_dummy_client_with_spec};
+    use test_helpers::{
+        dummy_engine_signer_with_address, generate_dummy_client, generate_dummy_client_with_spec,
+    };
     use types::transaction::{Transaction, TypedTransaction};
 
     #[test]
@@ -2081,6 +2083,31 @@ mod tests {
 
         let client = generate_dummy_client(2);
         miner.update_sealing(&*client, ForceUpdateSealing::No);
+
+        assert!(miner.is_currently_sealing());
+    }
+
+    #[test]
+    fn should_not_mine_if_is_not_allowed_to_seal() {
+        let spec = Spec::new_test_round();
+        let miner = Miner::new_for_tests_force_sealing(&spec, None, true);
+        assert!(!miner.is_currently_sealing());
+    }
+
+    #[test]
+    fn should_mine_if_is_allowed_to_seal() {
+        let verifier: Address = [
+            0x7d, 0x57, 0x7a, 0x59, 0x7b, 0x27, 0x42, 0xb4, 0x98, 0xcb, 0x5c, 0xf0, 0xc2, 0x6c,
+            0xdc, 0xd7, 0x26, 0xd3, 0x9e, 0x6e,
+        ]
+        .into();
+
+        let spec = Spec::new_test_round();
+        let client: Arc<dyn EngineClient> = generate_dummy_client(2);
+
+        let miner = Miner::new_for_tests_force_sealing(&spec, None, true);
+        miner.engine.register_client(Arc::downgrade(&client));
+        miner.set_author(Author::Sealer(dummy_engine_signer_with_address(verifier)));
 
         assert!(miner.is_currently_sealing());
     }

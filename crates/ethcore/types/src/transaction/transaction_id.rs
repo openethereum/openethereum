@@ -51,6 +51,7 @@ impl TypedTxId {
     pub fn from_U64_option_id(n: Option<U64>) -> Option<Self> {
         match n.map(|t| t.as_u64()) {
             None => Some(Self::Legacy),
+            Some(0x00) => Some(Self::Legacy),
             Some(0x01) => Some(Self::AccessList),
             Some(0x02) => Some(Self::EIP1559Transaction),
             _ => None,
@@ -59,10 +60,7 @@ impl TypedTxId {
 
     #[allow(non_snake_case)]
     pub fn to_U64_option_id(self) -> Option<U64> {
-        match self {
-            Self::Legacy => None,
-            _ => Some(U64::from(self as u8)),
-        }
+        Some(U64::from(self as u8))
     }
 }
 
@@ -93,7 +91,7 @@ mod tests {
 
     #[test]
     fn typed_tx_id_to_u64_option_id() {
-        assert_eq!(None, TypedTxId::Legacy.to_U64_option_id());
+        assert_eq!(Some(U64::from(0x00)), TypedTxId::Legacy.to_U64_option_id());
         assert_eq!(
             Some(U64::from(0x01)),
             TypedTxId::AccessList.to_U64_option_id()

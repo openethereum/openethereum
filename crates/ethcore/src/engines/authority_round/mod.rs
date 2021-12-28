@@ -1557,6 +1557,43 @@ impl Engine<EthereumMachine> for AuthorityRound {
         }
     }
 
+    // Mostly is the same as `fn sealing_state(&self)` except that it does not
+    // check whether the node is a step proposer.
+    fn is_allowed_to_seal(&self) -> bool {
+        let our_addr = match *self.signer.read() {
+            Some(ref signer) => signer.address(),
+            None => return false,
+        };
+
+        let client = match self.upgrade_client_or("Not preparing block") {
+            Ok(client) => client,
+            Err(_) => return false,
+        };
+
+        let parent = match client.as_full_client() {
+            Some(full_client) => full_client.best_block_header(),
+            None => {
+                return false;
+            }
+        };
+
+        let validators = if self.immediate_transitions {
+            CowLike::Borrowed(&*self.validators)
+        } else {
+            let mut epoch_manager = self.epoch_manager.lock();
+            if !epoch_manager.zoom_to_after(
+                &*client,
+                &self.machine,
+                &*self.validators,
+                parent.hash(),
+            ) {
+                return false;
+            }
+            CowLike::Owned(epoch_manager.validators().clone())
+        };
+        validators.contains(&parent.hash(), &our_addr)
+    }
+
     fn sealing_state(&self) -> SealingState {
         let our_addr = match *self.signer.read() {
             Some(ref signer) => signer.address(),

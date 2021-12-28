@@ -147,6 +147,8 @@ pub struct CommonParams {
     pub eip3529_transition: BlockNumber,
     /// Number of first block where EIP-3541 rule begins.
     pub eip3541_transition: BlockNumber,
+    /// Number of first block where EIP-3607 rule begins.
+    pub eip3607_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -434,6 +436,7 @@ impl From<ethjson::spec::Params> for CommonParams {
             dust_protection_transition: p
                 .dust_protection_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip3607_transition: p.eip3607_transition.map_or(0, Into::into),
             nonce_cap_increment: p.nonce_cap_increment.map_or(64, Into::into),
             remove_dust_contracts: p.remove_dust_contracts.unwrap_or(false),
             gas_limit_bound_divisor: p.gas_limit_bound_divisor.into(),

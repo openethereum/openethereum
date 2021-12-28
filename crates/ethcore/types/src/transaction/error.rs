@@ -93,6 +93,8 @@ pub enum Error {
     InvalidRlp(String),
     /// Transaciton is still not enabled.
     TransactionTypeNotEnabled,
+    /// Transaction sender is not an EOA (see EIP-3607)
+    SenderIsNotEOA,
 }
 
 impl From<crypto::publickey::Error> for Error {
@@ -154,6 +156,7 @@ impl fmt::Display for Error {
             TransactionTypeNotEnabled => {
                 format!("Transaction type is not enabled for current block")
             }
+            SenderIsNotEOA => "Transaction sender is not an EOA (see EIP-3607)".into(),
         };
 
         f.write_fmt(format_args!("Transaction error ({})", msg))

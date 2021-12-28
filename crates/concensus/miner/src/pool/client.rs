@@ -32,6 +32,8 @@ pub struct AccountDetails {
     pub nonce: U256,
     /// Current account balance
     pub balance: U256,
+    /// Code hash associated with an account if any
+    pub code_hash: Option<H256>,
     /// Is this account a local account?
     pub is_local: bool,
 }

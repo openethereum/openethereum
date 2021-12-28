@@ -370,7 +370,14 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     let base_fee = client
         .engine()
         .calculate_base_fee(&client.best_block_header());
-    miner.update_transaction_queue_limits(*client.best_block_header().gas_limit(), base_fee);
+    let allow_non_eoa_sender = client
+        .engine()
+        .allow_non_eoa_sender(client.best_block_header().number() + 1);
+    miner.update_transaction_queue_limits(
+        *client.best_block_header().gas_limit(),
+        base_fee,
+        allow_non_eoa_sender,
+    );
 
     let connection_filter = connection_filter_address.map(|a| {
         Arc::new(NodeFilter::new(

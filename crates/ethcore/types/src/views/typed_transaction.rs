@@ -137,6 +137,29 @@ impl<'a> TypedTransactionView<'a> {
         }
     }
 
+    /// Get the actual priority gas price paid to the miner
+    pub fn effective_priority_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match self.transaction_type {
+            TypedTxId::Legacy => self
+                .gas_price()
+                .saturating_sub(block_base_fee.unwrap_or_default()),
+            TypedTxId::AccessList => self
+                .gas_price()
+                .saturating_sub(block_base_fee.unwrap_or_default()),
+            TypedTxId::EIP1559Transaction => {
+                let max_priority_fee_per_gas: U256 =
+                    view!(Self, &self.rlp.rlp.data().unwrap()[1..])
+                        .rlp
+                        .val_at(2);
+                min(
+                    max_priority_fee_per_gas,
+                    self.gas_price()
+                        .saturating_sub(block_base_fee.unwrap_or_default()),
+                )
+            }
+        }
+    }
+
     /// Get the gas field of the transaction.
     pub fn gas(&self) -> U256 {
         match self.transaction_type {
@@ -260,6 +283,7 @@ mod tests {
         assert_eq!(view.nonce(), 0.into());
         assert_eq!(view.gas_price(), 1.into());
         assert_eq!(view.effective_gas_price(None), 1.into());
+        assert_eq!(view.effective_priority_gas_price(None), 1.into());
         assert_eq!(view.gas(), 0x61a8.into());
         assert_eq!(view.value(), 0xa.into());
         assert_eq!(
@@ -285,6 +309,7 @@ mod tests {
         let view = view!(TypedTransactionView, &rlp);
         assert_eq!(view.nonce(), 0x1.into());
         assert_eq!(view.gas_price(), 0xa.into());
+        assert_eq!(view.effective_priority_gas_price(None), 0xa.into());
         assert_eq!(view.gas(), 0x1e241.into());
         assert_eq!(view.value(), 0x0.into());
         assert_eq!(view.data(), "".from_hex().unwrap());
@@ -306,6 +331,10 @@ mod tests {
         assert_eq!(view.nonce(), 0x1.into());
         assert_eq!(view.gas_price(), 0xa.into());
         assert_eq!(view.effective_gas_price(Some(0x07.into())), 0x08.into());
+        assert_eq!(
+            view.effective_priority_gas_price(Some(0x07.into())),
+            0x01.into()
+        );
         assert_eq!(view.gas(), 0x1e241.into());
         assert_eq!(view.value(), 0x0.into());
         assert_eq!(view.data(), "".from_hex().unwrap());

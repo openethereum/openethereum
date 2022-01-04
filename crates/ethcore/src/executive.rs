@@ -1207,7 +1207,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
 
         // ensure that the user was willing to at least pay the base fee
-        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() {
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() && !t.has_zero_gas_price() {
             return Err(ExecutionError::GasPriceLowerThanBaseFee {
                 gas_price: t.tx().gas_price,
                 base_fee: self.info.base_fee.unwrap_or_default(),
@@ -1516,18 +1516,20 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         // Up until now, fees_value is calculated for each type of transaction based on their gas prices
         // Now, if eip1559 is activated, burn the base fee
         // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
-        let fees_value = fees_value.saturating_sub(if schedule.eip1559 {
-            let (base_fee, overflow_3) =
+        let burnt_fee = if schedule.eip1559 && !t.has_zero_gas_price() {
+            let (fee, overflow_3) =
                 gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
             if overflow_3 {
                 return Err(ExecutionError::TransactionMalformed(
                     "U256 Overflow".to_string(),
                 ));
             }
-            base_fee
+            fee
         } else {
             U256::from(0)
-        });
+        };
+
+        let fees_value = fees_value.saturating_sub(burnt_fee);
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
 			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
@@ -1551,6 +1553,17 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             &fees_value,
             substate.to_cleanup_mode(&schedule),
         )?;
+
+        if burnt_fee > U256::from(0)
+            && self.machine.params().eip1559_fee_collector.is_some()
+            && self.info.number >= self.machine.params().eip1559_fee_collector_transition
+        {
+            self.state.add_balance(
+                &self.machine.params().eip1559_fee_collector.unwrap(),
+                &burnt_fee,
+                substate.to_cleanup_mode(&schedule),
+            )?;
+        };
 
         // perform suicides
         for address in &substate.suicides {
@@ -2744,6 +2757,127 @@ mod tests {
                 ()
             }
             _ => assert!(false, "Expected not enough cash error. {:?}", res),
+        }
+    }
+
+    evm_test! {test_too_big_max_priority_fee_with_not_enough_cash: test_too_big_max_priority_fee_with_not_enough_cash_int}
+    fn test_too_big_max_priority_fee_with_not_enough_cash(factory: Factory) {
+        let keypair = Random.generate();
+        let max_priority_fee_per_gas /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: max_priority_fee_per_gas,
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas,
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts)
+        };
+
+        match res {
+            Err(ExecutionError::NotEnoughCash { required, got })
+                if required
+                    == U512::from(max_priority_fee_per_gas) * U512::from(100_000)
+                        + U512::from(17)
+                    && got == U512::from(15000017) =>
+            {
+                ()
+            }
+            _ => assert!(false, "Expected not enough cash error. {:?}", res),
+        }
+    }
+
+    evm_test! {test_too_big_max_priority_fee_with_less_max_fee_per_gas: test_too_big_max_priority_fee_with_less_max_fee_per_gas_int}
+    fn test_too_big_max_priority_fee_with_less_max_fee_per_gas(factory: Factory) {
+        let keypair = Random.generate();
+        let max_priority_fee_per_gas /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: U256::from(150),
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas,
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts)
+        };
+
+        match res {
+            Err(ExecutionError::TransactionMalformed(err))
+                if err.contains("maxPriorityFeePerGas higher than maxFeePerGas") =>
+            {
+                ()
+            }
+            _ => assert!(
+                false,
+                "Expected maxPriorityFeePerGas higher than maxFeePerGas error. {:?}",
+                res
+            ),
         }
     }
 

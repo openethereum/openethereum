@@ -650,7 +650,9 @@ where
                                 match self.ready.is_ready(&tx) {
                                     Readiness::Ready => {
                                         //return transaction with score higher or equal to desired
-                                        if score >= &self.includable_boundary {
+                                        if score >= &self.includable_boundary
+                                            || tx.transaction.has_zero_gas_price()
+                                        {
                                             return Some(tx.transaction.clone());
                                         }
                                     }
@@ -737,7 +739,9 @@ where
 
             if tx_state == Readiness::Ready {
                 //return transaction with score higher or equal to desired
-                if best.score >= self.includable_boundary {
+                if best.score >= self.includable_boundary
+                    || best.transaction.transaction.has_zero_gas_price()
+                {
                     return Some(best.transaction.transaction);
                 }
             }

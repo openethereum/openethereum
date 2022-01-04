@@ -188,6 +188,10 @@ impl txpool::VerifiedTransaction for VerifiedTransaction {
     fn sender(&self) -> &Address {
         &self.sender
     }
+
+    fn has_zero_gas_price(&self) -> bool {
+        self.transaction.has_zero_gas_price()
+    }
 }
 
 impl ScoredTransaction for VerifiedTransaction {

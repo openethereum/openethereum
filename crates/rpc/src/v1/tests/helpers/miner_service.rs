@@ -359,6 +359,10 @@ impl MinerService for TestMinerService {
         20_000_000_000u64.into()
     }
 
+    fn sensible_max_priority_fee(&self) -> U256 {
+        2_000_000_000u64.into()
+    }
+
     fn sensible_gas_limit(&self) -> U256 {
         0x5208.into()
     }

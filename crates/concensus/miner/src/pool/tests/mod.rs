@@ -47,6 +47,7 @@ fn new_queue() -> TransactionQueue {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     )
@@ -66,6 +67,7 @@ fn should_return_correct_nonces_when_dropped_because_of_limit() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -127,6 +129,7 @@ fn should_never_drop_local_transactions_from_different_senders() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -545,6 +548,7 @@ fn should_prefer_current_transactions_when_hitting_the_limit() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1043,6 +1047,7 @@ fn should_include_local_transaction_to_a_full_pool() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1076,6 +1081,7 @@ fn should_avoid_verifying_transaction_already_in_pool() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1112,6 +1118,7 @@ fn should_avoid_reverifying_recently_rejected_transactions() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1161,6 +1168,7 @@ fn should_reject_early_in_case_gas_price_is_less_than_min_effective() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1204,6 +1212,7 @@ fn should_not_reject_early_in_case_gas_price_is_less_than_min_effective() {
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: true,
             block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );

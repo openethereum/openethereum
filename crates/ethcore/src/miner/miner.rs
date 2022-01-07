@@ -1675,6 +1675,7 @@ mod tests {
                     block_base_fee: None,
                     tx_gas_limit: U256::max_value(),
                     no_early_reject: false,
+                    allow_non_eoa_sender: false,
                 },
             },
             GasPricer::new_fixed(0u64.into()),

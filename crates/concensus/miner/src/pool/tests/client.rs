@@ -43,6 +43,7 @@ impl Default for TestClient {
             account_details: AccountDetails {
                 nonce: 123.into(),
                 balance: 63_100.into(),
+                code_hash: None,
                 is_local: false,
             },
             gas_required: 21_000.into(),

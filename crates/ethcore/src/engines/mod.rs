@@ -470,6 +470,14 @@ pub trait Engine<M: Machine>: Sync + Send {
     /// Register a component which signs consensus messages.
     fn set_signer(&self, _signer: Option<Box<dyn EngineSigner>>) {}
 
+    /// Returns whether the current node is a validator and
+    /// actually may seal a block if AuRa engine is used.
+    ///
+    /// Used by `eth_mining` rpc call.
+    fn is_allowed_to_seal(&self) -> bool {
+        true
+    }
+
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, M::Error> {
         unimplemented!()

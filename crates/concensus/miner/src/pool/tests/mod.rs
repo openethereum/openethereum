@@ -17,6 +17,7 @@
 use ethereum_types::U256;
 use txpool;
 use types::transaction::{self, PendingTransaction};
+use hash::KECCAK_EMPTY;
 
 use pool::{verifier, PendingOrdering, PendingSettings, PrioritizationStrategy, TransactionQueue};
 
@@ -269,6 +270,67 @@ fn should_import_transaction_below_min_gas_price_threshold_if_local() {
 
     // when
     let res = txq.import(TestClient::new(), vec![tx.signed().local()]);
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 1);
+}
+
+#[test]
+fn should_reject_transaction_from_non_eoa_if_non_eoa_sender_is_not_allowed() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+    let code_hash = [
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+    ];
+
+    // when
+    let res = txq.import(TestClient::new().with_code_hash(code_hash), vec![tx.signed().unverified()]);
+
+    // then
+    assert_eq!(
+        res,
+        vec![Err(transaction::Error::SenderIsNotEOA)]
+    );
+    assert_eq!(txq.status().status.transaction_count, 0);
+}
+
+#[test]
+fn should_import_transaction_from_non_eoa_if_non_eoa_sender_is_allowed() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+    let code_hash = [
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+    ];
+    txq.set_verifier_options(verifier::Options {
+        allow_non_eoa_sender: true,
+        ..Default::default()
+    });
+
+    // when
+    let res = txq.import(TestClient::new().with_code_hash(code_hash), vec![tx.signed().unverified()]);
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 1);
+}
+
+#[test]
+fn should_import_transaction_if_account_code_hash_is_keccak_empty() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+
+    // when
+    let res = txq.import(TestClient::new().with_code_hash(KECCAK_EMPTY), vec![tx.signed().unverified()]);
 
     // then
     assert_eq!(res, vec![Ok(())]);

@@ -1824,6 +1824,40 @@ mod tests {
     }
 
     #[test]
+    fn should_activate_eip_3607_according_to_spec() {
+        // given
+        let spec = Spec::new_test_eip3607();
+        let miner = Miner::new_for_tests(&spec, None);
+        let client = TestBlockChainClient::new_with_spec(spec);
+
+        let imported = [H256::zero()];
+        let empty = &[];
+
+        // the client best block is below EIP-3607 transition number
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block is below EIP-3607 transition number. Non EOA senders should be allowed"
+        );
+
+        // the client best block equals EIP-3607 transition number
+        client.add_block(EachBlockWith::Nothing,  |header| header);
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            !miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block equals EIP-3607 transition number. Non EOA senders should not be allowed"
+        );
+
+        // the client best block is above EIP-3607 transition number
+        client.add_block(EachBlockWith::Nothing,  |header| header);
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            !miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block is above EIP-3607 transition number. Non EOA senders should not be allowed"
+        );
+    }
+
+    #[test]
     fn should_treat_unfamiliar_locals_selectively() {
         // given
         let keypair = Random.generate();

@@ -69,6 +69,11 @@ impl TestClient {
         self
     }
 
+    pub fn with_code_hash<T: Into<H256>>(mut self, code_hash: T) -> Self {
+        self.account_details.code_hash = Some(code_hash.into());
+        self
+    }
+
     pub fn with_gas_required<T: Into<U256>>(mut self, gas_required: T) -> Self {
         self.gas_required = gas_required.into();
         self

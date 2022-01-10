@@ -1154,6 +1154,13 @@ impl Spec {
         load_bundled!("test/constructor")
     }
 
+    /// Create a new Spec which is a NullEngine consensus with EIP3607 transition equal to 2,
+    /// and with a contract at address '0x71562b71999873DB5b286dF957af199Ec94617F7'.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_eip3607() -> Self {
+        load_bundled!("test/eip3607_test")
+    }
+
     /// Create a new Spec with Autority Round randomness contract
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_test_round_randomness_contract() -> Spec {

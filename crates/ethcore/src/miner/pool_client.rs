@@ -30,7 +30,7 @@ use types::{
 };
 
 use call_contract::CallContract;
-use client::{BlockInfo, Nonce, TransactionId};
+use client::{BlockId, BlockInfo, Nonce, TransactionId};
 use engines::EthEngine;
 use miner;
 use transaction_ext::Transaction;
@@ -168,6 +168,7 @@ where
         pool::client::AccountDetails {
             nonce: self.cached_nonces.account_nonce(address),
             balance: self.chain.latest_balance(address),
+            code_hash: self.chain.code_hash(address, BlockId::Latest),
             is_local: self.accounts.is_local(address),
         }
     }

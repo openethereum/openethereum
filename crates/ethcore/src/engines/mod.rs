@@ -668,6 +668,14 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     fn min_gas_limit(&self) -> U256 {
         self.params().min_gas_limit
     }
+
+    /// Returns whether transactions from non externally owned accounts (EOA)
+    /// are allowed in the given block number (see EIP-3607).
+    ///
+    /// That is only possible if EIP-3607 is still not activated.
+    fn allow_non_eoa_sender(&self, best_block_number: BlockNumber) -> bool {
+        self.params().eip3607_transition > best_block_number
+    }
 }
 
 // convenience wrappers for existing functions.

@@ -190,6 +190,7 @@ impl Default for MinerOptions {
                 block_base_fee: None,
                 tx_gas_limit: U256::max_value(),
                 no_early_reject: false,
+                allow_non_eoa_sender: false,
             },
         }
     }
@@ -341,6 +342,7 @@ impl Miner {
                     block_base_fee: None,
                     tx_gas_limit: U256::max_value(),
                     no_early_reject: false,
+                    allow_non_eoa_sender: false,
                 },
                 reseal_min_period: Duration::from_secs(0),
                 force_sealing,
@@ -382,6 +384,7 @@ impl Miner {
         &self,
         block_gas_limit: U256,
         block_base_fee: Option<U256>,
+        allow_non_eoa_sender: bool,
     ) {
         trace!(target: "miner", "minimal_gas_price: recalibrating...");
         let txq = self.transaction_queue.clone();
@@ -391,6 +394,7 @@ impl Miner {
             options.minimal_gas_price = gas_price;
             options.block_gas_limit = block_gas_limit;
             options.block_base_fee = block_base_fee;
+            options.allow_non_eoa_sender = allow_non_eoa_sender;
             txq.set_verifier_options(options);
         });
 
@@ -1466,7 +1470,10 @@ impl miner::MinerService for Miner {
                 } else {
                     1
                 };
-        self.update_transaction_queue_limits(gas_limit, base_fee);
+        let allow_non_eoa_sender = self
+            .engine
+            .allow_non_eoa_sender(chain.best_block_header().number() + 1);
+        self.update_transaction_queue_limits(gas_limit, base_fee, allow_non_eoa_sender);
 
         // t_nb 10.2 Then import all transactions from retracted blocks (retracted means from side chain).
         let client = self.pool_client(chain);
@@ -1670,6 +1677,7 @@ mod tests {
                     block_base_fee: None,
                     tx_gas_limit: U256::max_value(),
                     no_early_reject: false,
+                    allow_non_eoa_sender: false,
                 },
             },
             GasPricer::new_fixed(0u64.into()),
@@ -1812,6 +1820,40 @@ mod tests {
                 .ready_transactions(&client, 10, PendingOrdering::Priority)
                 .len(),
             1
+        );
+    }
+
+    #[test]
+    fn should_activate_eip_3607_according_to_spec() {
+        // given
+        let spec = Spec::new_test_eip3607();
+        let miner = Miner::new_for_tests(&spec, None);
+        let client = TestBlockChainClient::new_with_spec(spec);
+
+        let imported = [H256::zero()];
+        let empty = &[];
+
+        // the client best block is below EIP-3607 transition number
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block is below EIP-3607 transition number. Non EOA senders should be allowed"
+        );
+
+        // the client best block equals EIP-3607 transition number
+        client.add_block(EachBlockWith::Nothing, |header| header);
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            !miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block equals EIP-3607 transition number. Non EOA senders should not be allowed"
+        );
+
+        // the client best block is above EIP-3607 transition number
+        client.add_block(EachBlockWith::Nothing, |header| header);
+        miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
+        assert!(
+            !miner.queue_status().options.allow_non_eoa_sender,
+            "The client best block is above EIP-3607 transition number. Non EOA senders should not be allowed"
         );
     }
 

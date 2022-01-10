@@ -31,6 +31,7 @@ use std::{
 };
 
 use ethereum_types::{H256, U256};
+use hash::KECCAK_EMPTY;
 use txpool;
 use types::transaction;
 
@@ -52,6 +53,8 @@ pub struct Options {
     pub tx_gas_limit: U256,
     /// Skip checks for early rejection, to make sure that local transactions are always imported.
     pub no_early_reject: bool,
+    /// Accept transactions from non EOAs (see EIP-3607)
+    pub allow_non_eoa_sender: bool,
 }
 
 #[cfg(test)]
@@ -63,6 +66,7 @@ impl Default for Options {
             block_base_fee: None,
             tx_gas_limit: U256::max_value(),
             no_early_reject: false,
+            allow_non_eoa_sender: false,
         }
     }
 }
@@ -316,6 +320,20 @@ impl<C: Client> txpool::Verifier<Transaction>
 
         let sender = transaction.sender();
         let account_details = self.client.account_details(&sender);
+
+        if !self.options.allow_non_eoa_sender {
+            if let Some(code_hash) = account_details.code_hash {
+                if code_hash != KECCAK_EMPTY {
+                    debug!(
+                        target: "txqueue",
+                        "[{:?}] Rejected tx, sender is not an EOA: {}",
+                        hash,
+                        code_hash
+                    );
+                    bail!(transaction::Error::SenderIsNotEOA);
+                }
+            }
+        }
 
         let effective_priority_fee =
             transaction.effective_priority_fee(self.options.block_base_fee);

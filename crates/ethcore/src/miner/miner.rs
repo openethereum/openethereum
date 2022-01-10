@@ -1841,7 +1841,7 @@ mod tests {
         );
 
         // the client best block equals EIP-3607 transition number
-        client.add_block(EachBlockWith::Nothing,  |header| header);
+        client.add_block(EachBlockWith::Nothing, |header| header);
         miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
         assert!(
             !miner.queue_status().options.allow_non_eoa_sender,
@@ -1849,7 +1849,7 @@ mod tests {
         );
 
         // the client best block is above EIP-3607 transition number
-        client.add_block(EachBlockWith::Nothing,  |header| header);
+        client.add_block(EachBlockWith::Nothing, |header| header);
         miner.chain_new_blocks(&client, &imported, empty, &imported, empty, false);
         assert!(
             !miner.queue_status().options.allow_non_eoa_sender,

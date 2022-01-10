@@ -15,9 +15,9 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::U256;
+use hash::KECCAK_EMPTY;
 use txpool;
 use types::transaction::{self, PendingTransaction};
-use hash::KECCAK_EMPTY;
 
 use pool::{verifier, PendingOrdering, PendingSettings, PrioritizationStrategy, TransactionQueue};
 
@@ -282,20 +282,19 @@ fn should_reject_transaction_from_non_eoa_if_non_eoa_sender_is_not_allowed() {
     let txq = new_queue();
     let tx = Tx::default();
     let code_hash = [
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f,
+        0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a,
+        0x0f, 0x0e,
     ];
 
     // when
-    let res = txq.import(TestClient::new().with_code_hash(code_hash), vec![tx.signed().unverified()]);
+    let res = txq.import(
+        TestClient::new().with_code_hash(code_hash),
+        vec![tx.signed().unverified()],
+    );
 
     // then
-    assert_eq!(
-        res,
-        vec![Err(transaction::Error::SenderIsNotEOA)]
-    );
+    assert_eq!(res, vec![Err(transaction::Error::SenderIsNotEOA)]);
     assert_eq!(txq.status().status.transaction_count, 0);
 }
 
@@ -305,10 +304,9 @@ fn should_import_transaction_from_non_eoa_if_non_eoa_sender_is_allowed() {
     let txq = new_queue();
     let tx = Tx::default();
     let code_hash = [
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
-        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e,
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f,
+        0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a,
+        0x0f, 0x0e,
     ];
     txq.set_verifier_options(verifier::Options {
         allow_non_eoa_sender: true,
@@ -316,7 +314,10 @@ fn should_import_transaction_from_non_eoa_if_non_eoa_sender_is_allowed() {
     });
 
     // when
-    let res = txq.import(TestClient::new().with_code_hash(code_hash), vec![tx.signed().unverified()]);
+    let res = txq.import(
+        TestClient::new().with_code_hash(code_hash),
+        vec![tx.signed().unverified()],
+    );
 
     // then
     assert_eq!(res, vec![Ok(())]);
@@ -330,7 +331,10 @@ fn should_import_transaction_if_account_code_hash_is_keccak_empty() {
     let tx = Tx::default();
 
     // when
-    let res = txq.import(TestClient::new().with_code_hash(KECCAK_EMPTY), vec![tx.signed().unverified()]);
+    let res = txq.import(
+        TestClient::new().with_code_hash(KECCAK_EMPTY),
+        vec![tx.signed().unverified()],
+    );
 
     // then
     assert_eq!(res, vec![Ok(())]);

@@ -821,4 +821,48 @@ mod test {
         );
         assert_eq!(1, io.packets.len());
     }
+
+    #[test]
+    fn dispatch_get_node_data_request() {
+        let mut client = TestBlockChainClient::new_with_spec(Spec::new_test_round());
+        let queue = RwLock::new(VecDeque::new());
+        let sync = dummy_sync(&client);
+        let ss = TestSnapshotService::new();
+        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+
+        let mut node_list = RlpStream::new_list(3);
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000a")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000b")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000c")
+                .unwrap(),
+        );
+
+        let node_request = node_list;
+        let node_request = prepend_request_id(node_request, Some(0x0b3a73ce2ff2));
+
+        io.sender = Some(2usize);
+
+        // it returns rlp ONLY for hashes ending with "a" and "c"
+        SyncSupplier::dispatch_packet(
+            &RwLock::new(sync),
+            &mut io,
+            0usize,
+            GetNodeDataPacket.id(),
+            &node_request.out(),
+        );
+        assert_eq!(1, io.packets.len());
+        assert_eq!(
+            &io.packets[0].data,
+            &vec![
+                0xcd, 0x86, 0x0b, 0x3a, 0x73, 0xce, 0x2f, 0xf2, 0xc5, 0x82, 0xaa, 0xaa, 0x81, 0xcc
+            ]
+        );
+    }
 }

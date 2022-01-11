@@ -1087,6 +1087,17 @@ impl BlockChainClient for TestBlockChainClient {
             let mut rlp = RlpStream::new();
             rlp.append(&hash.clone());
             return Some(rlp.out());
+        } else if *hash
+            == H256::from_str("000000000000000000000000000000000000000000000000000000000000000a")
+                .unwrap()
+        {
+            // for basic `return_node_data` tests
+            return Some(vec![0xaa, 0xaa]);
+        } else if *hash
+            == H256::from_str("000000000000000000000000000000000000000000000000000000000000000c")
+                .unwrap()
+        {
+            return Some(vec![0xcc]);
         }
         None
     }

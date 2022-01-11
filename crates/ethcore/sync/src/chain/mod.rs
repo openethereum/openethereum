@@ -1704,6 +1704,14 @@ pub mod tests {
         assert!(!sync_status(SyncState::Idle).is_syncing(queue_info(0, 0)));
     }
 
+    pub fn dummy_sync(client: &dyn BlockChainClient) -> ChainSync {
+        ChainSync::new(
+            SyncConfig::default(),
+            client,
+            ForkFilterApi::new_dummy(client),
+        )
+    }
+
     pub fn dummy_sync_with_peer(
         peer_latest_hash: H256,
         client: &dyn BlockChainClient,

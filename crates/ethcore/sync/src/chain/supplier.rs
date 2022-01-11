@@ -353,26 +353,31 @@ impl SyncSupplier {
     fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
         if io.chain().is_aura() {
             let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
+            trace!(target: "sync", "{} -> GetNodeData: {} entries", peer_id, count);
             if count == 0 {
                 debug!(target: "sync", "Empty GetNodeData request, ignoring.");
                 return Ok(None);
             }
 
-            let mut data = Bytes::new();
-
             let mut added = 0usize;
+            let mut data = Vec::new();
+            let mut total_bytes = 0;
             for i in 0..count {
-                if let Some(ref mut node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
-                    data.append(node_data);
-                    added += 1;
-                    if data.len() > PAYLOAD_SOFT_LIMIT {
+                if let Some(node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
+                    total_bytes += node_data.len();
+                    // Check that the packet won't be oversized
+                    if total_bytes > PAYLOAD_SOFT_LIMIT {
                         break;
                     }
+                    data.push(node_data);
+                    added += 1;
                 }
             }
 
             let mut rlp = RlpStream::new_list(added);
-            rlp.append_raw(&data, added);
+            for d in data {
+                rlp.append(&d);
+            }
             trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
             Ok(Some((NodeDataPacket, rlp)))
         } else {

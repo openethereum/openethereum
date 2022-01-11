@@ -408,6 +408,7 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		TooBig => "Transaction is too big, see chain specification for the limit.".into(),
         InvalidRlp(ref descr) => format!("Invalid RLP data: {}", descr),
         TransactionTypeNotEnabled => format!("Transaction type is not enabled for current block"),
+        SenderIsNotEOA => "Transaction sender is not an EOA (see EIP-3607)".into(),
 	}
 }
 

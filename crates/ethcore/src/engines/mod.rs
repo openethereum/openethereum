@@ -470,6 +470,14 @@ pub trait Engine<M: Machine>: Sync + Send {
     /// Register a component which signs consensus messages.
     fn set_signer(&self, _signer: Option<Box<dyn EngineSigner>>) {}
 
+    /// Returns whether the current node is a validator and
+    /// actually may seal a block if AuRa engine is used.
+    ///
+    /// Used by `eth_mining` rpc call.
+    fn is_allowed_to_seal(&self) -> bool {
+        true
+    }
+
     /// Sign using the EngineSigner, to be used for consensus tx signing.
     fn sign(&self, _hash: H256) -> Result<Signature, M::Error> {
         unimplemented!()
@@ -659,6 +667,14 @@ pub trait EthEngine: Engine<::machine::EthereumMachine> {
     /// The configured minimum gas limit. Used by AuRa Engine.
     fn min_gas_limit(&self) -> U256 {
         self.params().min_gas_limit
+    }
+
+    /// Returns whether transactions from non externally owned accounts (EOA)
+    /// are allowed in the given block number (see EIP-3607).
+    ///
+    /// That is only possible if EIP-3607 is still not activated.
+    fn allow_non_eoa_sender(&self, best_block_number: BlockNumber) -> bool {
+        self.params().eip3607_transition > best_block_number
     }
 }
 

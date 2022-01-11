@@ -335,6 +335,7 @@ impl MinerService for TestMinerService {
                 tx_gas_limit: 5_000_000.into(),
                 no_early_reject: false,
                 block_base_fee: None,
+                allow_non_eoa_sender: false,
             },
             status: txpool::LightStatus {
                 mem_usage: 1_000,

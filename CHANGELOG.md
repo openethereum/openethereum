@@ -1,3 +1,13 @@
+## OpenEthereum v3.3.3
+
+Enhancements:
+* Implement eip-3607 (#593)
+
+Bug fixes:
+* Add type field for legacy transactions in RPC calls (#580)
+* Makes eth_mining to return False if not is not allowed to seal (#581)
+* Made nodes data concatenate as RLP sequences instead of bytes (#598)
+
 ## OpenEthereum v3.3.2
 
 Enhancements:

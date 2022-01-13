@@ -2,7 +2,7 @@
 description = "OpenEthereum"
 name = "openethereum"
 # NOTE Make sure to update util/version/Cargo.toml as well
-version = "3.3.2"
+version = "3.3.3"
 license = "GPL-3.0"
 authors = [
 	"OpenEthereum developers",

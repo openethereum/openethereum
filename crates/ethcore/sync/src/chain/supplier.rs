@@ -351,36 +351,34 @@ impl SyncSupplier {
     }
 
     fn return_node_data(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
-        if io.chain().is_aura() {
-            let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
-            if count == 0 {
-                debug!(target: "sync", "Empty GetNodeData request, ignoring.");
-                return Ok(None);
-            }
-
-            let mut data = Bytes::new();
-
-            let mut added = 0usize;
-            for i in 0..count {
-                if let Some(ref mut node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
-                    data.append(node_data);
-                    added += 1;
-                    if data.len() > PAYLOAD_SOFT_LIMIT {
-                        break;
-                    }
-                }
-            }
-
-            let mut rlp = RlpStream::new_list(added);
-            rlp.append_raw(&data, added);
-            trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
-            Ok(Some((NodeDataPacket, rlp)))
-        } else {
-            // GetNodeData requests are ignored since we don't have a correct
-            // implementation of the NodeData response, see issue #508
-            debug!("Ignoring GetNodeData request");
-            Ok(None)
+        let count = cmp::min(rlp.item_count().unwrap_or(0), MAX_NODE_DATA_TO_SEND);
+        trace!(target: "sync", "{} -> GetNodeData: {} entries", peer_id, count);
+        if count == 0 {
+            debug!(target: "sync", "Empty GetNodeData request, ignoring.");
+            return Ok(None);
         }
+
+        let mut added = 0usize;
+        let mut data = Vec::new();
+        let mut total_bytes = 0;
+        for i in 0..count {
+            if let Some(node_data) = io.chain().state_data(&rlp.val_at::<H256>(i)?) {
+                total_bytes += node_data.len();
+                // Check that the packet won't be oversized
+                if total_bytes > PAYLOAD_SOFT_LIMIT {
+                    break;
+                }
+                data.push(node_data);
+                added += 1;
+            }
+        }
+
+        let mut rlp = RlpStream::new_list(added);
+        for d in data {
+            rlp.append(&d);
+        }
+        trace!(target: "sync", "{} -> GetNodeData: returned {} entries", peer_id, added);
+        Ok(Some((NodeDataPacket, rlp)))
     }
 
     fn return_receipts(io: &dyn SyncIo, rlp: &Rlp, peer_id: PeerId) -> RlpResponseResult {
@@ -815,5 +813,49 @@ mod test {
             &node_request,
         );
         assert_eq!(1, io.packets.len());
+    }
+
+    #[test]
+    fn dispatch_get_node_data_request() {
+        let mut client = TestBlockChainClient::new_with_spec(Spec::new_test_round());
+        let queue = RwLock::new(VecDeque::new());
+        let sync = dummy_sync(&client);
+        let ss = TestSnapshotService::new();
+        let mut io = TestIo::new(&mut client, &ss, &queue, None);
+
+        let mut node_list = RlpStream::new_list(3);
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000a")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000b")
+                .unwrap(),
+        );
+        node_list.append(
+            &H256::from_str("000000000000000000000000000000000000000000000000000000000000000c")
+                .unwrap(),
+        );
+
+        let node_request = node_list;
+        let node_request = prepend_request_id(node_request, Some(0x0b3a73ce2ff2));
+
+        io.sender = Some(2usize);
+
+        // it returns rlp ONLY for hashes ending with "a" and "c"
+        SyncSupplier::dispatch_packet(
+            &RwLock::new(sync),
+            &mut io,
+            0usize,
+            GetNodeDataPacket.id(),
+            &node_request.out(),
+        );
+        assert_eq!(1, io.packets.len());
+        assert_eq!(
+            &io.packets[0].data,
+            &vec![
+                0xcd, 0x86, 0x0b, 0x3a, 0x73, 0xce, 0x2f, 0xf2, 0xc5, 0x82, 0xaa, 0xaa, 0x81, 0xcc
+            ]
+        );
     }
 }

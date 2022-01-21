@@ -273,6 +273,10 @@ where
     }
 }
 
+pub fn eip1559_not_activated() -> Error {
+    unsupported("EIP-1559 is not activated", None)
+}
+
 pub fn not_enough_data() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::UNSUPPORTED_REQUEST),
@@ -404,6 +408,7 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		TooBig => "Transaction is too big, see chain specification for the limit.".into(),
         InvalidRlp(ref descr) => format!("Invalid RLP data: {}", descr),
         TransactionTypeNotEnabled => format!("Transaction type is not enabled for current block"),
+        SenderIsNotEOA => "Transaction sender is not an EOA (see EIP-3607)".into(),
 	}
 }
 

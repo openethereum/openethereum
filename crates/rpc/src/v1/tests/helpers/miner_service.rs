@@ -335,6 +335,7 @@ impl MinerService for TestMinerService {
                 tx_gas_limit: 5_000_000.into(),
                 no_early_reject: false,
                 block_base_fee: None,
+                allow_non_eoa_sender: false,
             },
             status: txpool::LightStatus {
                 mem_usage: 1_000,
@@ -357,6 +358,10 @@ impl MinerService for TestMinerService {
 
     fn sensible_gas_price(&self) -> U256 {
         20_000_000_000u64.into()
+    }
+
+    fn sensible_max_priority_fee(&self) -> U256 {
+        2_000_000_000u64.into()
     }
 
     fn sensible_gas_limit(&self) -> U256 {

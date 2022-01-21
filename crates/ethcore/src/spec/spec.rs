@@ -147,6 +147,8 @@ pub struct CommonParams {
     pub eip3529_transition: BlockNumber,
     /// Number of first block where EIP-3541 rule begins.
     pub eip3541_transition: BlockNumber,
+    /// Number of first block where EIP-3607 rule begins.
+    pub eip3607_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -183,6 +185,16 @@ pub struct CommonParams {
     pub eip1559_elasticity_multiplier: U256,
     /// Default value for the block base fee
     pub eip1559_base_fee_initial_value: U256,
+    /// Min value for the block base fee.
+    pub eip1559_base_fee_min_value: Option<U256>,
+    /// Block at which the min value for the base fee starts to be used.
+    pub eip1559_base_fee_min_value_transition: BlockNumber,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: BlockNumber,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: BlockNumber,
 }
 
 impl CommonParams {
@@ -424,6 +436,7 @@ impl From<ethjson::spec::Params> for CommonParams {
             dust_protection_transition: p
                 .dust_protection_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip3607_transition: p.eip3607_transition.map_or(0, Into::into),
             nonce_cap_increment: p.nonce_cap_increment.map_or(64, Into::into),
             remove_dust_contracts: p.remove_dust_contracts.unwrap_or(false),
             gas_limit_bound_divisor: p.gas_limit_bound_divisor.into(),
@@ -459,6 +472,17 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip1559_base_fee_initial_value: p
                 .eip1559_base_fee_initial_value
                 .map_or_else(U256::zero, Into::into),
+            eip1559_base_fee_min_value: p.eip1559_base_fee_min_value.map(Into::into),
+            eip1559_base_fee_min_value_transition: p
+                .eip1559_base_fee_min_value_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_fee_collector: p.eip1559_fee_collector.map(Into::into),
+            eip1559_fee_collector_transition: p
+                .eip1559_fee_collector_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            validate_service_transactions_transition: p
+                .validate_service_transactions_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
         }
     }
 }
@@ -734,6 +758,9 @@ impl Spec {
             params.kip6_transition,
             params.max_code_size_transition,
             params.transaction_permission_contract_transition,
+            params.eip1559_fee_collector_transition,
+            params.eip1559_base_fee_min_value_transition,
+            params.validate_service_transactions_transition,
         ];
         // BUG: Rinkeby has homestead transition at block 1 but we can't reflect that in specs for non-Ethash networks
         if params.network_id == 0x4 {
@@ -1125,6 +1152,13 @@ impl Spec {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_test_constructor() -> Spec {
         load_bundled!("test/constructor")
+    }
+
+    /// Create a new Spec which is a NullEngine consensus with EIP3607 transition equal to 2,
+    /// and with a contract at address '0x71562b71999873DB5b286dF957af199Ec94617F7'.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_eip3607() -> Self {
+        load_bundled!("test/eip3607_test")
     }
 
     /// Create a new Spec with Autority Round randomness contract

@@ -47,7 +47,18 @@
 		"eip1884Transition": 12598600,
 		"eip2028Transition": 12598600,
 		"eip2929Transition": 21364900,
-		"eip2930Transition": 21364900
+		"eip2930Transition": 21364900,
+		"eip3198Transition": 24090200,
+		"eip3529Transition": 24090200,
+		"eip3541Transition": 24090200,
+		"eip1559Transition": 24090200,
+		"eip1559BaseFeeMaxChangeDenominator": "0x8",
+		"eip1559ElasticityMultiplier": "0x2",
+		"eip1559BaseFeeInitialValue": "0x3b9aca00",
+		"eip1559BaseFeeMinValue": "0x2540be400",
+		"eip1559BaseFeeMinValueTransition": 24199500,
+		"eip1559FeeCollector": "0x517F3AcfF3aFC2fb45e574718bca6F919b798e10",
+		"eip1559FeeCollectorTransition": 24090200
 	},
 	"genesis": {
 		"seal": {

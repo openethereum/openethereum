@@ -51,6 +51,23 @@ macro_rules! register_test {
 	};
 }
 
+macro_rules! extract_non_legacy_chain {
+    ($file: expr, $network: expr) => {{
+        const RAW_DATA: &'static [u8] = include_bytes!(concat!(
+            "../../../../ethcore/res/json_tests/",
+            $file,
+            ".json"
+        ));
+        ::ethjson::blockchain::Test::load(RAW_DATA)
+            .unwrap()
+            .into_iter()
+            .filter(|&(_, ref t)| t.network == $network)
+            .next()
+            .unwrap()
+            .1
+    }};
+}
+
 #[cfg(test)]
 mod eth;
 #[cfg(test)]

@@ -634,10 +634,16 @@ impl TypedTransaction {
 
     pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         match self {
-            Self::EIP1559Transaction(tx) => min(
-                self.tx().gas_price,
-                tx.max_priority_fee_per_gas + block_base_fee.unwrap_or_default(),
-            ),
+            Self::EIP1559Transaction(tx) => {
+                let (v2, overflow) = tx
+                    .max_priority_fee_per_gas
+                    .overflowing_add(block_base_fee.unwrap_or_default());
+                if overflow {
+                    self.tx().gas_price
+                } else {
+                    min(self.tx().gas_price, v2)
+                }
+            }
             Self::AccessList(_) => self.tx().gas_price,
             Self::Legacy(_) => self.tx().gas_price,
         }
@@ -648,6 +654,22 @@ impl TypedTransaction {
             Self::EIP1559Transaction(tx) => tx.max_priority_fee_per_gas,
             Self::AccessList(tx) => tx.tx().gas_price,
             Self::Legacy(tx) => tx.gas_price,
+        }
+    }
+
+    pub fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256 {
+        self.effective_gas_price(block_base_fee)
+            .checked_sub(block_base_fee.unwrap_or_default())
+            .unwrap_or_default()
+    }
+
+    pub fn has_zero_gas_price(&self) -> bool {
+        match self {
+            Self::EIP1559Transaction(tx) => {
+                tx.tx().gas_price.is_zero() && tx.max_priority_fee_per_gas.is_zero()
+            }
+            Self::AccessList(tx) => tx.tx().gas_price.is_zero(),
+            Self::Legacy(tx) => tx.gas_price.is_zero(),
         }
     }
 
@@ -1320,5 +1342,42 @@ mod tests {
         test_vector("f867078504a817c807830290409435353535353535353535353535353535353535358201578025a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021", "d37922162ab7cea97c97a87551ed02c9a38b7332");
         test_vector("f867088504a817c8088302e2489435353535353535353535353535353535353535358202008025a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c12a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c10", "9bddad43f934d313c2b79ca28a432dd2b7281029");
         test_vector("f867098504a817c809830334509435353535353535353535353535353535353535358202d98025a052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afba052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afb", "3c24d7329e92f84f08556ceb6df1cdb0104ca49f");
+    }
+
+    #[test]
+    fn should_not_panic_on_effective_gas_price_overflow() {
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
+        let gas_price /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    nonce: U256::from(42),
+                    gas_price,
+                    gas: U256::from(50_000),
+                    value: U256::from(1),
+                    data: b"Hello!".to_vec(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: gas_price,
+        })
+        .sign(&key.secret(), Some(69));
+
+        let result = t.transaction.effective_gas_price(Some(124.into()));
+        assert_eq!(
+            gas_price, result,
+            "Invalid effective gas price, when max_priority_fee_per_gas is U256::max"
+        );
     }
 }

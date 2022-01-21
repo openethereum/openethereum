@@ -23,7 +23,10 @@ use std::time::Instant;
 use sync_io::SyncIo;
 use types::BlockNumber;
 
-use super::sync_packet::{SyncPacket::*, *};
+use super::{
+    request_id::generate_request_id,
+    sync_packet::{SyncPacket::*, *},
+};
 
 use super::{BlockSet, ChainSync, PeerAsking};
 
@@ -121,7 +124,7 @@ impl SyncRequester {
             io,
             peer_id,
             PeerAsking::PooledTransactions,
-            PooledTransactionsPacket,
+            GetPooledTransactionsPacket,
             rlp.out(),
         )
     }
@@ -242,6 +245,8 @@ impl SyncRequester {
             }
             peer.asking = asking;
             peer.ask_time = Instant::now();
+
+            let (packet, _) = generate_request_id(packet, peer, packet_id);
 
             let result = io.send(peer_id, packet_id, packet);
 

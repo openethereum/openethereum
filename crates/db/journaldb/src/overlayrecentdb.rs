@@ -23,6 +23,7 @@ use std::{
 };
 
 use super::{error_negatively_reference_hash, JournalDB, DB_PREFIX_LEN, LATEST_ERA_KEY};
+use bytes::Bytes;
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use fastmap::H256FastMap;
@@ -508,6 +509,26 @@ impl JournalDB for OverlayRecentDB {
 
     fn consolidate(&mut self, with: MemoryDB<KeccakHasher, DBValue>) {
         self.transaction_overlay.consolidate(with);
+    }
+
+    fn state(&self, key: &H256) -> Option<Bytes> {
+        let journal_overlay = self.journal_overlay.read();
+        let key = to_short_key(key);
+        journal_overlay
+            .backing_overlay
+            .get(&key)
+            .map(|v| v.into_vec())
+            .or_else(|| {
+                journal_overlay
+                    .pending_overlay
+                    .get(&key)
+                    .map(|d| d.clone().into_vec())
+            })
+            .or_else(|| {
+                self.backing
+                    .get_by_prefix(self.column, &key[0..DB_PREFIX_LEN])
+                    .map(|b| b.into_vec())
+            })
     }
 }
 

@@ -120,6 +120,8 @@ pub struct Params {
     /// See `CommonParams` docs.
     pub eip3541_transition: Option<Uint>,
     /// See `CommonParams` docs.
+    pub eip3607_transition: Option<Uint>,
+    /// See `CommonParams` docs.
     pub dust_protection_transition: Option<Uint>,
     /// See `CommonParams` docs.
     pub nonce_cap_increment: Option<Uint>,
@@ -158,6 +160,16 @@ pub struct Params {
     pub eip1559_elasticity_multiplier: Option<Uint>,
     /// Default value for the block base fee
     pub eip1559_base_fee_initial_value: Option<Uint>,
+    /// Min value for the block base fee.
+    pub eip1559_base_fee_min_value: Option<Uint>,
+    /// Block at which the min value for the base fee starts to be used.
+    pub eip1559_base_fee_min_value_transition: Option<Uint>,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: Option<Uint>,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: Option<Uint>,
 }
 
 #[cfg(test)]

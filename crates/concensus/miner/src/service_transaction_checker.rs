@@ -45,7 +45,7 @@ impl ServiceTransactionChecker {
     ) -> Result<bool, String> {
         let sender = tx.sender();
         // Skip checking the contract if the transaction does not have zero gas price
-        if !tx.tx().gas_price.is_zero() {
+        if !tx.has_zero_gas_price() {
             return Ok(false);
         }
 
@@ -72,7 +72,7 @@ impl ServiceTransactionChecker {
                 SERVICE_TRANSACTION_CONTRACT_REGISTRY_NAME.to_owned(),
                 BlockId::Latest,
             )
-            .ok_or_else(|| "contract is not configured")?;
+            .ok_or_else(|| "Certifier contract is not configured")?;
         self.call_contract(client, contract_address, sender)
             .and_then(|allowed| {
                 if let Some(mut cache) = self.certified_addresses_cache.try_write() {

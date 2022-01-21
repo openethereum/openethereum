@@ -90,6 +90,7 @@
 pub mod fork_filter;
 mod handler;
 mod propagator;
+pub mod request_id;
 mod requester;
 mod supplier;
 pub mod sync_packet;
@@ -153,6 +154,8 @@ impl From<DecoderError> for PacketProcessError {
     }
 }
 
+/// Version 66 of the Ethereum protocol and number of packet IDs reserved by the protocol (packet count).
+pub const ETH_PROTOCOL_VERSION_66: (u8, u8) = (66, 0x11);
 /// Version 65 of the Ethereum protocol and number of packet IDs reserved by the protocol (packet count).
 pub const ETH_PROTOCOL_VERSION_65: (u8, u8) = (65, 0x11);
 /// 64 version of Ethereum protocol.
@@ -166,6 +169,7 @@ pub const PAR_PROTOCOL_VERSION_2: (u8, u8) = (2, 0x16);
 
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
+pub const MAX_NODE_DATA_TO_SEND: usize = 1024;
 pub const MAX_RECEIPTS_HEADERS_TO_SEND: usize = 256;
 pub const MAX_TRANSACTIONS_TO_REQUEST: usize = 256;
 const MIN_PEERS_PROPAGATION: usize = 4;
@@ -1698,6 +1702,14 @@ pub mod tests {
     fn is_synced_state() {
         assert!(sync_status(SyncState::Blocks).is_syncing(queue_info(0, 0)));
         assert!(!sync_status(SyncState::Idle).is_syncing(queue_info(0, 0)));
+    }
+
+    pub fn dummy_sync(client: &dyn BlockChainClient) -> ChainSync {
+        ChainSync::new(
+            SyncConfig::default(),
+            client,
+            ForkFilterApi::new_dummy(client),
+        )
     }
 
     pub fn dummy_sync_with_peer(

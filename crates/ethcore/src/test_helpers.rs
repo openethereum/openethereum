@@ -46,6 +46,8 @@ use block::{Drain, OpenBlock};
 use client::{
     ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock, PrepareOpenBlock,
 };
+use engines::EngineSigner;
+use ethjson::crypto::publickey::{Public, Signature};
 use factory::Factories;
 use miner::Miner;
 use spec::Spec;
@@ -643,4 +645,39 @@ impl ChainNotify for TestNotify {
         };
         self.messages.write().push(data);
     }
+}
+
+/// Returns engine signer with specified address
+pub fn dummy_engine_signer_with_address(addr: Address) -> Box<dyn EngineSigner> {
+    struct TestEngineSigner(Address);
+
+    impl TestEngineSigner {
+        fn with_address(addr: Address) -> Self {
+            Self(addr)
+        }
+    }
+
+    impl EngineSigner for TestEngineSigner {
+        fn sign(&self, _hash: H256) -> Result<Signature, ethjson::crypto::publickey::Error> {
+            unimplemented!()
+        }
+
+        fn address(&self) -> Address {
+            self.0
+        }
+
+        fn decrypt(
+            &self,
+            _auth_data: &[u8],
+            _cipher: &[u8],
+        ) -> Result<Vec<u8>, parity_crypto::publickey::Error> {
+            unimplemented!()
+        }
+
+        fn public(&self) -> Option<Public> {
+            unimplemented!()
+        }
+    }
+
+    Box::new(TestEngineSigner::with_address(addr))
 }

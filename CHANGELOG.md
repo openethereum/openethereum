@@ -1,3 +1,106 @@
+## OpenEthereum v3.3.3
+
+Enhancements:
+* Implement eip-3607 (#593)
+
+Bug fixes:
+* Add type field for legacy transactions in RPC calls (#580)
+* Makes eth_mining to return False if not is not allowed to seal (#581)
+* Made nodes data concatenate as RLP sequences instead of bytes (#598)
+
+## OpenEthereum v3.3.2
+
+Enhancements:
+* London hardfork block: Sokol (24114400)
+
+Bug fixes:
+* Fix for maxPriorityFeePerGas overflow
+
+## OpenEthereum v3.3.1
+
+Enhancements:
+* Add eth_maxPriorityFeePerGas implementation (#570)
+* Add a bootnode for Kovan
+
+Bug fixes:
+* Fix for modexp overflow in debug mode (#578)
+
+## OpenEthereum v3.3.0
+
+Enhancements:
+* Add `validateServiceTransactionsTransition` spec option to be able to enable additional checking of zero gas price transactions by block verifier
+
+## OpenEthereum v3.3.0-rc.15
+
+* Revert eip1559BaseFeeMinValue activation on xDai at London hardfork block
+
+## OpenEthereum v3.3.0-rc.14
+
+Enhancements:
+* Add eip1559BaseFeeMinValue and eip1559BaseFeeMinValueTransition spec options
+* Activate eip1559BaseFeeMinValue on xDai at London hardfork block (19040000), set it to 20 GWei
+* Activate eip1559BaseFeeMinValue on POA Core at block 24199500 (November 8, 2021), set it to 10 GWei
+* Delay difficulty bomb to June 2022 for Ethereum Mainnet (EIP-4345)
+
+## OpenEthereum v3.3.0-rc.13
+
+Enhancements:
+* London hardfork block: POA Core (24090200)
+
+## OpenEthereum v3.3.0-rc.12
+
+Enhancements:
+* London hardfork block: xDai (19040000)
+
+## OpenEthereum v3.3.0-rc.11
+
+Bug fixes:
+* Ignore GetNodeData requests only for non-AuRa chains
+
+## OpenEthereum v3.3.0-rc.10
+
+Enhancements:
+* Add eip1559FeeCollector and eip1559FeeCollectorTransition spec options
+
+## OpenEthereum v3.3.0-rc.9
+
+Bug fixes:
+* Add service transactions support for EIP-1559
+* Fix MinGasPrice config option for POSDAO and EIP-1559
+
+Enhancements:
+* min_gas_price becomes min_effective_priority_fee
+* added version 4 for TxPermission contract
+
+## OpenEthereum v3.3.0-rc.8
+
+Bug fixes:
+* Ignore GetNodeData requests (#519)
+
+## OpenEthereum v3.3.0-rc.7
+
+Bug fixes:
+* GetPooledTransactions is sent in invalid form (wrong packet id)
+
+## OpenEthereum v3.3.0-rc.6
+
+Enhancements:
+* London hardfork block: kovan (26741100) (#502)
+
+## OpenEthereum v3.3.0-rc.4
+
+Enhancements:
+* London hardfork block: mainnet (12,965,000) (#475)
+* Support for eth/66 protocol version (#465)
+* Bump ethereum/tests to v9.0.3
+* Add eth_feeHistory
+
+Bug fixes:
+* GetNodeData from eth63 is missing (#466)
+* Effective gas price not omitting (#477)
+* London support in openethereum-evm (#479)
+* gasPrice is required field for Transaction object (#481)
+
 ## OpenEthereum v3.3.0-rc.3
 
 Bug fixes:

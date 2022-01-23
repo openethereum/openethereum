@@ -37,6 +37,7 @@ extern crate parity_bytes as bytes;
 extern crate parity_crypto as crypto;
 #[macro_use]
 extern crate parity_util_mem;
+extern crate crossbeam_channel;
 extern crate parking_lot;
 extern crate primitive_types07;
 extern crate rand;
@@ -60,6 +61,7 @@ extern crate macros;
 extern crate log;
 #[macro_use]
 extern crate trace_time;
+extern crate ethcore_miner;
 
 mod block_sync;
 mod blocks;

@@ -237,6 +237,8 @@ pub struct EthSync {
     subprotocol_name: ProtocolId,
     /// Priority tasks notification channel
     priority_tasks: Mutex<mpsc::Sender<PriorityTask>>,
+    /// New incoming transactions notification channel
+    new_transaction_hashes: crossbeam_channel::Sender<H256>,
 }
 
 impl EthSync {
@@ -246,6 +248,7 @@ impl EthSync {
         connection_filter: Option<Arc<dyn ConnectionFilter>>,
     ) -> Result<Arc<EthSync>, Error> {
         let (priority_tasks_tx, priority_tasks_rx) = mpsc::channel();
+        let (new_transaction_hashes_tx, new_transaction_hashes_rx) = crossbeam_channel::unbounded();
         let fork_filter = ForkFilterApi::new(&*params.chain, params.forks);
 
         let sync = ChainSyncApi::new(
@@ -253,6 +256,7 @@ impl EthSync {
             &*params.chain,
             fork_filter,
             priority_tasks_rx,
+            new_transaction_hashes_rx,
         );
         let service = NetworkService::new(
             params.network_config.clone().into_basic()?,
@@ -269,6 +273,7 @@ impl EthSync {
             }),
             subprotocol_name: params.config.subprotocol_name,
             priority_tasks: Mutex::new(priority_tasks_tx),
+            new_transaction_hashes: new_transaction_hashes_tx,
         });
 
         Ok(sync)
@@ -277,6 +282,11 @@ impl EthSync {
     /// Priority tasks producer
     pub fn priority_tasks(&self) -> mpsc::Sender<PriorityTask> {
         self.priority_tasks.lock().clone()
+    }
+
+    /// New transactions hashes producer
+    pub fn new_transaction_hashes(&self) -> crossbeam_channel::Sender<H256> {
+        self.new_transaction_hashes.clone()
     }
 }
 

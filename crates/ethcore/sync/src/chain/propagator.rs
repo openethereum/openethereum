@@ -31,6 +31,8 @@ use super::{
     random, ChainSync, ETH_PROTOCOL_VERSION_65, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
     MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION,
 };
+use ethcore_miner::pool::VerifiedTransaction;
+use std::sync::Arc;
 
 const NEW_POOLED_HASHES_LIMIT: usize = 4096;
 
@@ -101,59 +103,25 @@ impl SyncPropagator {
     pub fn propagate_new_transactions<F: FnMut() -> bool>(
         sync: &mut ChainSync,
         io: &mut dyn SyncIo,
+        tx_hashes: Vec<H256>,
         mut should_continue: F,
     ) -> usize {
-        // Early out if nobody to send to.
-        if sync.peers.is_empty() {
-            return 0;
-        }
+        let transactions = move |io: &dyn SyncIo| {
+            tx_hashes
+                .iter()
+                .filter_map(|hash| io.chain().transaction(hash))
+                .collect()
+        };
+        SyncPropagator::propagate_transactions(sync, io, transactions, should_continue)
+    }
 
-        let transactions = io.chain().transactions_to_propagate();
-        if transactions.is_empty() {
-            return 0;
-        }
-
-        if !should_continue() {
-            return 0;
-        }
-
-        let (transactions, service_transactions): (Vec<_>, Vec<_>) = transactions
-            .iter()
-            .map(|tx| tx.signed())
-            .partition(|tx| !tx.tx().gas_price.is_zero());
-
-        // usual transactions could be propagated to all peers
-        let mut affected_peers = HashSet::new();
-        if !transactions.is_empty() {
-            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true);
-            affected_peers = SyncPropagator::propagate_transactions_to_peers(
-                sync,
-                io,
-                peers,
-                transactions,
-                &mut should_continue,
-            );
-        }
-
-        // most of times service_transactions will be empty
-        // => there's no need to merge packets
-        if !service_transactions.is_empty() {
-            let service_transactions_peers =
-                SyncPropagator::select_peers_for_transactions(sync, |peer_id| {
-                    io.peer_version(*peer_id).accepts_service_transaction()
-                });
-            let service_transactions_affected_peers =
-                SyncPropagator::propagate_transactions_to_peers(
-                    sync,
-                    io,
-                    service_transactions_peers,
-                    service_transactions,
-                    &mut should_continue,
-                );
-            affected_peers.extend(&service_transactions_affected_peers);
-        }
-
-        affected_peers.len()
+    pub fn propagate_ready_transactions<F: FnMut() -> bool>(
+        sync: &mut ChainSync,
+        io: &mut dyn SyncIo,
+        mut should_continue: F,
+    ) -> usize {
+        let transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
+        SyncPropagator::propagate_transactions(sync, io, transactions, should_continue)
     }
 
     fn propagate_transactions_to_peers<F: FnMut() -> bool>(
@@ -382,6 +350,70 @@ impl SyncPropagator {
             debug!(target:"sync", "Error sending packet: {:?}", e);
             sync.disconnect_peer(peer_id);
         }
+    }
+
+    /// propagates new transactions to all peers
+    fn propagate_transactions<'a, F, G>(
+        sync: &mut ChainSync,
+        io: &mut dyn SyncIo,
+        get_transactions: G,
+        mut should_continue: F,
+    ) -> usize
+    where
+        F: FnMut() -> bool,
+        G: Fn(&dyn SyncIo) -> Vec<Arc<VerifiedTransaction>>,
+    {
+        // Early out if nobody to send to.
+        if sync.peers.is_empty() {
+            return 0;
+        }
+
+        let transactions = get_transactions(io);
+        if transactions.is_empty() {
+            return 0;
+        }
+
+        if !should_continue() {
+            return 0;
+        }
+
+        let (transactions, service_transactions): (Vec<_>, Vec<_>) = transactions
+            .iter()
+            .map(|tx| tx.signed())
+            .partition(|tx| !tx.tx().gas_price.is_zero());
+
+        // usual transactions could be propagated to all peers
+        let mut affected_peers = HashSet::new();
+        if !transactions.is_empty() {
+            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true);
+            affected_peers = SyncPropagator::propagate_transactions_to_peers(
+                sync,
+                io,
+                peers,
+                transactions,
+                &mut should_continue,
+            );
+        }
+
+        // most of times service_transactions will be empty
+        // => there's no need to merge packets
+        if !service_transactions.is_empty() {
+            let service_transactions_peers =
+                SyncPropagator::select_peers_for_transactions(sync, |peer_id| {
+                    io.peer_version(*peer_id).accepts_service_transaction()
+                });
+            let service_transactions_affected_peers =
+                SyncPropagator::propagate_transactions_to_peers(
+                    sync,
+                    io,
+                    service_transactions_peers,
+                    service_transactions,
+                    &mut should_continue,
+                );
+            affected_peers.extend(&service_transactions_affected_peers);
+        }
+
+        affected_peers.len()
     }
 }
 

@@ -426,9 +426,15 @@ impl ChainSyncApi {
         chain: &dyn BlockChainClient,
         fork_filter: ForkFilterApi,
         priority_tasks: mpsc::Receiver<PriorityTask>,
+        new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     ) -> Self {
         ChainSyncApi {
-            sync: RwLock::new(ChainSync::new(config, chain, fork_filter)),
+            sync: RwLock::new(ChainSync::new(
+                config,
+                chain,
+                fork_filter,
+                new_transaction_hashes,
+            )),
             priority_tasks: Mutex::new(priority_tasks),
         }
     }
@@ -542,7 +548,8 @@ impl ChainSyncApi {
                     debug!(target: "sync", "Finished block propagation, took {}ms", as_ms(started));
                 }
                 PriorityTask::PropagateTransactions(time, _) => {
-                    SyncPropagator::propagate_new_transactions(&mut sync, io, || {
+                    let hashes = sync.new_transaction_hashes(None);
+                    SyncPropagator::propagate_new_transactions(&mut sync, io, hashes, || {
                         check_deadline(deadline).is_some()
                     });
                     debug!(target: "sync", "Finished transaction propagation, took {}ms", as_ms(time));
@@ -691,6 +698,8 @@ pub struct ChainSync {
     delayed_requests_ids: HashSet<(PeerId, u8)>,
     /// Sync start timestamp. Measured when first peer is connected
     sync_start_time: Option<Instant>,
+    /// Receiver of transactions that came after last propagation and should be broadcast
+    new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     /// Transactions propagation statistics
     transactions_stats: TransactionsStats,
     /// Enable ancient block downloading
@@ -755,6 +764,7 @@ impl ChainSync {
         config: SyncConfig,
         chain: &dyn BlockChainClient,
         fork_filter: ForkFilterApi,
+        new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     ) -> Self {
         let chain_info = chain.chain_info();
         let best_block = chain.chain_info().best_block_number;
@@ -782,6 +792,7 @@ impl ChainSync {
             download_old_blocks: config.download_old_blocks,
             snapshot: Snapshot::new(),
             sync_start_time: None,
+            new_transaction_hashes,
             transactions_stats: TransactionsStats::default(),
             warp_sync: config.warp_sync,
             eip1559_transition: config.eip1559_transition,
@@ -845,6 +856,34 @@ impl ChainSync {
     /// Returns transactions propagation statistics
     pub fn transactions_stats(&self) -> &H256FastMap<TransactionStats> {
         self.transactions_stats.stats()
+    }
+
+    /// Get transaction hashes that were imported but not yet processed,
+    /// but no more than `max_len` if provided.
+    pub fn new_transaction_hashes(&self, max_len: Option<usize>) -> Vec<H256> {
+        let size = std::cmp::min(
+            self.new_transaction_hashes.len(),
+            max_len.unwrap_or(usize::MAX),
+        );
+        let mut hashes = Vec::with_capacity(size);
+        for _ in 0..size {
+            match self.new_transaction_hashes.try_recv() {
+                Ok(hash) => hashes.push(hash),
+                Err(err) => {
+                    // In general that should not be the case as the `size`
+                    // must not be greater than number of messages in the channel.
+                    // However if any error occurs we just log it for further analysis and break the loop.
+                    debug!(target: "sync", "Error while receiving new transaction hashes: {}", err);
+                    break;
+                }
+            }
+        }
+        trace!(
+            target: "sync",
+            "New transaction hashes received for processing. Expected: {}. Actual: {}",
+            size, hashes.len()
+        );
+        hashes
     }
 
     /// Updates transactions were received by a peer
@@ -1590,7 +1629,7 @@ impl ChainSync {
     /// propagates new transactions to all peers
     pub fn propagate_new_transactions(&mut self, io: &mut dyn SyncIo) {
         let deadline = Instant::now() + Duration::from_millis(500);
-        SyncPropagator::propagate_new_transactions(self, io, || {
+        SyncPropagator::propagate_ready_transactions(self, io, || {
             if deadline > Instant::now() {
                 true
             } else {

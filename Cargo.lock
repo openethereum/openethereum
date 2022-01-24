@@ -999,6 +999,7 @@ dependencies = [
  "blooms-db",
  "common-types",
  "criterion 0.2.11",
+ "crossbeam-channel",
  "crossbeam-utils 0.6.6",
  "derive_more",
  "eip-152",

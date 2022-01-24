@@ -398,7 +398,13 @@ impl TestNet<EthPeer<TestBlockChainClient>> {
         for _ in 0..n {
             let chain = TestBlockChainClient::new();
             let ss = Arc::new(TestSnapshotService::new());
-            let sync = ChainSync::new(config.clone(), &chain, ForkFilterApi::new_dummy(&chain));
+            let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+            let sync = ChainSync::new(
+                config.clone(),
+                &chain,
+                ForkFilterApi::new_dummy(&chain),
+                transaction_hashes_rx,
+            );
             net.peers.push(Arc::new(EthPeer {
                 sync: RwLock::new(sync),
                 snapshot_service: ss,
@@ -447,7 +453,13 @@ impl TestNet<EthPeer<EthcoreClient>> {
         .unwrap();
 
         let ss = Arc::new(TestSnapshotService::new());
-        let sync = ChainSync::new(config, &*client, ForkFilterApi::new_dummy(&*client));
+        let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+        let sync = ChainSync::new(
+            config,
+            &*client,
+            ForkFilterApi::new_dummy(&*client),
+            transaction_hashes_rx,
+        );
         let peer = Arc::new(EthPeer {
             sync: RwLock::new(sync),
             snapshot_service: ss,

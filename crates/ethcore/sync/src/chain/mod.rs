@@ -1744,10 +1744,19 @@ pub mod tests {
     }
 
     pub fn dummy_sync(client: &dyn BlockChainClient) -> ChainSync {
+        let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+        dummy_sync_with_tx_hashes_rx(client, transaction_hashes_rx)
+    }
+
+    pub fn dummy_sync_with_tx_hashes_rx(
+        client: &dyn BlockChainClient,
+        transaction_hashes_rx: crossbeam_channel::Receiver<H256>,
+    ) -> ChainSync {
         ChainSync::new(
             SyncConfig::default(),
             client,
             ForkFilterApi::new_dummy(client),
+            transaction_hashes_rx,
         )
     }
 
@@ -1755,11 +1764,16 @@ pub mod tests {
         peer_latest_hash: H256,
         client: &dyn BlockChainClient,
     ) -> ChainSync {
-        let mut sync = ChainSync::new(
-            SyncConfig::default(),
-            client,
-            ForkFilterApi::new_dummy(client),
-        );
+        let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+        dummy_sync_with_peer_and_tx_hashes_rx(peer_latest_hash, client, transaction_hashes_rx)
+    }
+
+    pub fn dummy_sync_with_peer_and_tx_hashes_rx(
+        peer_latest_hash: H256,
+        client: &dyn BlockChainClient,
+        transaction_hashes_rx: crossbeam_channel::Receiver<H256>,
+    ) -> ChainSync {
+        let mut sync = dummy_sync_with_tx_hashes_rx(client, transaction_hashes_rx);
         insert_dummy_peer(&mut sync, 0, peer_latest_hash);
         sync
     }

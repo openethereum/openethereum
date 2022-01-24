@@ -277,6 +277,35 @@ fn should_import_transaction_below_min_gas_price_threshold_if_local() {
 }
 
 #[test]
+fn should_import_transaction_with_priority_fee_above_min_gas_price_threshold_but_max_fee_below_current_base_fee_if_external(
+) {
+    // given
+    let txq = new_queue();
+    txq.set_verifier_options(verifier::Options {
+        minimal_gas_price: 3.into(),
+        block_base_fee: Some(10.into()),
+        ..Default::default()
+    });
+    // when
+    let tx1 = Tx::gas_price(3).signed(); // Legacy transaction
+    let client = TestClient::new().with_balance(1_000_000);
+    let res = txq.import(client, vec![tx1.unverified()]);
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 1);
+
+    // when
+    let tx2 = Tx::gas_price(5).eip1559_one(3); // EIP1559 transaction
+    let client = TestClient::new().with_balance(1_000_000);
+    let res = txq.import(client, vec![tx2.unverified()]);
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 2);
+}
+
+#[test]
 fn should_reject_transaction_from_non_eoa_if_non_eoa_sender_is_not_allowed() {
     // given
     let txq = new_queue();

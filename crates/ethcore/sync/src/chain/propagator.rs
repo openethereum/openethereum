@@ -104,7 +104,7 @@ impl SyncPropagator {
         sync: &mut ChainSync,
         io: &mut dyn SyncIo,
         tx_hashes: Vec<H256>,
-        mut should_continue: F,
+        should_continue: F,
     ) -> usize {
         let transactions = move |io: &dyn SyncIo| {
             tx_hashes
@@ -118,7 +118,7 @@ impl SyncPropagator {
     pub fn propagate_ready_transactions<F: FnMut() -> bool>(
         sync: &mut ChainSync,
         io: &mut dyn SyncIo,
-        mut should_continue: F,
+        should_continue: F,
     ) -> usize {
         let transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
         SyncPropagator::propagate_transactions(sync, io, transactions, should_continue)

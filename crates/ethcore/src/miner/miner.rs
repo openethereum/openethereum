@@ -545,6 +545,7 @@ impl Miner {
                     .engine
                     .calculate_base_fee(&chain.best_block_header())
                     .unwrap_or_default(),
+                enforce_priority_fees: true,
             },
         );
 
@@ -1202,6 +1203,7 @@ impl miner::MinerService for Miner {
                     .engine
                     .calculate_base_fee(&chain.best_block_header())
                     .unwrap_or_default(),
+                enforce_priority_fees: false,
             };
 
             if let Some(ref f) = filter {

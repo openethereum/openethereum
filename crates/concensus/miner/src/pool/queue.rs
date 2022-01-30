@@ -230,7 +230,10 @@ pub struct TransactionQueue {
     insertion_id: Arc<AtomicUsize>,
     pool: RwLock<Pool>,
     options: RwLock<verifier::Options>,
-    cached_pending: RwLock<CachedPending>,
+    /// Cached pending transactions got *with* priority fee enforcement.
+    cached_enforced_pending: RwLock<CachedPending>,
+    /// Cached pending transactions got *without* priority fee enforcement.
+    cached_non_enforced_pending: RwLock<CachedPending>,
     recently_rejected: RecentlyRejected,
 }
 
@@ -253,7 +256,8 @@ impl TransactionQueue {
                 limits,
             )),
             options: RwLock::new(verification_options),
-            cached_pending: RwLock::new(CachedPending::none()),
+            cached_enforced_pending: RwLock::new(CachedPending::none()),
+            cached_non_enforced_pending: RwLock::new(CachedPending::none()),
             recently_rejected: RecentlyRejected::new(cmp::max(
                 MIN_REJECTED_CACHE_SIZE,
                 max_count / 4,
@@ -277,7 +281,8 @@ impl TransactionQueue {
                 ScoringEvent::BlockBaseFeeChanged,
             );
 
-            self.cached_pending.write().clear();
+            self.cached_enforced_pending.write().clear();
+            self.cached_non_enforced_pending.write().clear();
         }
     }
 
@@ -371,7 +376,8 @@ impl TransactionQueue {
         (self.pool.write().listener_mut().1).0.notify();
 
         if results.iter().any(|r| r.is_ok()) {
-            self.cached_pending.write().clear();
+            self.cached_enforced_pending.write().clear();
+            self.cached_non_enforced_pending.write().clear();
         }
 
         results
@@ -431,23 +437,33 @@ impl TransactionQueue {
             max_len,
             ordering,
             includable_boundary,
+            enforce_priority_fees,
         } = settings;
-        if let Some(pending) = self.cached_pending.read().pending(
-            block_number,
-            current_timestamp,
-            nonce_cap.as_ref(),
-            max_len,
-        ) {
+
+        let cached = if enforce_priority_fees {
+            &self.cached_enforced_pending
+        } else {
+            &self.cached_non_enforced_pending
+        };
+
+        if let Some(pending) =
+            cached
+                .read()
+                .pending(block_number, current_timestamp, nonce_cap.as_ref(), max_len)
+        {
             return pending;
         }
 
         // Double check after acquiring write lock
-        let mut cached_pending = self.cached_pending.write();
+        let mut cached_pending = cached.write();
         if let Some(pending) =
             cached_pending.pending(block_number, current_timestamp, nonce_cap.as_ref(), max_len)
         {
             return pending;
         }
+
+        let effective_priority_fee_filter =
+            self.build_effective_priority_fee_filter(enforce_priority_fees, includable_boundary);
 
         // In case we don't have a cached set, but we don't care about order
         // just return the unordered set.
@@ -457,6 +473,7 @@ impl TransactionQueue {
                 .pool
                 .read()
                 .unordered_pending(ready, includable_boundary)
+                .filter(effective_priority_fee_filter)
                 .take(max_len)
                 .collect();
         }
@@ -467,7 +484,11 @@ impl TransactionQueue {
             block_number,
             current_timestamp,
             nonce_cap,
-            |i| i.take(max_len).collect(),
+            |i| {
+                i.filter(effective_priority_fee_filter)
+                    .take(max_len)
+                    .collect()
+            },
         );
 
         *cached_pending = CachedPending {
@@ -494,6 +515,10 @@ impl TransactionQueue {
     where
         C: client::NonceClient,
     {
+        let effective_priority_fee_filter = self.build_effective_priority_fee_filter(
+            settings.enforce_priority_fees,
+            settings.includable_boundary,
+        );
         self.collect_pending(
             client,
             settings.includable_boundary,
@@ -502,6 +527,7 @@ impl TransactionQueue {
             settings.nonce_cap,
             |i| {
                 i.filter(|tx| filter.matches(tx))
+                    .filter(effective_priority_fee_filter)
                     .take(settings.max_len)
                     .collect()
             },
@@ -536,6 +562,28 @@ impl TransactionQueue {
         trace_time!("pool::collect_pending");
         let ready = Self::ready(client, block_number, current_timestamp, nonce_cap);
         collect(self.pool.read().pending(ready, includable_boundary))
+    }
+
+    /// Depending on `enforce_priority_fees` parameter creates a filter that returns only
+    /// external transactions with enough effective priority fee and local transactions,
+    /// or a filter that just returns all transactions.
+    fn build_effective_priority_fee_filter(
+        &self,
+        enforce_priority_fees: bool,
+        includable_boundary: U256,
+    ) -> Box<dyn Fn(&Arc<pool::VerifiedTransaction>) -> bool> {
+        if enforce_priority_fees {
+            let min_gas_price = self.status().options.minimal_gas_price;
+            Box::new(move |tx| {
+                tx.priority.is_local()
+                    || tx
+                        .transaction
+                        .effective_priority_fee(Some(includable_boundary))
+                        >= min_gas_price
+            })
+        } else {
+            Box::new(|_| true)
+        }
     }
 
     fn ready<C>(
@@ -634,7 +682,8 @@ impl TransactionQueue {
         };
 
         if results.iter().any(Option::is_some) {
-            self.cached_pending.write().clear();
+            self.cached_enforced_pending.write().clear();
+            self.cached_non_enforced_pending.write().clear();
         }
 
         results
@@ -725,8 +774,13 @@ impl TransactionQueue {
 
     /// Check if pending set is cached.
     #[cfg(test)]
-    pub fn is_pending_cached(&self) -> bool {
-        self.cached_pending.read().pending.is_some()
+    pub fn is_enforced_pending_cached(&self) -> bool {
+        self.cached_enforced_pending.read().pending.is_some()
+    }
+
+    #[cfg(test)]
+    pub fn is_non_enforced_pending_cached(&self) -> bool {
+        self.cached_non_enforced_pending.read().pending.is_some()
     }
 }
 

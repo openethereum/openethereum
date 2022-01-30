@@ -11,6 +11,7 @@ ansi_term = "0.10"
 blooms-db = { path = "../db/blooms-db", optional = true }
 common-types = { path = "types" }
 crossbeam-utils = "0.6"
+crossbeam-channel = "0.5.2"
 eip-152 = { version = "0.1", path = "../util/EIP-152" }
 env_logger = { version = "0.5", optional = true }
 error-chain = { version = "0.12", default-features = false }

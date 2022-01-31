@@ -1045,7 +1045,18 @@ fn should_return_cached_pending_even_if_unordered_is_requested(enforce_priority_
     assert_eq!(res, vec![Ok(()), Ok(())]);
 
     // when
-    let all = txq.pending(TestClient::new(), PendingSettings::all_prioritized(0, 0));
+    let all = txq.pending(
+        TestClient::new(),
+        PendingSettings {
+            block_number: 0,
+            current_timestamp: 0,
+            nonce_cap: None,
+            max_len: 3,
+            ordering: PendingOrdering::Priority,
+            includable_boundary: Default::default(),
+            enforce_priority_fees,
+        },
+    );
     assert_eq!(all[0].hash, tx2_1_hash);
     assert_eq!(all.len(), 3);
 

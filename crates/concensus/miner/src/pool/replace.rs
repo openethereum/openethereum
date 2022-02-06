@@ -57,7 +57,7 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     ///
     /// If both _old_ and _new_ transactions have the same sender, sender ordering
     /// rules are applied. Local transactions are neither rejected nor evicted.
-    fn check_sender<T>(
+    fn should_replace_by_sender<T>(
         &self,
         old: &ReplaceTransaction<T>,
         new: &ReplaceTransaction<T>,
@@ -91,7 +91,7 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     ///
     /// New transaction's score should be greater than old transaction's score,
     /// otherwise the new transaction will be rejected.
-    fn check_score<T>(
+    fn should_replace_by_score<T>(
         &self,
         old: &ReplaceTransaction<T>,
         new: &ReplaceTransaction<T>,
@@ -114,7 +114,7 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     /// With replacement transactions we can safely return `InsertNew`, because
     /// we don't need to remove `old` (worst transaction in the pool) since `new` will replace
     /// some other transaction in the pool so we will never go above limit anyway.
-    fn check_if_replacement<T>(
+    fn should_replace_as_replacement<T>(
         &self,
         _old: &ReplaceTransaction<T>,
         new: &ReplaceTransaction<T>,
@@ -136,7 +136,7 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     /// Check if any choice could be made based on transaction readiness.
     ///
     /// Future transaction could not replace ready transaction.
-    fn check_readiness<T>(
+    fn should_replace_by_readiness<T>(
         &self,
         old: &ReplaceTransaction<T>,
         new: &ReplaceTransaction<T>,
@@ -180,11 +180,11 @@ where
         // TODO: For now we verify that transaction is replacement only in case if new transaction
         //       has better score, as it was done that way before refactoring. Is there any
         //       reason why we cannot move replacement check before checking the scores?
-        self.check_sender(old, new)
-            .or_else(|| self.check_score(old, new))
-            .or_else(|| self.check_if_replacement(old, new))
-            .or_else(|| self.check_readiness(old, new))
-            .unwrap_or(Choice::ReplaceOld) // if all checks have been passed, new transaction can replace the old one.
+        self.should_replace_by_sender(old, new)
+            .or_else(|| self.should_replace_by_score(old, new))
+            .or_else(|| self.should_replace_as_replacement(old, new))
+            .or_else(|| self.should_replace_by_readiness(old, new))
+            .unwrap_or(Choice::ReplaceOld) // if all checks have passed, new transaction can replace the old one.
     }
 }
 

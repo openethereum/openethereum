@@ -231,7 +231,7 @@ mod tests {
     fn from_verified(tx: VerifiedTransaction) -> txpool::Transaction<VerifiedTransaction> {
         txpool::Transaction {
             insertion_id: 0,
-            transaction: Arc::new(tx)
+            transaction: Arc::new(tx),
         }
     }
 
@@ -551,10 +551,7 @@ mod tests {
         let old = ReplaceTransaction::new(&old_tx, Default::default());
         let new = ReplaceTransaction::new(&new_tx, Some(&new_tx_sender_pool));
 
-        assert_eq!(
-            replace.should_replace(&old, &new),
-            RejectNew
-        );
+        assert_eq!(replace.should_replace(&old, &new), RejectNew);
     }
 
     #[test]

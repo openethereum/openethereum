@@ -52,6 +52,122 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
             block_base_fee,
         }
     }
+
+    /// Check if any choice could be made based on transaction sender.
+    ///
+    /// If both _old_ and _new_ transactions have the same sender, sender ordering
+    /// rules are applied. Local transactions are neither rejected nor evicted.
+    fn check_sender<T>(
+        &self,
+        old: &ReplaceTransaction<T>,
+        new: &ReplaceTransaction<T>,
+    ) -> Option<Choice>
+    where
+        T: VerifiedTransaction<Sender = Address> + ScoredTransaction,
+        S: Scoring<T>,
+    {
+        let both_local = old.priority().is_local() && new.priority().is_local();
+
+        if old.sender() == new.sender() {
+            // prefer earliest transaction
+            let choice = match new.nonce().cmp(&old.nonce()) {
+                cmp::Ordering::Equal => self.scoring.choose(&old, &new),
+                _ if both_local => Choice::InsertNew,
+                cmp::Ordering::Less => Choice::ReplaceOld,
+                cmp::Ordering::Greater => Choice::RejectNew,
+            };
+            return Some(choice);
+        }
+
+        if both_local {
+            // We should neither reject nor evict local transactions
+            return Some(Choice::InsertNew);
+        }
+
+        None
+    }
+
+    /// Check if any choice could be made based on transaction score.
+    ///
+    /// New transaction's score should be greater than old transaction's score,
+    /// otherwise the new transaction will be rejected.
+    fn check_score<T>(
+        &self,
+        old: &ReplaceTransaction<T>,
+        new: &ReplaceTransaction<T>,
+    ) -> Option<Choice>
+    where
+        T: ScoredTransaction,
+    {
+        let old_score = (old.priority(), old.effective_gas_price(self.block_base_fee));
+        let new_score = (new.priority(), new.effective_gas_price(self.block_base_fee));
+
+        if new_score <= old_score {
+            return Some(Choice::RejectNew);
+        }
+
+        None
+    }
+
+    /// Check if new transaction is a replacement transaction.
+    ///
+    /// With replacement transactions we can safely return `InsertNew`, because
+    /// we don't need to remove `old` (worst transaction in the pool) since `new` will replace
+    /// some other transaction in the pool so we will never go above limit anyway.
+    fn check_if_replacement<T>(
+        &self,
+        _old: &ReplaceTransaction<T>,
+        new: &ReplaceTransaction<T>,
+    ) -> Option<Choice>
+    where
+        S: Scoring<T>,
+    {
+        if let Some(txs) = new.pooled_by_sender {
+            if let Ok(index) = txs.binary_search_by(|old| self.scoring.compare(old, new)) {
+                return match self.scoring.choose(&txs[index], new) {
+                    Choice::ReplaceOld => Some(Choice::InsertNew),
+                    choice => Some(choice),
+                };
+            }
+        }
+        None
+    }
+
+    /// Check if any choice could be made based on transaction readiness.
+    ///
+    /// Future transaction could not replace ready transaction.
+    fn check_readiness<T>(
+        &self,
+        old: &ReplaceTransaction<T>,
+        new: &ReplaceTransaction<T>,
+    ) -> Option<Choice>
+    where
+        T: VerifiedTransaction<Sender = Address> + ScoredTransaction + PartialEq,
+        C: client::NonceClient,
+    {
+        let state = &self.client;
+        // calculate readiness based on state nonce + pooled txs from same sender
+        let is_ready = |replace: &ReplaceTransaction<T>| {
+            let mut nonce = state.account_nonce(replace.sender());
+            if let Some(txs) = replace.pooled_by_sender {
+                for tx in txs.iter() {
+                    if nonce == tx.nonce() && *tx.transaction != ***replace.transaction {
+                        nonce = nonce.saturating_add(U256::from(1))
+                    } else {
+                        break;
+                    }
+                }
+            }
+            nonce == replace.nonce()
+        };
+
+        if !is_ready(new) && is_ready(old) {
+            // prevent a ready transaction being replace by a non-ready transaction
+            return Some(Choice::RejectNew);
+        }
+
+        None
+    }
 }
 
 impl<T, S, C> txpool::ShouldReplace<T> for ReplaceByScoreAndReadiness<S, C>
@@ -61,62 +177,14 @@ where
     C: client::NonceClient,
 {
     fn should_replace(&self, old: &ReplaceTransaction<T>, new: &ReplaceTransaction<T>) -> Choice {
-        let both_local = old.priority().is_local() && new.priority().is_local();
-        if old.sender() == new.sender() {
-            // prefer earliest transaction
-            match new.nonce().cmp(&old.nonce()) {
-                cmp::Ordering::Equal => self.scoring.choose(&old, &new),
-                _ if both_local => Choice::InsertNew,
-                cmp::Ordering::Less => Choice::ReplaceOld,
-                cmp::Ordering::Greater => Choice::RejectNew,
-            }
-        } else if both_local {
-            Choice::InsertNew
-        } else {
-            let old_score = (old.priority(), old.effective_gas_price(self.block_base_fee));
-            let new_score = (new.priority(), new.effective_gas_price(self.block_base_fee));
-
-            if new_score > old_score {
-                // Check if this is a replacement transaction.
-                //
-                // With replacement transactions we can safely return `InsertNew` here, because
-                // we don't need to remove `old` (worst transaction in the pool) since `new` will replace
-                // some other transaction in the pool so we will never go above limit anyway.
-                if let Some(txs) = new.pooled_by_sender {
-                    if let Ok(index) = txs.binary_search_by(|old| self.scoring.compare(old, new)) {
-                        return match self.scoring.choose(&txs[index], new) {
-                            Choice::ReplaceOld => Choice::InsertNew,
-                            choice => choice,
-                        };
-                    }
-                }
-
-                let state = &self.client;
-                // calculate readiness based on state nonce + pooled txs from same sender
-                let is_ready = |replace: &ReplaceTransaction<T>| {
-                    let mut nonce = state.account_nonce(replace.sender());
-                    if let Some(txs) = replace.pooled_by_sender {
-                        for tx in txs.iter() {
-                            if nonce == tx.nonce() && *tx.transaction != ***replace.transaction {
-                                nonce = nonce.saturating_add(U256::from(1))
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    nonce == replace.nonce()
-                };
-
-                if !is_ready(new) && is_ready(old) {
-                    // prevent a ready transaction being replace by a non-ready transaction
-                    Choice::RejectNew
-                } else {
-                    Choice::ReplaceOld
-                }
-            } else {
-                Choice::RejectNew
-            }
-        }
+        // TODO: For now we verify that transaction is replacement only in case if new transaction
+        //       has better score, as it was done that way before refactoring. Is there any
+        //       reason why we cannot move replacement check before checking the scores?
+        self.check_sender(old, new)
+            .or_else(|| self.check_score(old, new))
+            .or_else(|| self.check_if_replacement(old, new))
+            .or_else(|| self.check_readiness(old, new))
+            .unwrap_or(Choice::ReplaceOld) // if all checks have been passed, new transaction can replace the old one.
     }
 }
 

@@ -28,6 +28,7 @@ pub struct Tx {
     pub nonce: u64,
     pub gas: u64,
     pub gas_price: u64,
+    pub value: u64,
 }
 
 impl Default for Tx {
@@ -36,6 +37,7 @@ impl Default for Tx {
             nonce: 123,
             gas: 21_000,
             gas_price: 1,
+            value: 0,
         }
     }
 }
@@ -46,6 +48,11 @@ impl Tx {
             gas_price,
             ..Default::default()
         }
+    }
+
+    pub fn with_value(mut self, value: u64) -> Self {
+        self.value = value;
+        self
     }
 
     pub fn signed(self) -> SignedTransaction {

@@ -228,6 +228,13 @@ mod tests {
         replace.should_replace(&old, &new)
     }
 
+    fn from_verified(tx: VerifiedTransaction) -> txpool::Transaction<VerifiedTransaction> {
+        txpool::Transaction {
+            insertion_id: 0,
+            transaction: Arc::new(tx)
+        }
+    }
+
     #[test]
     fn should_always_accept_local_transactions_unless_same_sender_and_nonce() {
         let scoring = NonceAndGasPrice {
@@ -516,6 +523,36 @@ mod tests {
 
         assert_eq!(
             should_replace(&replace, tx_ready_low_score, tx_future_high_score),
+            RejectNew
+        );
+    }
+
+    #[test]
+    fn should_not_replace_valid_transaction_with_invalid_transaction() {
+        let scoring = NonceAndGasPrice {
+            strategy: PrioritizationStrategy::GasPriceOnly,
+            block_base_fee: None,
+        };
+        let client = TestClient::new().with_balance(64000);
+        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+
+        let tx_valid_low_score = {
+            let tx = Tx::gas_price(1);
+            tx.signed().verified()
+        };
+        let (tx_valid_high_score, tx_invalid_high_score) = {
+            let tx = Tx::gas_price(3).with_value(1000);
+            tx.signed_pair().verified()
+        };
+
+        let old_tx = from_verified(tx_valid_low_score);
+        let new_tx = from_verified(tx_invalid_high_score);
+        let new_tx_sender_pool = [from_verified(tx_valid_high_score)];
+        let old = ReplaceTransaction::new(&old_tx, Default::default());
+        let new = ReplaceTransaction::new(&new_tx, Some(&new_tx_sender_pool));
+
+        assert_eq!(
+            replace.should_replace(&old, &new),
             RejectNew
         );
     }

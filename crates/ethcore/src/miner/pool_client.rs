@@ -29,8 +29,9 @@ use types::{
 };
 
 use call_contract::CallContract;
-use client::{BlockId, BlockInfo, Nonce, TransactionId};
+use client::{Balance, BlockId, BlockInfo, Nonce, TransactionId};
 use engines::EthEngine;
+use ethcore_miner::pool::client::BalanceClient;
 use miner::{
     self,
     cache::{Cache, CachedClient},
@@ -76,10 +77,50 @@ where
     }
 }
 
+pub(crate) struct CachedBalanceClient<'a, C: 'a> {
+    cached_client: CachedClient<'a, C, Address, U256>,
+}
+
+impl<'a, C: 'a> CachedBalanceClient<'a, C> {
+    pub fn new(client: &'a C, cache: &'a Cache<Address, U256>) -> Self {
+        Self {
+            cached_client: CachedClient::new(client, cache),
+        }
+    }
+}
+
+impl<'a, C: 'a> Clone for CachedBalanceClient<'a, C> {
+    fn clone(&self) -> Self {
+        Self {
+            cached_client: self.cached_client.clone(),
+        }
+    }
+}
+
+impl<'a, C: 'a> fmt::Debug for CachedBalanceClient<'a, C> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("CachedBalanceClient")
+            .field("cached_client", &self.cached_client)
+            .finish()
+    }
+}
+
+impl<'a, C: 'a> BalanceClient for CachedBalanceClient<'a, C>
+where
+    C: Balance + Sync,
+{
+    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+        self.cached_client.cache().get_or_insert(*address, || {
+            self.cached_client.client().latest_balance(address)
+        })
+    }
+}
+
 /// Blockchain accesss for transaction pool.
 pub struct PoolClient<'a, C: 'a> {
     chain: &'a C,
     cached_nonces: CachedNonceClient<'a, C>,
+    cached_balances: CachedBalanceClient<'a, C>,
     engine: &'a dyn EthEngine,
     accounts: &'a dyn LocalAccounts,
     best_block_header: Header,
@@ -91,6 +132,7 @@ impl<'a, C: 'a> Clone for PoolClient<'a, C> {
         PoolClient {
             chain: self.chain,
             cached_nonces: self.cached_nonces.clone(),
+            cached_balances: self.cached_balances.clone(),
             engine: self.engine,
             accounts: self.accounts.clone(),
             best_block_header: self.best_block_header.clone(),
@@ -107,6 +149,7 @@ where
     pub fn new(
         chain: &'a C,
         cached_nonces: &'a Cache<Address, U256>,
+        cached_balances: &'a Cache<Address, U256>,
         engine: &'a dyn EthEngine,
         accounts: &'a dyn LocalAccounts,
         service_transaction_checker: Option<&'a ServiceTransactionChecker>,
@@ -115,6 +158,7 @@ where
         PoolClient {
             chain,
             cached_nonces: CachedNonceClient::new(chain, cached_nonces),
+            cached_balances: CachedBalanceClient::new(chain, cached_balances),
             engine,
             accounts,
             best_block_header,
@@ -181,7 +225,7 @@ where
     fn account_details(&self, address: &Address) -> pool::client::AccountDetails {
         pool::client::AccountDetails {
             nonce: self.cached_nonces.account_nonce(address),
-            balance: self.chain.latest_balance(address),
+            balance: self.cached_balances.account_balance(address),
             code_hash: self.chain.code_hash(address, BlockId::Latest),
             is_local: self.accounts.is_local(address),
         }
@@ -220,5 +264,14 @@ where
 {
     fn account_nonce(&self, address: &Address) -> U256 {
         self.cached_nonces.account_nonce(address)
+    }
+}
+
+impl<'a, C: 'a> BalanceClient for PoolClient<'a, C>
+where
+    C: Balance + Sync,
+{
+    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+        self.cached_balances.account_balance(address)
     }
 }

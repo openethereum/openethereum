@@ -168,3 +168,9 @@ impl pool::client::NonceClient for TestClient {
         self.account_details.nonce
     }
 }
+
+impl pool::client::BalanceClient for TestClient {
+    fn account_balance(&self, _address: &ethereum_types::H160) -> U256 {
+        self.account_details.balance
+    }
+}

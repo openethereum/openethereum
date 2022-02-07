@@ -126,6 +126,10 @@ pub trait ScoredTransaction {
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256;
+
+    /// Calculates maximal transaction cost
+    /// (`gas_price` * `gas_limit` + `value`).
+    fn cost(&self) -> U256;
 }
 
 /// Verified transaction stored in the pool.
@@ -206,5 +210,13 @@ impl ScoredTransaction for VerifiedTransaction {
     /// Gets transaction nonce.
     fn nonce(&self) -> U256 {
         self.transaction.tx().nonce
+    }
+
+    /// Gets maximum potential cost of the transaction.
+    fn cost(&self) -> U256 {
+        let tx = self.transaction.tx();
+        // As the transaction is verified, arithmetic
+        // expression below could not overflow.
+        tx.gas_price * tx.gas + tx.value
     }
 }

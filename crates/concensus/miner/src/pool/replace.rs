@@ -168,13 +168,52 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
 
         None
     }
+
+    fn should_replace_by_validity<T>(
+        &self,
+        old: &ReplaceTransaction<T>,
+        new: &ReplaceTransaction<T>,
+    ) -> Option<Choice>
+    where
+        T: VerifiedTransaction<Sender = Address> + ScoredTransaction + PartialEq,
+        C: client::BalanceClient,
+    {
+        let state = &self.client;
+        // calculate readiness based on state balance + pooled txs from same sender
+        let is_valid = |replace: &ReplaceTransaction<T>| {
+            let mut balance = state.account_balance(replace.sender());
+            if let Some(txs) = replace.pooled_by_sender {
+                for tx in txs.iter() {
+                    if tx.nonce() < replace.nonce() {
+                        balance = {
+                            let (balance, overflow) = balance.overflowing_sub(tx.cost());
+                            if overflow {
+                                return false;
+                            }
+                            balance
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+            balance >= replace.cost()
+        };
+
+        if !is_valid(new) && is_valid(old) {
+            // prevent a valid transaction being replace by an invalid transaction
+            return Some(Choice::RejectNew);
+        }
+
+        None
+    }
 }
 
 impl<T, S, C> txpool::ShouldReplace<T> for ReplaceByScoreAndReadiness<S, C>
 where
     T: VerifiedTransaction<Sender = Address> + ScoredTransaction + PartialEq,
     S: Scoring<T>,
-    C: client::NonceClient,
+    C: client::NonceClient + client::BalanceClient,
 {
     fn should_replace(&self, old: &ReplaceTransaction<T>, new: &ReplaceTransaction<T>) -> Choice {
         // TODO: For now we verify that transaction is replacement only in case if new transaction
@@ -184,6 +223,7 @@ where
             .or_else(|| self.should_replace_by_score(old, new))
             .or_else(|| self.should_replace_as_replacement(old, new))
             .or_else(|| self.should_replace_by_readiness(old, new))
+            .or_else(|| self.should_replace_by_validity(old, new))
             .unwrap_or(Choice::ReplaceOld) // if all checks have passed, new transaction can replace the old one.
     }
 }
@@ -403,7 +443,7 @@ mod tests {
             strategy: PrioritizationStrategy::GasPriceOnly,
             block_base_fee: None,
         };
-        let client = TestClient::new().with_nonce(0);
+        let client = TestClient::new().with_nonce(0).with_balance(1_000_000);
         let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         let tx_regular_low_gas = {
@@ -632,7 +672,7 @@ mod tests {
             strategy: PrioritizationStrategy::GasPriceOnly,
             block_base_fee: None,
         };
-        let client = TestClient::new().with_nonce(1);
+        let client = TestClient::new().with_nonce(1).with_balance(1_000_000);
         let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
 
         // current transaction is ready but has a lower gas price than the new one

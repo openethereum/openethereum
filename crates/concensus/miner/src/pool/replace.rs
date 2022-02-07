@@ -33,20 +33,20 @@ use txpool::{
     ReplaceTransaction, VerifiedTransaction,
 };
 
-/// Choose whether to replace based on the sender, the score and finally the
-/// `Readiness` of the transactions being compared.
+/// Choose whether to replace based on the sender, the score, the `Readiness`,
+/// and finally the `Validity` of the transactions being compared.
 #[derive(Debug)]
-pub struct ReplaceByScoreAndReadiness<S, C> {
+pub struct ReplaceByScoreReadinessAndValidity<S, C> {
     scoring: S,
     client: C,
     /// Block base fee of the latest block, exists if the EIP 1559 is activated
     block_base_fee: Option<U256>,
 }
 
-impl<S, C> ReplaceByScoreAndReadiness<S, C> {
-    /// Create a new `ReplaceByScoreAndReadiness`
+impl<S, C> ReplaceByScoreReadinessAndValidity<S, C> {
+    /// Create a new `ReplaceByScoreReadinessAndValidity`
     pub fn new(scoring: S, client: C, block_base_fee: Option<U256>) -> Self {
-        ReplaceByScoreAndReadiness {
+        Self {
             scoring,
             client,
             block_base_fee,
@@ -209,7 +209,7 @@ impl<S, C> ReplaceByScoreAndReadiness<S, C> {
     }
 }
 
-impl<T, S, C> txpool::ShouldReplace<T> for ReplaceByScoreAndReadiness<S, C>
+impl<T, S, C> txpool::ShouldReplace<T> for ReplaceByScoreReadinessAndValidity<S, C>
 where
     T: VerifiedTransaction<Sender = Address> + ScoredTransaction + PartialEq,
     S: Scoring<T>,
@@ -282,7 +282,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         // same sender txs
         let keypair = Random.generate();
@@ -379,7 +379,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         let tx1 = Tx {
             nonce: 1,
@@ -444,7 +444,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(0).with_balance(1_000_000);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         let tx_regular_low_gas = {
             let tx = Tx {
@@ -542,7 +542,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         let tx_ready_low_score = {
             let tx = Tx {
@@ -574,7 +574,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_balance(64000);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         let tx_valid_low_score = {
             let tx = Tx::gas_price(1);
@@ -602,7 +602,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         let old_sender = Random.generate();
         let tx_old_ready_1 = {
@@ -673,7 +673,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1).with_balance(1_000_000);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         // current transaction is ready but has a lower gas price than the new one
         let old_tx = {
@@ -744,7 +744,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         // current transaction is ready
         let old_tx = {
@@ -802,7 +802,7 @@ mod tests {
             block_base_fee: None,
         };
         let client = TestClient::new().with_nonce(1);
-        let replace = ReplaceByScoreAndReadiness::new(scoring, client, None);
+        let replace = ReplaceByScoreReadinessAndValidity::new(scoring, client, None);
 
         // current transaction is ready
         let old_tx = {

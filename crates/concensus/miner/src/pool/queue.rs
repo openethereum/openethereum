@@ -331,7 +331,7 @@ impl TransactionQueue {
             transaction_to_replace,
         );
 
-        let mut replace = replace::ReplaceByScoreAndReadiness::new(
+        let mut replace = replace::ReplaceByScoreReadinessAndValidity::new(
             self.pool.read().scoring().clone(),
             client,
             self.options.read().block_base_fee,

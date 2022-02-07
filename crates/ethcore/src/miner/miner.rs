@@ -40,7 +40,8 @@ use ethereum_types::{Address, H256, U256};
 use io::IoChannel;
 use miner::{
     self,
-    pool_client::{CachedNonceClient, NonceCache, PoolClient},
+    cache::Cache,
+    pool_client::{CachedNonceClient, PoolClient},
     MinerService,
 };
 use parking_lot::{Mutex, RwLock};
@@ -249,7 +250,7 @@ pub struct Miner {
     params: RwLock<AuthoringParams>,
     #[cfg(feature = "work-notify")]
     listeners: RwLock<Vec<Box<dyn NotifyWork>>>,
-    nonce_cache: NonceCache,
+    nonce_cache: Cache<Address, U256>,
     gas_pricer: Mutex<GasPricer>,
     options: MinerOptions,
     // TODO [ToDr] Arc is only required because of price updater
@@ -300,7 +301,7 @@ impl Miner {
             #[cfg(feature = "work-notify")]
             listeners: RwLock::new(vec![]),
             gas_pricer: Mutex::new(gas_pricer),
-            nonce_cache: NonceCache::new(nonce_cache_size),
+            nonce_cache: Cache::<Address, U256>::new("Nonce", nonce_cache_size),
             options,
             transaction_queue: Arc::new(TransactionQueue::new(
                 limits,

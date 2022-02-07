@@ -169,6 +169,13 @@ impl<S, C> ReplaceByScoreReadinessAndValidity<S, C> {
         None
     }
 
+    /// Check if any choice could be made based on transaction validity.
+    ///
+    /// Transaction is considered _invalid_ if sender has not enough
+    /// balance to pay maximum price for given transaction and all
+    /// previous transactions in the transaction pool.
+    ///
+    /// Invalid transaction could not replace valid transaction.
     fn should_replace_by_validity<T>(
         &self,
         old: &ReplaceTransaction<T>,

@@ -37,7 +37,7 @@ impl Default for Tx {
             nonce: 123,
             gas: 21_000,
             gas_price: 1,
-            value: 0,
+            value: 100,
         }
     }
 }
@@ -88,7 +88,7 @@ impl Tx {
     pub fn unsigned(self) -> TypedTransaction {
         TypedTransaction::Legacy(Transaction {
             action: transaction::Action::Create,
-            value: U256::from(100),
+            value: self.value.into(),
             data: "3331600055".from_hex().unwrap(),
             gas: self.gas.into(),
             gas_price: self.gas_price.into(),
@@ -100,7 +100,7 @@ impl Tx {
         let keypair = Random.generate();
         let tx = TypedTransaction::Legacy(Transaction {
             action: transaction::Action::Create,
-            value: U256::from(100),
+            value: self.value.into(),
             data: include_str!("../res/big_transaction.data")
                 .from_hex()
                 .unwrap(),

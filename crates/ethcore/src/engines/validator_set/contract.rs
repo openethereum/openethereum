@@ -163,8 +163,9 @@ impl ValidatorSet for ValidatorContract {
         first: bool,
         header: &Header,
         aux: AuxiliaryData,
+        machine: &EthereumMachine,
     ) -> ::engines::EpochChange<EthereumMachine> {
-        self.validators.signals_epoch_end(first, header, aux)
+        self.validators.signals_epoch_end(first, header, aux, machine)
     }
 
     fn epoch_set(

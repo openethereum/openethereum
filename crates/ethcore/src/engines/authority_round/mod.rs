@@ -1820,7 +1820,6 @@ impl Engine<EthereumMachine> for AuthorityRound {
 
             result.map_err(|e| format!("{}", e))
         };
-
         self.validators.on_epoch_begin(first, &header, &mut call)
     }
 
@@ -2126,13 +2125,14 @@ impl Engine<EthereumMachine> for AuthorityRound {
         &self,
         header: &Header,
         aux: AuxiliaryData,
+        _: &EthereumMachine,
     ) -> super::EpochChange<EthereumMachine> {
         if self.immediate_transitions {
             return super::EpochChange::No;
         }
 
         let first = header.number() == 0;
-        self.validators.signals_epoch_end(first, header, aux)
+        self.validators.signals_epoch_end(first, header, aux, self.machine())
     }
 
     fn is_epoch_end(

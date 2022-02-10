@@ -802,10 +802,9 @@ impl Importer {
             receipts: Some(&receipts),
         };
 
-        match self.engine.signals_epoch_end(header, auxiliary) {
+        match self.engine.signals_epoch_end(header, auxiliary, self.engine.machine()) {
             EpochChange::Yes(proof) => {
                 use engines::Proof;
-
                 let proof = match proof {
                     Proof::Known(proof) => proof,
                     Proof::WithState(with_state) => {

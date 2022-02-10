@@ -129,7 +129,6 @@ impl RollingFinality {
         self.headers.push_back((head, number, signers));
 
         let mut newly_finalized = Vec::new();
-
         while self.is_finalized() {
             let (hash, _, signers) = self
                 .headers
@@ -140,7 +139,6 @@ impl RollingFinality {
             newly_finalized.push(hash);
         }
 
-        trace!(target: "finality", "Blocks finalized by {:?}: {:?}", head, newly_finalized);
 
         self.last_pushed = Some(head);
         Ok(newly_finalized)

@@ -29,7 +29,7 @@ use super::sync_packet::SyncPacket::{self, *};
 
 use super::{
     random, ChainSync, ETH_PROTOCOL_VERSION_65, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
-    MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION,
+    MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION, NEW_TRANSACTIONS_STATS_PERIOD,
 };
 use ethcore_miner::pool::VerifiedTransaction;
 use std::sync::Arc;
@@ -146,9 +146,14 @@ impl SyncPropagator {
         let all_transactions_hashes_rlp =
             rlp::encode_list(&all_transactions_hashes.iter().copied().collect::<Vec<_>>());
 
-        if !are_new {
-            // Clear old transactions from stats, if ready transactions are propagated.
-            sync.transactions_stats.retain(&all_transactions_hashes);
+        let block_number = io.chain().chain_info().best_block_number;
+
+        if are_new {
+            sync.transactions_stats
+                .retain_new(block_number, NEW_TRANSACTIONS_STATS_PERIOD);
+        } else {
+            sync.transactions_stats
+                .retain_pending(&all_transactions_hashes);
         }
 
         let send_packet = |io: &mut dyn SyncIo,
@@ -170,7 +175,6 @@ impl SyncPropagator {
             trace!(target: "sync", "{:02} <- {} ({} entries; {} bytes)", peer_id, if is_hashes { "NewPooledTransactionHashes" } else { "Transactions" }, sent, size);
         };
 
-        let block_number = io.chain().chain_info().best_block_number;
         let mut sent_to_peers = HashSet::new();
         let mut max_sent = 0;
 
@@ -189,12 +193,10 @@ impl SyncPropagator {
 
             // Send all transactions, if the peer doesn't know about anything
             if peer_info.last_sent_transactions.is_empty() {
-                // update stats, if propagating ready transactions
-                if !are_new {
-                    for hash in &all_transactions_hashes {
-                        let id = io.peer_session_info(peer_id).and_then(|info| info.id);
-                        stats.propagated(hash, id, block_number);
-                    }
+                // update stats
+                for hash in &all_transactions_hashes {
+                    let id = io.peer_session_info(peer_id).and_then(|info| info.id);
+                    stats.propagated(hash, are_new, id, block_number);
                 }
                 peer_info.last_sent_transactions = all_transactions_hashes.clone();
 
@@ -251,12 +253,10 @@ impl SyncPropagator {
                 (packet, to_send_new)
             };
 
-            // Update stats, if propagating ready transactions.
-            if !are_new {
-                let id = io.peer_session_info(peer_id).and_then(|info| info.id);
-                for hash in &to_send {
-                    stats.propagated(hash, id, block_number);
-                }
+            // Update stats.
+            let id = io.peer_session_info(peer_id).and_then(|info| info.id);
+            for hash in &to_send {
+                stats.propagated(hash, are_new, id, block_number);
             }
 
             peer_info.last_sent_transactions = all_transactions_hashes
@@ -788,7 +788,7 @@ mod tests {
     }
 
     #[test]
-    fn should_maintain_transations_propagation_stats() {
+    fn should_maintain_transactions_propagation_stats() {
         let (new_transaction_hashes_tx, new_transaction_hashes_rx) = crossbeam_channel::unbounded();
 
         let mut client = TestBlockChainClient::new();
@@ -806,35 +806,35 @@ mod tests {
         {
             let mut io = TestIo::new(&mut client, &ss, &queue, None);
             SyncPropagator::propagate_ready_transactions(&mut sync, &mut io, || true);
-
-            let stats = sync.transactions_stats();
-            assert_eq!(
-                stats.len(),
-                1,
-                "Should maintain stats for single ready transaction."
-            );
-            assert!(
-                stats.contains_key(&tx_hash1),
-                "Should maintain stats for propagated ready transaction."
-            )
         }
 
         let tx_hash2 = client.insert_transaction_to_queue();
         {
             let mut io = TestIo::new(&mut client, &ss, &queue, None);
             SyncPropagator::propagate_new_transactions(&mut sync, &mut io, vec![tx_hash2], || true);
-
-            let stats = sync.transactions_stats();
-            assert_eq!(
-                stats.len(),
-                1,
-                "Should not update stats when propagating new transaction."
-            );
-            assert!(
-                stats.contains_key(&tx_hash1),
-                "Should not update stats when propagating new transaction."
-            )
         }
+
+        let stats = sync.pending_transactions_stats();
+        assert_eq!(
+            stats.len(),
+            1,
+            "Should maintain stats for single ready transaction."
+        );
+        assert!(
+            stats.contains_key(&tx_hash1),
+            "Should maintain stats for propagated ready transaction."
+        );
+
+        let stats = sync.new_transactions_stats();
+        assert_eq!(
+            stats.len(),
+            1,
+            "Should maintain stats for single new transaction."
+        );
+        assert!(
+            stats.contains_key(&tx_hash2),
+            "Should maintain stats for propagated new transaction."
+        );
     }
 
     #[test]

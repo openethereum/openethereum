@@ -140,7 +140,10 @@ pub trait SyncProvider: Send + Sync + PrometheusMetrics {
     fn enode(&self) -> Option<String>;
 
     /// Returns propagation count for pending transactions.
-    fn transactions_stats(&self) -> BTreeMap<H256, TransactionStats>;
+    fn pending_transactions_stats(&self) -> BTreeMap<H256, TransactionStats>;
+
+    /// Returns propagation count for new transactions.
+    fn new_transactions_stats(&self) -> BTreeMap<H256, TransactionStats>;
 }
 
 /// Transaction stats
@@ -331,8 +334,12 @@ impl SyncProvider for EthSync {
         self.network.external_url()
     }
 
-    fn transactions_stats(&self) -> BTreeMap<H256, TransactionStats> {
-        self.eth_handler.sync.transactions_stats()
+    fn pending_transactions_stats(&self) -> BTreeMap<H256, TransactionStats> {
+        self.eth_handler.sync.pending_transactions_stats()
+    }
+
+    fn new_transactions_stats(&self) -> BTreeMap<H256, TransactionStats> {
+        self.eth_handler.sync.new_transactions_stats()
     }
 }
 

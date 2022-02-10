@@ -186,6 +186,8 @@ const SNAPSHOT_MIN_PEERS: usize = 3;
 
 const MAX_SNAPSHOT_CHUNKS_DOWNLOAD_AHEAD: usize = 3;
 
+const NEW_TRANSACTIONS_STATS_PERIOD: BlockNumber = 10;
+
 const WAIT_PEERS_TIMEOUT: Duration = Duration::from_secs(5);
 const STATUS_TIMEOUT: Duration = Duration::from_secs(5);
 const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
@@ -455,11 +457,21 @@ impl ChainSyncApi {
         self.sync.read().status()
     }
 
-    /// Returns transactions propagation statistics
-    pub fn transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
+    /// Returns pending transactions propagation statistics
+    pub fn pending_transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
         self.sync
             .read()
-            .transactions_stats()
+            .pending_transactions_stats()
+            .iter()
+            .map(|(hash, stats)| (*hash, stats.into()))
+            .collect()
+    }
+
+    /// Returns new transactions propagation statistics
+    pub fn new_transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
+        self.sync
+            .read()
+            .new_transactions_stats()
             .iter()
             .map(|(hash, stats)| (*hash, stats.into()))
             .collect()
@@ -853,9 +865,14 @@ impl ChainSync {
         })
     }
 
-    /// Returns transactions propagation statistics
-    pub fn transactions_stats(&self) -> &H256FastMap<TransactionStats> {
-        self.transactions_stats.stats()
+    /// Returns pending transactions propagation statistics
+    pub fn pending_transactions_stats(&self) -> &H256FastMap<TransactionStats> {
+        self.transactions_stats.pending_transactions_stats()
+    }
+
+    /// Returns new transactions propagation statistics
+    pub fn new_transactions_stats(&self) -> &H256FastMap<TransactionStats> {
+        self.transactions_stats.new_transactions_stats()
     }
 
     /// Get transaction hashes that were imported but not yet processed,

@@ -301,7 +301,15 @@ where
     }
 
     fn pending_transactions_stats(&self) -> Result<BTreeMap<H256, TransactionStats>> {
-        let stats = self.sync.transactions_stats();
+        let stats = self.sync.pending_transactions_stats();
+        Ok(stats
+            .into_iter()
+            .map(|(hash, stats)| (hash, stats.into()))
+            .collect())
+    }
+
+    fn new_transactions_stats(&self) -> Result<BTreeMap<H256, TransactionStats>> {
+        let stats = self.sync.new_transactions_stats();
         Ok(stats
             .into_iter()
             .map(|(hash, stats)| (hash, stats.into()))

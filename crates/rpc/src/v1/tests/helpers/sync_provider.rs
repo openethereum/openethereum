@@ -110,7 +110,7 @@ impl SyncProvider for TestSyncProvider {
         None
     }
 
-    fn transactions_stats(&self) -> BTreeMap<H256, TransactionStats> {
+    fn pending_transactions_stats(&self) -> BTreeMap<H256, TransactionStats> {
         map![
             H256::from_low_u64_be(1) => TransactionStats {
                 first_seen: 10,

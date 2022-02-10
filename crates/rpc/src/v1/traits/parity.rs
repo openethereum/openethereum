@@ -158,6 +158,10 @@ pub trait Parity {
     #[rpc(name = "parity_pendingTransactionsStats")]
     fn pending_transactions_stats(&self) -> Result<BTreeMap<H256, TransactionStats>>;
 
+    /// Returns propagation statistics on transactions recently added into the queue.
+    #[rpc(name = "parity_newTransactionsStats")]
+    fn new_transactions_stats(&self) -> Result<BTreeMap<H256, TransactionStats>>;
+
     /// Returns a list of current and past local transactions with status details.
     #[rpc(name = "parity_localTransactions")]
     fn local_transactions(&self) -> Result<BTreeMap<H256, LocalTransactionStatus>>;

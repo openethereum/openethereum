@@ -338,6 +338,7 @@ impl ValidatorSafeContract {
         bloom: Bloom,
         header: &Header,
         receipts: &[TypedReceipt],
+        machine: &EthereumMachine, 
     ) -> Option<SimpleList> {
         let check_log = |log: &LogEntry| {
             log.address == self.contract_address
@@ -361,11 +362,19 @@ impl ValidatorSafeContract {
                 )
                 .ok()
             });
-
-        // only last log is taken into account
-        decoded_events
-            .next()
-            .map(|matched_event| SimpleList::new(matched_event.new_set))
+        
+        // only last log is taken into account for block after fix_validator_set_transition
+        if machine.params().fix_validator_set_transition < header.number() {//}
+            trace!(target: "engine", "USING NEW VERSION");
+            decoded_events
+                .last()
+                .map(|matched_event| SimpleList::new(matched_event.new_set))
+        } else {
+            trace!(target: "engine", "USING OLD(WRONG) VERSION");
+            decoded_events
+                .next()
+                .map(|matched_event| SimpleList::new(matched_event.new_set))
+        }
     }
 }
 
@@ -495,6 +504,7 @@ impl ValidatorSet for ValidatorSafeContract {
         _header: &Header,
         caller: &mut SystemCall,
     ) -> Result<(), ::error::Error> {
+        trace!(target: "engine", "Epoch begin, finalizing validators changes");
         let data = validator_set::functions::finalize_change::encode_input();
         caller(self.contract_address, data)
             .map(|_| ())
@@ -515,6 +525,7 @@ impl ValidatorSet for ValidatorSafeContract {
         first: bool,
         header: &Header,
         aux: AuxiliaryData,
+        machine: &EthereumMachine,
     ) -> ::engines::EpochChange<EthereumMachine> {
         let receipts = aux.receipts;
 
@@ -540,7 +551,7 @@ impl ValidatorSet for ValidatorSafeContract {
 
         match receipts {
             None => ::engines::EpochChange::Unsure(AuxiliaryRequest::Receipts),
-            Some(receipts) => match self.extract_from_event(bloom, header, receipts) {
+            Some(receipts) => match self.extract_from_event(bloom, header, receipts, machine) {
                 None => ::engines::EpochChange::No,
                 Some(list) => {
                     info!(target: "engine", "Signal for transition within contract. New list: {:?}",
@@ -593,7 +604,7 @@ impl ValidatorSet for ValidatorSafeContract {
 
             let bloom = self.expected_bloom(&old_header);
 
-            match self.extract_from_event(bloom, &old_header, &receipts) {
+            match self.extract_from_event(bloom, &old_header, &receipts, machine) {
                 Some(list) => Ok((list, Some(old_header.hash()))),
                 None => Err(::engines::EngineError::InsufficientProof(
                     "No log event in proof.".into(),
@@ -879,7 +890,7 @@ mod tests {
         };
 
         new_header.set_log_bloom(event.bloom());
-        match engine.signals_epoch_end(&new_header, Default::default()) {
+        match engine.signals_epoch_end(&new_header, Default::default(), engine.machine()) {
             EpochChange::No => {}
             _ => panic!("Expected bloom to be unrecognized."),
         };
@@ -888,7 +899,7 @@ mod tests {
         event.topics.push(last_hash);
         new_header.set_log_bloom(event.bloom());
 
-        match engine.signals_epoch_end(&new_header, Default::default()) {
+        match engine.signals_epoch_end(&new_header, Default::default(), engine.machine()) {
             EpochChange::Unsure(AuxiliaryRequest::Receipts) => {}
             _ => panic!("Expected bloom to be recognized."),
         };
@@ -905,7 +916,7 @@ mod tests {
         let mut new_header = Header::default();
         new_header.set_number(0); // so the validator set doesn't look for a log
 
-        match engine.signals_epoch_end(&new_header, Default::default()) {
+        match engine.signals_epoch_end(&new_header, Default::default(), engine.machine()) {
             EpochChange::Yes(Proof::WithState(_)) => {}
             _ => panic!("Expected state to be required to prove initial signal"),
         };

@@ -99,6 +99,7 @@ impl ValidatorSet for TestSet {
         _: bool,
         _: &Header,
         _: AuxiliaryData,
+        _: &EthereumMachine,
     ) -> ::engines::EpochChange<EthereumMachine> {
         ::engines::EpochChange::No
     }

@@ -136,11 +136,12 @@ impl ValidatorSet for Multi {
         _first: bool,
         header: &Header,
         aux: AuxiliaryData,
+        machine: &EthereumMachine,
     ) -> ::engines::EpochChange<EthereumMachine> {
         let (set_block, set) = self.correct_set_by_number(header.number());
         let first = set_block == header.number();
 
-        set.signals_epoch_end(first, header, aux)
+        set.signals_epoch_end(first, header, aux, machine)
     }
 
     fn epoch_set(
@@ -318,8 +319,8 @@ mod tests {
 
         let mut header = Header::new();
         header.set_number(499);
-
-        match multi.signals_epoch_end(false, &header, Default::default()) {
+        let sync_client = generate_dummy_client_with_spec(Spec::new_validator_multi);
+        match multi.signals_epoch_end(false, &header, Default::default(), sync_client.engine().machine()) {
             EpochChange::No => {}
             _ => panic!("Expected no epoch signal change."),
         }
@@ -327,7 +328,7 @@ mod tests {
 
         header.set_number(500);
 
-        match multi.signals_epoch_end(false, &header, Default::default()) {
+        match multi.signals_epoch_end(false, &header, Default::default(), sync_client.engine().machine()) {
             EpochChange::No => {}
             _ => panic!("Expected no epoch signal change."),
         }

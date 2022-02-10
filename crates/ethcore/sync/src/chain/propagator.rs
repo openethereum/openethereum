@@ -129,6 +129,7 @@ impl SyncPropagator {
         io: &mut dyn SyncIo,
         peers: Vec<PeerId>,
         transactions: Vec<&SignedTransaction>,
+        are_new: bool,
         mut should_continue: F,
     ) -> HashSet<PeerId> {
         let all_transactions_hashes = transactions
@@ -145,8 +146,10 @@ impl SyncPropagator {
         let all_transactions_hashes_rlp =
             rlp::encode_list(&all_transactions_hashes.iter().copied().collect::<Vec<_>>());
 
-        // Clear old transactions from stats
-        sync.transactions_stats.retain(&all_transactions_hashes);
+        if !are_new {
+            // Clear old transactions from stats, if ready transactions are propagated.
+            sync.transactions_stats.retain(&all_transactions_hashes);
+        }
 
         let send_packet = |io: &mut dyn SyncIo,
                            peer_id: PeerId,
@@ -186,10 +189,12 @@ impl SyncPropagator {
 
             // Send all transactions, if the peer doesn't know about anything
             if peer_info.last_sent_transactions.is_empty() {
-                // update stats
-                for hash in &all_transactions_hashes {
-                    let id = io.peer_session_info(peer_id).and_then(|info| info.id);
-                    stats.propagated(hash, id, block_number);
+                // update stats, if propagating ready transactions
+                if !are_new {
+                    for hash in &all_transactions_hashes {
+                        let id = io.peer_session_info(peer_id).and_then(|info| info.id);
+                        stats.propagated(hash, id, block_number);
+                    }
                 }
                 peer_info.last_sent_transactions = all_transactions_hashes.clone();
 
@@ -246,10 +251,12 @@ impl SyncPropagator {
                 (packet, to_send_new)
             };
 
-            // Update stats
-            let id = io.peer_session_info(peer_id).and_then(|info| info.id);
-            for hash in &to_send {
-                stats.propagated(hash, id, block_number);
+            // Update stats, if propagating ready transactions.
+            if !are_new {
+                let id = io.peer_session_info(peer_id).and_then(|info| info.id);
+                for hash in &to_send {
+                    stats.propagated(hash, id, block_number);
+                }
             }
 
             peer_info.last_sent_transactions = all_transactions_hashes
@@ -399,6 +406,7 @@ impl SyncPropagator {
                 io,
                 peers,
                 transactions,
+                are_new,
                 &mut should_continue,
             );
         }
@@ -417,6 +425,7 @@ impl SyncPropagator {
                     io,
                     service_transactions_peers,
                     service_transactions,
+                    are_new,
                     &mut should_continue,
                 );
             affected_peers.extend(&service_transactions_affected_peers);
@@ -785,7 +794,7 @@ mod tests {
         let mut client = TestBlockChainClient::new();
         client.set_new_transaction_hashes_producer(new_transaction_hashes_tx);
         client.add_blocks(100, EachBlockWith::Uncle);
-        client.insert_transaction_to_queue();
+        let tx_hash1 = client.insert_transaction_to_queue();
         let mut sync = dummy_sync_with_peer_and_tx_hashes_rx(
             client.block_hash_delta_minus(1),
             &client,
@@ -804,6 +813,10 @@ mod tests {
                 1,
                 "Should maintain stats for single ready transaction."
             );
+            assert!(
+                stats.contains_key(&tx_hash1),
+                "Should maintain stats for propagated ready transaction."
+            )
         }
 
         let tx_hash2 = client.insert_transaction_to_queue();
@@ -815,8 +828,12 @@ mod tests {
             assert_eq!(
                 stats.len(),
                 1,
-                "Should maintain stats for single new transaction."
+                "Should not update stats when propagating new transaction."
             );
+            assert!(
+                stats.contains_key(&tx_hash1),
+                "Should not update stats when propagating new transaction."
+            )
         }
     }
 

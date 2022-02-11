@@ -33,5 +33,5 @@ jobs:
         with:
           file: scripts/docker/alpine/Dockerfile
           push: true
-          tags: ${{ steps.meta_server.outputs.tags }}
-          labels: ${{ steps.meta_server.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

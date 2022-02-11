@@ -144,6 +144,7 @@ impl Engine<EthereumMachine> for BasicAuthority {
         &self,
         _header: &Header,
         _auxiliary: AuxiliaryData,
+        machine: &EthereumMachine,
     ) -> super::EpochChange<EthereumMachine> {
         // don't bother signalling even though a contract might try.
         super::EpochChange::No
@@ -154,10 +155,11 @@ impl Engine<EthereumMachine> for BasicAuthority {
         &self,
         header: &Header,
         auxiliary: AuxiliaryData,
+        machine: &EthereumMachine,
     ) -> super::EpochChange<EthereumMachine> {
         // in test mode, always signal even though they don't be finalized.
         let first = header.number() == 0;
-        self.validators.signals_epoch_end(first, header, auxiliary)
+        self.validators.signals_epoch_end(first, header, auxiliary, machine)
     }
 
     fn is_epoch_end(

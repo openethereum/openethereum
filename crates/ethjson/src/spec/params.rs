@@ -69,6 +69,8 @@ pub struct Params {
     pub validate_chain_id_transition: Option<Uint>,
     /// See `CommonParams` docs.
     pub validate_receipts_transition: Option<Uint>,
+    /// From which block apply validator set transition fix.
+    pub fix_validator_set_transition: Option<Uint>,
     /// See `CommonParams` docs.
     pub eip140_transition: Option<Uint>,
     /// See `CommonParams` docs.

@@ -92,16 +92,18 @@ fn should_return_list_of_items_to_confirm() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -109,7 +111,7 @@ fn should_return_list_of_items_to_confirm() {
     let _sign_future = tester
         .signer
         .add_request(
-            ConfirmationPayload::EthSignMessage(1.into(), vec![5].into()),
+            ConfirmationPayload::EthSignMessage(Address::from_low_u64_be(1), vec![5].into()),
             Origin::Unknown,
         )
         .unwrap();
@@ -139,16 +141,18 @@ fn should_reject_transaction_from_queue_without_dispatching() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -177,16 +181,18 @@ fn should_not_remove_transaction_if_password_is_invalid() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: Address::from(1),
+                from: Address::from_low_u64_be(1),
                 used_default_from: false,
                 to: Some(Address::from_str("d46e8dd67c5d32be8058bb8eb970870f07244567").unwrap()),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -213,7 +219,7 @@ fn should_not_remove_sign_if_password_is_invalid() {
     let _confirmation_future = tester
         .signer
         .add_request(
-            ConfirmationPayload::EthSignMessage(0.into(), vec![5].into()),
+            ConfirmationPayload::EthSignMessage(Address::from_low_u64_be(0), vec![5].into()),
             Origin::Unknown,
         )
         .unwrap();
@@ -246,13 +252,15 @@ fn should_confirm_transaction_and_dispatch() {
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -308,16 +316,18 @@ fn should_alter_the_sender_and_nonce() {
         .add_request(
             ConfirmationPayload::SendTransaction(FilledTransactionRequest {
                 transaction_type: Default::default(),
-                from: 0.into(),
+                from: Address::from_low_u64_be(0),
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: Some(10.into()),
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -377,13 +387,15 @@ fn should_confirm_transaction_with_token() {
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -445,13 +457,15 @@ fn should_confirm_transaction_with_rlp() {
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -511,13 +525,15 @@ fn should_return_error_when_sender_does_not_match() {
                 from: Address::default(),
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -578,13 +594,15 @@ fn should_confirm_sign_transaction_with_rlp() {
                 from: address,
                 used_default_from: false,
                 to: Some(recipient),
-                gas_price: U256::from(10_000),
+                gas_price: Some(U256::from(10_000)),
+                max_fee_per_gas: None,
                 gas: U256::from(10_000_000),
                 value: U256::from(1),
                 data: vec![],
                 nonce: None,
                 condition: None,
                 access_list: None,
+                max_priority_fee_per_gas: None,
             }),
             Origin::Unknown,
         )
@@ -638,6 +656,7 @@ fn should_confirm_sign_transaction_with_rlp() {
         + &format!("\"s\":\"0x{:x}\",", U256::from(signature.s()))
         + &format!("\"standardV\":\"0x{:x}\",", U256::from(t.standard_v()))
         + r#""to":"0xd46e8dd67c5d32be8058bb8eb970870f07244567","transactionIndex":null,"#
+        + r#""type":"0x0","#
         + &format!("\"v\":\"0x{:x}\",", U256::from(t.v()))
         + r#""value":"0x1""#
         + r#"}},"id":1}"#;

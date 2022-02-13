@@ -26,13 +26,17 @@ use std::{
     },
 };
 
+use self::scoring::ScoringEvent;
 use ethereum_types::{Address, H256, U256};
 use parking_lot::RwLock;
 use txpool::{self, Verifier};
 use types::transaction;
 
 use pool::{
-    self, client, listener, local_transactions::LocalTransactionsList, ready, replace, scoring,
+    self, client, listener,
+    local_transactions::LocalTransactionsList,
+    ready, replace, scoring,
+    transaction_filter::{match_filter, TransactionFilter},
     verifier, PendingOrdering, PendingSettings, PrioritizationStrategy,
 };
 
@@ -121,6 +125,17 @@ impl CachedPending {
         nonce_cap: Option<&U256>,
         max_len: usize,
     ) -> Option<Vec<Arc<pool::VerifiedTransaction>>> {
+        self.pending_filtered(block_number, current_timestamp, nonce_cap, max_len, None)
+    }
+
+    pub fn pending_filtered(
+        &self,
+        block_number: u64,
+        current_timestamp: u64,
+        nonce_cap: Option<&U256>,
+        max_len: usize,
+        filter: Option<TransactionFilter>,
+    ) -> Option<Vec<Arc<pool::VerifiedTransaction>>> {
         // First check if we have anything in cache.
         let pending = self.pending.as_ref()?;
 
@@ -149,7 +164,14 @@ impl CachedPending {
             return None;
         }
 
-        Some(pending.iter().take(max_len).cloned().collect())
+        Some(
+            pending
+                .iter()
+                .filter(|tx| match_filter(&filter, tx))
+                .take(max_len)
+                .cloned()
+                .collect(),
+        )
     }
 }
 
@@ -224,7 +246,10 @@ impl TransactionQueue {
             insertion_id: Default::default(),
             pool: RwLock::new(txpool::Pool::new(
                 Default::default(),
-                scoring::NonceAndGasPrice(strategy),
+                scoring::NonceAndGasPrice {
+                    strategy,
+                    block_base_fee: verification_options.block_base_fee,
+                },
                 limits,
             )),
             options: RwLock::new(verification_options),
@@ -233,6 +258,26 @@ impl TransactionQueue {
                 MIN_REJECTED_CACHE_SIZE,
                 max_count / 4,
             )),
+        }
+    }
+
+    /// If latest block has different base fee than it's parent, then transaction pool scoring needs to be updated.
+    pub fn update_scoring(&self, block_base_fee: U256) {
+        let update_needed = match self.pool.read().scoring().block_base_fee {
+            Some(base_fee) => base_fee != block_base_fee,
+            None => true,
+        };
+
+        if update_needed {
+            self.pool.write().set_scoring(
+                scoring::NonceAndGasPrice {
+                    strategy: PrioritizationStrategy::GasPriceOnly,
+                    block_base_fee: Some(block_base_fee),
+                },
+                ScoringEvent::BlockBaseFeeChanged,
+            );
+
+            self.cached_pending.write().clear();
         }
     }
 
@@ -286,8 +331,11 @@ impl TransactionQueue {
             transaction_to_replace,
         );
 
-        let mut replace =
-            replace::ReplaceByScoreAndReadiness::new(self.pool.read().scoring().clone(), client);
+        let mut replace = replace::ReplaceByScoreAndReadiness::new(
+            self.pool.read().scoring().clone(),
+            client,
+            self.options.read().block_base_fee,
+        );
 
         let results = transactions
 			.into_iter()
@@ -332,7 +380,10 @@ impl TransactionQueue {
     /// Returns all transactions in the queue without explicit ordering.
     pub fn all_transactions(&self) -> Vec<Arc<pool::VerifiedTransaction>> {
         let ready = |_tx: &pool::VerifiedTransaction| txpool::Readiness::Ready;
-        self.pool.read().unordered_pending(ready).collect()
+        self.pool
+            .read()
+            .unordered_pending(ready, Default::default())
+            .collect()
     }
 
     /// Returns all transaction hashes in the queue without explicit ordering.
@@ -340,7 +391,7 @@ impl TransactionQueue {
         let ready = |_tx: &pool::VerifiedTransaction| txpool::Readiness::Ready;
         self.pool
             .read()
-            .unordered_pending(ready)
+            .unordered_pending(ready, Default::default())
             .map(|tx| tx.hash)
             .collect()
     }
@@ -355,7 +406,7 @@ impl TransactionQueue {
         let ready = ready::OptionalState::new(nonce);
         self.pool
             .read()
-            .unordered_pending(ready)
+            .unordered_pending(ready, Default::default())
             .map(|tx| tx.hash)
             .collect()
     }
@@ -379,6 +430,7 @@ impl TransactionQueue {
             nonce_cap,
             max_len,
             ordering,
+            includable_boundary,
         } = settings;
         if let Some(pending) = self.cached_pending.read().pending(
             block_number,
@@ -404,15 +456,19 @@ impl TransactionQueue {
             return self
                 .pool
                 .read()
-                .unordered_pending(ready)
+                .unordered_pending(ready, includable_boundary)
                 .take(max_len)
                 .collect();
         }
 
-        let pending: Vec<_> =
-            self.collect_pending(client, block_number, current_timestamp, nonce_cap, |i| {
-                i.take(max_len).collect()
-            });
+        let pending: Vec<_> = self.collect_pending(
+            client,
+            includable_boundary,
+            block_number,
+            current_timestamp,
+            nonce_cap,
+            |i| i.take(max_len).collect(),
+        );
 
         *cached_pending = CachedPending {
             block_number,
@@ -426,6 +482,32 @@ impl TransactionQueue {
         pending
     }
 
+    /// Returns current pending transactions filtered.
+    ///
+    /// Different to the pending() method, this one does not cache.
+    pub fn pending_filtered<C>(
+        &self,
+        client: C,
+        settings: PendingSettings,
+        filter: &TransactionFilter,
+    ) -> Vec<Arc<pool::VerifiedTransaction>>
+    where
+        C: client::NonceClient,
+    {
+        self.collect_pending(
+            client,
+            settings.includable_boundary,
+            settings.block_number,
+            settings.current_timestamp,
+            settings.nonce_cap,
+            |i| {
+                i.filter(|tx| filter.matches(tx))
+                    .take(settings.max_len)
+                    .collect()
+            },
+        )
+    }
+
     /// Collect pending transactions.
     ///
     /// NOTE This is re-computing the pending set and it might be expensive to do so.
@@ -433,6 +515,7 @@ impl TransactionQueue {
     pub fn collect_pending<C, F, T>(
         &self,
         client: C,
+        includable_boundary: U256,
         block_number: u64,
         current_timestamp: u64,
         nonce_cap: Option<U256>,
@@ -452,7 +535,7 @@ impl TransactionQueue {
         debug!(target: "txqueue", "Re-computing pending set for block: {}", block_number);
         trace_time!("pool::collect_pending");
         let ready = Self::ready(client, block_number, current_timestamp, nonce_cap);
-        collect(self.pool.read().pending(ready))
+        collect(self.pool.read().pending(ready, includable_boundary))
     }
 
     fn ready<C>(
@@ -480,7 +563,7 @@ impl TransactionQueue {
         // We want to clear stale transactions from the queue as well.
         // (Transactions that are occuping the queue for a long time without being included)
         let stale_id = {
-            let current_id = self.insertion_id.load(atomic::Ordering::Relaxed);
+            let current_id = self.insertion_id.load(atomic::Ordering::SeqCst);
             // wait at least for half of the queue to be replaced
             let gap = self.pool.read().options().max_count / 2;
             // but never less than 100 transactions
@@ -517,7 +600,7 @@ impl TransactionQueue {
 
         self.pool
             .read()
-            .pending_from_sender(state_readiness, address)
+            .pending_from_sender(state_readiness, address, Default::default())
             .last()
             .map(|tx| tx.signed().tx().nonce.saturating_add(U256::from(1)))
     }
@@ -566,16 +649,35 @@ impl TransactionQueue {
     pub fn penalize<'a, T: IntoIterator<Item = &'a Address>>(&self, senders: T) {
         let mut pool = self.pool.write();
         for sender in senders {
-            pool.update_scores(sender, ());
+            pool.update_scores(sender, ScoringEvent::Penalize);
         }
     }
 
     /// Returns gas price of currently the worst transaction in the pool.
     pub fn current_worst_gas_price(&self) -> U256 {
         match self.pool.read().worst_transaction() {
-            Some(tx) => tx.signed().tx().gas_price,
-            None => self.options.read().minimal_gas_price,
+            Some(tx) => tx
+                .signed()
+                .effective_gas_price(self.options.read().block_base_fee),
+            None => {
+                self.options.read().minimal_gas_price
+                    + self.options.read().block_base_fee.unwrap_or_default()
+            }
         }
+    }
+
+    /// Returns effective priority fee gas price of currently the worst transaction in the pool.
+    /// If the worst transaction has zero gas price, the minimal gas price is returned.
+    pub fn current_worst_effective_priority_fee(&self) -> U256 {
+        self.pool
+            .read()
+            .worst_transaction()
+            .filter(|tx| !tx.signed().has_zero_gas_price())
+            .map(|tx| {
+                tx.signed()
+                    .effective_priority_fee(self.options.read().block_base_fee)
+            })
+            .unwrap_or(self.options.read().minimal_gas_price)
     }
 
     /// Returns a status of the queue.

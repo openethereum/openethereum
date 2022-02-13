@@ -23,13 +23,15 @@ use std::sync::{
 
 use bytes::Bytes;
 use ethereum_types::{Address, H256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use types::{header::Header, BlockNumber};
 
-use super::{SimpleList, ValidatorSet};
+use super::{SimpleList, SystemCall, ValidatorSet};
+use error::Error as EthcoreError;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 
 /// Set used for testing with a single validator.
+#[derive(Clone, MallocSizeOf)]
 pub struct TestSet {
     validator: SimpleList,
     last_malicious: Arc<AtomicUsize>,
@@ -53,17 +55,39 @@ impl TestSet {
             last_benign,
         }
     }
-}
 
-impl HeapSizeOf for TestSet {
-    fn heap_size_of_children(&self) -> usize {
-        self.validator.heap_size_of_children()
+    pub fn from_validators(validators: Vec<Address>) -> Self {
+        let mut ts = TestSet::new(Default::default(), Default::default());
+        ts.validator = SimpleList::new(validators);
+        ts
+    }
+
+    pub fn last_malicious(&self) -> usize {
+        self.last_malicious.load(AtomicOrdering::SeqCst)
+    }
+
+    #[allow(dead_code)]
+    pub fn last_benign(&self) -> usize {
+        self.last_benign.load(AtomicOrdering::SeqCst)
     }
 }
 
 impl ValidatorSet for TestSet {
     fn default_caller(&self, _block_id: ::types::ids::BlockId) -> Box<Call> {
         Box::new(|_, _| Err("Test set doesn't require calls.".into()))
+    }
+
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        _header: &Header,
+        _call: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError> {
+        Ok(Vec::new())
+    }
+
+    fn on_close_block(&self, _header: &Header, _address: &Address) -> Result<(), EthcoreError> {
+        Ok(())
     }
 
     fn is_epoch_end(&self, _first: bool, _chain_head: &Header) -> Option<Vec<u8>> {

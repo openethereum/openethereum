@@ -17,11 +17,9 @@
 //! View onto block header rlp
 
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{bytes::Bytes, hash::keccak, BlockNumber};
 use ethereum_types::{Address, Bloom, H256, U256};
-use hash::keccak;
 use rlp::{self};
-use BlockNumber;
 
 /// View onto block header rlp.
 pub struct HeaderView<'a> {
@@ -125,17 +123,33 @@ impl<'a> HeaderView<'a> {
     }
 
     /// Returns a vector of post-RLP-encoded seal fields.
-    pub fn seal(&self) -> Vec<Bytes> {
+    /// If eip1559 is true, seal contains also base_fee_per_gas. Otherwise, it contains only seal fields.
+    pub fn seal(&self, eip1559: bool) -> Vec<Bytes> {
+        let last_seal_index = if eip1559 {
+            self.rlp.item_count() - 1
+        } else {
+            self.rlp.item_count()
+        };
         let mut seal = vec![];
-        for i in 13..self.rlp.item_count() {
+        for i in 13..last_seal_index {
             seal.push(self.rlp.at(i).as_raw().to_vec());
         }
         seal
     }
 
+    /// Returns block base fee. Should be called only for EIP1559 headers.
+    /// If called for non EIP1559 header, returns garbage
+    pub fn base_fee(&self) -> U256 {
+        match self.rlp.rlp.val_at::<U256>(self.rlp.item_count() - 1) {
+            Ok(base_fee) => base_fee,
+            Err(_) => Default::default(),
+        }
+    }
+
     /// Returns a vector of seal fields (RLP-decoded).
-    pub fn decode_seal(&self) -> Result<Vec<Bytes>, rlp::DecoderError> {
-        let seal = self.seal();
+    /// If eip1559 is true, seal contains also base_fee_per_gas. Otherwise, it contains only seal fields.
+    pub fn decode_seal(&self, eip1559: bool) -> Result<Vec<Bytes>, rlp::DecoderError> {
+        let seal = self.seal(eip1559);
         seal.into_iter()
             .map(|s| rlp::Rlp::new(&s).data().map(|x| x.to_vec()))
             .collect()
@@ -145,8 +159,9 @@ impl<'a> HeaderView<'a> {
 #[cfg(test)]
 mod tests {
     use super::HeaderView;
-    use ethereum_types::Bloom;
+    use ethereum_types::{Bloom, H160, H256};
     use rustc_hex::FromHex;
+    use std::str::FromStr;
 
     #[test]
     fn test_header_view() {
@@ -160,31 +175,37 @@ mod tests {
         let view = view!(HeaderView, &rlp);
         assert_eq!(
             view.hash(),
-            "2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259".into()
+            H256::from_str("2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259")
+                .unwrap()
         );
         assert_eq!(
             view.parent_hash(),
-            "d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7".into()
+            H256::from_str("d405da4e66f1445d455195229624e133f5baafe72b5cf7b3c36c12c8146e98b7")
+                .unwrap()
         );
         assert_eq!(
             view.uncles_hash(),
-            "1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347".into()
+            H256::from_str("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
+                .unwrap()
         );
         assert_eq!(
             view.author(),
-            "8888f1f195afa192cfee860698584c030f4c9db1".into()
+            H160::from_str("8888f1f195afa192cfee860698584c030f4c9db1").unwrap()
         );
         assert_eq!(
             view.state_root(),
-            "5fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25".into()
+            H256::from_str("5fb2b4bfdef7b314451cb138a534d225c922fc0e5fbe25e451142732c3e25c25")
+                .unwrap()
         );
         assert_eq!(
             view.transactions_root(),
-            "88d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158".into()
+            H256::from_str("88d2ec6b9860aae1a2c3b299f72b6a5d70d7f7ba4722c78f2c49ba96273c2158")
+                .unwrap()
         );
         assert_eq!(
             view.receipts_root(),
-            "07c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1".into()
+            H256::from_str("07c6fdfa8eea7e86b81f5b0fc0f78f90cc19f4aa60d323151e0cac660199e9a1")
+                .unwrap()
         );
         assert_eq!(view.log_bloom(), Bloom::default());
         assert_eq!(view.difficulty(), 0x020080.into());
@@ -193,6 +214,6 @@ mod tests {
         assert_eq!(view.gas_used(), 0x524d.into());
         assert_eq!(view.timestamp(), 0x56_8e_93_2a);
         assert_eq!(view.extra_data(), vec![] as Vec<u8>);
-        assert_eq!(view.seal(), vec![mix_hash, nonce]);
+        assert_eq!(view.seal(false), vec![mix_hash, nonce]);
     }
 }

@@ -22,7 +22,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use ethereum_types::{Address, H160, H256, H64, U256, U64};
+use ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64};
 use parking_lot::Mutex;
 
 use ethash::{self, SeedHashCompute};
@@ -52,15 +52,15 @@ use v1::{
         self,
         block_import::is_major_importing,
         deprecated::{self, DeprecationNotice},
-        dispatch::{default_gas_price, FullDispatcher},
+        dispatch::{default_gas_price, default_max_priority_fee_per_gas, FullDispatcher},
         errors, fake_sign, limit_logs,
     },
     metadata::Metadata,
     traits::Eth,
     types::{
         block_number_to_id, Block, BlockNumber, BlockTransactions, Bytes, CallRequest, EthAccount,
-        Filter, Index, Log, Receipt, RichBlock, StorageProof, SyncInfo, SyncStatus, Transaction,
-        Work,
+        EthFeeHistory, Filter, Index, Log, Receipt, RichBlock, StorageProof, SyncInfo, SyncStatus,
+        Transaction, Work,
     },
 };
 
@@ -259,6 +259,12 @@ where
         match (block, difficulty) {
             (Some(block), Some(total_difficulty)) => {
                 let view = block.header_view();
+                let eip1559_enabled = client.engine().schedule(view.number()).eip1559;
+                let base_fee = if eip1559_enabled {
+                    Some(view.base_fee())
+                } else {
+                    None
+                };
                 Ok(Some(RichBlock {
                     inner: Block {
                         hash: match is_pending {
@@ -286,7 +292,12 @@ where
                         timestamp: view.timestamp().into(),
                         difficulty: view.difficulty(),
                         total_difficulty: Some(total_difficulty),
-                        seal_fields: view.seal().into_iter().map(Into::into).collect(),
+                        seal_fields: view
+                            .seal(eip1559_enabled)
+                            .into_iter()
+                            .map(Into::into)
+                            .collect(),
+                        base_fee_per_gas: base_fee,
                         uncles: block.uncle_hashes(),
                         transactions: match include_txs {
                             true => BlockTransactions::Full(
@@ -294,7 +305,7 @@ where
                                     .view()
                                     .localized_transactions()
                                     .into_iter()
-                                    .map(Transaction::from_localized)
+                                    .map(|t| Transaction::from_localized(t, base_fee))
                                     .collect(),
                             ),
                             false => BlockTransactions::Hashes(block.transaction_hashes()),
@@ -309,8 +320,24 @@ where
     }
 
     fn transaction(&self, id: PendingTransactionId) -> Result<Option<Transaction>> {
-        let client_transaction = |id| match self.client.transaction(id) {
-            Some(t) => Ok(Some(Transaction::from_localized(t))),
+        let client_transaction = |id| match self.client.block_transaction(id) {
+            Some(t) => {
+                let block = self
+                    .rich_block(BlockNumber::Num(t.block_number).into(), false)
+                    .and_then(errors::check_block_number_existence(
+                        &*self.client,
+                        BlockNumber::Num(t.block_number).into(),
+                        self.options,
+                    ));
+                let base_fee = match block {
+                    Ok(block) => match block {
+                        Some(block) => block.base_fee_per_gas,
+                        None => return Ok(None),
+                    },
+                    Err(_) => return Ok(None),
+                };
+                Ok(Some(Transaction::from_localized(t, base_fee)))
+            }
             None => Ok(None),
         };
 
@@ -349,7 +376,7 @@ where
                             cached_sender,
                         }
                     })
-                    .map(Transaction::from_localized);
+                    .map(|t| Transaction::from_localized(t, pending_block.header.base_fee()));
 
                 Ok(transaction)
             }
@@ -408,7 +435,8 @@ where
                 };
 
                 let uncle = match client.uncle(uncle_id) {
-                    Some(hdr) => match hdr.decode() {
+                    Some(hdr) => match hdr.decode(self.client.engine().params().eip1559_transition)
+                    {
                         Ok(h) => h,
                         Err(e) => return Err(errors::decode(e)),
                     },
@@ -456,6 +484,7 @@ where
                 receipts_root: *uncle.receipts_root(),
                 extra_data: uncle.extra_data().clone().into(),
                 seal_fields: uncle.seal().iter().cloned().map(Into::into).collect(),
+                base_fee_per_gas: uncle.base_fee(),
                 uncles: vec![],
                 transactions: BlockTransactions::Hashes(vec![]),
             },
@@ -637,7 +666,7 @@ where
 
     fn author(&self) -> Result<H160> {
         let miner = self.miner.authoring_params().author;
-        if miner == 0.into() {
+        if miner.is_zero() {
             (self.accounts)()
                 .first()
                 .cloned()
@@ -665,6 +694,224 @@ where
             &*self.miner,
             self.options.gas_price_percentile,
         )))
+    }
+
+    fn max_priority_fee_per_gas(&self) -> BoxFuture<U256> {
+        let latest_block = self.client.chain_info().best_block_number;
+        let eip1559_transition = self.client.engine().params().eip1559_transition;
+
+        if latest_block + 1 >= eip1559_transition {
+            Box::new(future::ok(default_max_priority_fee_per_gas(
+                &*self.client,
+                &*self.miner,
+                self.options.gas_price_percentile,
+                eip1559_transition,
+            )))
+        } else {
+            Box::new(future::done(Err(errors::eip1559_not_activated())))
+        }
+    }
+
+    fn fee_history(
+        &self,
+        mut block_count: U256,
+        newest_block: BlockNumber,
+        reward_percentiles: Option<Vec<f64>>,
+    ) -> BoxFuture<EthFeeHistory> {
+        let mut result = EthFeeHistory::default();
+
+        if block_count < 1.into() {
+            return Box::new(future::done(Ok(result)));
+        }
+
+        if block_count > 1024.into() {
+            block_count = 1024.into();
+        }
+
+        let latest_block = self.client.chain_info().best_block_number;
+        let pending_block = self.client.chain_info().best_block_number + 1;
+
+        let last_block = match newest_block {
+            BlockNumber::Hash {
+                hash: _,
+                require_canonical: _,
+            } => 0,
+            BlockNumber::Num(number) => {
+                if number <= pending_block {
+                    number
+                } else {
+                    0
+                }
+            }
+            BlockNumber::Latest => latest_block,
+            BlockNumber::Earliest => 0,
+            BlockNumber::Pending => pending_block,
+        };
+
+        let first_block = if last_block >= block_count.as_u64() - 1 {
+            last_block - (block_count.as_u64() - 1)
+        } else {
+            0
+        };
+
+        result.oldest_block = BlockNumber::Num(first_block);
+
+        let get_block_header = |i| {
+            self.client
+                .block_header(BlockId::Number(i))
+                .ok_or_else(errors::state_pruned)
+                .and_then(|h| {
+                    h.decode(self.client.engine().params().eip1559_transition)
+                        .map_err(errors::decode)
+                })
+        };
+
+        let calculate_base_fee = |h| {
+            self.client
+                .engine()
+                .calculate_base_fee(&h)
+                .unwrap_or_default()
+        };
+
+        let calculate_gas_used_ratio = |h: &Header| {
+            let gas_used = match self.client.block_receipts(&h.hash()) {
+                Some(receipts) => receipts
+                    .receipts
+                    .last()
+                    .map_or(U256::zero(), |r| r.gas_used),
+                None => 0.into(),
+            };
+
+            (gas_used.as_u64() as f64) / (h.gas_limit().as_u64() as f64)
+        };
+
+        let get_block_transactions = |i| match self.client.block_body(BlockId::Number(i)) {
+            Some(body) => Some(body.transactions()),
+            None => None,
+        };
+
+        let reward_percentiles = reward_percentiles.unwrap_or_default();
+        let mut reward_final = vec![];
+
+        for i in first_block..=last_block + 1 {
+            let is_last = i == last_block + 1;
+
+            if i < pending_block {
+                match get_block_header(i) {
+                    Ok(h) => {
+                        let base_fee = h.base_fee();
+
+                        result.base_fee_per_gas.push(base_fee.unwrap_or_default());
+
+                        if !is_last {
+                            result.gas_used_ratio.push(calculate_gas_used_ratio(&h));
+
+                            if reward_percentiles.len() > 0 {
+                                let mut gas_and_reward: Vec<(U256, U256)> = vec![];
+                                if let Some(txs) = get_block_transactions(i) {
+                                    if let Some(receipt) = self.client.block_receipts(&h.hash()) {
+                                        if txs.len() == receipt.receipts.len() {
+                                            for i in 0..txs.len() {
+                                                let gas_used = if i == 0 {
+                                                    receipt.receipts[i].gas_used
+                                                } else {
+                                                    receipt.receipts[i].gas_used
+                                                        - receipt.receipts[i - 1].gas_used
+                                                };
+
+                                                gas_and_reward.push((
+                                                    gas_used,
+                                                    txs[i]
+                                                        .effective_gas_price(base_fee)
+                                                        .saturating_sub(
+                                                            base_fee.unwrap_or_default(),
+                                                        ),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                gas_and_reward.sort_by(|a, b| a.1.cmp(&b.1));
+
+                                reward_final.push(
+                                    reward_percentiles
+                                        .iter()
+                                        .map(|p| {
+                                            let target_gas = U256::from(
+                                                ((h.gas_used().as_u64() as f64) * p / 100.0) as u64,
+                                            );
+                                            let mut sum_gas = U256::default();
+                                            for pair in &gas_and_reward {
+                                                sum_gas += pair.0;
+                                                if target_gas <= sum_gas {
+                                                    return pair.1;
+                                                }
+                                            }
+                                            0.into()
+                                        })
+                                        .collect(),
+                                );
+                            }
+                        }
+                    }
+                    Err(_) => break, //reorg happened, skip rest of the blocks
+                }
+            } else if i == pending_block {
+                match self.miner.pending_block_header(i - 1) {
+                    Some(h) => {
+                        result
+                            .base_fee_per_gas
+                            .push(h.base_fee().unwrap_or_default());
+
+                        if !is_last {
+                            result.gas_used_ratio.push(calculate_gas_used_ratio(&h));
+
+                            if reward_percentiles.len() > 0 {
+                                //zero values since can't be calculated for pending block
+                                reward_final.push(vec![0.into(); reward_percentiles.len()]);
+                            }
+                        }
+                    }
+                    None => {
+                        //calculate base fee based on the latest block
+                        match get_block_header(i - 1) {
+                            Ok(h) => {
+                                result.base_fee_per_gas.push(calculate_base_fee(h));
+
+                                if !is_last {
+                                    result.gas_used_ratio.push(0.into());
+
+                                    if reward_percentiles.len() > 0 {
+                                        //zero values since can't be calculated for pending block
+                                        reward_final.push(vec![0.into(); reward_percentiles.len()]);
+                                    }
+                                }
+                            }
+                            Err(_) => break, //reorg happened, skip rest of the blocks
+                        }
+                    }
+                }
+            } else if i == pending_block + 1 {
+                //calculate base fee based on the pending block, if exist
+                match self.miner.pending_block_header(i - 1) {
+                    Some(h) => {
+                        result.base_fee_per_gas.push(calculate_base_fee(h));
+                    }
+                    None => {
+                        result.base_fee_per_gas.push(0.into());
+                    }
+                }
+            } else {
+                unreachable!();
+            };
+        }
+
+        if !reward_final.is_empty() {
+            result.reward = Some(reward_final);
+        }
+
+        Box::new(future::done(Ok(result)))
     }
 
     fn accounts(&self) -> Result<Vec<H160>> {
@@ -732,8 +979,8 @@ where
                         let key2: H256 = storage_index;
                         self.client.prove_storage(key1, keccak(key2), id).map(
                             |(storage_proof, storage_value)| StorageProof {
-                                key: key2.into(),
-                                value: storage_value.into(),
+                                key: key2.into_uint(),
+                                value: storage_value.into_uint(),
                                 proof: storage_proof.into_iter().map(Bytes::new).collect(),
                             },
                         )
@@ -755,10 +1002,11 @@ where
         let num = num.unwrap_or_default();
 
         try_bf!(check_known(&*self.client, num.clone()));
-        let res = match self
-            .client
-            .storage_at(&address, &H256::from(position), self.get_state(num))
-        {
+        let res = match self.client.storage_at(
+            &address,
+            &BigEndianHash::from_uint(&position),
+            self.get_state(num),
+        ) {
             Some(s) => Ok(s),
             None => Err(errors::state_pruned()),
         };
@@ -1124,7 +1372,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
 
             (state, header)
         };
@@ -1165,7 +1415,9 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)
-                .and_then(|h| h.decode().map_err(errors::decode)));
+                .and_then(|h| h
+                    .decode(self.client.engine().params().eip1559_transition)
+                    .map_err(errors::decode)));
             (state, header)
         };
 

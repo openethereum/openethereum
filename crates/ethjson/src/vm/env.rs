@@ -15,8 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Vm environment.
-use hash::Address;
-use uint::Uint;
+use crate::{hash::Address, uint::Uint};
 
 /// Vm environment.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -36,12 +35,15 @@ pub struct Env {
     /// Timestamp.
     #[serde(rename = "currentTimestamp")]
     pub timestamp: Uint,
+    /// Block base fee.
+    #[serde(rename = "currentBaseFee")]
+    pub base_fee: Option<Uint>,
 }
 
 #[cfg(test)]
 mod tests {
+    use super::Env;
     use serde_json;
-    use vm::Env;
 
     #[test]
     fn env_deserialization() {

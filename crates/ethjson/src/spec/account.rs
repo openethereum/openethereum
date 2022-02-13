@@ -18,9 +18,7 @@
 
 use std::collections::BTreeMap;
 
-use bytes::Bytes;
-use spec::builtin::BuiltinCompat;
-use uint::Uint;
+use crate::{bytes::Bytes, spec::builtin::BuiltinCompat, uint::Uint};
 
 /// Spec account.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -53,12 +51,10 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
-    use bytes::Bytes;
+    use crate::{bytes::Bytes, spec::account::Account, uint::Uint};
     use ethereum_types::U256;
     use serde_json;
-    use spec::account::Account;
     use std::collections::BTreeMap;
-    use uint::Uint;
 
     #[test]
     fn account_balance_missing_not_empty() {

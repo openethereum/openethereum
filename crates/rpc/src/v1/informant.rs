@@ -171,7 +171,7 @@ impl RpcStats {
 
     /// Returns number of open sessions
     pub fn sessions(&self) -> usize {
-        self.active_sessions.load(atomic::Ordering::Relaxed)
+        self.active_sessions.load(atomic::Ordering::SeqCst)
     }
 
     /// Returns requests rate

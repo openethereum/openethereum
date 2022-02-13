@@ -334,7 +334,7 @@ fn test_blockhash(factory: super::Factory) {
     };
 
     assert_eq!(gas_left, U256::from(79_974));
-    assert_eq!(ext.store.get(&H256::new()).unwrap(), &blockhash);
+    assert_eq!(ext.store.get(&H256::default()).unwrap(), &blockhash);
 }
 
 evm_test! {test_calldataload: test_calldataload_int}
@@ -458,6 +458,35 @@ fn test_difficulty(factory: super::Factory) {
         &ext,
         0,
         "0000000000000000000000000000000000000000000000000000000000001234",
+    );
+}
+
+evm_test! {test_base_fee: test_base_fee_int}
+fn test_base_fee(factory: super::Factory) {
+    let base_fee = Some(U256::from(0x07));
+    let code = "48600055".from_hex().unwrap();
+
+    let mut params = ActionParams::default();
+    params.gas = U256::from(100_000);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_london(
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[],
+    );
+    ext.info.base_fee = base_fee;
+
+    let gas_left = {
+        let vm = factory.create(params, ext.schedule(), ext.depth());
+        test_finalize(vm.exec(&mut ext).ok().unwrap()).unwrap()
+    };
+
+    assert_eq!(gas_left, U256::from(77_895));
+    println!("elements {}", ext.store.len());
+    assert_store(
+        &ext,
+        0,
+        "0000000000000000000000000000000000000000000000000000000000000007",
     );
 }
 
@@ -1207,8 +1236,8 @@ evm_test! {test_calls: test_calls_int}
 fn test_calls(factory: super::Factory) {
     let code = "600054602d57600160005560006000600060006050610998610100f160006000600060006050610998610100f25b".from_hex().unwrap();
 
-    let address = Address::from(0x155);
-    let code_address = Address::from(0x998);
+    let address = Address::from_low_u64_be(0x155);
+    let code_address = Address::from_low_u64_be(0x998);
     let mut params = ActionParams::default();
     params.gas = U256::from(150_000);
     params.code = Some(Arc::new(code));
@@ -1259,7 +1288,7 @@ evm_test! {test_create_in_staticcall: test_create_in_staticcall_int}
 fn test_create_in_staticcall(factory: super::Factory) {
     let code = "600060006064f000".from_hex().unwrap();
 
-    let address = Address::from(0x155);
+    let address = Address::from_low_u64_be(0x155);
     let mut params = ActionParams::default();
     params.gas = U256::from(100_000);
     params.code = Some(Arc::new(code));
@@ -1579,12 +1608,12 @@ fn test_access_list_ext_at_precompiles(factory: super::Factory) {
     params.gas = U256::from(8653);
     params.code = Some(Arc::new(code));
     let mut ext = FakeExt::new_berlin(
-        Address::from("0x0000000000000000000000000000000000000000"),
-        Address::from("0x000000000000000000000000636F6E7472616374"),
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
         &[
-            Address::from("0x0000000000000000000000000000000000000001"),
-            Address::from("0x0000000000000000000000000000000000000002"),
-            Address::from("0x0000000000000000000000000000000000000003"),
+            Address::from_str("0000000000000000000000000000000000000001").unwrap(),
+            Address::from_str("0000000000000000000000000000000000000002").unwrap(),
+            Address::from_str("0000000000000000000000000000000000000003").unwrap(),
         ],
     );
     let gas_left = {
@@ -1603,8 +1632,8 @@ fn test_access_list_extcodecopy_twice(factory: super::Factory) {
     params.gas = U256::from(2835);
     params.code = Some(Arc::new(code));
     let mut ext = FakeExt::new_berlin(
-        Address::from("0x0000000000000000000000000000000000000000"),
-        Address::from("0x000000000000000000000000636F6E7472616374"),
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
         &[],
     );
     let gas_left = {
@@ -1629,8 +1658,8 @@ fn test_access_list_sload_sstore(factory: super::Factory) {
     params.gas = U256::from(44529);
     params.code = Some(Arc::new(code));
     let mut ext = FakeExt::new_berlin(
-        Address::from("0x0000000000000000000000000000000000000000"),
-        Address::from("0x000000000000000000000000636F6E7472616374"),
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
         &[],
     );
     let gas_left = {
@@ -1649,9 +1678,9 @@ fn test_access_list_cheap_expensive_cheap(factory: super::Factory) {
     params.gas = U256::from(2869);
     params.code = Some(Arc::new(code));
     let mut ext = FakeExt::new_berlin(
-        Address::from("0x0000000000000000000000000000000000000000"),
-        Address::from("0x000000000000000000000000636F6E7472616374"),
-        &[Address::from("0x0000000000000000000000000000000000000004")],
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[Address::from_str("0000000000000000000000000000000000000004").unwrap()],
     );
     let gas_left = {
         let vm = factory.create(params, ext.schedule(), ext.depth());
@@ -1659,6 +1688,61 @@ fn test_access_list_cheap_expensive_cheap(factory: super::Factory) {
     };
 
     assert_eq!(gas_left, U256::from(0));
+}
+
+evm_test! {test_refund_post_london: test_refund_post_london_int}
+fn test_refund_post_london(factory: super::Factory) {
+    // Compare EIP-3529 for the test cases
+
+    let code = hex!("60006000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 0);
+
+    let code = hex!("60006000556001600055").to_vec();
+    london_refund_test(&factory, code, &[], 0);
+
+    let code = hex!("60016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 19900);
+
+    let code = hex!("60006000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 4800);
+
+    let code = hex!("60006000556001600055").to_vec();
+    london_refund_test(&factory, code, &[1], 2800);
+
+    let code = hex!("60006000556002600055").to_vec();
+    london_refund_test(&factory, code, &[1], 0);
+
+    let code = hex!("60026000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 4800);
+
+    let code = hex!("60026000556001600055").to_vec();
+    london_refund_test(&factory, code, &[1], 2800);
+
+    let code = hex!("60016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[], 19900);
+
+    let code = hex!("600060005560016000556000600055").to_vec();
+    london_refund_test(&factory, code, &[1], 7600);
+}
+
+fn london_refund_test(
+    factory: &super::Factory,
+    code: Vec<u8>,
+    fill: &[u64],
+    expected_refund: i128,
+) {
+    let mut params = ActionParams::default();
+    params.gas = U256::from(22318);
+    params.code = Some(Arc::new(code));
+    let mut ext = FakeExt::new_london(
+        Address::from_str("0000000000000000000000000000000000000000").unwrap(),
+        Address::from_str("000000000000000000000000636F6E7472616374").unwrap(),
+        &[],
+    );
+    ext.prefill(fill);
+    let vm = factory.create(params, ext.schedule(), ext.depth());
+    vm.exec(&mut ext).ok().unwrap().unwrap();
+    assert_eq!(ext.sstore_clears, expected_refund);
 }
 
 fn push_two_pop_one_constantinople_test(
@@ -1705,7 +1789,7 @@ fn assert_set_contains<T: Debug + Eq + PartialEq + Hash>(set: &HashSet<T>, val: 
 
 fn assert_store(ext: &FakeExt, pos: u64, val: &str) {
     assert_eq!(
-        ext.store.get(&H256::from(pos)).unwrap(),
+        ext.store.get(&H256::from_low_u64_be(pos)).unwrap(),
         &H256::from_str(val).unwrap()
     );
 }

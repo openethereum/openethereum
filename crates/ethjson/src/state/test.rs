@@ -16,16 +16,22 @@
 
 //! General test deserialization.
 
-use bytes::Bytes;
-use ethkey::Secret;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
+use crate::{
+    bytes::Bytes,
+    crypto::publickey::Secret,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    spec::ForkSpec,
+    state::{AccountState, Env},
+    uint::Uint,
+};
+
+use common_types::transaction::{
+    AccessListTx, Action, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,
+};
+
 use serde_json::{self, Error};
-use spec::ForkSpec;
-use state::{AccountState, Env};
 use std::{collections::BTreeMap, io::Read};
-use types::transaction::{AccessListTx, Action, SignedTransaction, Transaction, TypedTransaction};
-use uint::Uint;
 
 use crate::blockchain::transaction::AccessList;
 
@@ -78,7 +84,7 @@ pub struct MultiTransaction {
     /// Gas limit set.
     pub gas_limit: Vec<Uint>,
     /// Gas price.
-    pub gas_price: Uint,
+    pub gas_price: Option<Uint>,
     /// Nonce.
     pub nonce: Uint,
     /// Secret key.
@@ -88,6 +94,10 @@ pub struct MultiTransaction {
     pub to: MaybeEmpty<Address>,
     /// Value set.
     pub value: Vec<Uint>,
+    /// Max fee per gas.
+    pub max_fee_per_gas: Option<Uint>,
+    /// Max priority fee per gas.
+    pub max_priority_fee_per_gas: Option<Uint>,
 }
 
 fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTransaction {
@@ -100,11 +110,17 @@ fn sign_with_secret(tx: TypedTransaction, secret: Option<Secret>) -> SignedTrans
 impl MultiTransaction {
     /// Build transaction with given indexes.
     pub fn select(&self, indexes: &PostStateIndexes) -> SignedTransaction {
-        let secret = self.secret.clone().map(|s| Secret::from(s.0));
+        let secret = self
+            .secret
+            .clone()
+            .map(|s| Secret::import_key(s.0.as_bytes()).expect("Expect signature to be valid"));
         let to: Option<Address> = self.to.clone().into();
         let transaction = Transaction {
             nonce: self.nonce.clone().into(),
-            gas_price: self.gas_price.clone().into(),
+            gas_price: match self.gas_price {
+                Some(x) => x.into(),
+                None => self.max_fee_per_gas.unwrap().into(),
+            },
             gas: self.gas_limit[indexes.gas as usize].clone().into(),
             action: match to {
                 Some(to) => Action::Call(to.into()),
@@ -117,7 +133,7 @@ impl MultiTransaction {
         if let Some(access_lists) = self.access_lists.as_ref() {
             if access_lists.len() > indexes.data as usize {
                 if let Some(access_list) = access_lists[indexes.data as usize].clone() {
-                    //access list type of transaction
+                    //access list exist
 
                     let access_list = access_list
                         .into_iter()
@@ -129,18 +145,49 @@ impl MultiTransaction {
                         })
                         .collect();
 
-                    let tx = TypedTransaction::AccessList(AccessListTx {
+                    let al_tx = AccessListTx {
                         transaction,
                         access_list,
-                    });
+                    };
 
-                    return sign_with_secret(tx, secret);
+                    match self.gas_price {
+                        Some(_) => {
+                            let tx = TypedTransaction::AccessList(al_tx);
+                            return sign_with_secret(tx, secret);
+                        }
+                        None => {
+                            let tx = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                                transaction: al_tx,
+                                max_priority_fee_per_gas: self
+                                    .max_priority_fee_per_gas
+                                    .unwrap()
+                                    .into(),
+                            });
+                            return sign_with_secret(tx, secret);
+                        }
+                    }
                 }
             }
-        }
+        };
 
-        let tx = TypedTransaction::Legacy(transaction);
-        sign_with_secret(tx, secret)
+        match self.gas_price {
+            Some(_) => {
+                let tx = TypedTransaction::Legacy(transaction);
+                sign_with_secret(tx, secret)
+            }
+            None => {
+                let al_tx = AccessListTx {
+                    transaction,
+                    access_list: common_types::transaction::AccessList::default(),
+                };
+
+                let tx = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                    transaction: al_tx,
+                    max_priority_fee_per_gas: self.max_priority_fee_per_gas.unwrap().into(),
+                });
+                sign_with_secret(tx, secret)
+            }
+        }
     }
 }
 

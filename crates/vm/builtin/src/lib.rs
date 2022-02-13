@@ -35,12 +35,14 @@ use eth_pairings::public_interface::eip2537::{
 };
 use ethereum_types::{H256, U256};
 use ethjson;
-use ethkey::{recover as ec_recover, Signature};
 use keccak_hash::keccak;
 use log::{trace, warn};
 use num::{BigUint, One, Zero};
 use parity_bytes::BytesRef;
-use parity_crypto::digest;
+use parity_crypto::{
+    digest,
+    publickey::{recover_allowing_all_zero_message, Signature, ZeroesAllowedMessage},
+};
 
 /// Native implementation of a built-in contract.
 pub trait Implementation: Send + Sync {
@@ -192,7 +194,7 @@ impl ModexpPricer {
             reader
                 .read_exact(&mut buf[..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            U256::from_big_endian(&buf[..])
         };
         let base_len_u256 = read_len();
         let exp_len_u256 = read_len();
@@ -201,16 +203,16 @@ impl ModexpPricer {
         let (base_len, exp_len) = (base_len_u256.low_u64(), exp_len_u256.low_u64());
 
         // read fist 32-byte word of the exponent.
-        let exp_low = if base_len + 96 >= input.len() as u64 {
+        let exp_low = if base_len.wrapping_add(96) >= input.len() as u64 {
             U256::zero()
         } else {
             buf.iter_mut().for_each(|b| *b = 0);
-            let mut reader = input[(96 + base_len as usize)..].chain(io::repeat(0));
+            let mut reader = input[(base_len as usize).wrapping_add(96)..].chain(io::repeat(0));
             let len = min(exp_len, 32) as usize;
             reader
                 .read_exact(&mut buf[(32 - len)..])
                 .expect("reading from zero-extended memory cannot fail; qed");
-            U256::from(H256::from_slice(&buf[..]))
+            U256::from_big_endian(&buf[..])
         };
 
         (base_len_u256, exp_len_u256, exp_low, mod_len_u256)
@@ -829,10 +831,16 @@ impl Implementation for EcRecover {
 
         let s = Signature::from_rsv(&r, &s, bit);
         if s.is_valid() {
-            if let Ok(p) = ec_recover(&s, &hash) {
+            // The builtin allows/requires all-zero messages to be valid to
+            // recover the public key. Use of such messages is disallowed in
+            // `rust-secp256k1` and this is a workaround for that. It is not an
+            // openethereum-level error to fail here; instead we return all
+            // zeroes and let the caller interpret that outcome.
+            let recovery_message = ZeroesAllowedMessage(hash);
+            if let Ok(p) = recover_allowing_all_zero_message(&s, recovery_message) {
                 let r = keccak(p);
                 output.write(0, &[0; 12]);
-                output.write(12, &r[12..r.len()]);
+                output.write(12, &r.as_bytes()[12..]);
             }
         }
 
@@ -1720,6 +1728,33 @@ mod tests {
             native: EthereumBuiltin::from_str("modexp").unwrap(),
         };
 
+        // test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000001
+                0000000000000000000000000000000000000000000000000000000000000001
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                03
+                ff"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(f.cost(&input[..], 0), expected_cost);
+        }
+
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(f.cost(&input[..], 0), expected_cost);
+        }
+
         // test for potential gas cost multiplication overflow
         {
             let input = hex!("0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000003b27bafd00000000000000000000000000000000000000000000000000000000503c8ac3");
@@ -1829,6 +1864,38 @@ mod tests {
                 .expect("Builtin should not fail");
             assert_eq!(output.len(), 0); // shouldn't have written any output.
             assert_eq!(f.cost(&input[..], 0), expected_cost.into());
+        }
+    }
+
+    #[test]
+    fn modexp2565() {
+        let pricer = Modexp2565Pricer {};
+
+        // test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000001
+                0000000000000000000000000000000000000000000000000000000000000001
+                ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                03
+                ff"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(pricer.cost(&input[..]), expected_cost);
+        }
+
+        // another test for potential base len overflow
+        {
+            let input = hex!(
+                "
+                00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+                0000000000000000000000000000000000000000000000000000000000000020
+                0000000000000000000000000000000000000000000000000000000000000020"
+            );
+            let expected_cost = U256::max_value();
+            assert_eq!(pricer.cost(&input[..]), expected_cost);
         }
     }
 

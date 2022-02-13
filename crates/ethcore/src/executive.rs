@@ -25,7 +25,7 @@ use factory::VmFactory;
 use hash::keccak;
 use machine::EthereumMachine as Machine;
 use state::{Backend as StateBackend, CleanupMode, State, Substate};
-use std::{cmp, sync::Arc};
+use std::{cmp, convert::TryFrom, sync::Arc};
 use trace::{self, Tracer, VMTracer};
 use transaction_ext::Transaction;
 use types::transaction::{Action, SignedTransaction, TypedTransaction};
@@ -240,7 +240,6 @@ impl<'a> CallCreateExecutive<'a> {
         if schedule.eip2929 {
             let mut substate = Substate::from_access_list(&params.access_list);
             substate.access_list.insert_address(params.address);
-            substate.access_list.insert_address(params.sender);
             substate
         } else {
             Substate::default()
@@ -445,6 +444,7 @@ impl<'a> CallCreateExecutive<'a> {
             | Err(vm::Error::SubStackUnderflow { .. })
             | Err(vm::Error::OutOfSubStack { .. })
             | Err(vm::Error::InvalidSubEntry)
+            | Err(vm::Error::InvalidCode)
             | Ok(FinalizationResult {
                 apply_state: false, ..
             }) => {
@@ -1134,6 +1134,13 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     ));
                 }
             }
+            TypedTransaction::EIP1559Transaction(_) => {
+                if !schedule.eip1559 {
+                    return Err(ExecutionError::TransactionMalformed(
+                        "1559 type of transactions not enabled".into(),
+                    ));
+                }
+            }
             TypedTransaction::Legacy(_) => (), //legacy transactions are allways valid
         };
 
@@ -1151,17 +1158,15 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     access_list.insert_address(*address);
                 }
             }
-            if schedule.eip2930 {
-                // optional access list
-                if let TypedTransaction::AccessList(al_tx) = t.as_unsigned() {
-                    for item in al_tx.access_list.iter() {
-                        access_list.insert_address(item.0);
-                        base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
-                        for key in item.1.iter() {
-                            access_list.insert_storage_key(item.0, *key);
-                            base_gas_required +=
-                                vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
-                        }
+
+            if let Some(al) = t.access_list() {
+                for item in al.iter() {
+                    access_list.insert_address(item.0);
+                    base_gas_required += vm::schedule::EIP2930_ACCESS_LIST_ADDRESS_COST.into();
+                    for key in item.1.iter() {
+                        access_list.insert_storage_key(item.0, *key);
+                        base_gas_required +=
+                            vm::schedule::EIP2930_ACCESS_LIST_STORAGE_KEY_COST.into();
                     }
                 }
             }
@@ -1201,16 +1206,35 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             });
         }
 
+        // ensure that the user was willing to at least pay the base fee
+        if t.tx().gas_price < self.info.base_fee.unwrap_or_default() && !t.has_zero_gas_price() {
+            return Err(ExecutionError::GasPriceLowerThanBaseFee {
+                gas_price: t.tx().gas_price,
+                base_fee: self.info.base_fee.unwrap_or_default(),
+            });
+        }
+
+        // verify that transaction max_fee_per_gas is higher or equal to max_priority_fee_per_gas
+        if t.tx().gas_price < t.max_priority_fee_per_gas() {
+            return Err(ExecutionError::TransactionMalformed(
+                "maxPriorityFeePerGas higher than maxFeePerGas".into(),
+            ));
+        }
+
         // TODO: we might need bigints here, or at least check overflows.
         let balance = self.state.balance(&sender)?;
-        let gas_cost = t.tx().gas.full_mul(t.tx().gas_price);
-        let total_cost = U512::from(t.tx().value) + gas_cost;
+        let gas_cost_effective = t
+            .tx()
+            .gas
+            .full_mul(t.effective_gas_price(self.info.base_fee));
+        let gas_cost_max = t.tx().gas.full_mul(t.tx().gas_price);
+        let needed_balance = U512::from(t.tx().value) + gas_cost_max;
 
         // avoid unaffordable transactions
         let balance512 = U512::from(balance);
-        if balance512 < total_cost {
+        if balance512 < needed_balance {
             return Err(ExecutionError::NotEnoughCash {
-                required: total_cost,
+                required: needed_balance,
                 got: balance512,
             });
         }
@@ -1223,7 +1247,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         }
         self.state.sub_balance(
             &sender,
-            &U256::from(gas_cost),
+            &U256::try_from(gas_cost_effective).expect("Total cost (value + gas_cost_effective) is lower than max allowed balance (U256); gas_cost has to fit U256; qed"),
             &mut substate.to_cleanup_mode(&schedule),
         )?;
 
@@ -1243,7 +1267,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.tx().gas_price,
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: Some(Arc::new(t.tx().data.clone())),
                     data: None,
@@ -1266,7 +1290,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                     sender: sender.clone(),
                     origin: sender.clone(),
                     gas: init_gas,
-                    gas_price: t.tx().gas_price,
+                    gas_price: t.effective_gas_price(self.info.base_fee),
                     value: ActionValue::Transfer(t.tx().value),
                     code: self.state.code(address)?,
                     code_hash: self.state.code_hash(address)?,
@@ -1464,22 +1488,48 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             U256::from(schedule.suicide_refund_gas) * U256::from(substate.suicides.len());
         let refunds_bound = sstore_refunds + suicide_refunds;
 
-        // real ammount to refund
+        // real amount to refund
         let gas_left_prerefund = match result {
             Ok(FinalizationResult { gas_left, .. }) => gas_left,
             _ => 0.into(),
         };
-        let refunded = cmp::min(refunds_bound, (t.tx().gas - gas_left_prerefund) >> 1);
+        let refunded = if refunds_bound.is_zero() {
+            refunds_bound
+        } else {
+            let gas_used = t.tx().gas - gas_left_prerefund;
+            let max_refund = gas_used / schedule.max_refund_quotient;
+            cmp::min(max_refund, refunds_bound)
+        };
         let gas_left = gas_left_prerefund + refunded;
 
         let gas_used = t.tx().gas.saturating_sub(gas_left);
-        let (refund_value, overflow_1) = gas_left.overflowing_mul(t.tx().gas_price);
-        let (fees_value, overflow_2) = gas_used.overflowing_mul(t.tx().gas_price);
+        let (refund_value, overflow_1) =
+            gas_left.overflowing_mul(t.effective_gas_price(self.info.base_fee));
+        let (fees_value, overflow_2) =
+            gas_used.overflowing_mul(t.effective_gas_price(self.info.base_fee));
         if overflow_1 || overflow_2 {
             return Err(ExecutionError::TransactionMalformed(
                 "U256 Overflow".to_string(),
             ));
         }
+
+        // Up until now, fees_value is calculated for each type of transaction based on their gas prices
+        // Now, if eip1559 is activated, burn the base fee
+        // miner only receives the inclusion fee; note that the base fee is not given to anyone (it is burned)
+        let burnt_fee = if schedule.eip1559 && !t.has_zero_gas_price() {
+            let (fee, overflow_3) =
+                gas_used.overflowing_mul(self.info.base_fee.unwrap_or_default());
+            if overflow_3 {
+                return Err(ExecutionError::TransactionMalformed(
+                    "U256 Overflow".to_string(),
+                ));
+            }
+            fee
+        } else {
+            U256::from(0)
+        };
+
+        let fees_value = fees_value.saturating_sub(burnt_fee);
 
         trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
 			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
@@ -1504,6 +1554,17 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             substate.to_cleanup_mode(&schedule),
         )?;
 
+        if burnt_fee > U256::from(0)
+            && self.machine.params().eip1559_fee_collector.is_some()
+            && self.info.number >= self.machine.params().eip1559_fee_collector_transition
+        {
+            self.state.add_balance(
+                &self.machine.params().eip1559_fee_collector.unwrap(),
+                &burnt_fee,
+                substate.to_cleanup_mode(&schedule),
+            )?;
+        };
+
         // perform suicides
         for address in &substate.suicides {
             self.state.kill_account(address);
@@ -1513,7 +1574,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let min_balance = if schedule.kill_dust != CleanDustMode::Off {
             Some(
                 U256::from(schedule.tx_gas)
-                    .overflowing_mul(t.tx().gas_price)
+                    .overflowing_mul(t.effective_gas_price(self.info.base_fee))
                     .0,
             )
         } else {
@@ -1566,9 +1627,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 #[allow(dead_code)]
 mod tests {
     use super::*;
+    use crypto::publickey::{Generator, Random};
     use error::ExecutionError;
-    use ethereum_types::{Address, H256, U256, U512};
-    use ethkey::{Generator, Random};
+    use ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
     use evm::{Factory, VMType};
     use machine::EthereumMachine;
     use rustc_hex::FromHex;
@@ -1579,7 +1640,9 @@ mod tests {
         trace, ExecutiveTracer, ExecutiveVMTracer, FlatTrace, MemoryDiff, NoopTracer, NoopVMTracer,
         StorageDiff, Tracer, VMExecutedOperation, VMOperation, VMTrace, VMTracer,
     };
-    use types::transaction::{Action, Transaction, TypedTransaction};
+    use types::transaction::{
+        AccessListTx, Action, EIP1559TransactionTx, Transaction, TypedTransaction,
+    };
     use vm::{ActionParams, ActionValue, CallType, CreateContractAddress, EnvInfo};
 
     fn make_frontier_machine(max_depth: usize) -> EthereumMachine {
@@ -1590,6 +1653,12 @@ mod tests {
 
     fn make_byzantium_machine(max_depth: usize) -> EthereumMachine {
         let mut machine = ::ethereum::new_byzantium_test_machine();
+        machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
+        machine
+    }
+
+    fn make_london_machine(max_depth: usize) -> EthereumMachine {
+        let mut machine = ::ethereum::new_london_test_machine();
         machine.set_schedule_creation_rules(Box::new(move |s, _| s.max_depth = max_depth));
         machine
     }
@@ -1645,8 +1714,8 @@ mod tests {
 
         assert_eq!(gas_left, U256::from(79_975));
         assert_eq!(
-            state.storage_at(&address, &H256::new()).unwrap(),
-            H256::from(&U256::from(0xf9u64))
+            state.storage_at(&address, &H256::default()).unwrap(),
+            BigEndianHash::from_uint(&U256::from(0xf9u64))
         );
         assert_eq!(state.balance(&sender).unwrap(), U256::from(0xf9));
         assert_eq!(state.balance(&address).unwrap(), U256::from(0x7));
@@ -1764,8 +1833,8 @@ mod tests {
             vec![
                 FlatTrace {
                     action: trace::Action::Call(trace::Call {
-                        from: "4444444444444444444444444444444444444444".into(),
-                        to: "5555555555555555555555555555555555555555".into(),
+                        from: H160::from_str("4444444444444444444444444444444444444444").unwrap(),
+                        to: H160::from_str("5555555555555555555555555555555555555555").unwrap(),
                         value: 100.into(),
                         gas: 100_000.into(),
                         input: vec![],
@@ -1780,8 +1849,8 @@ mod tests {
                 },
                 FlatTrace {
                     action: trace::Action::Call(trace::Call {
-                        from: "5555555555555555555555555555555555555555".into(),
-                        to: "0000000000000000000000000000000000000003".into(),
+                        from: H160::from_str("5555555555555555555555555555555555555555").unwrap(),
+                        to: H160::from_str("0000000000000000000000000000000000000003").unwrap(),
                         value: 1.into(),
                         gas: 66560.into(),
                         input: vec![],
@@ -1871,8 +1940,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "cd1722f3947def4cf144679da39c4c32bdc35681".into(),
-                    to: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap(),
+                    to: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 100.into(),
                     gas: 100000.into(),
                     input: vec![],
@@ -1887,7 +1956,7 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Create(trace::Create {
-                    from: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 23.into(),
                     gas: 67979.into(),
                     init: vec![
@@ -2002,8 +2071,8 @@ mod tests {
                 trace_address: Default::default(),
                 subtraces: 1,
                 action: trace::Action::Call(trace::Call {
-                    from: "cd1722f3947def4cf144679da39c4c32bdc35681".into(),
-                    to: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap(),
+                    to: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 100.into(),
                     gas: 100_000.into(),
                     input: vec![],
@@ -2018,7 +2087,7 @@ mod tests {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
                 action: trace::Action::Create(trace::Create {
-                    from: "b010143a42d5980c7e5ef0e4a4416dc098a4fed3".into(),
+                    from: H160::from_str("b010143a42d5980c7e5ef0e4a4416dc098a4fed3").unwrap(),
                     value: 23.into(),
                     gas: 66_917.into(),
                     init: vec![0x60, 0x01, 0x60, 0x00, 0xfd],
@@ -2397,9 +2466,9 @@ mod tests {
         assert_eq!(gas_left, U256::from(73_237));
         assert_eq!(
             state
-                .storage_at(&address_a, &H256::from(&U256::from(0x23)))
+                .storage_at(&address_a, &BigEndianHash::from_uint(&U256::from(0x23)))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
@@ -2456,15 +2525,15 @@ mod tests {
         assert_eq!(gas_left, U256::from(59_870));
         assert_eq!(
             state
-                .storage_at(&address, &H256::from(&U256::zero()))
+                .storage_at(&address, &BigEndianHash::from_uint(&U256::zero()))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
         assert_eq!(
             state
-                .storage_at(&address, &H256::from(&U256::one()))
+                .storage_at(&address, &BigEndianHash::from_uint(&U256::one()))
                 .unwrap(),
-            H256::from(&U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
@@ -2472,7 +2541,7 @@ mod tests {
     // TODO: fix (preferred) or remove
     evm_test_ignore! {test_transact_simple: test_transact_simple_int}
     fn test_transact_simple(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2516,14 +2585,14 @@ mod tests {
         assert_eq!(state.balance(&contract).unwrap(), U256::from(17));
         assert_eq!(state.nonce(&sender).unwrap(), U256::from(1));
         assert_eq!(
-            state.storage_at(&contract, &H256::new()).unwrap(),
-            H256::from(&U256::from(1))
+            state.storage_at(&contract, &H256::zero()).unwrap(),
+            BigEndianHash::from_uint(&U256::from(1))
         );
     }
 
     evm_test! {test_transact_invalid_nonce: test_transact_invalid_nonce_int}
     fn test_transact_invalid_nonce(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2562,7 +2631,7 @@ mod tests {
 
     evm_test! {test_transact_gas_limit_reached: test_transact_gas_limit_reached_int}
     fn test_transact_gas_limit_reached(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(17),
@@ -2605,9 +2674,56 @@ mod tests {
         }
     }
 
+    evm_test! {test_transact_eip1559: test_transact_eip1559_int}
+    fn test_transact_eip1559(factory: Factory) {
+        let keypair = Random.generate();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: U256::from(150),
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: U256::from(30),
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts).unwrap()
+        };
+
+        assert_eq!(res.gas, U256::from(100_000));
+        assert_eq!(res.gas_used, U256::from(83873));
+    }
+
     evm_test! {test_not_enough_cash: test_not_enough_cash_int}
     fn test_not_enough_cash(factory: Factory) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             value: U256::from(18),
@@ -2641,6 +2757,127 @@ mod tests {
                 ()
             }
             _ => assert!(false, "Expected not enough cash error. {:?}", res),
+        }
+    }
+
+    evm_test! {test_too_big_max_priority_fee_with_not_enough_cash: test_too_big_max_priority_fee_with_not_enough_cash_int}
+    fn test_too_big_max_priority_fee_with_not_enough_cash(factory: Factory) {
+        let keypair = Random.generate();
+        let max_priority_fee_per_gas /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: max_priority_fee_per_gas,
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas,
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts)
+        };
+
+        match res {
+            Err(ExecutionError::NotEnoughCash { required, got })
+                if required
+                    == U512::from(max_priority_fee_per_gas) * U512::from(100_000)
+                        + U512::from(17)
+                    && got == U512::from(15000017) =>
+            {
+                ()
+            }
+            _ => assert!(false, "Expected not enough cash error. {:?}", res),
+        }
+    }
+
+    evm_test! {test_too_big_max_priority_fee_with_less_max_fee_per_gas: test_too_big_max_priority_fee_with_less_max_fee_per_gas_int}
+    fn test_too_big_max_priority_fee_with_less_max_fee_per_gas(factory: Factory) {
+        let keypair = Random.generate();
+        let max_priority_fee_per_gas /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    value: U256::from(17),
+                    data: "3331600055".from_hex().unwrap(),
+                    gas: U256::from(100_000),
+                    gas_price: U256::from(150),
+                    nonce: U256::zero(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas,
+        })
+        .sign(keypair.secret(), None);
+
+        let sender = t.sender();
+
+        let mut state = get_temp_state_with_factory(factory);
+        state
+            .add_balance(&sender, &U256::from(15000017), CleanupMode::NoEmpty)
+            .unwrap();
+        let mut info = EnvInfo::default();
+        info.gas_limit = U256::from(100_000);
+        info.base_fee = Some(U256::from(100));
+        let machine = make_london_machine(0);
+        let schedule = machine.schedule(info.number);
+
+        let res = {
+            let mut ex = Executive::new(&mut state, &info, &machine, &schedule);
+            let opts = TransactOptions::with_no_tracing();
+            ex.transact(&t, opts)
+        };
+
+        match res {
+            Err(ExecutionError::TransactionMalformed(err))
+                if err.contains("maxPriorityFeePerGas higher than maxFeePerGas") =>
+            {
+                ()
+            }
+            _ => assert!(
+                false,
+                "Expected maxPriorityFeePerGas higher than maxFeePerGas error. {:?}",
+                res
+            ),
         }
     }
 
@@ -2735,20 +2972,20 @@ mod tests {
         assert_eq!(output[..], returns[..]);
         assert_eq!(
             state
-                .storage_at(&contract_address, &H256::from(&U256::zero()))
+                .storage_at(&contract_address, &BigEndianHash::from_uint(&U256::zero()))
                 .unwrap(),
-            H256::from(&U256::from(0))
+            BigEndianHash::from_uint(&U256::from(0))
         );
     }
 
     evm_test! {test_eip1283: test_eip1283_int}
     fn test_eip1283(factory: Factory) {
-        let x1 = Address::from(0x1000);
-        let x2 = Address::from(0x1001);
-        let y1 = Address::from(0x2001);
-        let y2 = Address::from(0x2002);
-        let operating_address = Address::from(0);
-        let k = H256::new();
+        let x1 = Address::from_low_u64_be(0x1000);
+        let x2 = Address::from_low_u64_be(0x1001);
+        let y1 = Address::from_low_u64_be(0x2001);
+        let y2 = Address::from_low_u64_be(0x2002);
+        let operating_address = Address::from_low_u64_be(0);
+        let k = H256::default();
 
         let mut state = get_temp_state_with_factory(factory.clone());
         state
@@ -2782,7 +3019,7 @@ mod tests {
 
         assert_eq!(
             state.storage_at(&operating_address, &k).unwrap(),
-            H256::from(U256::from(0))
+            BigEndianHash::from_uint(&U256::from(0))
         );
         // Test a call via top-level -> y1 -> x1
         let (FinalizationResult { gas_left, .. }, refund, gas) = {
@@ -2809,7 +3046,7 @@ mod tests {
 
         assert_eq!(
             state.storage_at(&operating_address, &k).unwrap(),
-            H256::from(U256::from(1))
+            BigEndianHash::from_uint(&U256::from(1))
         );
         // Test a call via top-level -> y2 -> x2
         let (FinalizationResult { gas_left, .. }, refund, gas) = {

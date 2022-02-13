@@ -20,7 +20,7 @@ use std::{cell::RefCell, str::FromStr, sync::Arc};
 
 use accounts::AccountProvider;
 use client::{BlockChainClient, ChainInfo, Client};
-use ethkey::Secret;
+use crypto::publickey::Secret;
 use snapshot::tests::helpers as snapshot_helpers;
 use spec::Spec;
 use tempdir::TempDir;
@@ -132,7 +132,7 @@ fn make_chain(
                 nonce: *nonce,
                 gas_price: 1.into(),
                 gas: 21_000.into(),
-                action: Action::Call(Address::new()),
+                action: Action::Call(Address::default()),
                 value: 1.into(),
                 data: Vec::new(),
             })

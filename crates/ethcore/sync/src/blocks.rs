@@ -18,34 +18,30 @@ use bytes::Bytes;
 use ethcore::verification::queue::kind::blocks::Unverified;
 use ethereum_types::H256;
 use hash::{keccak, KECCAK_EMPTY_LIST_RLP, KECCAK_NULL_RLP};
-use heapsize::HeapSizeOf;
 use network;
+use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use triehash_ethereum::ordered_trie_root;
 use types::{
     header::Header as BlockHeader,
     transaction::{TypedTransaction, UnverifiedTransaction},
+    BlockNumber,
 };
 
-known_heap_size!(0, HeaderId);
+malloc_size_of_is_0!(HeaderId);
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, MallocSizeOf)]
 pub struct SyncHeader {
     pub bytes: Bytes,
     pub header: BlockHeader,
 }
 
-impl HeapSizeOf for SyncHeader {
-    fn heap_size_of_children(&self) -> usize {
-        self.bytes.heap_size_of_children() + self.header.heap_size_of_children()
-    }
-}
-
 impl SyncHeader {
-    pub fn from_rlp(bytes: Bytes) -> Result<Self, DecoderError> {
+    pub fn from_rlp(bytes: Bytes, eip1559_transition: BlockNumber) -> Result<Self, DecoderError> {
+        let rlp = Rlp::new(&bytes);
         let result = SyncHeader {
-            header: ::rlp::decode(&bytes)?,
+            header: BlockHeader::decode_rlp(&rlp, eip1559_transition)?,
             bytes,
         };
 
@@ -53,6 +49,7 @@ impl SyncHeader {
     }
 }
 
+#[derive(MallocSizeOf)]
 pub struct SyncBody {
     pub transactions_bytes: Bytes,
     pub transactions: Vec<UnverifiedTransaction>,
@@ -61,7 +58,7 @@ pub struct SyncBody {
 }
 
 impl SyncBody {
-    pub fn from_rlp(bytes: &[u8]) -> Result<Self, DecoderError> {
+    pub fn from_rlp(bytes: &[u8], eip1559_transition: BlockNumber) -> Result<Self, DecoderError> {
         let rlp = Rlp::new(bytes);
         let transactions_rlp = rlp.at(0)?;
         let uncles_rlp = rlp.at(1)?;
@@ -70,7 +67,7 @@ impl SyncBody {
             transactions_bytes: transactions_rlp.as_raw().to_vec(),
             transactions: TypedTransaction::decode_rlp_list(&transactions_rlp)?,
             uncles_bytes: uncles_rlp.as_raw().to_vec(),
-            uncles: uncles_rlp.as_list()?,
+            uncles: BlockHeader::decode_rlp_list(&uncles_rlp, eip1559_transition)?,
         };
 
         Ok(result)
@@ -86,27 +83,13 @@ impl SyncBody {
     }
 }
 
-impl HeapSizeOf for SyncBody {
-    fn heap_size_of_children(&self) -> usize {
-        self.transactions_bytes.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.uncles_bytes.heap_size_of_children()
-            + self.uncles.heap_size_of_children()
-    }
-}
-
 /// Block data with optional body.
+#[derive(MallocSizeOf)]
 struct SyncBlock {
     header: SyncHeader,
     body: Option<SyncBody>,
     receipts: Option<Bytes>,
     receipts_root: H256,
-}
-
-impl HeapSizeOf for SyncBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children() + self.body.heap_size_of_children()
-    }
 }
 
 fn unverified_from_sync(header: SyncHeader, body: Option<SyncBody>) -> Unverified {
@@ -588,7 +571,7 @@ impl BlockCollection {
                 (None, receipt_root)
             }
         } else {
-            (None, H256::new())
+            (None, H256::default())
         };
 
         self.parents.insert(*info.header.parent_hash(), hash);
@@ -691,7 +674,13 @@ mod test {
             .collect();
         let headers: Vec<_> = blocks
             .iter()
-            .map(|b| SyncHeader::from_rlp(Rlp::new(b).at(0).unwrap().as_raw().to_vec()).unwrap())
+            .map(|b| {
+                SyncHeader::from_rlp(
+                    Rlp::new(b).at(0).unwrap().as_raw().to_vec(),
+                    client.spec.params().eip1559_transition,
+                )
+                .unwrap()
+            })
             .collect();
         let hashes: Vec<_> = headers.iter().map(|h| h.header.hash()).collect();
         let heads: Vec<_> = hashes
@@ -726,7 +715,10 @@ mod test {
             bc.drain().into_iter().map(|b| b.block).collect::<Vec<_>>(),
             blocks[0..6]
                 .iter()
-                .map(|b| Unverified::from_rlp(b.to_vec()).unwrap())
+                .map(
+                    |b| Unverified::from_rlp(b.to_vec(), client.spec.params().eip1559_transition)
+                        .unwrap()
+                )
                 .collect::<Vec<_>>()
         );
         assert!(!bc.contains(&hashes[0]));
@@ -743,7 +735,10 @@ mod test {
             bc.drain().into_iter().map(|b| b.block).collect::<Vec<_>>(),
             blocks[6..16]
                 .iter()
-                .map(|b| Unverified::from_rlp(b.to_vec()).unwrap())
+                .map(
+                    |b| Unverified::from_rlp(b.to_vec(), client.spec.params().eip1559_transition)
+                        .unwrap()
+                )
                 .collect::<Vec<_>>()
         );
 
@@ -771,7 +766,13 @@ mod test {
             .collect();
         let headers: Vec<_> = blocks
             .iter()
-            .map(|b| SyncHeader::from_rlp(Rlp::new(b).at(0).unwrap().as_raw().to_vec()).unwrap())
+            .map(|b| {
+                SyncHeader::from_rlp(
+                    Rlp::new(b).at(0).unwrap().as_raw().to_vec(),
+                    client.spec.params().eip1559_transition,
+                )
+                .unwrap()
+            })
             .collect();
         let hashes: Vec<_> = headers.iter().map(|h| h.header.hash()).collect();
         let heads: Vec<_> = hashes
@@ -807,7 +808,13 @@ mod test {
             .collect();
         let headers: Vec<_> = blocks
             .iter()
-            .map(|b| SyncHeader::from_rlp(Rlp::new(b).at(0).unwrap().as_raw().to_vec()).unwrap())
+            .map(|b| {
+                SyncHeader::from_rlp(
+                    Rlp::new(b).at(0).unwrap().as_raw().to_vec(),
+                    client.spec.params().eip1559_transition,
+                )
+                .unwrap()
+            })
             .collect();
         let hashes: Vec<_> = headers.iter().map(|h| h.header.hash()).collect();
         let heads: Vec<_> = hashes

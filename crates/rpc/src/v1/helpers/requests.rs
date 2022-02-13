@@ -30,6 +30,8 @@ pub struct TransactionRequest {
     pub to: Option<Address>,
     /// Gas Price
     pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: Option<U256>,
     /// Value of transaction in wei
@@ -42,6 +44,8 @@ pub struct TransactionRequest {
     pub condition: Option<TransactionCondition>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_priority_fee_per_gas: Option<U256>,
 }
 
 /// Transaction request coming from RPC with default values filled in.
@@ -56,7 +60,9 @@ pub struct FilledTransactionRequest {
     /// Recipient
     pub to: Option<Address>,
     /// Gas Price
-    pub gas_price: U256,
+    pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: U256,
     /// Value of transaction in wei
@@ -69,6 +75,8 @@ pub struct FilledTransactionRequest {
     pub condition: Option<TransactionCondition>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_priority_fee_per_gas: Option<U256>,
 }
 
 impl From<FilledTransactionRequest> for TransactionRequest {
@@ -77,13 +85,15 @@ impl From<FilledTransactionRequest> for TransactionRequest {
             transaction_type: r.transaction_type,
             from: Some(r.from),
             to: r.to,
-            gas_price: Some(r.gas_price),
+            gas_price: r.gas_price,
+            max_fee_per_gas: r.max_fee_per_gas,
             gas: Some(r.gas),
             value: Some(r.value),
             data: Some(r.data),
             nonce: r.nonce,
             condition: r.condition,
             access_list: r.access_list.map(Into::into),
+            max_priority_fee_per_gas: r.max_priority_fee_per_gas,
         }
     }
 }
@@ -99,6 +109,8 @@ pub struct CallRequest {
     pub to: Option<Address>,
     /// Gas Price
     pub gas_price: Option<U256>,
+    /// Max fee per gas
+    pub max_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: Option<U256>,
     /// Value
@@ -109,6 +121,8 @@ pub struct CallRequest {
     pub nonce: Option<U256>,
     /// Access list
     pub access_list: Option<AccessList>,
+    /// Miner bribe
+    pub max_priority_fee_per_gas: Option<U256>,
 }
 
 /// Confirmation object

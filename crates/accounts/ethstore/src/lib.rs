@@ -74,4 +74,4 @@ pub use self::{
 };
 
 /// An opaque wrapper for secret.
-pub struct OpaqueSecret(::ethkey::Secret);
+pub struct OpaqueSecret(crypto::publickey::Secret);

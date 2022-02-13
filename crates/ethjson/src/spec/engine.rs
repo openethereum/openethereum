@@ -40,8 +40,8 @@ pub enum Engine {
 
 #[cfg(test)]
 mod tests {
+    use crate::spec::Engine;
     use serde_json;
-    use spec::Engine;
 
     #[test]
     fn engine_deserialization() {

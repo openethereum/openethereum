@@ -15,8 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
-use crypto::{self, Keccak256};
-use ethkey::{Password, Secret};
+use crypto::{self, publickey::Secret, Keccak256};
+use ethkey::Password;
 use json;
 use random::Random;
 use smallvec::SmallVec;
@@ -79,7 +79,7 @@ impl Crypto {
         password: &Password,
         iterations: NonZeroU32,
     ) -> Result<Self, crypto::Error> {
-        Crypto::with_plain(&*secret, password, iterations)
+        Crypto::with_plain(secret.as_bytes(), password, iterations)
     }
 
     /// Encrypt custom plain data
@@ -94,7 +94,7 @@ impl Crypto {
         // two parts of derived key
         // DK = [ DK[0..15] DK[16..31] ] = [derived_left_bits, derived_right_bits]
         let (derived_left_bits, derived_right_bits) =
-            crypto::derive_key_iterations(password.as_bytes(), &salt, iterations);
+            crypto::derive_key_iterations(password.as_bytes(), &salt, iterations.get());
 
         // preallocated (on-stack in case of `Secret`) buffer to hold cipher
         // length = length(plain) as we are using CTR-approach
@@ -127,7 +127,7 @@ impl Crypto {
         }
 
         let secret = self.do_decrypt(password, 32)?;
-        Ok(Secret::from_unsafe_slice(&secret)?)
+        Ok(Secret::import_key(&secret)?)
     }
 
     /// Try to decrypt and return result as is
@@ -139,7 +139,7 @@ impl Crypto {
     fn do_decrypt(&self, password: &Password, expected_len: usize) -> Result<Vec<u8>, Error> {
         let (derived_left_bits, derived_right_bits) = match self.kdf {
             Kdf::Pbkdf2(ref params) => {
-                crypto::derive_key_iterations(password.as_bytes(), &params.salt, params.c)
+                crypto::derive_key_iterations(password.as_bytes(), &params.salt, params.c.get())
             }
             Kdf::Scrypt(ref params) => crypto::scrypt::derive_key(
                 password.as_bytes(),
@@ -179,7 +179,7 @@ impl Crypto {
 #[cfg(test)]
 mod tests {
     use super::{Crypto, Error, NonZeroU32};
-    use ethkey::{Generator, Random};
+    use crypto::publickey::{Generator, Random};
 
     lazy_static! {
         static ref ITERATIONS: NonZeroU32 = NonZeroU32::new(10240).expect("10240 > 0; qed");
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn crypto_with_secret_create() {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let passwd = "this is sparta".into();
         let crypto = Crypto::with_secret(keypair.secret(), &passwd, *ITERATIONS).unwrap();
         let secret = crypto.secret(&passwd).unwrap();
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn crypto_with_secret_invalid_password() {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let crypto =
             Crypto::with_secret(keypair.secret(), &"this is sparta".into(), *ITERATIONS).unwrap();
         assert_matches!(

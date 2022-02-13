@@ -18,16 +18,18 @@
 
 use super::trace::{Action, Res};
 use ethereum_types::Bloom;
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 /// Trace localized in vector of traces produced by a single transaction.
 ///
 /// Parent and children indexes refer to positions in this vector.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, MallocSizeOf)]
 pub struct FlatTrace {
+    #[ignore_malloc_size_of = "ignored for performance reason"]
     /// Type of action performed by a transaction.
     pub action: Action,
+    #[ignore_malloc_size_of = "ignored for performance reason"]
     /// Result of this action.
     pub result: Res,
     /// Number of subtraces.
@@ -42,12 +44,6 @@ impl FlatTrace {
     /// Returns bloom of the trace.
     pub fn bloom(&self) -> Bloom {
         self.action.bloom() | self.result.bloom()
-    }
-}
-
-impl HeapSizeOf for FlatTrace {
-    fn heap_size_of_children(&self) -> usize {
-        self.trace_address.heap_size_of_children()
     }
 }
 
@@ -76,18 +72,12 @@ impl Decodable for FlatTrace {
 }
 
 /// Represents all traces produced by a single transaction.
-#[derive(Debug, PartialEq, Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
+#[derive(Debug, PartialEq, Clone, RlpEncodableWrapper, RlpDecodableWrapper, MallocSizeOf)]
 pub struct FlatTransactionTraces(Vec<FlatTrace>);
 
 impl From<Vec<FlatTrace>> for FlatTransactionTraces {
     fn from(v: Vec<FlatTrace>) -> Self {
         FlatTransactionTraces(v)
-    }
-}
-
-impl HeapSizeOf for FlatTransactionTraces {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
     }
 }
 
@@ -107,14 +97,10 @@ impl Into<Vec<FlatTrace>> for FlatTransactionTraces {
 }
 
 /// Represents all traces produced by transactions in a single block.
-#[derive(Debug, PartialEq, Clone, Default, RlpEncodableWrapper, RlpDecodableWrapper)]
+#[derive(
+    Debug, PartialEq, Clone, Default, RlpEncodableWrapper, RlpDecodableWrapper, MallocSizeOf,
+)]
 pub struct FlatBlockTraces(Vec<FlatTransactionTraces>);
-
-impl HeapSizeOf for FlatBlockTraces {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
-    }
-}
 
 impl From<Vec<FlatTransactionTraces>> for FlatBlockTraces {
     fn from(v: Vec<FlatTransactionTraces>) -> Self {

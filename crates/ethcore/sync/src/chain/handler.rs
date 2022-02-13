@@ -32,18 +32,18 @@ use std::{cmp, mem, time::Instant};
 use sync_io::SyncIo;
 use types::{block_status::BlockStatus, ids::BlockId, BlockNumber};
 
-use super::sync_packet::{
-    PacketInfo, SyncPacket,
-    SyncPacket::{
-        BlockBodiesPacket, BlockHeadersPacket, NewBlockHashesPacket, NewBlockPacket,
-        ReceiptsPacket, SnapshotDataPacket, SnapshotManifestPacket, StatusPacket,
+use super::{
+    request_id::strip_request_id,
+    sync_packet::{
+        PacketInfo,
+        SyncPacket::{self, *},
     },
 };
 
 use super::{
     BlockSet, ChainSync, ForkConfirmation, PacketProcessError, PeerAsking, PeerInfo, SyncRequester,
-    SyncState, ETH_PROTOCOL_VERSION_64, MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES, PAR_PROTOCOL_VERSION_1,
-    PAR_PROTOCOL_VERSION_2,
+    SyncState, ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, ETH_PROTOCOL_VERSION_66,
+    MAX_NEW_BLOCK_AGE, MAX_NEW_HASHES, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
 
 /// The Chain Sync Handler: handles responses from peers
@@ -58,21 +58,33 @@ impl SyncHandler {
         packet_id: u8,
         data: &[u8],
     ) {
-        let rlp = Rlp::new(data);
         if let Some(packet_id) = SyncPacket::from_u8(packet_id) {
-            let result = match packet_id {
-                StatusPacket => SyncHandler::on_peer_status(sync, io, peer, &rlp),
-                BlockHeadersPacket => SyncHandler::on_peer_block_headers(sync, io, peer, &rlp),
-                BlockBodiesPacket => SyncHandler::on_peer_block_bodies(sync, io, peer, &rlp),
-                ReceiptsPacket => SyncHandler::on_peer_block_receipts(sync, io, peer, &rlp),
-                NewBlockPacket => SyncHandler::on_peer_new_block(sync, io, peer, &rlp),
-                NewBlockHashesPacket => SyncHandler::on_peer_new_hashes(sync, io, peer, &rlp),
-                SnapshotManifestPacket => SyncHandler::on_snapshot_manifest(sync, io, peer, &rlp),
-                SnapshotDataPacket => SyncHandler::on_snapshot_data(sync, io, peer, &rlp),
-                _ => {
-                    debug!(target: "sync", "{}: Unknown packet {}", peer, packet_id.id());
-                    Ok(())
-                }
+            let rlp_result = strip_request_id(data, sync, &peer, &packet_id);
+
+            let result = match rlp_result {
+                Ok((rlp, _)) => match packet_id {
+                    StatusPacket => SyncHandler::on_peer_status(sync, io, peer, &rlp),
+                    BlockHeadersPacket => SyncHandler::on_peer_block_headers(sync, io, peer, &rlp),
+                    BlockBodiesPacket => SyncHandler::on_peer_block_bodies(sync, io, peer, &rlp),
+                    ReceiptsPacket => SyncHandler::on_peer_block_receipts(sync, io, peer, &rlp),
+                    NewBlockPacket => SyncHandler::on_peer_new_block(sync, io, peer, &rlp),
+                    NewBlockHashesPacket => SyncHandler::on_peer_new_hashes(sync, io, peer, &rlp),
+                    NewPooledTransactionHashesPacket => {
+                        SyncHandler::on_peer_new_pooled_transaction_hashes(sync, io, peer, &rlp)
+                    }
+                    PooledTransactionsPacket => {
+                        SyncHandler::on_peer_pooled_transactions(sync, io, peer, &rlp)
+                    }
+                    SnapshotManifestPacket => {
+                        SyncHandler::on_snapshot_manifest(sync, io, peer, &rlp)
+                    }
+                    SnapshotDataPacket => SyncHandler::on_snapshot_data(sync, io, peer, &rlp),
+                    _ => {
+                        debug!(target: "sync", "{}: Unknown packet {}", peer, packet_id.id());
+                        Ok(())
+                    }
+                },
+                Err(e) => Err(e.into()),
             };
 
             match result {
@@ -156,7 +168,7 @@ impl SyncHandler {
             return Ok(());
         }
         // t_nb 1.0 decode RLP
-        let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec())?;
+        let block = Unverified::from_rlp(r.at(0)?.as_raw().to_vec(), sync.eip1559_transition)?;
         let hash = block.header.hash();
         let number = block.header.number();
         trace!(target: "sync", "{} -> NewBlock ({})", peer_id, hash);
@@ -357,7 +369,7 @@ impl SyncHandler {
                         Some(ref mut blocks) => blocks,
                     },
                 };
-                downloader.import_bodies(r, expected_blocks.as_slice())?;
+                downloader.import_bodies(r, expected_blocks.as_slice(), sync.eip1559_transition)?;
             }
             sync.collect_blocks(io, block_set);
             Ok(())
@@ -476,7 +488,7 @@ impl SyncHandler {
                     Some(ref mut blocks) => blocks,
                 },
             };
-            downloader.import_headers(io, r, expected_hash)?
+            downloader.import_headers(io, r, expected_hash, sync.eip1559_transition)?
         };
 
         if result == DownloadAction::Reset {
@@ -669,7 +681,7 @@ impl SyncHandler {
             .next()
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
-        let _eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer_id);
+        let eth_protocol_version = io.protocol_version(ETH_PROTOCOL, peer_id);
         let warp_protocol_version = io.protocol_version(PAR_PROTOCOL, peer_id);
         let warp_protocol = warp_protocol_version != 0;
 
@@ -691,13 +703,17 @@ impl SyncHandler {
             .next()
             .ok_or(rlp::DecoderError::RlpIsTooShort)?
             .as_val()?;
-        let forkid_validation_error = {
-            let fork_id = rlp04::Rlp::new(r.as_raw()).val_at(5)?;
-            r_iter.next().ok_or(rlp::DecoderError::RlpIsTooShort)?;
+        let forkid_validation_error = if eth_protocol_version >= ETH_PROTOCOL_VERSION_64.0 {
+            let fork_id = r_iter
+                .next()
+                .ok_or(rlp::DecoderError::RlpIsTooShort)?
+                .as_val()?;
             sync.fork_filter
                 .is_compatible(io.chain(), fork_id)
                 .err()
                 .map(|e| (fork_id, e))
+        } else {
+            None
         };
         let snapshot_hash = if warp_protocol {
             Some(
@@ -728,6 +744,8 @@ impl SyncHandler {
             asking: PeerAsking::Nothing,
             asking_blocks: Vec::new(),
             asking_hash: None,
+            unfetched_pooled_transactions: Default::default(),
+            asking_pooled_transactions: Default::default(),
             ask_time: Instant::now(),
             last_sent_transactions: Default::default(),
             expired: false,
@@ -786,7 +804,9 @@ impl SyncHandler {
             || (warp_protocol
                 && (peer.protocol_version < PAR_PROTOCOL_VERSION_1.0
                     || peer.protocol_version > PAR_PROTOCOL_VERSION_2.0))
-            || (!warp_protocol && peer.protocol_version != ETH_PROTOCOL_VERSION_64.0)
+            || (!warp_protocol
+                && (peer.protocol_version < ETH_PROTOCOL_VERSION_63.0
+                    || peer.protocol_version > ETH_PROTOCOL_VERSION_66.0))
         {
             trace!(target: "sync", "Peer {} unsupported eth protocol ({})", peer_id, peer.protocol_version);
             return Err(DownloaderImportError::Invalid);
@@ -806,6 +826,64 @@ impl SyncHandler {
             SyncRequester::request_fork_header(sync, io, peer_id, fork_block);
         }
 
+        Ok(())
+    }
+
+    /// Called when peer sends us a set of new pooled transactions
+    pub fn on_peer_new_pooled_transaction_hashes(
+        sync: &mut ChainSync,
+        io: &mut dyn SyncIo,
+        peer_id: PeerId,
+        tx_rlp: &Rlp,
+    ) -> Result<(), DownloaderImportError> {
+        for item in tx_rlp {
+            let hash = item
+                .as_val::<H256>()
+                .map_err(|_| DownloaderImportError::Invalid)?;
+
+            if io.chain().queued_transaction(hash).is_none() {
+                sync.peers
+                    .get_mut(&peer_id)
+                    .map(|peer| peer.unfetched_pooled_transactions.insert(hash));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Called when peer sends us a list of pooled transactions
+    pub fn on_peer_pooled_transactions(
+        sync: &ChainSync,
+        io: &mut dyn SyncIo,
+        peer_id: PeerId,
+        tx_rlp: &Rlp,
+    ) -> Result<(), DownloaderImportError> {
+        let peer = match sync.peers.get(&peer_id).filter(|p| p.can_sync()) {
+            Some(peer) => peer,
+            None => {
+                trace!(target: "sync", "{} Ignoring transactions from unconfirmed/unknown peer", peer_id);
+                return Ok(());
+            }
+        };
+
+        let item_count = tx_rlp.item_count()?;
+        if item_count > peer.asking_pooled_transactions.len() {
+            trace!(target: "sync", "{} Peer sent us more transactions than was supposed to", peer_id);
+            return Err(DownloaderImportError::Invalid);
+        }
+        trace!(target: "sync", "{:02} -> PooledTransactions ({} entries)", peer_id, item_count);
+        let mut transactions = Vec::with_capacity(item_count);
+        for i in 0..item_count {
+            let rlp = tx_rlp.at(i)?;
+            let tx = if rlp.is_list() {
+                rlp.as_raw()
+            } else {
+                rlp.data()?
+            }
+            .to_vec();
+            transactions.push(tx);
+        }
+        io.chain().queue_transactions(transactions, peer_id);
         Ok(())
     }
 

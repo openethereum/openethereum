@@ -20,7 +20,7 @@ use engines::EthEngine;
 use error::Error;
 
 use ethereum_types::{H256, U256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 
 pub use self::{blocks::Blocks, headers::Headers};
 
@@ -51,13 +51,13 @@ pub trait BlockLike {
 /// consistent.
 pub trait Kind: 'static + Sized + Send + Sync {
     /// The first stage: completely unverified.
-    type Input: Sized + Send + BlockLike + HeapSizeOf;
+    type Input: Sized + Send + BlockLike + MallocSizeOf;
 
     /// The second stage: partially verified.
-    type Unverified: Sized + Send + BlockLike + HeapSizeOf;
+    type Unverified: Sized + Send + BlockLike + MallocSizeOf;
 
     /// The third stage: completely verified.
-    type Verified: Sized + Send + BlockLike + HeapSizeOf;
+    type Verified: Sized + Send + BlockLike + MallocSizeOf;
 
     /// Attempt to create the `Unverified` item from the input.
     fn create(
@@ -83,12 +83,13 @@ pub mod blocks {
     use types::{
         header::Header,
         transaction::{TypedTransaction, UnverifiedTransaction},
+        BlockNumber,
     };
     use verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
 
     use bytes::Bytes;
     use ethereum_types::{H256, U256};
-    use heapsize::HeapSizeOf;
+    use parity_util_mem::MallocSizeOf;
 
     /// A mode for verifying blocks.
     pub struct Blocks;
@@ -135,7 +136,7 @@ pub mod blocks {
     }
 
     /// An unverified block.
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, MallocSizeOf)]
     pub struct Unverified {
         /// Unverified block header.
         pub header: Header,
@@ -149,13 +150,16 @@ pub mod blocks {
 
     impl Unverified {
         /// Create an `Unverified` from raw bytes.
-        pub fn from_rlp(bytes: Bytes) -> Result<Self, ::rlp::DecoderError> {
+        pub fn from_rlp(
+            bytes: Bytes,
+            eip1559_transition: BlockNumber,
+        ) -> Result<Self, ::rlp::DecoderError> {
             use rlp::Rlp;
             let (header, transactions, uncles) = {
                 let rlp = Rlp::new(&bytes);
-                let header = rlp.val_at(0)?;
+                let header = Header::decode_rlp(&rlp.at(0)?, eip1559_transition)?;
                 let transactions = TypedTransaction::decode_rlp_list(&rlp.at(1)?)?;
-                let uncles = rlp.list_at(2)?;
+                let uncles = Header::decode_rlp_list(&rlp.at(2)?, eip1559_transition)?;
                 (header, transactions, uncles)
             };
 
@@ -165,15 +169,6 @@ pub mod blocks {
                 uncles,
                 bytes,
             })
-        }
-    }
-
-    impl HeapSizeOf for Unverified {
-        fn heap_size_of_children(&self) -> usize {
-            self.header.heap_size_of_children()
-                + self.transactions.heap_size_of_children()
-                + self.uncles.heap_size_of_children()
-                + self.bytes.heap_size_of_children()
         }
     }
 

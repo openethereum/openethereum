@@ -25,7 +25,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use ethereum_types::{Address, Bloom, H256, U256};
+use ethereum_types::{Address, Bloom, H160, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_NULL_RLP};
 use parking_lot::RwLock;
@@ -139,6 +139,16 @@ pub struct CommonParams {
     pub eip2929_transition: BlockNumber,
     /// Number of first block where EIP-2930 rules begin.
     pub eip2930_transition: BlockNumber,
+    /// Number of first block where EIP-1559 rules begin.
+    pub eip1559_transition: BlockNumber,
+    /// Number of first block where EIP-3198 rules begin. Basefee opcode.
+    pub eip3198_transition: BlockNumber,
+    /// Number of first block where EIP-3529 rules begin.
+    pub eip3529_transition: BlockNumber,
+    /// Number of first block where EIP-3541 rule begins.
+    pub eip3541_transition: BlockNumber,
+    /// Number of first block where EIP-3607 rule begins.
+    pub eip3607_transition: BlockNumber,
     /// Number of first block where dust cleanup rules (EIP-168 and EIP169) begin.
     pub dust_protection_transition: BlockNumber,
     /// Nonce cap increase per block. Nonce cap is only checked if dust protection is enabled.
@@ -169,6 +179,22 @@ pub struct CommonParams {
     pub transaction_permission_contract_transition: BlockNumber,
     /// Maximum size of transaction's RLP payload
     pub max_transaction_size: usize,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: Option<U256>,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: U256,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: U256,
+    /// Min value for the block base fee.
+    pub eip1559_base_fee_min_value: Option<U256>,
+    /// Block at which the min value for the base fee starts to be used.
+    pub eip1559_base_fee_min_value_transition: BlockNumber,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: BlockNumber,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: BlockNumber,
 }
 
 impl CommonParams {
@@ -215,6 +241,18 @@ impl CommonParams {
         schedule.have_subs = block_number >= self.eip2315_transition;
         schedule.eip2929 = block_number >= self.eip2929_transition;
         schedule.eip2930 = block_number >= self.eip2930_transition;
+        schedule.eip3541 = block_number >= self.eip3541_transition;
+        schedule.eip1559 = block_number >= self.eip1559_transition;
+        schedule.eip3198 = block_number >= self.eip3198_transition;
+        if schedule.eip1559 {
+            schedule.eip1559_elasticity_multiplier = self.eip1559_elasticity_multiplier.as_usize();
+
+            schedule.eip1559_gas_limit_bump = if block_number == self.eip1559_transition {
+                schedule.eip1559_elasticity_multiplier
+            } else {
+                1
+            };
+        }
 
         if block_number >= self.eip1884_transition {
             schedule.have_selfbalance = true;
@@ -244,6 +282,11 @@ impl CommonParams {
 
             schedule.sload_gas = ::vm::schedule::EIP2929_WARM_STORAGE_READ_COST;
             schedule.sstore_reset_gas = ::vm::schedule::EIP2929_SSTORE_RESET_GAS;
+        }
+        if block_number >= self.eip3529_transition {
+            schedule.suicide_refund_gas = 0;
+            schedule.sstore_refund_gas = ::vm::schedule::EIP3529_SSTORE_CLEARS_SCHEDULE;
+            schedule.max_refund_quotient = ::vm::schedule::EIP3529_MAX_REFUND_QUOTIENT;
         }
 
         if block_number >= self.dust_protection_transition {
@@ -318,7 +361,9 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip210_transition: p
                 .eip210_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
-            eip210_contract_address: p.eip210_contract_address.map_or(0xf0.into(), Into::into),
+            eip210_contract_address: p
+                .eip210_contract_address
+                .map_or(H160::from_low_u64_be(0xf0), Into::into),
             eip210_contract_code: p.eip210_contract_code.map_or_else(
                 || {
                     DEFAULT_BLOCKHASH_CONTRACT
@@ -376,13 +421,26 @@ impl From<ethjson::spec::Params> for CommonParams {
             eip2930_transition: p
                 .eip2930_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_transition: p
+                .eip1559_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3198_transition: p
+                .eip3198_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3529_transition: p
+                .eip3529_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip3541_transition: p
+                .eip3541_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
             dust_protection_transition: p
                 .dust_protection_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            eip3607_transition: p.eip3607_transition.map_or(0, Into::into),
             nonce_cap_increment: p.nonce_cap_increment.map_or(64, Into::into),
             remove_dust_contracts: p.remove_dust_contracts.unwrap_or(false),
             gas_limit_bound_divisor: p.gas_limit_bound_divisor.into(),
-            registrar: p.registrar.map_or_else(Address::new, Into::into),
+            registrar: p.registrar.map_or_else(Address::default, Into::into),
             node_permission_contract: p.node_permission_contract.map(Into::into),
             max_code_size: p.max_code_size.map_or(u64::max_value(), Into::into),
             max_transaction_size: p
@@ -404,6 +462,26 @@ impl From<ethjson::spec::Params> for CommonParams {
                 .map_or_else(BlockNumber::max_value, Into::into),
             kip6_transition: p
                 .kip6_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_base_fee_max_change_denominator: p
+                .eip1559_base_fee_max_change_denominator
+                .map(Into::into),
+            eip1559_elasticity_multiplier: p
+                .eip1559_elasticity_multiplier
+                .map_or_else(U256::zero, Into::into),
+            eip1559_base_fee_initial_value: p
+                .eip1559_base_fee_initial_value
+                .map_or_else(U256::zero, Into::into),
+            eip1559_base_fee_min_value: p.eip1559_base_fee_min_value.map(Into::into),
+            eip1559_base_fee_min_value_transition: p
+                .eip1559_base_fee_min_value_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            eip1559_fee_collector: p.eip1559_fee_collector.map(Into::into),
+            eip1559_fee_collector_transition: p
+                .eip1559_fee_collector_transition
+                .map_or_else(BlockNumber::max_value, Into::into),
+            validate_service_transactions_transition: p
+                .validate_service_transactions_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
         }
     }
@@ -479,6 +557,8 @@ pub struct Spec {
     pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
     pub seal_rlp: Bytes,
+    /// Base fee,
+    pub base_fee: Option<U256>,
 
     /// List of hard forks in the network.
     pub hard_forks: BTreeSet<BlockNumber>,
@@ -515,6 +595,7 @@ impl Clone for Spec {
             constructors: self.constructors.clone(),
             state_root_memo: RwLock::new(*self.state_root_memo.read()),
             genesis_state: self.genesis_state.clone(),
+            base_fee: self.base_fee.clone(),
         }
     }
 }
@@ -573,6 +654,7 @@ fn load_from(spec_params: SpecParams, s: ethjson::spec::Spec) -> Result<Spec, Er
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp: seal_rlp,
+        base_fee: g.base_fee,
         hard_forks,
         constructors: s
             .accounts
@@ -665,6 +747,10 @@ impl Spec {
             params.eip2315_transition,
             params.eip2929_transition,
             params.eip2930_transition,
+            params.eip1559_transition,
+            params.eip3198_transition,
+            params.eip3529_transition,
+            params.eip3541_transition,
             params.dust_protection_transition,
             params.wasm_activation_transition,
             params.wasm_disable_transition,
@@ -672,6 +758,9 @@ impl Spec {
             params.kip6_transition,
             params.max_code_size_transition,
             params.transaction_permission_contract_transition,
+            params.eip1559_fee_collector_transition,
+            params.eip1559_base_fee_min_value_transition,
+            params.validate_service_transactions_transition,
         ];
         // BUG: Rinkeby has homestead transition at block 1 but we can't reflect that in specs for non-Ethash networks
         if params.network_id == 0x4 {
@@ -742,7 +831,7 @@ impl Spec {
             let mut t = factories.trie.create(db.as_hash_db_mut(), &mut root);
 
             for (address, account) in self.genesis_state.get().iter() {
-                t.insert(&**address, &account.rlp())?;
+                t.insert(address.as_bytes(), &account.rlp())?;
             }
         }
 
@@ -769,6 +858,7 @@ impl Spec {
                 last_hashes: Default::default(),
                 gas_used: U256::zero(),
                 gas_limit: U256::max_value(),
+                base_fee: None,
             };
 
             if !self.constructors.is_empty() {
@@ -877,6 +967,7 @@ impl Spec {
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()
         });
+        header.set_base_fee(self.base_fee.clone());
         trace!(target: "spec", "Header hash is {}", header.hash());
         header
     }
@@ -905,6 +996,7 @@ impl Spec {
         self.timestamp = g.timestamp;
         self.extra_data = g.extra_data;
         self.seal_rlp = seal_rlp;
+        self.base_fee = g.base_fee;
     }
 
     /// Alter the value of the genesis state.
@@ -970,7 +1062,7 @@ impl Spec {
 
         let factories = Default::default();
         let mut db = journaldb::new(
-            Arc::new(kvdb_memorydb::create(0)),
+            Arc::new(db::InMemoryWithMetrics::create(0)),
             journaldb::Algorithm::Archive,
             None,
         );
@@ -988,6 +1080,7 @@ impl Spec {
                 gas_limit: U256::max_value(),
                 last_hashes: Arc::new(Vec::new()),
                 gas_used: 0.into(),
+                base_fee: genesis.base_fee(),
             };
 
             let from = Address::default();
@@ -1061,6 +1154,19 @@ impl Spec {
         load_bundled!("test/constructor")
     }
 
+    /// Create a new Spec which is a NullEngine consensus with EIP3607 transition equal to 2,
+    /// and with a contract at address '0x71562b71999873DB5b286dF957af199Ec94617F7'.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_eip3607() -> Self {
+        load_bundled!("test/eip3607_test")
+    }
+
+    /// Create a new Spec with Autority Round randomness contract
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_round_randomness_contract() -> Spec {
+        load_bundled!("test/authority_round_randomness_contract")
+    }
+
     /// Create a new Spec with AuthorityRound consensus which does internal sealing (not
     /// requiring work).
     /// Accounts with secrets keccak("0") and keccak("1") are the validators.
@@ -1119,7 +1225,9 @@ impl Spec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_types::{H160, H256};
     use state::State;
+    use std::str::FromStr;
     use tempdir::TempDir;
     use test_helpers::get_temp_state_db;
     use types::{view, views::BlockView};
@@ -1136,12 +1244,14 @@ mod tests {
 
         assert_eq!(
             test_spec.state_root(),
-            "f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9".into()
+            H256::from_str("f3f4696bbf3b3b07775128eb7a3763279a394e382130f27c21e70233e04946a9")
+                .unwrap()
         );
         let genesis = test_spec.genesis_block();
         assert_eq!(
             view!(BlockView, &genesis).header_view().hash(),
-            "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303".into()
+            H256::from_str("0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
+                .unwrap()
         );
     }
 
@@ -1159,8 +1269,10 @@ mod tests {
             Default::default(),
         )
         .unwrap();
-        let expected = "0000000000000000000000000000000000000000000000000000000000000001".into();
-        let address = "0000000000000000000000000000000000001337".into();
+        let expected =
+            H256::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
+        let address = H160::from_str("0000000000000000000000000000000000001337").unwrap();
 
         assert_eq!(state.storage_at(&address, &H256::zero()).unwrap(), expected);
         assert_eq!(state.balance(&address).unwrap(), 1.into());

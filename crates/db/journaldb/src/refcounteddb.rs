@@ -23,15 +23,17 @@ use std::{
 };
 
 use super::{traits::JournalDB, LATEST_ERA_KEY};
+use bytes::Bytes;
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
-use heapsize::HeapSizeOf;
 use keccak_hasher::KeccakHasher;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::MemoryDB;
 use overlaydb::OverlayDB;
+use parity_util_mem::{allocators::new_malloc_size_ops, MallocSizeOf};
 use rlp::{decode, encode};
 use util::{DatabaseKey, DatabaseValueRef, DatabaseValueView};
+use DB_PREFIX_LEN;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -121,13 +123,14 @@ impl JournalDB for RefCountedDB {
     }
 
     fn get_sizes(&self, sizes: &mut BTreeMap<String, usize>) {
+        let mut ops = new_malloc_size_ops();
         sizes.insert(
             String::from("db_ref_counted_inserts"),
-            self.inserts.heap_size_of_children(),
+            self.inserts.size_of(&mut ops),
         );
         sizes.insert(
             String::from("db_ref_counted_removes"),
-            self.removes.heap_size_of_children(),
+            self.removes.size_of(&mut ops),
         );
     }
 
@@ -244,6 +247,12 @@ impl JournalDB for RefCountedDB {
             }
         }
     }
+
+    fn state(&self, id: &H256) -> Option<Bytes> {
+        self.backing
+            .get_by_prefix(self.column, &id[0..DB_PREFIX_LEN])
+            .map(|b| b.into_vec())
+    }
 }
 
 #[cfg(test)]
@@ -252,11 +261,10 @@ mod tests {
     use super::*;
     use hash_db::HashDB;
     use keccak::keccak;
-    use kvdb_memorydb;
     use JournalDB;
 
     fn new_db() -> RefCountedDB {
-        let backing = Arc::new(kvdb_memorydb::create(0));
+        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         RefCountedDB::new(backing, None)
     }
 

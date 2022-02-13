@@ -56,16 +56,16 @@ impl TestSnapshotService {
         let num_state_chunks = num_chunks / 2;
         let num_block_chunks = num_chunks - num_state_chunks;
         let state_chunks: Vec<Bytes> = (0..num_state_chunks)
-            .map(|_| H256::random().to_vec())
+            .map(|_| H256::random().as_bytes().to_vec())
             .collect();
         let block_chunks: Vec<Bytes> = (0..num_block_chunks)
-            .map(|_| H256::random().to_vec())
+            .map(|_| H256::random().as_bytes().to_vec())
             .collect();
         let manifest = ManifestData {
             version: 2,
             state_hashes: state_chunks.iter().map(|data| keccak(data)).collect(),
             block_hashes: block_chunks.iter().map(|data| keccak(data)).collect(),
-            state_root: H256::new(),
+            state_root: H256::default(),
             block_number: block_number,
             block_hash: block_hash,
         };
@@ -188,7 +188,7 @@ fn snapshot_sync() {
     let mut net = TestNet::new_with_config(5, config);
     let snapshot_service = Arc::new(TestSnapshotService::new_with_snapshot(
         16,
-        H256::new(),
+        H256::default(),
         500000,
     ));
     for i in 0..4 {

@@ -16,9 +16,11 @@
 
 //! Spec params deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use uint::{self, Uint};
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    uint::{self, Uint},
+};
 
 /// Spec params.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -110,6 +112,16 @@ pub struct Params {
     /// See `CommonParams` docs.
     pub eip2930_transition: Option<Uint>,
     /// See `CommonParams` docs.
+    pub eip1559_transition: Option<Uint>,
+    /// See `CommonParams` docs.
+    pub eip3198_transition: Option<Uint>,
+    /// See `CommonParams` docs.
+    pub eip3529_transition: Option<Uint>,
+    /// See `CommonParams` docs.
+    pub eip3541_transition: Option<Uint>,
+    /// See `CommonParams` docs.
+    pub eip3607_transition: Option<Uint>,
+    /// See `CommonParams` docs.
     pub dust_protection_transition: Option<Uint>,
     /// See `CommonParams` docs.
     pub nonce_cap_increment: Option<Uint>,
@@ -142,14 +154,29 @@ pub struct Params {
     pub kip4_transition: Option<Uint>,
     /// KIP6 activiation block height.
     pub kip6_transition: Option<Uint>,
+    /// Base fee max change denominator
+    pub eip1559_base_fee_max_change_denominator: Option<Uint>,
+    /// Elasticity multiplier
+    pub eip1559_elasticity_multiplier: Option<Uint>,
+    /// Default value for the block base fee
+    pub eip1559_base_fee_initial_value: Option<Uint>,
+    /// Min value for the block base fee.
+    pub eip1559_base_fee_min_value: Option<Uint>,
+    /// Block at which the min value for the base fee starts to be used.
+    pub eip1559_base_fee_min_value_transition: Option<Uint>,
+    /// Address where EIP-1559 burnt fee will be accrued to.
+    pub eip1559_fee_collector: Option<Address>,
+    /// Block at which the fee collector should start being used.
+    pub eip1559_fee_collector_transition: Option<Uint>,
+    /// Block at which zero gas price transactions start being checked with Certifier contract.
+    pub validate_service_transactions_transition: Option<Uint>,
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{spec::params::Params, uint::Uint};
     use ethereum_types::U256;
     use serde_json;
-    use spec::params::Params;
-    use uint::Uint;
 
     #[test]
     fn params_deserialization() {

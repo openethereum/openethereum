@@ -273,6 +273,10 @@ where
     }
 }
 
+pub fn eip1559_not_activated() -> Error {
+    unsupported("EIP-1559 is not activated", None)
+}
+
 pub fn not_enough_data() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::UNSUPPORTED_REQUEST),
@@ -385,6 +389,9 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		InsufficientGasPrice { minimal, got } => {
 			format!("Transaction gas price is too low. It does not satisfy your node's minimal gas price (minimal: {}, got: {}). Try increasing the gas price.", minimal, got)
 		}
+		GasPriceLowerThanBaseFee { gas_price, base_fee} => {
+			format!("Transaction max gas price is lower then the required base fee (gas_price: {}, base_fee: {}). Try increasing the max gas price.", gas_price, base_fee)
+		}
 		InsufficientBalance { balance, cost } => {
 			format!("Insufficient funds. The account you tried to send transaction from does not have enough funds. Required {} and got: {}.", cost, balance)
 		}
@@ -401,6 +408,7 @@ pub fn transaction_message(error: &TransactionError) -> String {
 		TooBig => "Transaction is too big, see chain specification for the limit.".into(),
         InvalidRlp(ref descr) => format!("Invalid RLP data: {}", descr),
         TransactionTypeNotEnabled => format!("Transaction type is not enabled for current block"),
+        SenderIsNotEOA => "Transaction sender is not an EOA (see EIP-3607)".into(),
 	}
 }
 

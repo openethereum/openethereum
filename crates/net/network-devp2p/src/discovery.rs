@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey::{recover, sign, KeyPair, Secret};
 use ethereum_types::{H256, H520};
-use ethkey::{recover, sign, KeyPair, Secret};
 use hash::keccak;
 use lru_cache::LruCache;
 use network::{Error, ErrorKind, IpFilter};
@@ -199,7 +199,7 @@ impl<'a> Discovery<'a> {
             public_endpoint: public,
             discovery_initiated: false,
             discovery_round: None,
-            discovery_id: NodeId::new(),
+            discovery_id: NodeId::default(),
             discovery_nodes: HashSet::new(),
             node_buckets: (0..ADDRESS_BITS).map(|_| NodeBucket::new()).collect(),
             other_observed_nodes: LruCache::new(OBSERVED_NODES_MAX_SIZE),
@@ -450,7 +450,7 @@ impl<'a> Discovery<'a> {
         payload: &[u8],
     ) -> Result<H256, Error> {
         let packet = assemble_packet(packet_id, payload, &self.secret)?;
-        let hash = H256::from(&packet[0..32]);
+        let hash = H256::from_slice(&packet[0..32]);
         self.send_to(packet, address.clone());
         Ok(hash)
     }
@@ -531,7 +531,7 @@ impl<'a> Discovery<'a> {
         let packet_id = signed[0];
         let rlp = Rlp::new(&signed[1..]);
         match packet_id {
-            PACKET_PING => self.on_ping(&rlp, &node_id, &from, &hash_signed),
+            PACKET_PING => self.on_ping(&rlp, &node_id, &from, hash_signed.as_bytes()),
             PACKET_PONG => self.on_pong(&rlp, &node_id, &from),
             PACKET_FIND_NODE => self.on_find_node(&rlp, &node_id, &from),
             PACKET_NEIGHBOURS => self.on_neighbours(&rlp, &node_id, &from),
@@ -960,7 +960,7 @@ fn assemble_packet(packet_id: u8, bytes: &[u8], secret: &Secret) -> Result<Bytes
     };
     packet[32..(32 + 65)].copy_from_slice(&signature[..]);
     let signed_hash = keccak(&packet[32..]);
-    packet[0..32].copy_from_slice(&signed_hash);
+    packet[0..32].copy_from_slice(signed_hash.as_bytes());
     Ok(packet)
 }
 
@@ -982,7 +982,7 @@ mod tests {
     use node_table::{Node, NodeEndpoint, NodeId};
     use std::net::{IpAddr, Ipv4Addr};
 
-    use ethkey::{Generator, Random};
+    use crypto::publickey::{Generator, Random};
     use rustc_hex::FromHex;
     use std::str::FromStr;
 
@@ -1008,7 +1008,7 @@ mod tests {
 
     #[test]
     fn ping_queue() {
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let ep = NodeEndpoint {
             address: SocketAddr::from_str("127.0.0.1:40445").unwrap(),
             udp_port: 40445,
@@ -1039,7 +1039,7 @@ mod tests {
     fn discovery() {
         let mut discovery_handlers = (0..5)
             .map(|i| {
-                let key = Random.generate().unwrap();
+                let key = Random.generate();
                 let ep = NodeEndpoint {
                     address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 41000 + i),
                     udp_port: 41000 + i,
@@ -1084,13 +1084,13 @@ mod tests {
             }
         }
 
-        let results = discovery_handlers[0].nearest_node_entries(&NodeId::new());
+        let results = discovery_handlers[0].nearest_node_entries(&NodeId::default());
         assert_eq!(results.len(), 4);
     }
 
     #[test]
     fn removes_expired() {
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let ep = NodeEndpoint {
             address: SocketAddr::from_str("127.0.0.1:40446").unwrap(),
             udp_port: 40447,
@@ -1147,7 +1147,7 @@ mod tests {
         let from = SocketAddr::from_str("99.99.99.99:40445").unwrap();
 
         // FIND_NODE times out because it doesn't receive k results.
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         discovery
             .send_find_node(&node_entries[100], key.public())
             .unwrap();
@@ -1205,7 +1205,7 @@ mod tests {
     fn find_nearest_saturated() {
         use super::*;
 
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let ep = NodeEndpoint {
             address: SocketAddr::from_str("127.0.0.1:40447").unwrap(),
             udp_port: 40447,
@@ -1214,12 +1214,12 @@ mod tests {
 
         for _ in 0..(16 + 10) {
             let entry = BucketEntry::new(NodeEntry {
-                id: NodeId::new(),
+                id: NodeId::default(),
                 endpoint: ep.clone(),
             });
             discovery.node_buckets[0].nodes.push_back(entry);
         }
-        let nearest = discovery.nearest_node_entries(&NodeId::new());
+        let nearest = discovery.nearest_node_entries(&NodeId::default());
         assert_eq!(nearest.len(), 16)
     }
 
@@ -1315,7 +1315,7 @@ mod tests {
 
     #[test]
     fn packets() {
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let ep = NodeEndpoint {
             address: SocketAddr::from_str("127.0.0.1:40449").unwrap(),
             udp_port: 40449,
@@ -1403,9 +1403,9 @@ mod tests {
 
     #[test]
     fn test_ping() {
-        let key1 = Random.generate().unwrap();
-        let key2 = Random.generate().unwrap();
-        let key3 = Random.generate().unwrap();
+        let key1 = Random.generate();
+        let key2 = Random.generate();
+        let key3 = Random.generate();
         let ep1 = NodeEndpoint {
             address: SocketAddr::from_str("127.0.0.1:40344").unwrap(),
             udp_port: 40344,

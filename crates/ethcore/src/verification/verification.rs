@@ -28,7 +28,7 @@ use std::{
 
 use bytes::Bytes;
 use hash::keccak;
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::Rlp;
 use triehash::ordered_trie_root;
 use unexpected::{Mismatch, OutOfBounds};
@@ -44,6 +44,7 @@ use verification::queue::kind::blocks::Unverified;
 use time_utils::CheckedSystemTime;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
+#[derive(MallocSizeOf)]
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
@@ -53,14 +54,6 @@ pub struct PreverifiedBlock {
     pub uncles: Vec<Header>,
     /// Block bytes
     pub bytes: Bytes,
-}
-
-impl HeapSizeOf for PreverifiedBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.bytes.heap_size_of_children()
-    }
 }
 
 /// t_nb 4.0 Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
@@ -90,7 +83,16 @@ pub fn verify_block_basic(
         }
     }
 
-    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura) TODO added in new version
+    // t_nb 4.6 call engine.gas_limit_override (Used only by Aura)
+    if let Some(expected_gas_limit) = engine.gas_limit_override(&block.header) {
+        if block.header.gas_limit() != &expected_gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(expected_gas_limit),
+                max: Some(expected_gas_limit),
+                found: *block.header.gas_limit(),
+            })));
+        }
+    }
 
     // t_nb 4.7 for every transaction call engine.verify_transaction_basic
     for t in &block.transactions {
@@ -293,7 +295,7 @@ fn verify_uncles(
                 )));
             }
 
-            let uncle_parent = uncle_parent.decode()?;
+            let uncle_parent = uncle_parent.decode(engine.params().eip1559_transition)?;
             verify_parent(&uncle, &uncle_parent, engine)?;
             engine.verify_block_family(&uncle, &uncle_parent)?;
             verified.insert(uncle.hash());
@@ -358,6 +360,8 @@ pub fn verify_header_params(
             found: header.number(),
         })));
     }
+
+    // check if the block used too much gas
     if header.gas_used() > header.gas_limit() {
         return Err(From::from(BlockError::TooMuchGasUsed(OutOfBounds {
             max: Some(*header.gas_limit()),
@@ -365,25 +369,26 @@ pub fn verify_header_params(
             found: *header.gas_used(),
         })));
     }
-    let min_gas_limit = engine.params().min_gas_limit;
-    if header.gas_limit() < &min_gas_limit {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas_limit),
-            max: None,
-            found: *header.gas_limit(),
-        })));
-    }
-    if let Some(limit) = engine.maximum_gas_limit() {
-        if header.gas_limit() > &limit {
-            return Err(From::from(::error::BlockError::InvalidGasLimit(
-                OutOfBounds {
+    if engine.gas_limit_override(header).is_none() {
+        let min_gas_limit = engine.min_gas_limit();
+        if header.gas_limit() < &min_gas_limit {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas_limit),
+                max: None,
+                found: *header.gas_limit(),
+            })));
+        }
+        if let Some(limit) = engine.maximum_gas_limit() {
+            if header.gas_limit() > &limit {
+                return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
                     min: None,
                     max: Some(limit),
                     found: *header.gas_limit(),
-                },
-            )));
+                })));
+            }
         }
     }
+
     let maximum_extra_data_size = engine.maximum_extra_data_size();
     if header.number() != 0 && header.extra_data().len() > maximum_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
@@ -442,8 +447,6 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         "Parent hash should already have been verified; qed"
     );
 
-    let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
-
     if !engine.is_timestamp_valid(header.timestamp(), parent.timestamp()) {
         let now = SystemTime::now();
         let min = CheckedSystemTime::checked_add(
@@ -475,16 +478,30 @@ fn verify_parent(header: &Header, parent: &Header, engine: &dyn EthEngine) -> Re
         .into());
     }
 
-    let parent_gas_limit = *parent.gas_limit();
-    let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
-    let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
-    if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
-        return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
-            min: Some(min_gas),
-            max: Some(max_gas),
-            found: *header.gas_limit(),
-        })));
+    // check if the block changed the gas limit too much
+    if engine.gas_limit_override(header).is_none() {
+        let gas_limit_divisor = engine.params().gas_limit_bound_divisor;
+        let parent_gas_limit =
+            parent.gas_limit() * engine.schedule(header.number()).eip1559_gas_limit_bump;
+        let min_gas = parent_gas_limit - parent_gas_limit / gas_limit_divisor;
+        let max_gas = parent_gas_limit + parent_gas_limit / gas_limit_divisor;
+        if header.gas_limit() <= &min_gas || header.gas_limit() >= &max_gas {
+            return Err(From::from(BlockError::InvalidGasLimit(OutOfBounds {
+                min: Some(min_gas),
+                max: Some(max_gas),
+                found: *header.gas_limit(),
+            })));
+        }
     }
+
+    // check if the base fee is correct
+    let expected_base_fee = engine.calculate_base_fee(parent);
+    if expected_base_fee != header.base_fee() {
+        return Err(From::from(BlockError::IncorrectBaseFee(Mismatch {
+            expected: expected_base_fee.unwrap_or_default(),
+            found: header.base_fee().unwrap_or_default(),
+        })));
+    };
 
     Ok(())
 }
@@ -524,10 +541,10 @@ mod tests {
     use super::*;
 
     use blockchain::{BlockDetails, BlockReceipts, TransactionAddress};
+    use crypto::publickey::{Generator, Random};
     use engines::EthEngine;
     use error::{BlockError::*, ErrorKind};
-    use ethereum_types::{BloomRef, H256, U256};
-    use ethkey::{Generator, Random};
+    use ethereum_types::{Address, BloomRef, H256, U256};
     use hash::keccak;
     use rlp;
     use spec::{CommonParams, Spec};
@@ -595,7 +612,9 @@ mod tests {
         }
 
         pub fn insert(&mut self, bytes: Bytes) {
-            let header = Unverified::from_rlp(bytes.clone()).unwrap().header;
+            let header = Unverified::from_rlp(bytes.clone(), BlockNumber::max_value())
+                .unwrap()
+                .header;
             let hash = header.hash();
             self.blocks.insert(hash, bytes);
             self.numbers.insert(header.number(), hash);
@@ -635,7 +654,9 @@ mod tests {
         /// Get the familial details concerning a block.
         fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
             self.blocks.get(hash).map(|bytes| {
-                let header = Unverified::from_rlp(bytes.to_vec()).unwrap().header;
+                let header = Unverified::from_rlp(bytes.to_vec(), BlockNumber::max_value())
+                    .unwrap()
+                    .header;
                 BlockDetails {
                     number: header.number(),
                     total_difficulty: *header.difficulty(),
@@ -689,7 +710,7 @@ mod tests {
     }
 
     fn basic_test(bytes: &[u8], engine: &dyn EthEngine) -> Result<(), Error> {
-        let unverified = Unverified::from_rlp(bytes.to_vec())?;
+        let unverified = Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition)?;
         verify_block_basic(&unverified, engine, true)
     }
 
@@ -697,7 +718,8 @@ mod tests {
     where
         BC: BlockProvider,
     {
-        let block = Unverified::from_rlp(bytes.to_vec()).unwrap();
+        let block =
+            Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition).unwrap();
         let header = block.header;
         let transactions: Vec<_> = block
             .transactions
@@ -713,7 +735,7 @@ mod tests {
         let parent = bc
             .block_header_data(header.parent_hash())
             .ok_or(BlockError::UnknownParent(*header.parent_hash()))?
-            .decode()?;
+            .decode(engine.params().eip1559_transition)?;
 
         let block = PreverifiedBlock {
             header,
@@ -731,7 +753,7 @@ mod tests {
     }
 
     fn unordered_test(bytes: &[u8], engine: &dyn EthEngine) -> Result<(), Error> {
-        let un = Unverified::from_rlp(bytes.to_vec())?;
+        let un = Unverified::from_rlp(bytes.to_vec(), engine.params().eip1559_transition)?;
         verify_block_unordered(un, engine, false)?;
         Ok(())
     }
@@ -747,7 +769,7 @@ mod tests {
             // that's an invalid transaction list rlp
             let invalid_transactions = vec![vec![0u8]];
             header.set_transactions_root(ordered_trie_root(&invalid_transactions));
-            header.set_gas_limit(engine.params().min_gas_limit);
+            header.set_gas_limit(engine.min_gas_limit());
             rlp.append(&header);
             rlp.append_list::<Vec<u8>, _>(&invalid_transactions);
             rlp.append_raw(&rlp::EMPTY_LIST_RLP, 1);
@@ -766,12 +788,12 @@ mod tests {
         let spec = Spec::new_test();
         let engine = &*spec.engine;
 
-        let min_gas_limit = engine.params().min_gas_limit;
+        let min_gas_limit = engine.min_gas_limit();
         good.set_gas_limit(min_gas_limit);
         good.set_timestamp(40);
         good.set_number(10);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
 
         let tr1 = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
@@ -794,7 +816,7 @@ mod tests {
         .sign(keypair.secret(), None);
 
         let tr3 = TypedTransaction::Legacy(Transaction {
-            action: Action::Call(0x0.into()),
+            action: Action::Call(Address::from_low_u64_be(0x0)),
             value: U256::from(0),
             data: Bytes::new(),
             gas: U256::from(30_000),
@@ -871,7 +893,7 @@ mod tests {
         bad_header.set_transactions_root(eip86_transactions_root.clone());
         bad_header.set_uncles_hash(good_uncles_hash.clone());
         match basic_test(&create_test_block_with_data(&bad_header, &eip86_transactions, &good_uncles), engine) {
-			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &::ethkey::Error::InvalidSignature.into() => (),
+			Err(Error(ErrorKind::Transaction(ref e), _)) if e == &crypto::publickey::Error::InvalidSignature.into() => (),
 			e => panic!("Block verification failed.\nExpected: Transaction Error (Invalid Signature)\nGot: {:?}", e),
 		}
 
@@ -1102,8 +1124,8 @@ mod tests {
 
     #[test]
     fn dust_protection() {
+        use crypto::publickey::{Generator, Random};
         use engines::NullEngine;
-        use ethkey::{Generator, Random};
         use machine::EthereumMachine;
         use types::transaction::{Action, Transaction};
 
@@ -1114,7 +1136,7 @@ mod tests {
         let mut header = Header::default();
         header.set_number(1);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let bad_transactions: Vec<_> = (0..3)
             .map(|i| {
                 TypedTransaction::Legacy(Transaction {

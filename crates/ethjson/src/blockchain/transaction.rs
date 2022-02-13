@@ -16,9 +16,8 @@
 
 //! Blockchain test transaction deserialization.
 
-use bytes::Bytes;
+use crate::{bytes::Bytes, uint::Uint};
 use ethereum_types::{H160, H256};
-use uint::Uint;
 
 /// Blockchain test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -28,7 +27,7 @@ pub struct Transaction {
     pub transaction_type: Option<Uint>,
     pub data: Bytes,
     pub gas_limit: Uint,
-    pub gas_price: Uint,
+    pub gas_price: Option<Uint>,
     pub nonce: Uint,
     pub r: Uint,
     pub s: Uint,
@@ -36,10 +35,10 @@ pub struct Transaction {
     pub value: Uint,
     pub chain_id: Option<Uint>,
     pub access_list: Option<AccessList>,
+    pub max_fee_per_gas: Option<Uint>,
+    pub max_priority_fee_per_gas: Option<Uint>,
     pub hash: Option<H256>,
 }
-
-pub type AccessList = Vec<AccessListItem>;
 
 #[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -47,3 +46,5 @@ pub struct AccessListItem {
     pub address: H160,
     pub storage_keys: Vec<H256>,
 }
+
+pub type AccessList = Vec<AccessListItem>;

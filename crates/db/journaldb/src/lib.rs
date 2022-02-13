@@ -16,10 +16,10 @@
 
 //! `JournalDB` interface and implementation.
 
-extern crate heapsize;
 #[macro_use]
 extern crate log;
 
+extern crate ethcore_db;
 extern crate ethereum_types;
 extern crate fastmap;
 extern crate hash_db;
@@ -27,6 +27,7 @@ extern crate keccak_hasher;
 extern crate kvdb;
 extern crate memory_db;
 extern crate parity_bytes as bytes;
+extern crate parity_util_mem;
 extern crate parking_lot;
 extern crate rlp;
 
@@ -147,7 +148,7 @@ impl fmt::Display for Algorithm {
 
 /// Create a new `JournalDB` trait object over a generic key-value database.
 pub fn new(
-    backing: Arc<dyn kvdb::KeyValueDB>,
+    backing: Arc<dyn ethcore_db::KeyValueDB>,
     algorithm: Algorithm,
     col: Option<u32>,
 ) -> Box<dyn JournalDB> {

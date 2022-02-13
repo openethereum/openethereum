@@ -24,8 +24,9 @@ use std::{
 };
 
 use accounts::AccountProvider;
+use crypto::publickey::Secret;
 use ethereum_types::{Address, H160, H256, H520};
-use ethkey::{Brain, Generator, Password, Secret};
+use ethkey::{Brain, Password};
 use ethstore::KeyFile;
 use jsonrpc_core::Result;
 use v1::{
@@ -139,7 +140,7 @@ impl ParityAccounts for ParityAccountsClient {
 
     fn new_account_from_phrase(&self, phrase: String, pass: Password) -> Result<H160> {
         self.deprecation_notice("parity_newAccountFromPhrase");
-        let brain = Brain::new(phrase).generate().unwrap();
+        let brain = Brain::new(phrase).generate();
         self.accounts
             .insert_account(brain.secret().clone(), &pass)
             .map(Into::into)
@@ -157,7 +158,7 @@ impl ParityAccounts for ParityAccountsClient {
 
     fn new_account_from_secret(&self, secret: H256, pass: Password) -> Result<H160> {
         self.deprecation_notice("parity_newAccountFromSecret");
-        let secret = Secret::from_unsafe_slice(&secret.0)
+        let secret = Secret::import_key(&secret.0)
             .map_err(|e| errors::account("Could not create account.", e))?;
         self.accounts
             .insert_account(secret, &pass)

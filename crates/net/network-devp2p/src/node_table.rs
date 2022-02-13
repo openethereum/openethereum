@@ -18,7 +18,7 @@ use discovery::{NodeEntry, TableUpdates};
 use ethereum_types::H512;
 use ip_utils::*;
 use network::{AllowIP, Error, ErrorKind, IpFilter};
-use rand::{self, Rng};
+use rand::seq::SliceRandom;
 use rlp::{DecoderError, Rlp, RlpStream};
 use serde_json;
 use std::{
@@ -242,7 +242,7 @@ impl FromStr for Node {
                 NodeEndpoint::from_str(&s[137..])?,
             )
         } else {
-            (NodeId::new(), NodeEndpoint::from_str(s)?)
+            (NodeId::default(), NodeEndpoint::from_str(s)?)
         };
 
         Ok(Node {
@@ -351,7 +351,8 @@ impl NodeTable {
             a.time().cmp(&b.time())
         });
 
-        rand::thread_rng().shuffle(&mut unknown);
+        let mut rng = rand::thread_rng();
+        unknown.shuffle(&mut rng);
 
         success.append(&mut unknown);
         success.append(&mut failures);

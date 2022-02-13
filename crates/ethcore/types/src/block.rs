@@ -31,11 +31,14 @@
 //! `ExecutedBlock` is an underlaying data structure used by all structs above to store block
 //! related info.
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 
-use header::Header;
-use rlp::{Decodable, DecoderError, Rlp, RlpStream};
-use transaction::{TypedTransaction, UnverifiedTransaction};
+use crate::{
+    header::Header,
+    transaction::{TypedTransaction, UnverifiedTransaction},
+    BlockNumber,
+};
+use rlp::{DecoderError, Rlp, RlpStream};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -57,10 +60,8 @@ impl Block {
         block_rlp.append_list(&self.uncles);
         block_rlp.out()
     }
-}
 
-impl Decodable for Block {
-    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+    pub fn decode_rlp(rlp: &Rlp, eip1559_transition: BlockNumber) -> Result<Self, DecoderError> {
         if rlp.as_raw().len() != rlp.payload_info()?.total() {
             return Err(DecoderError::RlpIsTooBig);
         }
@@ -68,9 +69,9 @@ impl Decodable for Block {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         Ok(Block {
-            header: rlp.val_at(0)?,
+            header: Header::decode_rlp(&rlp.at(0)?, eip1559_transition)?,
             transactions: TypedTransaction::decode_rlp_list(&rlp.at(1)?)?,
-            uncles: rlp.list_at(2)?,
+            uncles: Header::decode_rlp_list(&rlp.at(2)?, eip1559_transition)?,
         })
     }
 }

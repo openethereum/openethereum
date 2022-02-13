@@ -18,13 +18,13 @@
 
 use block::*;
 use client::{BlockChainClient, Client, ClientConfig, *};
+use crypto::publickey::KeyPair;
 use ethereum_types::{Address, U256};
-use ethkey::KeyPair;
 use hash::keccak;
 use io::*;
 use miner::Miner;
 use spec::*;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use test_helpers::{self, get_temp_state_db};
 use trace::{trace::Action::Reward, LocalizedTrace, RewardType};
 use types::{
@@ -73,7 +73,7 @@ fn can_trace_block_and_uncle_reward() {
     let mut last_header = genesis_header.clone();
     last_hashes.push(last_header.hash());
 
-    let kp = KeyPair::from_secret_slice(&keccak("")).unwrap();
+    let kp = KeyPair::from_secret_slice(keccak("").as_bytes()).unwrap();
     let author = kp.address();
 
     // Add root block first
@@ -100,14 +100,17 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    if let Err(e) = client.import_block(Unverified::from_rlp(root_block.rlp_bytes()).unwrap()) {
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(root_block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    ) {
         panic!(
             "error importing block which is valid by definition: {:?}",
             e
         );
     }
 
-    last_header = view!(BlockView, &root_block.rlp_bytes()).header();
+    last_header =
+        view!(BlockView, &root_block.rlp_bytes()).header(spec.params().eip1559_transition);
     let root_header = last_header.clone();
     db = root_block.drain().state.drop().1;
 
@@ -137,14 +140,17 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    if let Err(e) = client.import_block(Unverified::from_rlp(parent_block.rlp_bytes()).unwrap()) {
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(parent_block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    ) {
         panic!(
             "error importing block which is valid by definition: {:?}",
             e
         );
     }
 
-    last_header = view!(BlockView, &parent_block.rlp_bytes()).header();
+    last_header =
+        view!(BlockView, &parent_block.rlp_bytes()).header(spec.params().eip1559_transition);
     db = parent_block.drain().state.drop().1;
 
     last_hashes.push(last_header.hash());
@@ -187,7 +193,7 @@ fn can_trace_block_and_uncle_reward() {
     }
 
     let mut uncle = Header::new();
-    let uncle_author: Address = "ef2d6d194084c2de36e0dabfce45d046b37d1106".into();
+    let uncle_author = Address::from_str("ef2d6d194084c2de36e0dabfce45d046b37d1106").unwrap();
     uncle.set_author(uncle_author);
     uncle.set_parent_hash(root_header.hash());
     uncle.set_gas_limit(genesis_gas);
@@ -201,7 +207,9 @@ fn can_trace_block_and_uncle_reward() {
         .seal(engine, vec![])
         .unwrap();
 
-    let res = client.import_block(Unverified::from_rlp(block.rlp_bytes()).unwrap());
+    let res = client.import_block(
+        Unverified::from_rlp(block.rlp_bytes(), spec.params().eip1559_transition).unwrap(),
+    );
     if res.is_err() {
         panic!("error importing block: {:#?}", res.err().unwrap());
     }
@@ -243,5 +251,6 @@ fn can_trace_block_and_uncle_reward() {
 
     // Test1. Check block filter
     let traces = client.block_traces(BlockId::Number(3));
+    client.shutdown();
     assert_eq!(traces.unwrap().len(), 3);
 }

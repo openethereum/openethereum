@@ -16,9 +16,11 @@
 
 //! Transaction test deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use spec::ForkSpec;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    spec::ForkSpec,
+};
 use std::collections::BTreeMap;
 
 /// Transaction test deserialization.
@@ -42,8 +44,8 @@ pub struct PostState {
 
 #[cfg(test)]
 mod tests {
+    use super::TransactionTest;
     use serde_json;
-    use transaction::TransactionTest;
 
     #[test]
     fn transaction_deserialization() {

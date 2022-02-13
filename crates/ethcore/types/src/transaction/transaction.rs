@@ -16,19 +16,21 @@
 
 //! Transaction data structure.
 
-use ethereum_types::{Address, H160, H256, U256};
-use ethkey::{self, public_to_address, recover, Public, Secret, Signature};
-use hash::keccak;
-use heapsize::HeapSizeOf;
+use crate::{
+    crypto::publickey::{self, public_to_address, recover, Public, Secret, Signature},
+    hash::keccak,
+    transaction::error,
+};
+use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
+use parity_util_mem::MallocSizeOf;
+
 use rlp::{self, DecoderError, Rlp, RlpStream};
-use std::ops::Deref;
+use std::{cmp::min, ops::Deref};
 
 pub type AccessListItem = (H160, Vec<H256>);
 pub type AccessList = Vec<AccessListItem>;
 
 use super::TypedTxId;
-
-use transaction::error;
 
 type Bytes = Vec<u8>;
 type BlockNumber = u64;
@@ -43,7 +45,7 @@ pub const SYSTEM_ADDRESS: Address = H160([
 ]);
 
 /// Transaction action type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub enum Action {
     /// Create creates new contract.
     Create,
@@ -124,17 +126,17 @@ pub mod signature {
 
 /// A set of information describing an externally-originating message call
 /// or contract creation operation.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub struct Transaction {
     /// Nonce.
     pub nonce: U256,
-    /// Gas price.
+    /// Gas price for non 1559 transactions. MaxFeePerGas for 1559 transactions.
     pub gas_price: U256,
     /// Gas paid up front for transaction execution.
     pub gas: U256,
     /// Action, can be either call or contract create.
     pub action: Action,
-    /// Transfered value.
+    /// Transfered value.s
     pub value: U256,
     /// Transaction data.
     pub data: Bytes,
@@ -229,13 +231,7 @@ impl Transaction {
     }
 }
 
-impl HeapSizeOf for Transaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.data.heap_size_of_children()
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub struct AccessListTx {
     pub transaction: Transaction,
     //optional access list
@@ -308,7 +304,7 @@ impl AccessListTx {
             }),
             chain_id,
             signature,
-            0.into(),
+            H256::zero(),
         )
         .compute_hash())
     }
@@ -368,11 +364,149 @@ impl AccessListTx {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
+pub struct EIP1559TransactionTx {
+    pub transaction: AccessListTx,
+    pub max_priority_fee_per_gas: U256,
+}
+
+impl EIP1559TransactionTx {
+    pub fn tx_type(&self) -> TypedTxId {
+        TypedTxId::EIP1559Transaction
+    }
+
+    pub fn tx(&self) -> &Transaction {
+        &self.transaction.tx()
+    }
+
+    pub fn tx_mut(&mut self) -> &mut Transaction {
+        self.transaction.tx_mut()
+    }
+
+    // decode bytes by this payload spec: rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn decode(tx: &[u8]) -> Result<UnverifiedTransaction, DecoderError> {
+        let tx_rlp = &Rlp::new(tx);
+
+        // we need to have 12 items in this list
+        if tx_rlp.item_count()? != 12 {
+            return Err(DecoderError::RlpIncorrectListLen);
+        }
+
+        let chain_id = Some(tx_rlp.val_at(0)?);
+
+        let max_priority_fee_per_gas = tx_rlp.val_at(2)?;
+
+        let tx = Transaction {
+            nonce: tx_rlp.val_at(1)?,
+            gas_price: tx_rlp.val_at(3)?, //taken from max_fee_per_gas
+            gas: tx_rlp.val_at(4)?,
+            action: tx_rlp.val_at(5)?,
+            value: tx_rlp.val_at(6)?,
+            data: tx_rlp.val_at(7)?,
+        };
+
+        // access list we get from here
+        let accl_rlp = tx_rlp.at(8)?;
+
+        // access_list pattern: [[{20 bytes}, [{32 bytes}...]]...]
+        let mut accl: AccessList = Vec::new();
+
+        for i in 0..accl_rlp.item_count()? {
+            let accounts = accl_rlp.at(i)?;
+
+            // check if there is list of 2 items
+            if accounts.item_count()? != 2 {
+                return Err(DecoderError::Custom("Unknown access list length"));
+            }
+            accl.push((accounts.val_at(0)?, accounts.list_at(1)?));
+        }
+
+        // we get signature part from here
+        let signature = SignatureComponents {
+            standard_v: tx_rlp.val_at(9)?,
+            r: tx_rlp.val_at(10)?,
+            s: tx_rlp.val_at(11)?,
+        };
+
+        // and here we create UnverifiedTransaction and calculate its hash
+        Ok(UnverifiedTransaction::new(
+            TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+                transaction: AccessListTx::new(tx, accl),
+                max_priority_fee_per_gas,
+            }),
+            chain_id,
+            signature,
+            H256::zero(),
+        )
+        .compute_hash())
+    }
+
+    fn encode_payload(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> RlpStream {
+        let mut stream = RlpStream::new();
+
+        let list_size = if signature.is_some() { 12 } else { 9 };
+        stream.begin_list(list_size);
+
+        // append chain_id. from EIP-2930: chainId is defined to be an integer of arbitrary size.
+        stream.append(&(if let Some(n) = chain_id { n } else { 0 }));
+
+        stream.append(&self.tx().nonce);
+        stream.append(&self.max_priority_fee_per_gas);
+        stream.append(&self.tx().gas_price);
+        stream.append(&self.tx().gas);
+        stream.append(&self.tx().action);
+        stream.append(&self.tx().value);
+        stream.append(&self.tx().data);
+
+        // access list
+        stream.begin_list(self.transaction.access_list.len());
+        for access in self.transaction.access_list.iter() {
+            stream.begin_list(2);
+            stream.append(&access.0);
+            stream.begin_list(access.1.len());
+            for storage_key in access.1.iter() {
+                stream.append(storage_key);
+            }
+        }
+
+        // append signature if any
+        if let Some(signature) = signature {
+            signature.rlp_append(&mut stream);
+        }
+        stream
+    }
+
+    // encode by this payload spec: 0x02 | rlp([2, [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas(gasPrice), gasLimit, to, value, data, access_list, senderV, senderR, senderS]])
+    pub fn encode(
+        &self,
+        chain_id: Option<u64>,
+        signature: Option<&SignatureComponents>,
+    ) -> Vec<u8> {
+        let stream = self.encode_payload(chain_id, signature);
+        // make as vector of bytes
+        [&[TypedTxId::EIP1559Transaction as u8], stream.as_raw()].concat()
+    }
+
+    pub fn rlp_append(
+        &self,
+        rlp: &mut RlpStream,
+        chain_id: Option<u64>,
+        signature: &SignatureComponents,
+    ) {
+        rlp.append(&self.encode(chain_id, Some(signature)));
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub enum TypedTransaction {
-    Legacy(Transaction), // old legacy RLP encoded transaction
+    Legacy(Transaction),      // old legacy RLP encoded transaction
     AccessList(AccessListTx), // EIP-2930 Transaction with a list of addresses and storage keys that the transaction plans to access.
-                              // Accesses outside the list are possible, but become more expensive.
+    // Accesses outside the list are possible, but become more expensive.
+    EIP1559Transaction(EIP1559TransactionTx),
 }
 
 impl TypedTransaction {
@@ -380,6 +514,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,
             Self::AccessList(_) => TypedTxId::AccessList,
+            Self::EIP1559Transaction(_) => TypedTxId::EIP1559Transaction,
         }
     }
 
@@ -388,12 +523,13 @@ impl TypedTransaction {
         keccak(match self {
             Self::Legacy(tx) => tx.encode(chain_id, None),
             Self::AccessList(tx) => tx.encode(chain_id, None),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, None),
         })
     }
 
     /// Signs the transaction as coming from `sender`.
     pub fn sign(self, secret: &Secret, chain_id: Option<u64>) -> SignedTransaction {
-        let sig = ::ethkey::sign(secret, &self.signature_hash(chain_id))
+        let sig = publickey::sign(secret, &self.signature_hash(chain_id))
             .expect("data is valid and context has signing capabilities; qed");
         SignedTransaction::new(self.with_signature(sig, chain_id))
             .expect("secret is valid so it's recoverable")
@@ -409,7 +545,7 @@ impl TypedTransaction {
                 s: sig.s().into(),
                 standard_v: sig.v().into(),
             },
-            hash: 0.into(),
+            hash: H256::zero(),
         }
         .compute_hash()
     }
@@ -425,7 +561,7 @@ impl TypedTransaction {
                     s: U256::one(),
                     standard_v: 4,
                 },
-                hash: 0.into(),
+                hash: H256::zero(),
             }
             .compute_hash(),
             sender: from,
@@ -436,7 +572,6 @@ impl TypedTransaction {
     /// Legacy EIP-86 compatible empty signature.
     /// This method is used in json tests as well as
     /// signature verification tests.
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn null_sign(self, chain_id: u64) -> SignedTransaction {
         SignedTransaction {
             transaction: UnverifiedTransaction {
@@ -447,7 +582,7 @@ impl TypedTransaction {
                     s: U256::zero(),
                     standard_v: 0,
                 },
-                hash: 0.into(),
+                hash: H256::zero(),
             }
             .compute_hash(),
             sender: UNSIGNED_SENDER,
@@ -466,7 +601,7 @@ impl TypedTransaction {
                 s: U256::one(),
                 standard_v: 0,
             },
-            hash: 0.into(),
+            hash: H256::zero(),
         }
         .compute_hash()
     }
@@ -477,6 +612,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx(),
+            Self::EIP1559Transaction(tx) => tx.tx(),
         }
     }
 
@@ -484,6 +620,56 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx,
             Self::AccessList(ocl) => ocl.tx_mut(),
+            Self::EIP1559Transaction(tx) => tx.tx_mut(),
+        }
+    }
+
+    pub fn access_list(&self) -> Option<&AccessList> {
+        match self {
+            Self::EIP1559Transaction(tx) => Some(&tx.transaction.access_list),
+            Self::AccessList(tx) => Some(&tx.access_list),
+            Self::Legacy(_) => None,
+        }
+    }
+
+    pub fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
+        match self {
+            Self::EIP1559Transaction(tx) => {
+                let (v2, overflow) = tx
+                    .max_priority_fee_per_gas
+                    .overflowing_add(block_base_fee.unwrap_or_default());
+                if overflow {
+                    self.tx().gas_price
+                } else {
+                    min(self.tx().gas_price, v2)
+                }
+            }
+            Self::AccessList(_) => self.tx().gas_price,
+            Self::Legacy(_) => self.tx().gas_price,
+        }
+    }
+
+    pub fn max_priority_fee_per_gas(&self) -> U256 {
+        match self {
+            Self::EIP1559Transaction(tx) => tx.max_priority_fee_per_gas,
+            Self::AccessList(tx) => tx.tx().gas_price,
+            Self::Legacy(tx) => tx.gas_price,
+        }
+    }
+
+    pub fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256 {
+        self.effective_gas_price(block_base_fee)
+            .checked_sub(block_base_fee.unwrap_or_default())
+            .unwrap_or_default()
+    }
+
+    pub fn has_zero_gas_price(&self) -> bool {
+        match self {
+            Self::EIP1559Transaction(tx) => {
+                tx.tx().gas_price.is_zero() && tx.max_priority_fee_per_gas.is_zero()
+            }
+            Self::AccessList(tx) => tx.tx().gas_price.is_zero(),
+            Self::Legacy(tx) => tx.gas_price.is_zero(),
         }
     }
 
@@ -498,6 +684,7 @@ impl TypedTransaction {
         }
         // other transaction types
         match id.unwrap() {
+            TypedTxId::EIP1559Transaction => EIP1559TransactionTx::decode(&tx[1..]),
             TypedTxId::AccessList => AccessListTx::decode(&tx[1..]),
             TypedTxId::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
         }
@@ -548,6 +735,7 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.rlp_append(s, chain_id, signature),
             Self::AccessList(opt) => opt.rlp_append(s, chain_id, signature),
+            Self::EIP1559Transaction(tx) => tx.rlp_append(s, chain_id, signature),
         }
     }
 
@@ -563,29 +751,21 @@ impl TypedTransaction {
         match self {
             Self::Legacy(tx) => tx.encode(chain_id, signature),
             Self::AccessList(opt) => opt.encode(chain_id, signature),
-        }
-    }
-}
-
-impl HeapSizeOf for TypedTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        match self {
-            TypedTransaction::Legacy(legacy) => legacy.heap_size_of_children(),
-            TypedTransaction::AccessList(oal) => oal.tx().heap_size_of_children(),
+            Self::EIP1559Transaction(tx) => tx.encode(chain_id, signature),
         }
     }
 }
 
 /// Components that constitute transaction signature
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub struct SignatureComponents {
     /// The V field of the signature; the LS bit described which half of the curve our point falls
     /// in. It can be 0 or 1.
-    standard_v: u8,
+    pub standard_v: u8,
     /// The R field of the signature; helps describe the point on the curve.
-    r: U256,
+    pub r: U256,
     /// The S field of the signature; helps describe the point on the curve.
-    s: U256,
+    pub s: U256,
 }
 
 impl SignatureComponents {
@@ -606,22 +786,16 @@ impl SignatureComponents {
 }
 
 /// Signed transaction information without verified signature.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub struct UnverifiedTransaction {
     /// Plain Transaction.
-    unsigned: TypedTransaction,
+    pub unsigned: TypedTransaction,
     /// Transaction signature
-    signature: SignatureComponents,
+    pub signature: SignatureComponents,
     /// chain_id recover from signature in legacy transaction. For TypedTransaction it is probably separate field.
-    chain_id: Option<u64>,
+    pub chain_id: Option<u64>,
     /// Hash of the transaction
-    hash: H256,
-}
-
-impl HeapSizeOf for UnverifiedTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.unsigned.heap_size_of_children()
-    }
+    pub hash: H256,
 }
 
 impl Deref for UnverifiedTransaction {
@@ -649,7 +823,7 @@ impl UnverifiedTransaction {
     }
 
     /// Used to compute hash of created transactions.
-    fn compute_hash(mut self) -> UnverifiedTransaction {
+    pub fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = keccak(&*self.encode());
         self.hash = hash;
         self
@@ -704,17 +878,15 @@ impl UnverifiedTransaction {
 
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> Signature {
-        Signature::from_rsv(
-            &self.signature.r.into(),
-            &self.signature.s.into(),
-            self.standard_v(),
-        )
+        let r: H256 = BigEndianHash::from_uint(&self.signature.r);
+        let s: H256 = BigEndianHash::from_uint(&self.signature.s);
+        Signature::from_rsv(&r, &s, self.standard_v())
     }
 
     /// Checks whether the signature has a low 's' value.
-    pub fn check_low_s(&self) -> Result<(), ethkey::Error> {
+    pub fn check_low_s(&self) -> Result<(), publickey::Error> {
         if !self.signature().is_low_s() {
-            Err(ethkey::Error::InvalidSignature.into())
+            Err(publickey::Error::InvalidSignature.into())
         } else {
             Ok(())
         }
@@ -726,7 +898,7 @@ impl UnverifiedTransaction {
     }
 
     /// Recovers the public key of the sender.
-    pub fn recover_public(&self) -> Result<Public, ethkey::Error> {
+    pub fn recover_public(&self) -> Result<Public, publickey::Error> {
         Ok(recover(
             &self.signature(),
             &self.unsigned.signature_hash(self.chain_id()),
@@ -740,7 +912,7 @@ impl UnverifiedTransaction {
         chain_id: Option<u64>,
     ) -> Result<(), error::Error> {
         if self.is_unsigned() {
-            return Err(ethkey::Error::InvalidSignature.into());
+            return Err(publickey::Error::InvalidSignature.into());
         }
         if check_low_s {
             self.check_low_s()?;
@@ -755,17 +927,11 @@ impl UnverifiedTransaction {
 }
 
 /// A `UnverifiedTransaction` with successfully recovered `sender`.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, MallocSizeOf)]
 pub struct SignedTransaction {
     transaction: UnverifiedTransaction,
     sender: Address,
     public: Option<Public>,
-}
-
-impl HeapSizeOf for SignedTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.transaction.heap_size_of_children()
-    }
 }
 
 impl Deref for SignedTransaction {
@@ -783,9 +949,9 @@ impl From<SignedTransaction> for UnverifiedTransaction {
 
 impl SignedTransaction {
     // t_nb 5.3.1 Try to verify transaction and recover sender.
-    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, ethkey::Error> {
+    pub fn new(transaction: UnverifiedTransaction) -> Result<Self, publickey::Error> {
         if transaction.is_unsigned() {
-            return Err(ethkey::Error::InvalidSignature);
+            return Err(publickey::Error::InvalidSignature);
         }
         let public = transaction.recover_public()?;
         let sender = public_to_address(&public);
@@ -903,8 +1069,9 @@ impl From<SignedTransaction> for PendingTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::U256;
-    use hash::keccak;
+    use crate::hash::keccak;
+    use ethereum_types::{H160, U256};
+    use std::str::FromStr;
 
     #[test]
     fn sender_test() {
@@ -915,14 +1082,17 @@ mod tests {
         assert_eq!(t.tx().gas_price, U256::from(0x01u64));
         assert_eq!(t.tx().nonce, U256::from(0x00u64));
         if let Action::Call(ref to) = t.tx().action {
-            assert_eq!(*to, "095e7baea6a6c7c4c2dfeb977efac326af552d87".into());
+            assert_eq!(
+                *to,
+                H160::from_str("095e7baea6a6c7c4c2dfeb977efac326af552d87").unwrap()
+            );
         } else {
             panic!();
         }
         assert_eq!(t.tx().value, U256::from(0x0au64));
         assert_eq!(
             public_to_address(&t.recover_public().unwrap()),
-            "0f65fe9276bc9a24ae7083ae28e2660ef72df99e".into()
+            H160::from_str("0f65fe9276bc9a24ae7083ae28e2660ef72df99e").unwrap()
         );
         assert_eq!(t.chain_id(), None);
     }
@@ -943,9 +1113,9 @@ mod tests {
 
     #[test]
     fn signing_eip155_zero_chainid() {
-        use ethkey::{Generator, Random};
+        use self::publickey::{Generator, Random};
 
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
@@ -956,7 +1126,7 @@ mod tests {
         });
 
         let hash = t.signature_hash(Some(0));
-        let sig = ::ethkey::sign(&key.secret(), &hash).unwrap();
+        let sig = publickey::sign(&key.secret(), &hash).unwrap();
         let u = t.with_signature(sig, Some(0));
 
         assert!(SignedTransaction::new(u).is_ok());
@@ -964,9 +1134,9 @@ mod tests {
 
     #[test]
     fn signing() {
-        use ethkey::{Generator, Random};
+        use self::publickey::{Generator, Random};
 
-        let key = Random.generate().unwrap();
+        let key = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
@@ -990,12 +1160,12 @@ mod tests {
             value: U256::from(1),
             data: b"Hello!".to_vec(),
         })
-        .fake_sign(Address::from(0x69));
-        assert_eq!(Address::from(0x69), t.sender());
+        .fake_sign(Address::from_low_u64_be(0x69));
+        assert_eq!(Address::from_low_u64_be(0x69), t.sender());
         assert_eq!(t.chain_id(), None);
 
         let t = t.clone();
-        assert_eq!(Address::from(0x69), t.sender());
+        assert_eq!(Address::from_low_u64_be(0x69), t.sender());
         assert_eq!(t.chain_id(), None);
     }
 
@@ -1014,19 +1184,17 @@ mod tests {
         })
         .null_sign(1);
 
-        println!("transaction {:?}", t);
-
         let res = SignedTransaction::new(t.transaction);
         match res {
-            Err(ethkey::Error::InvalidSignature) => {}
+            Err(publickey::Error::InvalidSignature) => {}
             _ => panic!("null signature should be rejected"),
         }
     }
 
     #[test]
     fn should_recover_from_chain_specific_signing() {
-        use ethkey::{Generator, Random};
-        let key = Random.generate().unwrap();
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
         let t = TypedTransaction::Legacy(Transaction {
             action: Action::Create,
             nonce: U256::from(42),
@@ -1042,8 +1210,8 @@ mod tests {
 
     #[test]
     fn should_encode_decode_access_list_tx() {
-        use ethkey::{Generator, Random};
-        let key = Random.generate().unwrap();
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
         let t = TypedTransaction::AccessList(AccessListTx::new(
             Transaction {
                 action: Action::Create,
@@ -1054,8 +1222,11 @@ mod tests {
                 data: b"Hello!".to_vec(),
             },
             vec![
-                (H160::from(10), vec![H256::from(102), H256::from(103)]),
-                (H160::from(400), vec![]),
+                (
+                    H160::from_low_u64_be(10),
+                    vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                ),
+                (H160::from_low_u64_be(400), vec![]),
             ],
         ))
         .sign(&key.secret(), Some(69));
@@ -1069,7 +1240,49 @@ mod tests {
     }
 
     #[test]
+    fn should_encode_decode_eip1559_tx() {
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    nonce: U256::from(42),
+                    gas_price: U256::from(3000),
+                    gas: U256::from(50_000),
+                    value: U256::from(1),
+                    data: b"Hello!".to_vec(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: U256::from(100),
+        })
+        .sign(&key.secret(), Some(69));
+        let encoded = t.encode();
+
+        let t_new =
+            TypedTransaction::decode(&encoded).expect("Error on UnverifiedTransaction decoder");
+        if t_new.unsigned != t.unsigned {
+            assert!(true, "encoded/decoded tx differs from original");
+        }
+    }
+
+    #[test]
     fn should_decode_access_list_in_rlp() {
+        use rustc_hex::FromHex;
+        let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
+        let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
+            .expect("decoding tx data failed");
+    }
+
+    #[test]
+    fn should_decode_eip1559_in_rlp() {
         use rustc_hex::FromHex;
         let encoded_tx = "b8cb01f8a7802a820bb882c35080018648656c6c6f21f872f85994000000000000000000000000000000000000000af842a00000000000000000000000000000000000000000000000000000000000000066a00000000000000000000000000000000000000000000000000000000000000067d6940000000000000000000000000000000000000190c080a00ea0f1fda860320f51e182fe68ea90a8e7611653d3975b9301580adade6b8aa4a023530a1a96e0f15f90959baf1cd2d9114f7c7568ac7d77f4413c0a6ca6cdac74";
         let _ = TypedTransaction::decode_rlp(&Rlp::new(&FromHex::from_hex(encoded_tx).unwrap()))
@@ -1116,19 +1329,55 @@ mod tests {
             let signed = TypedTransaction::decode(&FromHex::from_hex(tx_data).unwrap())
                 .expect("decoding tx data failed");
             let signed = SignedTransaction::new(signed).unwrap();
-            assert_eq!(signed.sender(), address.into());
-            println!("chainid: {:?}", signed.chain_id());
+            assert_eq!(signed.sender(), H160::from_str(address).unwrap());
         };
 
-        test_vector("f864808504a817c800825208943535353535353535353535353535353535353535808025a0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116da0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d", "0xf0f6f18bca1b28cd68e4357452947e021241e9ce");
-        test_vector("f864018504a817c80182a410943535353535353535353535353535353535353535018025a0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bcaa0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6", "0x23ef145a395ea3fa3deb533b8a9e1b4c6c25d112");
-        test_vector("f864028504a817c80282f618943535353535353535353535353535353535353535088025a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5", "0x2e485e0c23b4c3c542628a5f672eeab0ad4888be");
-        test_vector("f865038504a817c803830148209435353535353535353535353535353535353535351b8025a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4e0a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4de", "0x82a88539669a3fd524d669e858935de5e5410cf0");
-        test_vector("f865048504a817c80483019a28943535353535353535353535353535353535353535408025a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c063a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060", "0xf9358f2538fd5ccfeb848b64a96b743fcc930554");
-        test_vector("f865058504a817c8058301ec309435353535353535353535353535353535353535357d8025a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1", "0xa8f7aba377317440bc5b26198a363ad22af1f3a4");
-        test_vector("f866068504a817c80683023e3894353535353535353535353535353535353535353581d88025a06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2fa06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2d", "0xf1f571dc362a0e5b2696b8e775f8491d3e50de35");
-        test_vector("f867078504a817c807830290409435353535353535353535353535353535353535358201578025a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021", "0xd37922162ab7cea97c97a87551ed02c9a38b7332");
-        test_vector("f867088504a817c8088302e2489435353535353535353535353535353535353535358202008025a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c12a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c10", "0x9bddad43f934d313c2b79ca28a432dd2b7281029");
-        test_vector("f867098504a817c809830334509435353535353535353535353535353535353535358202d98025a052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afba052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afb", "0x3c24d7329e92f84f08556ceb6df1cdb0104ca49f");
+        test_vector("f864808504a817c800825208943535353535353535353535353535353535353535808025a0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116da0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d", "f0f6f18bca1b28cd68e4357452947e021241e9ce");
+        test_vector("f864018504a817c80182a410943535353535353535353535353535353535353535018025a0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bcaa0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6", "23ef145a395ea3fa3deb533b8a9e1b4c6c25d112");
+        test_vector("f864028504a817c80282f618943535353535353535353535353535353535353535088025a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5", "2e485e0c23b4c3c542628a5f672eeab0ad4888be");
+        test_vector("f865038504a817c803830148209435353535353535353535353535353535353535351b8025a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4e0a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4de", "82a88539669a3fd524d669e858935de5e5410cf0");
+        test_vector("f865048504a817c80483019a28943535353535353535353535353535353535353535408025a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c063a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060", "f9358f2538fd5ccfeb848b64a96b743fcc930554");
+        test_vector("f865058504a817c8058301ec309435353535353535353535353535353535353535357d8025a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1", "a8f7aba377317440bc5b26198a363ad22af1f3a4");
+        test_vector("f866068504a817c80683023e3894353535353535353535353535353535353535353581d88025a06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2fa06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2d", "f1f571dc362a0e5b2696b8e775f8491d3e50de35");
+        test_vector("f867078504a817c807830290409435353535353535353535353535353535353535358201578025a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021", "d37922162ab7cea97c97a87551ed02c9a38b7332");
+        test_vector("f867088504a817c8088302e2489435353535353535353535353535353535353535358202008025a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c12a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c10", "9bddad43f934d313c2b79ca28a432dd2b7281029");
+        test_vector("f867098504a817c809830334509435353535353535353535353535353535353535358202d98025a052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afba052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afb", "3c24d7329e92f84f08556ceb6df1cdb0104ca49f");
+    }
+
+    #[test]
+    fn should_not_panic_on_effective_gas_price_overflow() {
+        use self::publickey::{Generator, Random};
+        let key = Random.generate();
+        let gas_price /* 2**256 - 1 */ = U256::from(340282366920938463463374607431768211455u128)
+            * U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128)
+            + U256::from(340282366920938463463374607431768211455u128);
+        let t = TypedTransaction::EIP1559Transaction(EIP1559TransactionTx {
+            transaction: AccessListTx::new(
+                Transaction {
+                    action: Action::Create,
+                    nonce: U256::from(42),
+                    gas_price,
+                    gas: U256::from(50_000),
+                    value: U256::from(1),
+                    data: b"Hello!".to_vec(),
+                },
+                vec![
+                    (
+                        H160::from_low_u64_be(10),
+                        vec![H256::from_low_u64_be(102), H256::from_low_u64_be(103)],
+                    ),
+                    (H160::from_low_u64_be(400), vec![]),
+                ],
+            ),
+            max_priority_fee_per_gas: gas_price,
+        })
+        .sign(&key.secret(), Some(69));
+
+        let result = t.transaction.effective_gas_price(Some(124.into()));
+        assert_eq!(
+            gas_price, result,
+            "Invalid effective gas price, when max_priority_fee_per_gas is U256::max"
+        );
     }
 }

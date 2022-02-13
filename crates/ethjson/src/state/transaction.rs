@@ -16,10 +16,12 @@
 
 //! State test transaction deserialization.
 
-use bytes::Bytes;
-use hash::{Address, H256};
-use maybe::MaybeEmpty;
-use uint::Uint;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, H256},
+    maybe::MaybeEmpty,
+    uint::Uint,
+};
 
 /// State test transaction deserialization.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -30,7 +32,7 @@ pub struct Transaction {
     /// Gas limit.
     pub gas_limit: Uint,
     /// Gas price.
-    pub gas_price: Uint,
+    pub gas_price: Option<Uint>,
     /// Nonce.
     pub nonce: Uint,
     /// Secret key.
@@ -40,12 +42,16 @@ pub struct Transaction {
     pub to: MaybeEmpty<Address>,
     /// Value.
     pub value: Uint,
+    /// Max fee per gas.
+    pub max_fee_per_gas: Option<Uint>,
+    /// Max priority fee per gas.
+    pub max_priority_fee_per_gas: Option<Uint>,
 }
 
 #[cfg(test)]
 mod tests {
+    use super::Transaction;
     use serde_json;
-    use state::Transaction;
 
     #[test]
     fn transaction_deserialization() {

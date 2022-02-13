@@ -15,6 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethereum_types::U256;
+use hash::KECCAK_EMPTY;
 use txpool;
 use types::transaction::{self, PendingTransaction};
 
@@ -46,6 +47,8 @@ fn new_queue() -> TransactionQueue {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     )
@@ -64,6 +67,8 @@ fn should_return_correct_nonces_when_dropped_because_of_limit() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -124,6 +129,8 @@ fn should_never_drop_local_transactions_from_different_senders() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -263,6 +270,71 @@ fn should_import_transaction_below_min_gas_price_threshold_if_local() {
 
     // when
     let res = txq.import(TestClient::new(), vec![tx.signed().local()]);
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 1);
+}
+
+#[test]
+fn should_reject_transaction_from_non_eoa_if_non_eoa_sender_is_not_allowed() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+    let code_hash = [
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f,
+        0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a,
+        0x0f, 0x0e,
+    ];
+
+    // when
+    let res = txq.import(
+        TestClient::new().with_code_hash(code_hash),
+        vec![tx.signed().unverified()],
+    );
+
+    // then
+    assert_eq!(res, vec![Err(transaction::Error::SenderIsNotEOA)]);
+    assert_eq!(txq.status().status.transaction_count, 0);
+}
+
+#[test]
+fn should_import_transaction_from_non_eoa_if_non_eoa_sender_is_allowed() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+    let code_hash = [
+        0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f,
+        0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a, 0x0f, 0x0e, 0x0c, 0x0a,
+        0x0f, 0x0e,
+    ];
+    txq.set_verifier_options(verifier::Options {
+        allow_non_eoa_sender: true,
+        ..Default::default()
+    });
+
+    // when
+    let res = txq.import(
+        TestClient::new().with_code_hash(code_hash),
+        vec![tx.signed().unverified()],
+    );
+
+    // then
+    assert_eq!(res, vec![Ok(())]);
+    assert_eq!(txq.status().status.transaction_count, 1);
+}
+
+#[test]
+fn should_import_transaction_if_account_code_hash_is_keccak_empty() {
+    // given
+    let txq = new_queue();
+    let tx = Tx::default();
+
+    // when
+    let res = txq.import(
+        TestClient::new().with_code_hash(KECCAK_EMPTY),
+        vec![tx.signed().unverified()],
+    );
 
     // then
     assert_eq!(res, vec![Ok(())]);
@@ -541,6 +613,8 @@ fn should_prefer_current_transactions_when_hitting_the_limit() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -898,6 +972,7 @@ fn should_not_return_transactions_over_nonce_cap() {
             nonce_cap: Some(123.into()),
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
+            includable_boundary: Default::default(),
         },
     );
 
@@ -932,6 +1007,7 @@ fn should_return_cached_pending_even_if_unordered_is_requested() {
             nonce_cap: None,
             max_len: 3,
             ordering: PendingOrdering::Unordered,
+            includable_boundary: Default::default(),
         },
     );
 
@@ -960,6 +1036,7 @@ fn should_return_unordered_and_not_populate_the_cache() {
             nonce_cap: None,
             max_len: usize::max_value(),
             ordering: PendingOrdering::Unordered,
+            includable_boundary: Default::default(),
         },
     );
 
@@ -1035,6 +1112,8 @@ fn should_include_local_transaction_to_a_full_pool() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1067,6 +1146,8 @@ fn should_avoid_verifying_transaction_already_in_pool() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1102,6 +1183,8 @@ fn should_avoid_reverifying_recently_rejected_transactions() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1150,6 +1233,8 @@ fn should_reject_early_in_case_gas_price_is_less_than_min_effective() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: false,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );
@@ -1192,6 +1277,8 @@ fn should_not_reject_early_in_case_gas_price_is_less_than_min_effective() {
             block_gas_limit: 1_000_000.into(),
             tx_gas_limit: 1_000_000.into(),
             no_early_reject: true,
+            block_base_fee: None,
+            allow_non_eoa_sender: false,
         },
         PrioritizationStrategy::GasPriceOnly,
     );

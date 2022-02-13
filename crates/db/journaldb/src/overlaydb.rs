@@ -23,10 +23,10 @@ use std::{
 };
 
 use super::error_negatively_reference_hash;
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use ethereum_types::H256;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
-use kvdb::{DBTransaction, DBValue, KeyValueDB};
 use memory_db::*;
 use rlp::{decode, encode, Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
@@ -88,7 +88,7 @@ impl OverlayDB {
     /// Create a new instance of OverlayDB with an anonymous temporary database.
     #[cfg(test)]
     pub fn new_temp() -> OverlayDB {
-        let backing = Arc::new(::kvdb_memorydb::create(0));
+        let backing = Arc::new(ethcore_db::InMemoryWithMetrics::create(0));
         Self::new(backing, None)
     }
 
@@ -149,7 +149,7 @@ impl OverlayDB {
     /// Get the refs and value of the given key.
     fn payload(&self, key: &H256) -> Option<Payload> {
         self.backing
-            .get(self.column, key)
+            .get(self.column, key.as_bytes())
             .expect("Low-level database error. Some issue with your hard disk?")
             .map(|ref d| decode(d).expect("decoding db value failed"))
     }
@@ -162,10 +162,10 @@ impl OverlayDB {
         payload: &Payload,
     ) -> bool {
         if payload.count > 0 {
-            batch.put(self.column, key, &encode(payload));
+            batch.put(self.column, key.as_bytes(), &encode(payload));
             false
         } else {
-            batch.delete(self.column, key);
+            batch.delete(self.column, key.as_bytes());
             true
         }
     }

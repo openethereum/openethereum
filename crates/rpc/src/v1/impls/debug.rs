@@ -52,6 +52,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
             .map(|(block, reason)| {
                 let number = block.header.number();
                 let hash = block.header.hash();
+                let base_fee = block.header.base_fee();
                 RichBlock {
                     inner: Block {
                         hash: Some(hash),
@@ -76,6 +77,7 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                             .cloned()
                             .map(Into::into)
                             .collect(),
+                        base_fee_per_gas: base_fee,
                         uncles: block.uncles.iter().map(Header::hash).collect(),
                         transactions: BlockTransactions::Full(
                             block
@@ -83,13 +85,16 @@ impl<C: BlockChainClient + 'static> Debug for DebugClient<C> {
                                 .into_iter()
                                 .enumerate()
                                 .map(|(transaction_index, signed)| {
-                                    Transaction::from_localized(LocalizedTransaction {
-                                        block_number: number,
-                                        block_hash: hash,
-                                        transaction_index,
-                                        signed,
-                                        cached_sender: None,
-                                    })
+                                    Transaction::from_localized(
+                                        LocalizedTransaction {
+                                            block_number: number,
+                                            block_hash: hash,
+                                            transaction_index,
+                                            signed,
+                                            cached_sender: None,
+                                        },
+                                        base_fee,
+                                    )
                                 })
                                 .collect(),
                         ),

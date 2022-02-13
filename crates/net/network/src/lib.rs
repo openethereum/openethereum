@@ -50,8 +50,8 @@ pub use error::{DisconnectReason, Error, ErrorKind};
 pub use io::TimerToken;
 
 use client_version::ClientVersion;
+use crypto::publickey::Secret;
 use ethereum_types::{H512, U64};
-use ethkey::Secret;
 use ipnetwork::{IpNetwork, IpNetworkError};
 use rlp::{Decodable, DecoderError, Rlp};
 use std::{

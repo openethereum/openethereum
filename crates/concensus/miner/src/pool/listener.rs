@@ -124,6 +124,7 @@ impl txpool::Listener<Transaction> for Logger {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_types::H160;
     use parking_lot::Mutex;
     use txpool::Listener;
     use types::transaction;
@@ -166,7 +167,7 @@ mod tests {
             gas_price: 5.into(),
             value: 0.into(),
         })
-        .fake_sign(5.into());
+        .fake_sign(H160::from_low_u64_be(5));
 
         Arc::new(Transaction::from_pending_block_transaction(signed))
     }

@@ -16,10 +16,12 @@
 
 //! Blockchain deserialization.
 
-use blockchain::{block::Block, header::Header, state::State};
-use bytes::Bytes;
-use hash::H256;
-use spec::{Ethereum, ForkSpec, Genesis, Seal};
+use crate::{
+    blockchain::{block::Block, header::Header, state::State},
+    bytes::Bytes,
+    hash::H256,
+    spec::{Ethereum, ForkSpec, Genesis, Seal},
+};
 
 /// Json Block test possible engine kind.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -87,13 +89,14 @@ impl BlockChain {
             state_root: Some(self.genesis_block.state_root.clone()),
             gas_used: Some(self.genesis_block.gas_used),
             extra_data: Some(self.genesis_block.extra_data.clone()),
+            base_fee_per_gas: self.genesis_block.base_fee_per_gas,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use blockchain::blockchain::BlockChain;
+    use crate::blockchain::blockchain::BlockChain;
     use serde_json;
 
     #[test]

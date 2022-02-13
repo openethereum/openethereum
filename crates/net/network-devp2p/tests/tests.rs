@@ -19,14 +19,14 @@ extern crate ethcore_io as io;
 extern crate ethcore_network;
 extern crate ethcore_network_devp2p;
 extern crate ethereum_types;
-extern crate ethkey;
 extern crate parity_bytes;
+extern crate parity_crypto as crypto;
 extern crate parking_lot;
 
+use crypto::publickey::{Generator, Random};
 use ethcore_network::*;
 use ethcore_network_devp2p::NetworkService;
 use ethereum_types::U64;
-use ethkey::{Generator, Random};
 use io::TimerToken;
 use parity_bytes::Bytes;
 use parking_lot::Mutex;
@@ -73,11 +73,11 @@ impl TestProtocol {
     }
 
     pub fn got_timeout(&self) -> bool {
-        self.got_timeout.load(AtomicOrdering::Relaxed)
+        self.got_timeout.load(AtomicOrdering::SeqCst)
     }
 
     pub fn got_disconnect(&self) -> bool {
-        self.got_disconnect.load(AtomicOrdering::Relaxed)
+        self.got_disconnect.load(AtomicOrdering::SeqCst)
     }
 }
 
@@ -101,13 +101,13 @@ impl NetworkProtocolHandler for TestProtocol {
     }
 
     fn disconnected(&self, _io: &dyn NetworkContext, _peer: &PeerId) {
-        self.got_disconnect.store(true, AtomicOrdering::Relaxed);
+        self.got_disconnect.store(true, AtomicOrdering::SeqCst);
     }
 
     /// Timer function called after a timeout created with `NetworkContext::timeout`.
     fn timeout(&self, _io: &dyn NetworkContext, timer: TimerToken) {
         assert_eq!(timer, 0);
-        self.got_timeout.store(true, AtomicOrdering::Relaxed);
+        self.got_timeout.store(true, AtomicOrdering::SeqCst);
     }
 }
 
@@ -136,7 +136,7 @@ fn net_start_stop() {
 
 #[test]
 fn net_disconnect() {
-    let key1 = Random.generate().unwrap();
+    let key1 = Random.generate();
     let mut config1 = NetworkConfiguration::new_local();
     config1.use_secret = Some(key1.secret().clone());
     config1.boot_nodes = vec![];

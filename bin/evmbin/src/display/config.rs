@@ -16,7 +16,7 @@
 
 //! Config used by display informants
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Debug)]
 pub struct Config {
     omit_storage_output: bool,
     omit_memory_output: bool,

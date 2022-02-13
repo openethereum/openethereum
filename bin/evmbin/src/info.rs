@@ -103,7 +103,7 @@ pub fn run_action<T: Informant>(
                 Ok(r) => (Ok(r.return_data.to_vec()), Some(r.gas_left)),
                 Err(err) => (Err(err), None),
             };
-            (result.0, 0.into(), None, result.1, informant.drain())
+            (result.0, H256::zero(), None, result.1, informant.drain())
         },
     )
 }
@@ -262,6 +262,7 @@ where
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use ethereum_types::Address;
     use rustc_hex::FromHex;
     use std::sync::Arc;
     use tempdir::TempDir;
@@ -287,11 +288,11 @@ pub mod tests {
 
     #[test]
     fn should_call_account_from_spec() {
-        use display::std_json::tests::informant;
+        use display::{config::Config, std_json::tests::informant};
 
-        let (inf, res) = informant();
+        let (inf, res) = informant(Config::default());
         let mut params = ActionParams::default();
-        params.code_address = 0x20.into();
+        params.code_address = Address::from_low_u64_be(0x20);
         params.gas = 0xffff.into();
 
         let spec = ::ethcore::ethereum::load(None, include_bytes!("../res/testchain.json"));

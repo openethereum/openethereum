@@ -16,8 +16,7 @@
 
 //! Trie test deserialization.
 
-use hash::H256;
-use trie::Input;
+use crate::{hash::H256, trie::Input};
 
 /// Trie test deserialization.
 #[derive(Debug, Deserialize, PartialEq)]

@@ -16,57 +16,75 @@
 
 //! A signer used by Engines which need to sign messages.
 
+use crypto::publickey::{self, ecies, Error, Public, Signature};
 use ethereum_types::{Address, H256};
-use ethkey::{self, Signature};
+//TODO dr
 
 /// Everything that an Engine needs to sign messages.
 pub trait EngineSigner: Send + Sync {
     /// Sign a consensus message hash.
-    fn sign(&self, hash: H256) -> Result<Signature, ethkey::Error>;
+    fn sign(&self, hash: H256) -> Result<Signature, publickey::Error>;
 
     /// Signing address
     fn address(&self) -> Address;
+
+    /// Decrypt a message that was encrypted to this signer's key.
+    fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error>;
+
+    /// The signer's public key, if available.
+    fn public(&self) -> Option<Public>;
 }
 
 /// Creates a new `EngineSigner` from given key pair.
-pub fn from_keypair(keypair: ethkey::KeyPair) -> Box<dyn EngineSigner> {
+pub fn from_keypair(keypair: publickey::KeyPair) -> Box<dyn EngineSigner> {
     Box::new(Signer(keypair))
 }
 
-struct Signer(ethkey::KeyPair);
+struct Signer(publickey::KeyPair);
 
 impl EngineSigner for Signer {
-    fn sign(&self, hash: H256) -> Result<Signature, ethkey::Error> {
-        ethkey::sign(self.0.secret(), &hash)
+    fn sign(&self, hash: H256) -> Result<Signature, publickey::Error> {
+        publickey::sign(self.0.secret(), &hash)
     }
 
     fn address(&self) -> Address {
         self.0.address()
     }
+
+    fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error> {
+        ecies::decrypt(self.0.secret(), auth_data, cipher).map_err(From::from)
+    }
+
+    fn public(&self) -> Option<Public> {
+        Some(*self.0.public())
+    }
 }
 
 #[cfg(test)]
 mod test_signer {
+
+    extern crate ethkey;
+
     use std::sync::Arc;
 
+    use self::ethkey::Password;
     use accounts::{self, AccountProvider, SignError};
-    use ethkey::Password;
 
     use super::*;
 
     impl EngineSigner for (Arc<AccountProvider>, Address, Password) {
-        fn sign(&self, hash: H256) -> Result<Signature, ethkey::Error> {
+        fn sign(&self, hash: H256) -> Result<Signature, crypto::publickey::Error> {
             match self.0.sign(self.1, Some(self.2.clone()), hash) {
                 Err(SignError::NotUnlocked) => unreachable!(),
-                Err(SignError::NotFound) => Err(ethkey::Error::InvalidAddress),
-                Err(SignError::SStore(accounts::Error::EthKey(err))) => Err(err),
-                Err(SignError::SStore(accounts::Error::EthKeyCrypto(err))) => {
+                Err(SignError::NotFound) => Err(crypto::publickey::Error::InvalidAddress),
+                Err(SignError::SStore(accounts::Error::EthCryptoPublicKey(err))) => Err(err),
+                Err(SignError::SStore(accounts::Error::EthCrypto(err))) => {
                     warn!("Low level crypto error: {:?}", err);
-                    Err(ethkey::Error::InvalidSecret)
+                    Err(crypto::publickey::Error::InvalidSecretKey)
                 }
                 Err(SignError::SStore(err)) => {
                     warn!("Error signing for engine: {:?}", err);
-                    Err(ethkey::Error::InvalidSignature)
+                    Err(crypto::publickey::Error::InvalidSignature)
                 }
                 Ok(ok) => Ok(ok),
             }
@@ -74,6 +92,19 @@ mod test_signer {
 
         fn address(&self) -> Address {
             self.1
+        }
+
+        fn decrypt(&self, auth_data: &[u8], cipher: &[u8]) -> Result<Vec<u8>, Error> {
+            self.0
+                .decrypt(self.1, None, auth_data, cipher)
+                .map_err(|e| {
+                    warn!("Unable to decrypt message: {:?}", e);
+                    Error::InvalidMessage
+                })
+        }
+
+        fn public(&self) -> Option<Public> {
+            self.0.account_public(self.1, &self.2).ok()
         }
     }
 }

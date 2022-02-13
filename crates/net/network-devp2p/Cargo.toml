@@ -10,25 +10,25 @@ authors = ["Parity Technologies <admin@parity.io>"]
 log = "0.4"
 mio = "0.6.8"
 bytes = "0.4"
-rand = "0.4"
+rand = "0.7.3"
 tiny-keccak = "1.4"
 rust-crypto = "0.2.34"
 slab = "0.2"
 igd = "0.7"
 libc = "0.2.7"
-parking_lot = "0.7"
+parking_lot = "0.11.1"
 ansi_term = "0.10"
 rustc-hex = "1.0"
 ethcore-io = { path = "../../runtime/io", features = ["mio"] }
 parity-bytes = "0.1"
-parity-crypto = "0.3.0"
+parity-crypto = { version = "0.6.2", features = [ "publickey" ] }
 ethcore-network = { path = "../network" }
-ethereum-types = "0.4"
+ethereum-types = "0.9.2"
 ethkey = { path = "../../../crates/accounts/ethkey" }
-rlp = { version = "0.3.0", features = ["ethereum"] }
+rlp = { version = "0.4.6" }
 parity-path = "0.1"
 ipnetwork = "0.12.6"
-keccak-hash = "0.1"
+keccak-hash = "0.5.0"
 parity-snappy = "0.1"
 serde = "1.0"
 serde_json = "1.0"

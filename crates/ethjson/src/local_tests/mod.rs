@@ -1,4 +1,4 @@
-use blockchain::block::Block;
+use crate::blockchain::block::Block;
 use serde_json::{self, Error};
 use std::{collections::BTreeMap, io::Read};
 

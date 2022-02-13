@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Brain, Error, Generator, KeyPair};
+use super::Brain;
+use parity_crypto::publickey::{Error, KeyPair};
 use parity_wordlist as wordlist;
 
 /// Tries to find brain-seed keypair with address starting with given prefix.
@@ -38,16 +39,12 @@ impl BrainPrefix {
     pub fn phrase(&self) -> &str {
         &self.last_phrase
     }
-}
 
-impl Generator for BrainPrefix {
-    type Error = Error;
-
-    fn generate(&mut self) -> Result<KeyPair, Error> {
+    pub fn generate(&mut self) -> Result<KeyPair, Error> {
         for _ in 0..self.iterations {
             let phrase = wordlist::random_phrase(self.no_of_words);
-            let keypair = Brain::new(phrase.clone()).generate().unwrap();
-            if keypair.address().starts_with(&self.prefix) {
+            let keypair = Brain::new(phrase.clone()).generate();
+            if keypair.address().as_ref().starts_with(&self.prefix) {
                 self.last_phrase = phrase;
                 return Ok(keypair);
             }
@@ -60,7 +57,6 @@ impl Generator for BrainPrefix {
 #[cfg(test)]
 mod tests {
     use BrainPrefix;
-    use Generator;
 
     #[test]
     fn prefix_generator() {
@@ -68,6 +64,6 @@ mod tests {
         let keypair = BrainPrefix::new(prefix.clone(), usize::max_value(), 12)
             .generate()
             .unwrap();
-        assert!(keypair.address().starts_with(&prefix));
+        assert!(keypair.address().as_bytes().starts_with(&prefix));
     }
 }

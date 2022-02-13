@@ -129,7 +129,7 @@ pub fn fill_storage(mut db: AccountDBMut, root: &mut H256, seed: &mut H256) {
             SecTrieDBMut::from_existing(&mut db, root).unwrap()
         };
 
-        for (k, v) in map.make_with(seed) {
+        for (k, v) in map.make_with(&mut seed.to_fixed_bytes()) {
             trie.insert(&k, &v).unwrap();
         }
     }
@@ -171,7 +171,12 @@ pub fn restore(
 
     let mut state = StateRebuilder::new(db.key_value().clone(), journaldb::Algorithm::Archive);
     let mut secondary = {
-        let chain = BlockChain::new(Default::default(), genesis, db.clone());
+        let chain = BlockChain::new(
+            Default::default(),
+            genesis,
+            db.clone(),
+            engine.params().eip1559_transition,
+        );
         components.rebuilder(chain, db, manifest).unwrap()
     };
 

@@ -19,11 +19,11 @@
 extern crate bit_set;
 extern crate ethcore_builtin as builtin;
 extern crate ethereum_types;
-extern crate heapsize;
 extern crate keccak_hash as hash;
 extern crate memory_cache;
 extern crate num_bigint;
 extern crate parity_bytes as bytes;
+extern crate parity_util_mem;
 extern crate parking_lot;
 extern crate vm;
 

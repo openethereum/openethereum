@@ -16,13 +16,18 @@
 
 //! View onto block rlp.
 
+use crate::BlockNumber;
+
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    header::Header,
+    transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction},
+    views::{HeaderView, TypedTransactionView},
+};
+
 use ethereum_types::H256;
-use hash::keccak;
-use header::Header;
-use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TypedTransactionView};
 
 /// View onto block rlp.
 pub struct BlockView<'a> {
@@ -61,8 +66,13 @@ impl<'a> BlockView<'a> {
     }
 
     /// Create new Header object from header rlp.
-    pub fn header(&self) -> Header {
-        self.rlp.val_at(0)
+    pub fn header(&self, eip1559_transition: BlockNumber) -> Header {
+        Header::decode_rlp(&self.rlp.at(0).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block header, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return header rlp.
@@ -162,8 +172,13 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return list of uncles of given block.
-    pub fn uncles(&self) -> Vec<Header> {
-        self.rlp.list_at(2)
+    pub fn uncles(&self, eip1559_transition: BlockNumber) -> Vec<Header> {
+        Header::decode_rlp_list(&self.rlp.at(2).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block uncles, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return number of uncles in given block, without deserializing them.
@@ -185,8 +200,15 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return nth uncle.
-    pub fn uncle_at(&self, index: usize) -> Option<Header> {
-        self.uncles_rlp().iter().nth(index).map(|rlp| rlp.as_val())
+    pub fn uncle_at(&self, index: usize, eip1559_transition: BlockNumber) -> Option<Header> {
+        self.uncles_rlp().iter().nth(index).map(|rlp| {
+            Header::decode_rlp(&rlp.rlp, eip1559_transition).unwrap_or_else(|e| {
+                panic!(
+                    "block uncle_at, view rlp is trusted and should be valid.{:?}",
+                    e
+                )
+            })
+        })
     }
 
     /// Return nth uncle rlp.
@@ -201,7 +223,9 @@ impl<'a> BlockView<'a> {
 #[cfg(test)]
 mod tests {
     use super::BlockView;
+    use ethereum_types::H256;
     use rustc_hex::FromHex;
+    use std::str::FromStr;
 
     #[test]
     fn test_block_view() {
@@ -211,7 +235,8 @@ mod tests {
         let view = view!(BlockView, &rlp);
         assert_eq!(
             view.hash(),
-            "2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259".into()
+            H256::from_str("2c9747e804293bd3f1a986484343f23bc88fd5be75dfe9d5c2860aff61e6f259")
+                .unwrap()
         );
         assert_eq!(view.transactions_count(), 1);
         assert_eq!(view.uncles_count(), 0);

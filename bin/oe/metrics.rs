@@ -8,13 +8,15 @@ use hyper::{service::service_fn_ok, Body, Method, Request, Response, Server, Sta
 
 use stats::{
     prometheus::{self, Encoder},
-    prometheus_gauge, PrometheusMetrics,
+    PrometheusMetrics, PrometheusRegistry,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetricsConfiguration {
     /// Are metrics enabled (default is false)?
     pub enabled: bool,
+    /// Prefix
+    pub prefix: String,
     /// The IP of the network interface used (default is 127.0.0.1).
     pub interface: String,
     /// The network port (default is 3000).
@@ -25,6 +27,7 @@ impl Default for MetricsConfiguration {
     fn default() -> Self {
         MetricsConfiguration {
             enabled: false,
+            prefix: "".into(),
             interface: "127.0.0.1".into(),
             port: 3000,
         }
@@ -35,19 +38,22 @@ struct State {
     rpc_apis: Arc<rpc_apis::FullDependencies>,
 }
 
-fn handle_request(req: Request<Body>, state: Arc<Mutex<State>>) -> Response<Body> {
+fn handle_request(
+    req: Request<Body>,
+    conf: Arc<MetricsConfiguration>,
+    state: Arc<Mutex<State>>,
+) -> Response<Body> {
     let (parts, _body) = req.into_parts();
     match (parts.method, parts.uri.path()) {
         (Method::GET, "/metrics") => {
             let start = Instant::now();
 
-            let mut reg = prometheus::Registry::new();
+            let mut reg = PrometheusRegistry::new(conf.prefix.clone());
             let state = state.lock();
             state.rpc_apis.client.prometheus_metrics(&mut reg);
             state.rpc_apis.sync.prometheus_metrics(&mut reg);
             let elapsed = start.elapsed();
-            prometheus_gauge(
-                &mut reg,
+            reg.register_gauge(
                 "metrics_time",
                 "Time to perform rpc metrics",
                 elapsed.as_millis() as i64,
@@ -55,7 +61,7 @@ fn handle_request(req: Request<Body>, state: Arc<Mutex<State>>) -> Response<Body
 
             let mut buffer = vec![];
             let encoder = prometheus::TextEncoder::new();
-            let metric_families = reg.gather();
+            let metric_families = reg.registry().gather();
 
             encoder
                 .encode(&metric_families, &mut buffer)
@@ -90,17 +96,20 @@ pub fn start_prometheus_metrics(
         rpc_apis: deps.apis.clone(),
     };
     let state = Arc::new(Mutex::new(state));
-
+    let conf = Arc::new(conf.to_owned());
     let server = Server::bind(&addr)
         .serve(move || {
             // This is the `Service` that will handle the connection.
             // `service_fn_ok` is a helper to convert a function that
             // returns a Response into a `Service`.
             let state = state.clone();
-            service_fn_ok(move |req: Request<Body>| handle_request(req, state.clone()))
+            let conf = conf.clone();
+            service_fn_ok(move |req: Request<Body>| {
+                handle_request(req, conf.clone(), state.clone())
+            })
         })
         .map_err(|e| eprintln!("server error: {}", e));
-    println!("Listening on http://{}", addr);
+    info!("Started prometeus metrics at http://{}/metrics", addr);
 
     deps.executor.spawn(server);
 

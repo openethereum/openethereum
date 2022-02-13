@@ -18,34 +18,27 @@ use super::super::instructions::{self, Instruction};
 use bit_set::BitSet;
 use ethereum_types::H256;
 use hash::KECCAK_EMPTY;
-use heapsize::HeapSizeOf;
 use memory_cache::MemoryLruCache;
+use parity_util_mem::{MallocSizeOf, MallocSizeOfOps};
 use parking_lot::Mutex;
 use std::sync::Arc;
 
 const DEFAULT_CACHE_SIZE: usize = 4 * 1024 * 1024;
 
-// stub for a HeapSizeOf implementation.
 #[derive(Clone)]
 struct Bits(Arc<BitSet>);
 
-impl HeapSizeOf for Bits {
-    fn heap_size_of_children(&self) -> usize {
+impl MallocSizeOf for Bits {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
         // dealing in bits here
         self.0.capacity() * 8
     }
 }
 
-#[derive(Clone)]
+#[derive(MallocSizeOf, Clone)]
 struct CacheItem {
     jump_destination: Bits,
     sub_entrypoint: Bits,
-}
-
-impl HeapSizeOf for CacheItem {
-    fn heap_size_of_children(&self) -> usize {
-        self.jump_destination.heap_size_of_children() + self.sub_entrypoint.heap_size_of_children()
-    }
 }
 
 /// Global cache for EVM interpreter

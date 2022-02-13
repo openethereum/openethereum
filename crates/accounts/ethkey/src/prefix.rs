@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Error, Generator, KeyPair, Random};
+use parity_crypto::publickey::{Error, Generator, KeyPair, Random};
 
 /// Tries to find keypair with address starting with given prefix.
 pub struct Prefix {
@@ -24,20 +24,13 @@ pub struct Prefix {
 
 impl Prefix {
     pub fn new(prefix: Vec<u8>, iterations: usize) -> Self {
-        Prefix {
-            prefix: prefix,
-            iterations: iterations,
-        }
+        Prefix { prefix, iterations }
     }
-}
 
-impl Generator for Prefix {
-    type Error = Error;
-
-    fn generate(&mut self) -> Result<KeyPair, Error> {
+    pub fn generate(&mut self) -> Result<KeyPair, Error> {
         for _ in 0..self.iterations {
-            let keypair = Random.generate()?;
-            if keypair.address().starts_with(&self.prefix) {
+            let keypair = Random.generate();
+            if keypair.address().as_ref().starts_with(&self.prefix) {
                 return Ok(keypair);
             }
         }
@@ -48,7 +41,6 @@ impl Generator for Prefix {
 
 #[cfg(test)]
 mod tests {
-    use Generator;
     use Prefix;
 
     #[test]
@@ -57,6 +49,6 @@ mod tests {
         let keypair = Prefix::new(prefix.clone(), usize::max_value())
             .generate()
             .unwrap();
-        assert!(keypair.address().starts_with(&prefix));
+        assert!(keypair.address().as_bytes().starts_with(&prefix));
     }
 }

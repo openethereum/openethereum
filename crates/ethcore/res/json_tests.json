@@ -36,7 +36,7 @@
 	],
 	"executive": [
 		{
-			"path": "res/json_tests/VMTests"
+			"path": "res/json_tests/LegacyTests/Constantinople/VMTests"
 		}
 	],
 	"transaction": [

@@ -16,12 +16,13 @@
 
 //! Trace errors.
 
+use parity_util_mem::MallocSizeOf;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::fmt;
 use vm::Error as VmError;
 
 /// Trace evm errors.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, MallocSizeOf)]
 pub enum Error {
     /// `OutOfGas` is returned when transaction execution runs out of gas.
     OutOfGas,
@@ -47,6 +48,8 @@ pub enum Error {
     Internal,
     /// When execution tries to modify the state in static context
     MutableCallInStaticContext,
+    /// When invalid code was attempted to deploy
+    InvalidCode,
     /// Wasm error
     Wasm,
     /// Contract tried to access past the return data buffer.
@@ -67,6 +70,7 @@ impl<'a> From<&'a VmError> for Error {
             VmError::OutOfSubStack { .. } => Error::OutOfSubStack,
             VmError::InvalidSubEntry { .. } => Error::InvalidSubEntry,
             VmError::BuiltIn { .. } => Error::BuiltIn,
+            VmError::InvalidCode => Error::InvalidCode,
             VmError::Wasm { .. } => Error::Wasm,
             VmError::Internal(_) => Error::Internal,
             VmError::MutableCallInStaticContext => Error::MutableCallInStaticContext,
@@ -95,6 +99,7 @@ impl fmt::Display for Error {
             OutOfSubStack => "Subroutine stack overflow",
             BuiltIn => "Built-in failed",
             InvalidSubEntry => "Invalid subroutine entry",
+            InvalidCode => "Invalid code",
             Wasm => "Wasm runtime error",
             Internal => "Internal error",
             MutableCallInStaticContext => "Mutable Call In Static Context",
@@ -123,6 +128,7 @@ impl Encodable for Error {
             SubStackUnderflow => 11,
             OutOfSubStack => 12,
             InvalidSubEntry => 13,
+            InvalidCode => 14,
         };
 
         s.append_internal(&value);
@@ -148,6 +154,7 @@ impl Decodable for Error {
             11 => Ok(SubStackUnderflow),
             12 => Ok(OutOfSubStack),
             13 => Ok(InvalidSubEntry),
+            14 => Ok(InvalidCode),
             _ => Err(DecoderError::Custom("Invalid error type")),
         }
     }

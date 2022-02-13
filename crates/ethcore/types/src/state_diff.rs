@@ -16,7 +16,7 @@
 
 //! State diff module.
 
-use account_diff::*;
+use crate::account_diff::*;
 use ethereum_types::Address;
 use std::{collections::BTreeMap, fmt, ops::*};
 

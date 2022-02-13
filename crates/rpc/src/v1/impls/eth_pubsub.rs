@@ -34,10 +34,12 @@ use v1::{
     helpers::{errors, limit_logs, Subscribers},
     metadata::Metadata,
     traits::EthPubSub,
-    types::{pubsub, Log, RichHeader},
+    types::{pubsub, Header, Log, RichHeader},
 };
 
-use ethcore::client::{BlockChainClient, BlockId, ChainNotify, ChainRouteType, NewBlocks};
+use ethcore::client::{
+    BlockChainClient, BlockId, ChainNotify, ChainRouteType, EngineInfo, NewBlocks,
+};
 use ethereum_types::H256;
 use parity_runtime::Executor;
 use parking_lot::RwLock;
@@ -79,9 +81,9 @@ impl<C> EthPubSubClient<C> {
     #[cfg(test)]
     pub fn new_test(client: Arc<C>, executor: Executor) -> Self {
         let client = Self::new(client, executor);
-        *client.heads_subscribers.write() = Subscribers::new_test();
-        *client.logs_subscribers.write() = Subscribers::new_test();
-        *client.transactions_subscribers.write() = Subscribers::new_test();
+        *client.heads_subscribers.write() = Subscribers::default();
+        *client.logs_subscribers.write() = Subscribers::default();
+        *client.transactions_subscribers.write() = Subscribers::default();
         client
     }
 
@@ -100,7 +102,10 @@ pub struct ChainNotificationHandler<C> {
     transactions_subscribers: Arc<RwLock<Subscribers<Client>>>,
 }
 
-impl<C> ChainNotificationHandler<C> {
+impl<C> ChainNotificationHandler<C>
+where
+    C: EngineInfo,
+{
     fn notify(executor: &Executor, subscriber: &Client, result: pubsub::Result) {
         executor.spawn(
             subscriber
@@ -117,7 +122,10 @@ impl<C> ChainNotificationHandler<C> {
                     &self.executor,
                     subscriber,
                     pubsub::Result::Header(Box::new(RichHeader {
-                        inner: header.into(),
+                        inner: Header::new(
+                            header,
+                            self.client.engine().params().eip1559_transition,
+                        ),
                         extra_info: extra_info.clone(),
                     })),
                 );
@@ -174,7 +182,7 @@ impl<C> ChainNotificationHandler<C> {
     }
 }
 
-impl<C: BlockChainClient> ChainNotify for ChainNotificationHandler<C> {
+impl<C: BlockChainClient + EngineInfo> ChainNotify for ChainNotificationHandler<C> {
     // t_nb 11.3 RPC. Notify subscriber header/logs about new block
     fn new_blocks(&self, new_blocks: NewBlocks) {
         if self.heads_subscribers.read().is_empty() && self.logs_subscribers.read().is_empty() {

@@ -420,7 +420,7 @@ mod test {
     use self::tempdir::TempDir;
     use super::{KeyDirectory, RootDiskDirectory, VaultKey};
     use account::SafeAccount;
-    use ethkey::{Generator, Random};
+    use crypto::publickey::{Generator, Random};
     use std::{env, fs, num::NonZeroU32};
 
     lazy_static! {
@@ -432,7 +432,7 @@ mod test {
         // given
         let mut dir = env::temp_dir();
         dir.push("ethstore_should_create_new_account");
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let password = "hello world".into();
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();
 
@@ -463,7 +463,7 @@ mod test {
         // given
         let mut dir = env::temp_dir();
         dir.push("ethstore_should_handle_duplicate_filenames");
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let password = "hello world".into();
         let directory = RootDiskDirectory::create(dir.clone()).unwrap();
 
@@ -582,7 +582,7 @@ mod test {
             .expect("Files hash should be calculated ok");
         assert_eq!(hash, 15130871412783076140);
 
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let password = "test pass".into();
         let account = SafeAccount::create(
             &keypair,

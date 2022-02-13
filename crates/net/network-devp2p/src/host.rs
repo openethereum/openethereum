@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey::{Generator, KeyPair, Random, Secret};
 use ethereum_types::H256;
-use ethkey::{Generator, KeyPair, Random, Secret};
 use hash::keccak;
 use mio::{deprecated::EventLoop, tcp::*, udp::*, *};
 use rlp::{Encodable, RlpStream};
@@ -310,7 +310,7 @@ impl Host {
                 .and_then(|ref p| load_key(Path::new(&p)))
                 .map_or_else(
                     || {
-                        let key = Random.generate().expect("Error generating random key pair");
+                        let key = Random.generate();
                         if let Some(path) = config.config_path.clone() {
                             save_key(Path::new(&path), key.secret());
                         }
@@ -464,7 +464,7 @@ impl Host {
     }
 
     pub fn stop(&self, io: &IoContext<NetworkIoMessage>) {
-        self.stopping.store(true, AtomicOrdering::Release);
+        self.stopping.store(true, AtomicOrdering::SeqCst);
         let mut to_kill = Vec::new();
         for e in self.sessions.read().iter() {
             let mut s = e.lock();
@@ -1168,7 +1168,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn stream_readable(&self, io: &IoContext<NetworkIoMessage>, stream: StreamToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match stream {
@@ -1180,7 +1180,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn stream_writable(&self, io: &IoContext<NetworkIoMessage>, stream: StreamToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match stream {
@@ -1191,7 +1191,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn timeout(&self, io: &IoContext<NetworkIoMessage>, token: TimerToken) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match token {
@@ -1253,7 +1253,7 @@ impl IoHandler<NetworkIoMessage> for Host {
     }
 
     fn message(&self, io: &IoContext<NetworkIoMessage>, message: &NetworkIoMessage) {
-        if self.stopping.load(AtomicOrdering::Acquire) {
+        if self.stopping.load(AtomicOrdering::SeqCst) {
             return;
         }
         match *message {
@@ -1457,7 +1457,7 @@ fn save_key(path: &Path, key: &Secret) {
     if let Err(e) = restrict_permissions_owner(path, true, false) {
         warn!(target: "network", "Failed to modify permissions of the file ({})", e);
     }
-    if let Err(e) = file.write(&key.hex().into_bytes()[2..]) {
+    if let Err(e) = file.write(&key.to_hex().into_bytes()) {
         warn!("Error writing key file: {:?}", e);
     }
 }

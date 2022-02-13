@@ -23,12 +23,9 @@ use std::time::Instant;
 use sync_io::SyncIo;
 use types::BlockNumber;
 
-use super::sync_packet::{
-    SyncPacket,
-    SyncPacket::{
-        GetBlockBodiesPacket, GetBlockHeadersPacket, GetReceiptsPacket, GetSnapshotDataPacket,
-        GetSnapshotManifestPacket,
-    },
+use super::{
+    request_id::generate_request_id,
+    sync_packet::{SyncPacket::*, *},
 };
 
 use super::{BlockSet, ChainSync, PeerAsking};
@@ -107,6 +104,29 @@ impl SyncRequester {
             GetBlockHeadersPacket,
             rlp.out(),
         );
+    }
+
+    /// Request pooled transactions from a peer
+    pub fn request_pooled_transactions(
+        sync: &mut ChainSync,
+        io: &mut dyn SyncIo,
+        peer_id: PeerId,
+        hashes: &[H256],
+    ) {
+        trace!(target: "sync", "{} <- GetPooledTransactions: {:?}", peer_id, hashes);
+        let mut rlp = RlpStream::new_list(hashes.len());
+        for h in hashes {
+            rlp.append(h);
+        }
+
+        SyncRequester::send_request(
+            sync,
+            io,
+            peer_id,
+            PeerAsking::PooledTransactions,
+            GetPooledTransactionsPacket,
+            rlp.out(),
+        )
     }
 
     /// Find some headers or blocks to download for a peer.
@@ -225,6 +245,8 @@ impl SyncRequester {
             }
             peer.asking = asking;
             peer.ask_time = Instant::now();
+
+            let (packet, _) = generate_request_id(packet, peer, packet_id);
 
             let result = io.send(peer_id, packet_id, packet);
 

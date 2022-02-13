@@ -25,7 +25,6 @@ use executive;
 use factory::{self, Factories};
 use journaldb;
 use kvdb::{self, KeyValueDB};
-use kvdb_memorydb;
 use pod_state;
 use spec;
 use state;
@@ -108,6 +107,8 @@ impl<'a> EvmTestClient<'a> {
                 Some(ethereum::new_byzantium_to_constantinoplefixat5_test())
             }
             ForkSpec::Berlin => Some(ethereum::new_berlin_test()),
+            ForkSpec::London => Some(ethereum::new_london_test()),
+            ForkSpec::BerlinToLondonAt5 => Some(ethereum::new_berlin_to_london_test()),
             ForkSpec::FrontierToHomesteadAt5
             | ForkSpec::HomesteadToDaoAt5
             | ForkSpec::HomesteadToEIP150At5
@@ -181,7 +182,7 @@ impl<'a> EvmTestClient<'a> {
         spec: &'a spec::Spec,
         factories: &Factories,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
             db::NUM_COLUMNS.expect("We use column-based DB; qed"),
         ));
         let journal_db =
@@ -211,7 +212,7 @@ impl<'a> EvmTestClient<'a> {
         factories: &Factories,
         pod_state: pod_state::PodState,
     ) -> Result<state::State<state_db::StateDB>, EvmTestError> {
-        let db = Arc::new(kvdb_memorydb::create(
+        let db = Arc::new(ethcore_db::InMemoryWithMetrics::create(
             db::NUM_COLUMNS.expect("We use column-based DB; qed"),
         ));
         let journal_db =
@@ -249,6 +250,7 @@ impl<'a> EvmTestClient<'a> {
             last_hashes: Arc::new([H256::default(); 256].to_vec()),
             gas_used: 0.into(),
             gas_limit: *genesis.gas_limit(),
+            base_fee: genesis.base_fee(),
         };
         self.call_envinfo(params, tracer, vm_tracer, info)
     }

@@ -141,7 +141,7 @@ mod tests {
 
     use client::{ChainNotify, ChainRoute, NewBlocks};
 
-    use ethereum_types::{H256, U256};
+    use ethereum_types::{BigEndianHash, H256, U256};
 
     use std::{collections::HashMap, time::Duration};
 
@@ -176,7 +176,7 @@ mod tests {
         let hashes: Vec<_> = numbers
             .clone()
             .into_iter()
-            .map(|x| H256::from(U256::from(x)))
+            .map(|x| BigEndianHash::from_uint(&U256::from(x)))
             .collect();
         let map = hashes.clone().into_iter().zip(numbers).collect();
 

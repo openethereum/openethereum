@@ -43,6 +43,7 @@ impl Default for TestClient {
             account_details: AccountDetails {
                 nonce: 123.into(),
                 balance: 63_100.into(),
+                code_hash: None,
                 is_local: false,
             },
             gas_required: 21_000.into(),
@@ -65,6 +66,11 @@ impl TestClient {
 
     pub fn with_nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
         self.account_details.nonce = nonce.into();
+        self
+    }
+
+    pub fn with_code_hash<T: Into<H256>>(mut self, code_hash: T) -> Self {
+        self.account_details.code_hash = Some(code_hash.into());
         self
     }
 

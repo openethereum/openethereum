@@ -18,6 +18,8 @@
 
 #![warn(missing_docs)]
 
+extern crate parity_crypto as crypto;
+
 mod best_block;
 mod block_info;
 mod blockchain;

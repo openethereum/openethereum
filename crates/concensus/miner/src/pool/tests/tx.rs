@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use crypto::publickey::{Generator, Random};
 use ethereum_types::{H256, U256};
-use ethkey::{Generator, Random};
 use rustc_hex::FromHex;
 use types::transaction::{
     self, SignedTransaction, Transaction, TypedTransaction, UnverifiedTransaction,
@@ -49,7 +49,7 @@ impl Tx {
     }
 
     pub fn signed(self) -> SignedTransaction {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         self.unsigned().sign(keypair.secret(), None)
     }
 
@@ -59,7 +59,7 @@ impl Tx {
     }
 
     pub fn signed_triple(mut self) -> (SignedTransaction, SignedTransaction, SignedTransaction) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let tx1 = self.clone().unsigned().sign(keypair.secret(), None);
         self.nonce += 1;
         let tx2 = self.clone().unsigned().sign(keypair.secret(), None);
@@ -70,7 +70,7 @@ impl Tx {
     }
 
     pub fn signed_replacement(mut self) -> (SignedTransaction, SignedTransaction) {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let tx1 = self.clone().unsigned().sign(keypair.secret(), None);
         self.gas_price += 1;
         let tx2 = self.unsigned().sign(keypair.secret(), None);
@@ -90,7 +90,7 @@ impl Tx {
     }
 
     pub fn big_one(self) -> SignedTransaction {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let tx = TypedTransaction::Legacy(Transaction {
             action: transaction::Action::Create,
             value: U256::from(100),

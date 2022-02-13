@@ -182,12 +182,16 @@ mod tests {
     #[test]
     fn default_disabled_accesslist_does_nothing() {
         let mut access_list = AccessList::default();
-        access_list.insert_address(Address::from(1));
-        access_list.insert_storage_key(Address::from(2), H256::from(3));
-        assert_eq!(false, access_list.contains_address(&Address::from(1)));
+        access_list.insert_address(Address::from_low_u64_be(1));
+        access_list.insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
         assert_eq!(
             false,
-            access_list.contains_storage_key(&Address::from(2), &H256::from(3))
+            access_list.contains_address(&Address::from_low_u64_be(1))
+        );
+        assert_eq!(
+            false,
+            access_list
+                .contains_storage_key(&Address::from_low_u64_be(2), &H256::from_low_u64_be(3))
         );
     }
 
@@ -196,12 +200,16 @@ mod tests {
         let mut access_list = AccessList::default();
         access_list.enable();
         assert_eq!(true, access_list.is_enabled());
-        access_list.insert_address(Address::from(1));
-        access_list.insert_storage_key(Address::from(2), H256::from(3));
-        assert_eq!(true, access_list.contains_address(&Address::from(1)));
+        access_list.insert_address(Address::from_low_u64_be(1));
+        access_list.insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
         assert_eq!(
             true,
-            access_list.contains_storage_key(&Address::from(2), &H256::from(3))
+            access_list.contains_address(&Address::from_low_u64_be(1))
+        );
+        assert_eq!(
+            true,
+            access_list
+                .contains_storage_key(&Address::from_low_u64_be(2), &H256::from_low_u64_be(3))
         );
     }
 
@@ -210,51 +218,74 @@ mod tests {
         let mut access_list = AccessList::default();
         access_list.enable();
         assert_eq!(true, access_list.is_enabled());
-        access_list.insert_address(Address::from(1));
-        access_list.insert_storage_key(Address::from(2), H256::from(3));
+        access_list.insert_address(Address::from_low_u64_be(1));
+        access_list.insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
 
         let access_list_call = access_list.clone();
-        assert_eq!(true, access_list_call.contains_address(&Address::from(1)));
         assert_eq!(
             true,
-            access_list_call.contains_storage_key(&Address::from(2), &H256::from(3))
+            access_list_call.contains_address(&Address::from_low_u64_be(1))
         );
-        access_list.insert_address(Address::from(4));
-        assert_eq!(true, access_list_call.contains_address(&Address::from(4)));
+        assert_eq!(
+            true,
+            access_list_call
+                .contains_storage_key(&Address::from_low_u64_be(2), &H256::from_low_u64_be(3))
+        );
+        access_list.insert_address(Address::from_low_u64_be(4));
+        assert_eq!(
+            true,
+            access_list_call.contains_address(&Address::from_low_u64_be(4))
+        );
 
-        assert_eq!(true, access_list.contains_address(&Address::from(4)));
+        assert_eq!(
+            true,
+            access_list.contains_address(&Address::from_low_u64_be(4))
+        );
     }
     #[test]
     fn cloned_accesslist_rollbacks_in_parent() {
         let mut access_list = AccessList::default();
         access_list.enable();
         assert_eq!(true, access_list.is_enabled());
-        access_list.insert_address(Address::from(1));
-        access_list.insert_storage_key(Address::from(2), H256::from(3));
+        access_list.insert_address(Address::from_low_u64_be(1));
+        access_list.insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
 
         let mut access_list_call = access_list.clone();
-        access_list_call.insert_address(Address::from(1));
-        access_list_call.insert_storage_key(Address::from(2), H256::from(3));
-        access_list_call.insert_address(Address::from(4));
+        access_list_call.insert_address(Address::from_low_u64_be(1));
+        access_list_call.insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
+        access_list_call.insert_address(Address::from_low_u64_be(4));
 
         let mut access_list_call_call = access_list.clone();
-        access_list_call_call.insert_address(Address::from(1));
-        access_list_call_call.insert_storage_key(Address::from(2), H256::from(3));
-        access_list_call_call.insert_address(Address::from(5));
-        access_list_call_call.insert_storage_key(Address::from(6), H256::from(7));
+        access_list_call_call.insert_address(Address::from_low_u64_be(1));
+        access_list_call_call
+            .insert_storage_key(Address::from_low_u64_be(2), H256::from_low_u64_be(3));
+        access_list_call_call.insert_address(Address::from_low_u64_be(5));
+        access_list_call_call
+            .insert_storage_key(Address::from_low_u64_be(6), H256::from_low_u64_be(7));
 
         access_list_call.rollback();
 
-        assert_eq!(true, access_list.contains_address(&Address::from(1)));
-        assert_eq!(false, access_list.contains_address(&Address::from(4)));
-        assert_eq!(false, access_list.contains_address(&Address::from(5)));
         assert_eq!(
             true,
-            access_list.contains_storage_key(&Address::from(2), &H256::from(3))
+            access_list.contains_address(&Address::from_low_u64_be(1))
         );
         assert_eq!(
             false,
-            access_list.contains_storage_key(&Address::from(6), &H256::from(7))
+            access_list.contains_address(&Address::from_low_u64_be(4))
+        );
+        assert_eq!(
+            false,
+            access_list.contains_address(&Address::from_low_u64_be(5))
+        );
+        assert_eq!(
+            true,
+            access_list
+                .contains_storage_key(&Address::from_low_u64_be(2), &H256::from_low_u64_be(3))
+        );
+        assert_eq!(
+            false,
+            access_list
+                .contains_storage_key(&Address::from_low_u64_be(6), &H256::from_low_u64_be(7))
         );
     }
 }

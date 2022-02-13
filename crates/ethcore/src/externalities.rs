@@ -16,7 +16,7 @@
 
 //! Transaction Execution environment.
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
+use ethereum_types::{Address, BigEndianHash, H256, U256};
 use executive::*;
 use machine::EthereumMachine as Machine;
 use state::{Backend as StateBackend, CleanupMode, State, Substate};
@@ -187,6 +187,8 @@ where
                 Err(_) => return H256::zero(),
             };
 
+            let data: H256 = BigEndianHash::from_uint(number);
+
             let params = ActionParams {
                 sender: self.origin_info.address.clone(),
                 address: blockhash_contract_address.clone(),
@@ -197,7 +199,7 @@ where
                 gas_price: 0.into(),
                 code: code,
                 code_hash: code_hash,
-                data: Some(H256::from(number).to_vec()),
+                data: Some(data.as_bytes().to_vec()),
                 call_type: CallType::Call,
                 params_type: vm::ParamsType::Separate,
                 access_list: AccessList::default(),
@@ -212,8 +214,8 @@ where
                 self.vm_tracer,
             );
             let output = match &r {
-                Ok(ref r) => H256::from(&r.return_data[..32]),
-                _ => H256::new(),
+                Ok(ref r) => H256::from_slice(&r.return_data[..32]),
+                _ => H256::default(),
             };
             trace!(
                 "ext: blockhash contract({}) -> {:?}({}) self.env_info.number={}\n",
@@ -429,6 +431,12 @@ where
                         false => Ok(*gas),
                     };
                 }
+                if self.schedule.eip3541 && data.get(0) == Some(&0xefu8) {
+                    return match self.schedule.exceptional_failed_code_deposit {
+                        true => Err(vm::Error::InvalidCode),
+                        false => Ok(*gas),
+                    };
+                }
                 self.state
                     .init_code(&self.origin_info.address, data.to_vec())?;
                 Ok(*gas - return_cost)
@@ -558,6 +566,7 @@ mod tests {
     use ethereum_types::{Address, U256};
     use evm::{CallType, EnvInfo, Ext};
     use state::{State, Substate};
+    use std::str::FromStr;
     use test_helpers::get_temp_state;
     use trace::{NoopTracer, NoopVMTracer};
 
@@ -573,12 +582,13 @@ mod tests {
     fn get_test_env_info() -> EnvInfo {
         EnvInfo {
             number: 100,
-            author: 0.into(),
+            author: Address::zero(),
             timestamp: 0,
             difficulty: 0.into(),
             last_hashes: Arc::new(vec![]),
             gas_used: 0.into(),
             gas_limit: 0.into(),
+            base_fee: None,
         }
     }
 
@@ -672,7 +682,8 @@ mod tests {
     #[test]
     fn can_return_block_hash() {
         let test_hash =
-            H256::from("afafafafafafafafafafafbcbcbcbcbcbcbcbcbcbeeeeeeeeeeeeedddddddddd");
+            H256::from_str("afafafafafafafafafafafbcbcbcbcbcbcbcbcbcbeeeeeeeeeeeeedddddddddd")
+                .unwrap();
         let test_env_number = 0x120001;
 
         let mut setup = TestSetup::new();
@@ -741,15 +752,15 @@ mod tests {
             &"0000000000000000000000000000000000000000000000000000000000120000"
                 .parse::<U256>()
                 .unwrap(),
-            &Address::new(),
-            &Address::new(),
+            &Address::default(),
+            &Address::default(),
             Some(
                 "0000000000000000000000000000000000000000000000000000000000150000"
                     .parse::<U256>()
                     .unwrap(),
             ),
             &[],
-            &Address::new(),
+            &Address::default(),
             CallType::Call,
             false,
         )
@@ -760,9 +771,10 @@ mod tests {
     #[test]
     fn can_log() {
         let log_data = vec![120u8, 110u8];
-        let log_topics = vec![H256::from(
+        let log_topics = vec![H256::from_str(
             "af0fa234a6af46afa23faf23bcbc1c1cb4bcb7bcbe7e7e7ee3ee2edddddddddd",
-        )];
+        )
+        .unwrap()];
 
         let mut setup = TestSetup::new();
         let state = &mut setup.state;
@@ -793,7 +805,7 @@ mod tests {
 
     #[test]
     fn can_suicide() {
-        let refund_account = &Address::new();
+        let refund_account = &Address::default();
 
         let mut setup = TestSetup::new();
         let state = &mut setup.state;
@@ -907,5 +919,47 @@ mod tests {
             address,
             Address::from_str("e33c0c7f7df4809055c3eba6c09cfe4baf1bd9e0").unwrap()
         );
+    }
+
+    #[test]
+    fn eip_3541() {
+        let call_ret = |schedule: Schedule, data: &ReturnData| {
+            let mut setup = TestSetup::default();
+            setup.schedule = schedule;
+            let mut tracer = NoopTracer;
+            let mut vm_tracer = NoopVMTracer;
+            let origin = get_test_origin();
+            let ext = Externalities::new(
+                &mut setup.state,
+                &setup.env_info,
+                &setup.machine,
+                &setup.schedule,
+                0,
+                0,
+                &origin,
+                &mut setup.sub_state,
+                OutputPolicy::InitContract,
+                &mut tracer,
+                &mut vm_tracer,
+                false,
+            );
+            ext.ret(&U256::from(10000), &data, true)
+        };
+
+        let data = ReturnData::new(vec![0xefu8], 0, 1);
+
+        let result = call_ret(Schedule::new_berlin(), &data);
+        assert!(result.is_ok());
+
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_err());
+
+        let data = ReturnData::new(vec![0xefu8, 0x00u8, 0x00u8], 0, 3);
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_err());
+
+        let data = ReturnData::new(vec![0xee], 0, 1);
+        let result = call_ret(Schedule::new_london(), &data);
+        assert!(result.is_ok());
     }
 }

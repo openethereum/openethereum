@@ -17,23 +17,21 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-use crypto::DEFAULT_MAC;
+use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
-    client::{BlockChainClient, Call, StateClient},
-    miner::{self, MinerService},
+    client::{BlockChainClient, Call, EngineInfo, StateClient},
+    miner::{self, MinerService, TransactionFilter},
     snapshot::{RestorationStatus, SnapshotService},
     state::StateInfo,
 };
 use ethcore_logger::RotatingLogger;
 use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
-use ethkey::{crypto::ecies, Brain, Generator};
+use ethkey::Brain;
 use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};
 use stats::PrometheusMetrics;
 use sync::{ManageNetwork, SyncProvider};
 use types::ids::BlockId;
-use version::version_data;
-
 use v1::{
     helpers::{
         self,
@@ -45,11 +43,12 @@ use v1::{
     metadata::Metadata,
     traits::Parity,
     types::{
-        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Histogram,
+        block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Header, Histogram,
         LocalTransactionStatus, Peers, Receipt, RecoveredAccount, RichHeader, RpcSettings,
         Transaction, TransactionStats,
     },
 };
+use version::version_data;
 use Host;
 
 /// Parity implementation.
@@ -70,7 +69,7 @@ where
 
 impl<C, M> ParityClient<C, M>
 where
-    C: BlockChainClient + PrometheusMetrics,
+    C: BlockChainClient + PrometheusMetrics + EngineInfo,
 {
     /// Creates new `ParityClient`.
     pub fn new(
@@ -106,6 +105,7 @@ where
         + PrometheusMetrics
         + StateClient<State = S>
         + Call<State = S>
+        + EngineInfo
         + 'static,
     M: MinerService<State = S> + 'static,
 {
@@ -213,10 +213,7 @@ where
     }
 
     fn phrase_to_address(&self, phrase: String) -> Result<H160> {
-        Ok(Brain::new(phrase)
-            .generate()
-            .expect("Brain::generate always returns Ok; qed")
-            .address())
+        Ok(Brain::new(phrase).generate().address())
     }
 
     fn list_accounts(
@@ -268,10 +265,15 @@ where
             .map(Into::into)
     }
 
-    fn pending_transactions(&self, limit: Option<usize>) -> Result<Vec<Transaction>> {
-        let ready_transactions = self.miner.ready_transactions(
+    fn pending_transactions(
+        &self,
+        limit: Option<usize>,
+        filter: Option<TransactionFilter>,
+    ) -> Result<Vec<Transaction>> {
+        let ready_transactions = self.miner.ready_transactions_filtered(
             &*self.client,
             limit.unwrap_or_else(usize::max_value),
+            filter,
             miner::PendingOrdering::Priority,
         );
 
@@ -385,7 +387,7 @@ where
         };
 
         Box::new(future::ok(RichHeader {
-            inner: header.into(),
+            inner: Header::new(&header, self.client.engine().params().eip1559_transition),
             extra_info: extra.unwrap_or_default(),
         }))
     }
@@ -448,7 +450,7 @@ where
                 .client
                 .block_header(id)
                 .ok_or_else(errors::state_pruned)?
-                .decode()
+                .decode(self.client.engine().params().eip1559_transition)
                 .map_err(errors::decode)?;
 
             (state, header)

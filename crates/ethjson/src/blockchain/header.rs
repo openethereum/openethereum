@@ -16,9 +16,11 @@
 
 //! Blockchain test header deserializer.
 
-use bytes::Bytes;
-use hash::{Address, Bloom, H256, H64};
-use uint::Uint;
+use crate::{
+    bytes::Bytes,
+    hash::{Address, Bloom, H256, H64},
+    uint::Uint,
+};
 
 /// Blockchain test header deserializer.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -60,11 +62,13 @@ pub struct Header {
     /// Uncles hash.
     #[serde(rename = "uncleHash")]
     pub uncles_hash: H256,
+    /// Base fee
+    pub base_fee_per_gas: Option<Uint>,
 }
 
 #[cfg(test)]
 mod tests {
-    use blockchain::header::Header;
+    use crate::blockchain::header::Header;
     use serde_json;
 
     #[test]

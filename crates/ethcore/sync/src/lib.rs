@@ -34,11 +34,14 @@ extern crate ethstore;
 extern crate fastmap;
 extern crate keccak_hash as hash;
 extern crate parity_bytes as bytes;
+extern crate parity_crypto as crypto;
+#[macro_use]
+extern crate parity_util_mem;
 extern crate parking_lot;
 extern crate primitive_types07;
 extern crate rand;
+extern crate rand_xorshift;
 extern crate rlp;
-extern crate rlp04;
 extern crate stats;
 extern crate triehash_ethereum;
 
@@ -55,8 +58,6 @@ extern crate enum_primitive;
 extern crate macros;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate heapsize;
 #[macro_use]
 extern crate trace_time;
 

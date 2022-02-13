@@ -16,10 +16,11 @@
 
 use super::crypto::Crypto;
 use account::Version;
-use crypto;
-use ethkey::{
-    self, crypto::ecdh::agree, sign, Address, KeyPair, Message, Password, Public, Secret, Signature,
+use crypto::{
+    self,
+    publickey::{ecdh::agree, sign, Address, KeyPair, Message, Public, Secret, Signature},
 };
+use ethkey::Password;
 use json;
 use std::num::NonZeroU32;
 use Error;
@@ -193,7 +194,7 @@ impl SafeAccount {
         message: &[u8],
     ) -> Result<Vec<u8>, Error> {
         let secret = self.crypto.secret(password)?;
-        ethkey::crypto::ecies::decrypt(&secret, shared_mac, message).map_err(From::from)
+        crypto::publickey::ecies::decrypt(&secret, shared_mac, message).map_err(From::from)
     }
 
     /// Agree on shared key.
@@ -237,7 +238,7 @@ impl SafeAccount {
 #[cfg(test)]
 mod tests {
     use super::{NonZeroU32, SafeAccount};
-    use ethkey::{verify_public, Generator, Message, Random};
+    use crypto::publickey::{verify_public, Generator, Random};
 
     lazy_static! {
         static ref ITERATIONS: NonZeroU32 = NonZeroU32::new(10240).expect("10240 > 0; qed");
@@ -245,9 +246,9 @@ mod tests {
 
     #[test]
     fn sign_and_verify_public() {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let password = "hello world".into();
-        let message = Message::default();
+        let message = [1u8; 32].into();
         let account = SafeAccount::create(
             &keypair,
             [0u8; 16],
@@ -262,10 +263,10 @@ mod tests {
 
     #[test]
     fn change_password() {
-        let keypair = Random.generate().unwrap();
+        let keypair = Random.generate();
         let first_password = "hello world".into();
         let sec_password = "this is sparta".into();
-        let message = Message::default();
+        let message = [1u8; 32].into();
         let account = SafeAccount::create(
             &keypair,
             [0u8; 16],

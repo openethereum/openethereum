@@ -17,13 +17,15 @@
 //! View onto block body rlp.
 
 use super::ViewRlp;
-use bytes::Bytes;
+use crate::{
+    bytes::Bytes,
+    hash::keccak,
+    header::Header,
+    transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction},
+    views::{HeaderView, TypedTransactionView},
+    BlockNumber,
+};
 use ethereum_types::H256;
-use hash::keccak;
-use header::Header;
-use transaction::{LocalizedTransaction, TypedTransaction, UnverifiedTransaction};
-use views::{HeaderView, TypedTransactionView};
-use BlockNumber;
 
 /// View onto block rlp.
 pub struct BodyView<'a> {
@@ -145,8 +147,13 @@ impl<'a> BodyView<'a> {
     }
 
     /// Return list of uncles of given block.
-    pub fn uncles(&self) -> Vec<Header> {
-        self.rlp.list_at(1)
+    pub fn uncles(&self, eip1559_transition: BlockNumber) -> Vec<Header> {
+        Header::decode_rlp_list(&self.rlp.at(1).rlp, eip1559_transition).unwrap_or_else(|e| {
+            panic!(
+                "block uncles, view rlp is trusted and should be valid: {:?}",
+                e
+            )
+        })
     }
 
     /// Return number of uncles in given block, without deserializing them.
@@ -168,8 +175,15 @@ impl<'a> BodyView<'a> {
     }
 
     /// Return nth uncle.
-    pub fn uncle_at(&self, index: usize) -> Option<Header> {
-        self.uncles_rlp().iter().nth(index).map(|rlp| rlp.as_val())
+    pub fn uncle_at(&self, index: usize, eip1559_transition: BlockNumber) -> Option<Header> {
+        self.uncles_rlp().iter().nth(index).map(|rlp| {
+            Header::decode_rlp(&rlp.rlp, eip1559_transition).unwrap_or_else(|e| {
+                panic!(
+                    "block uncle_at, view rlp is trusted and should be valid.{:?}",
+                    e
+                )
+            })
+        })
     }
 
     /// Return nth uncle rlp.
@@ -184,10 +198,9 @@ impl<'a> BodyView<'a> {
 #[cfg(test)]
 mod tests {
     use super::BodyView;
-    use bytes::Bytes;
+    use crate::{bytes::Bytes, views::BlockView};
     use rlp::RlpStream;
     use rustc_hex::FromHex;
-    use views::BlockView;
 
     fn block_to_body(block: &[u8]) -> Bytes {
         let mut body = RlpStream::new_list(2);

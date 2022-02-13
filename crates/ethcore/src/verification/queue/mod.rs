@@ -22,9 +22,9 @@ use client::ClientIoMessage;
 use engines::EthEngine;
 use error::{BlockError, Error, ErrorKind, ImportErrorKind};
 use ethereum_types::{H256, U256};
-use heapsize::HeapSizeOf;
 use io::*;
 use len_caching_lock::LenCachingMutex;
+use parity_util_mem::{MallocSizeOf, MallocSizeOfExt};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{
     cmp,
@@ -108,15 +108,10 @@ enum State {
 }
 
 /// An item which is in the process of being verified.
+#[derive(MallocSizeOf)]
 pub struct Verifying<K: Kind> {
     hash: H256,
     output: Option<K::Verified>,
-}
-
-impl<K: Kind> HeapSizeOf for Verifying<K> {
-    fn heap_size_of_children(&self) -> usize {
-        self.output.heap_size_of_children()
-    }
 }
 
 /// Status of items in the queue.
@@ -175,14 +170,14 @@ struct QueueSignal {
 impl QueueSignal {
     fn set_sync(&self) {
         // Do not signal when we are about to close
-        if self.deleting.load(AtomicOrdering::Relaxed) {
+        if self.deleting.load(AtomicOrdering::SeqCst) {
             return;
         }
 
         if self
             .signalled
-            .compare_and_swap(false, true, AtomicOrdering::Relaxed)
-            == false
+            .compare_exchange(false, true, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+            .is_ok()
         {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send_sync(ClientIoMessage::BlockVerified) {
@@ -193,14 +188,14 @@ impl QueueSignal {
 
     fn set_async(&self) {
         // Do not signal when we are about to close
-        if self.deleting.load(AtomicOrdering::Relaxed) {
+        if self.deleting.load(AtomicOrdering::SeqCst) {
             return;
         }
 
         if self
             .signalled
-            .compare_and_swap(false, true, AtomicOrdering::Relaxed)
-            == false
+            .compare_exchange(false, true, AtomicOrdering::SeqCst, AtomicOrdering::SeqCst)
+            .is_ok()
         {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send(ClientIoMessage::BlockVerified) {
@@ -210,7 +205,7 @@ impl QueueSignal {
     }
 
     fn reset(&self) {
-        self.signalled.store(false, AtomicOrdering::Relaxed);
+        self.signalled.store(false, AtomicOrdering::SeqCst);
     }
 }
 
@@ -378,7 +373,7 @@ impl<K: Kind> VerificationQueue<K> {
                 verification
                     .sizes
                     .unverified
-                    .fetch_sub(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                    .fetch_sub(item.malloc_size_of(), AtomicOrdering::SeqCst);
                 verifying.push_back(Verifying {
                     hash: item.hash(),
                     output: None,
@@ -397,10 +392,10 @@ impl<K: Kind> VerificationQueue<K> {
                         if e.hash == hash {
                             idx = Some(i);
 
-                            verification.sizes.verifying.fetch_add(
-                                verified.heap_size_of_children(),
-                                AtomicOrdering::SeqCst,
-                            );
+                            verification
+                                .sizes
+                                .verifying
+                                .fetch_add(verified.malloc_size_of(), AtomicOrdering::SeqCst);
                             e.output = Some(verified);
                             break;
                         }
@@ -460,7 +455,7 @@ impl<K: Kind> VerificationQueue<K> {
 
         while let Some(output) = verifying.front_mut().and_then(|x| x.output.take()) {
             assert!(verifying.pop_front().is_some());
-            let size = output.heap_size_of_children();
+            let size = output.malloc_size_of();
             removed_size += size;
 
             if bad.contains(&output.parent_hash()) {
@@ -489,9 +484,9 @@ impl<K: Kind> VerificationQueue<K> {
         verified.clear();
 
         let sizes = &self.verification.sizes;
-        sizes.unverified.store(0, AtomicOrdering::Release);
-        sizes.verifying.store(0, AtomicOrdering::Release);
-        sizes.verified.store(0, AtomicOrdering::Release);
+        sizes.unverified.store(0, AtomicOrdering::SeqCst);
+        sizes.verifying.store(0, AtomicOrdering::SeqCst);
+        sizes.verified.store(0, AtomicOrdering::SeqCst);
         *self.total_difficulty.write() = 0.into();
 
         self.processing.write().clear();
@@ -564,7 +559,7 @@ impl<K: Kind> VerificationQueue<K> {
                 self.verification
                     .sizes
                     .unverified
-                    .fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                    .fetch_add(item.malloc_size_of(), AtomicOrdering::SeqCst);
 
                 //self.processing.write().insert(hash, item.difficulty());
                 {
@@ -621,7 +616,7 @@ impl<K: Kind> VerificationQueue<K> {
         let mut removed_size = 0;
         for output in verified.drain(..) {
             if bad.contains(&output.parent_hash()) {
-                removed_size += output.heap_size_of_children();
+                removed_size += output.malloc_size_of();
                 bad.insert(output.hash());
                 if let Some((difficulty, _)) = processing.remove(&output.hash()) {
                     let mut td = self.total_difficulty.write();
@@ -663,7 +658,7 @@ impl<K: Kind> VerificationQueue<K> {
 
         let drained_size = result
             .iter()
-            .map(HeapSizeOf::heap_size_of_children)
+            .map(MallocSizeOfExt::malloc_size_of)
             .fold(0, |a, c| a + c);
         self.verification
             .sizes
@@ -723,7 +718,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .unverified
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
 
             (len, size + len * size_of::<K::Unverified>())
         };
@@ -733,7 +728,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .verifying
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
             (len, size + len * size_of::<Verifying<K>>())
         };
         let (verified_len, verified_bytes) = {
@@ -742,7 +737,7 @@ impl<K: Kind> VerificationQueue<K> {
                 .verification
                 .sizes
                 .verified
-                .load(AtomicOrdering::Acquire);
+                .load(AtomicOrdering::SeqCst);
             (len, size + len * size_of::<K::Verified>())
         };
 
@@ -881,7 +876,7 @@ mod tests {
     use io::*;
     use spec::Spec;
     use test_helpers::{get_good_dummy_block, get_good_dummy_block_seq};
-    use types::{view, views::BlockView};
+    use types::{view, views::BlockView, BlockNumber};
 
     // create a test block queue.
     // auto_scaling enables verifier adjustment.
@@ -902,7 +897,7 @@ mod tests {
     }
 
     fn new_unverified(bytes: Bytes) -> Unverified {
-        Unverified::from_rlp(bytes).expect("Should be valid rlp")
+        Unverified::from_rlp(bytes, BlockNumber::max_value()).expect("Should be valid rlp")
     }
 
     #[test]
@@ -946,7 +941,10 @@ mod tests {
     fn returns_total_difficulty() {
         let queue = get_test_queue(false);
         let block = get_good_dummy_block();
-        let hash = view!(BlockView, &block).header().hash().clone();
+        let hash = view!(BlockView, &block)
+            .header(BlockNumber::max_value())
+            .hash()
+            .clone();
         if let Err(e) = queue.import(new_unverified(block)) {
             panic!("error importing block that is valid by definition({:?})", e);
         }
@@ -962,7 +960,10 @@ mod tests {
     fn returns_ok_for_drained_duplicates() {
         let queue = get_test_queue(false);
         let block = get_good_dummy_block();
-        let hash = view!(BlockView, &block).header().hash().clone();
+        let hash = view!(BlockView, &block)
+            .header(BlockNumber::max_value())
+            .hash()
+            .clone();
         if let Err(e) = queue.import(new_unverified(block)) {
             panic!("error importing block that is valid by definition({:?})", e);
         }

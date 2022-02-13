@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Generator, KeyPair, Secret};
-use keccak::Keccak256;
+use parity_crypto::{
+    publickey::{KeyPair, Secret},
+    Keccak256,
+};
 use parity_wordlist;
 
 /// Simple brainwallet.
@@ -29,12 +31,8 @@ impl Brain {
     pub fn validate_phrase(phrase: &str, expected_words: usize) -> Result<(), ::WordlistError> {
         parity_wordlist::validate_phrase(phrase, expected_words)
     }
-}
 
-impl Generator for Brain {
-    type Error = ::Void;
-
-    fn generate(&mut self) -> Result<KeyPair, Self::Error> {
+    pub fn generate(&mut self) -> KeyPair {
         let seed = self.0.clone();
         let mut secret = seed.into_bytes().keccak256();
 
@@ -45,12 +43,10 @@ impl Generator for Brain {
             match i > 16384 {
                 false => i += 1,
                 true => {
-                    if let Ok(pair) =
-                        Secret::from_unsafe_slice(&secret).and_then(KeyPair::from_secret)
-                    {
+                    if let Ok(pair) = Secret::import_key(&secret).and_then(KeyPair::from_secret) {
                         if pair.address()[0] == 0 {
                             trace!("Testing: {}, got: {:?}", self.0, pair.address());
-                            return Ok(pair);
+                            return pair;
                         }
                     }
                 }
@@ -62,13 +58,12 @@ impl Generator for Brain {
 #[cfg(test)]
 mod tests {
     use Brain;
-    use Generator;
 
     #[test]
     fn test_brain() {
         let words = "this is sparta!".to_owned();
-        let first_keypair = Brain::new(words.clone()).generate().unwrap();
-        let second_keypair = Brain::new(words.clone()).generate().unwrap();
+        let first_keypair = Brain::new(words.clone()).generate();
+        let second_keypair = Brain::new(words.clone()).generate();
         assert_eq!(first_keypair.secret(), second_keypair.secret());
     }
 }

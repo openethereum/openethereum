@@ -189,6 +189,7 @@ mod tests {
                 timestamp: Default::default(),
                 difficulty: Default::default(),
                 seal_fields: vec![Default::default(), Default::default()],
+                base_fee_per_gas: None,
                 size: Some(69.into()),
             },
         }));

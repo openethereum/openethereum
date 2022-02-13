@@ -16,7 +16,7 @@
 
 //! Solidity type-name parsing
 use crate::error::*;
-use lunarity_lexer::{Lexer, Token};
+use logos::{Lexer, Logos};
 use std::{fmt, result};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +33,59 @@ pub enum Type {
         length: Option<u64>,
         inner: Box<Type>,
     },
+}
+
+#[derive(Logos, Debug, Clone, Copy, PartialEq)]
+pub enum Token {
+    #[token("bool")]
+    TypeBool,
+
+    #[token("address")]
+    TypeAddress,
+
+    #[token("string")]
+    TypeString,
+
+    #[regex("byte|bytes[1-2][0-9]?|bytes3[0-2]?|bytes[4-9]", validate_bytes)]
+    TypeByte(u8),
+
+    #[token("bytes")]
+    TypeBytes,
+
+    #[regex("int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144)")]
+    #[regex("int(152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
+    #[token("int")]
+    TypeInt,
+
+    #[regex("uint(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144)")]
+    #[regex("uint(152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
+    #[token("uint")]
+    TypeUint,
+
+    #[token("[]")]
+    Array,
+
+    #[regex("[a-zA-Z_$][a-zA-Z0-9_$]*")]
+    Identifier,
+
+    #[regex("\\[[0-9]+\\]", |lex| lex.slice()[1..lex.slice().len()-1].parse::<u64>().ok() )]
+    SizedArray(u64),
+
+    #[error]
+    Error,
+}
+
+fn validate_bytes(lex: &mut Lexer<Token>) -> Option<u8> {
+    let slice = lex.slice().as_bytes();
+
+    if slice.len() > 5 {
+        if let Some(byte) = slice.get(6) {
+            return Some((slice[5] - b'0') * 10 + (byte - b'0'));
+        }
+        return Some(slice[5] - b'0');
+    } else {
+        return Some(1);
+    }
 }
 
 impl From<Type> for String {
@@ -66,74 +119,49 @@ impl fmt::Display for Type {
 
 /// the type string is being validated before it's parsed.
 pub fn parse_type(field_type: &str) -> Result<Type> {
-    #[derive(PartialEq)]
-    enum State {
-        Open,
-        Close,
-    }
+    let mut lex = Token::lexer(field_type);
 
-    let mut lexer = Lexer::new(field_type);
     let mut token = None;
-    let mut state = State::Close;
     let mut array_depth = 0;
-    let mut current_array_length: Option<u64> = None;
 
-    while lexer.token != Token::EndOfProgram {
-        let type_ = match lexer.token {
-            Token::Identifier => Type::Custom(lexer.slice().to_owned()),
-            Token::TypeByte => Type::Byte(lexer.extras.0),
+    while let Some(current_token) = lex.next() {
+        let type_ = match current_token {
+            Token::Identifier => Type::Custom(lex.slice().to_owned()),
+            Token::TypeByte(len) => Type::Byte(len),
             Token::TypeBytes => Type::Bytes,
             Token::TypeBool => Type::Bool,
             Token::TypeUint => Type::Uint,
             Token::TypeInt => Type::Int,
             Token::TypeString => Type::String,
             Token::TypeAddress => Type::Address,
-            Token::LiteralInteger => {
-                let length = lexer.slice();
-                current_array_length = Some(
-                    length
-                        .parse()
-                        .map_err(|_| ErrorKind::InvalidArraySize(length.into()))?,
-                );
-                lexer.advance();
-                continue;
-            }
-            Token::BracketOpen if token.is_some() && state == State::Close => {
-                state = State::Open;
-                lexer.advance();
-                continue;
-            }
-            Token::BracketClose if array_depth < 10 => {
-                if state == State::Open && token.is_some() {
-                    let length = current_array_length.take();
-                    state = State::Close;
-                    token = Some(Type::Array {
-                        inner: Box::new(token.expect("if statement checks for some; qed")),
-                        length,
-                    });
-                    lexer.advance();
-                    array_depth += 1;
-                    continue;
-                } else {
-                    return Err(ErrorKind::UnexpectedToken(
-                        lexer.slice().to_owned(),
-                        field_type.to_owned(),
-                    ))?;
-                }
-            }
-            Token::BracketClose if array_depth == 10 => {
+            Token::Array | Token::SizedArray(_) if array_depth == 10 => {
                 return Err(ErrorKind::UnsupportedArrayDepth)?;
             }
-            _ => {
+            Token::SizedArray(len) => {
+                token = Some(Type::Array {
+                    inner: Box::new(token.expect("if statement checks for some; qed")),
+                    length: Some(len),
+                });
+                array_depth += 1;
+                continue;
+            }
+            Token::Array => {
+                token = Some(Type::Array {
+                    inner: Box::new(token.expect("if statement checks for some; qed")),
+                    length: None,
+                });
+                array_depth += 1;
+                continue;
+            }
+            Token::Error => {
                 return Err(ErrorKind::UnexpectedToken(
-                    lexer.slice().to_owned(),
+                    lex.slice().to_owned(),
                     field_type.to_owned(),
-                ))?
+                ))?;
             }
         };
 
         token = Some(type_);
-        lexer.advance();
     }
 
     Ok(token.ok_or(ErrorKind::NonExistentType)?)

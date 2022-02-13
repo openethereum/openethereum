@@ -34,6 +34,6 @@ impl StopGuard {
 
 impl Drop for StopGuard {
     fn drop(&mut self) {
-        self.flag.store(true, Ordering::Relaxed)
+        self.flag.store(true, Ordering::SeqCst)
     }
 }

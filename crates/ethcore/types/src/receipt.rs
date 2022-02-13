@@ -18,15 +18,17 @@
 
 use super::transaction::TypedTxId;
 use ethereum_types::{Address, Bloom, H160, H256, U256};
-use heapsize::HeapSizeOf;
+use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
 
-use log_entry::{LocalizedLogEntry, LogEntry};
-use BlockNumber;
+use crate::{
+    log_entry::{LocalizedLogEntry, LogEntry},
+    BlockNumber,
+};
 
 /// Transaction outcome store in the receipt.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub enum TransactionOutcome {
     /// Status and state root are unknown under EIP-98 rules.
     Unknown,
@@ -37,7 +39,7 @@ pub enum TransactionOutcome {
 }
 
 /// Information describing execution of a transaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub struct LegacyReceipt {
     /// The total gas used in the block following execution of the transaction.
     pub gas_used: U256,
@@ -106,10 +108,11 @@ impl LegacyReceipt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, MallocSizeOf)]
 pub enum TypedReceipt {
     Legacy(LegacyReceipt),
     AccessList(LegacyReceipt),
+    EIP1559Transaction(LegacyReceipt),
 }
 
 impl TypedReceipt {
@@ -117,6 +120,7 @@ impl TypedReceipt {
     pub fn new(type_id: TypedTxId, legacy_receipt: LegacyReceipt) -> Self {
         //curently we are using same receipt for both legacy and typed transaction
         match type_id {
+            TypedTxId::EIP1559Transaction => Self::EIP1559Transaction(legacy_receipt),
             TypedTxId::AccessList => Self::AccessList(legacy_receipt),
             TypedTxId::Legacy => Self::Legacy(legacy_receipt),
         }
@@ -126,6 +130,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(_) => TypedTxId::Legacy,
             Self::AccessList(_) => TypedTxId::AccessList,
+            Self::EIP1559Transaction(_) => TypedTxId::EIP1559Transaction,
         }
     }
 
@@ -133,6 +138,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
@@ -140,6 +146,7 @@ impl TypedReceipt {
         match self {
             Self::Legacy(receipt) => receipt,
             Self::AccessList(receipt) => receipt,
+            Self::EIP1559Transaction(receipt) => receipt,
         }
     }
 
@@ -154,6 +161,10 @@ impl TypedReceipt {
         }
         //other transaction types
         match id.unwrap() {
+            TypedTxId::EIP1559Transaction => {
+                let rlp = Rlp::new(&tx[1..]);
+                Ok(Self::EIP1559Transaction(LegacyReceipt::decode(&rlp)?))
+            }
             TypedTxId::AccessList => {
                 let rlp = Rlp::new(&tx[1..]);
                 Ok(Self::AccessList(LegacyReceipt::decode(&rlp)?))
@@ -191,6 +202,11 @@ impl TypedReceipt {
                 receipt.rlp_append(&mut rlps);
                 s.append(&[&[TypedTxId::AccessList as u8], rlps.as_raw()].concat());
             }
+            Self::EIP1559Transaction(receipt) => {
+                let mut rlps = RlpStream::new();
+                receipt.rlp_append(&mut rlps);
+                s.append(&[&[TypedTxId::EIP1559Transaction as u8], rlps.as_raw()].concat());
+            }
         }
     }
 
@@ -213,6 +229,11 @@ impl TypedReceipt {
                 receipt.rlp_append(&mut rlps);
                 [&[TypedTxId::AccessList as u8], rlps.as_raw()].concat()
             }
+            Self::EIP1559Transaction(receipt) => {
+                let mut rlps = RlpStream::new();
+                receipt.rlp_append(&mut rlps);
+                [&[TypedTxId::EIP1559Transaction as u8], rlps.as_raw()].concat()
+            }
         }
     }
 }
@@ -228,12 +249,6 @@ impl Deref for TypedReceipt {
 impl DerefMut for TypedReceipt {
     fn deref_mut(&mut self) -> &mut LegacyReceipt {
         self.receipt_mut()
-    }
-}
-
-impl HeapSizeOf for TypedReceipt {
-    fn heap_size_of_children(&self) -> usize {
-        self.receipt().logs.heap_size_of_children()
     }
 }
 
@@ -264,6 +279,8 @@ pub struct RichReceipt {
     pub to: Option<H160>,
     /// Sender
     pub from: H160,
+    /// Effective gas price
+    pub effective_gas_price: U256,
 }
 
 /// Receipt with additional info.
@@ -297,12 +314,16 @@ pub struct LocalizedReceipt {
     pub to: Option<H160>,
     /// Sender
     pub from: H160,
+    /// Effective gas price
+    pub effective_gas_price: U256,
 }
 
 #[cfg(test)]
 mod tests {
     use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
-    use log_entry::LogEntry;
+    use crate::log_entry::LogEntry;
+    use ethereum_types::{H160, H256};
+    use std::str::FromStr;
 
     #[test]
     fn test_no_state_root() {
@@ -313,7 +334,7 @@ mod tests {
                 TransactionOutcome::Unknown,
                 0x40cae.into(),
                 vec![LogEntry {
-                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
                     topics: vec![],
                     data: vec![0u8; 32],
                 }],
@@ -329,11 +350,14 @@ mod tests {
             TypedTxId::Legacy,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
-                    "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
                 ),
                 0x40cae.into(),
                 vec![LogEntry {
-                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
                     topics: vec![],
                     data: vec![0u8; 32],
                 }],
@@ -352,11 +376,40 @@ mod tests {
             TypedTxId::AccessList,
             LegacyReceipt::new(
                 TransactionOutcome::StateRoot(
-                    "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee".into(),
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
                 ),
                 0x40cae.into(),
                 vec![LogEntry {
-                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
+                    topics: vec![],
+                    data: vec![0u8; 32],
+                }],
+            ),
+        );
+        let encoded = r.encode();
+        assert_eq!(&encoded, &expected);
+        let decoded = TypedReceipt::decode(&encoded).expect("decoding receipt failed");
+        assert_eq!(decoded, r);
+    }
+
+    #[test]
+    fn test_basic_eip1559() {
+        let expected = ::rustc_hex::FromHex::from_hex("02f90162a02f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee83040caeb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000f838f794dcf421d093428b096ca501a7cd1a740855a7976fc0a00000000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let r = TypedReceipt::new(
+            TypedTxId::EIP1559Transaction,
+            LegacyReceipt::new(
+                TransactionOutcome::StateRoot(
+                    H256::from_str(
+                        "2f697d671e9ae4ee24a43c4b0d7e15f1cb4ba6de1561120d43b9a4e8c4a8a6ee",
+                    )
+                    .unwrap(),
+                ),
+                0x40cae.into(),
+                vec![LogEntry {
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
                     topics: vec![],
                     data: vec![0u8; 32],
                 }],
@@ -377,7 +430,7 @@ mod tests {
                 TransactionOutcome::StatusCode(0),
                 0x40cae.into(),
                 vec![LogEntry {
-                    address: "dcf421d093428b096ca501a7cd1a740855a7976f".into(),
+                    address: H160::from_str("dcf421d093428b096ca501a7cd1a740855a7976f").unwrap(),
                     topics: vec![],
                     data: vec![0u8; 32],
                 }],

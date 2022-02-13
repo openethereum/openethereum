@@ -39,7 +39,7 @@ struct StratumControlService {
 impl ControlService for StratumControlService {
 	fn shutdown(&self) -> bool {
 		trace!(target: "hypervisor", "Received shutdown from control service");
-		self.stop.store(true, ::std::sync::atomic::Ordering::Relaxed);
+		self.stop.store(true, ::std::sync::atomic::Ordering::SeqCst);
 		true
 	}
 }

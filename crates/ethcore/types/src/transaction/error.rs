@@ -16,8 +16,8 @@
 
 use std::{error, fmt};
 
+use crate::crypto;
 use ethereum_types::U256;
-use ethkey;
 use rlp;
 use unexpected::OutOfBounds;
 
@@ -36,6 +36,13 @@ pub enum Error {
         minimal: U256,
         /// Transaction gas price
         got: U256,
+    },
+    /// Transaction's max gas price is lower then block base fee.
+    GasPriceLowerThanBaseFee {
+        /// Transaction max gas price
+        gas_price: U256,
+        /// Current block base fee
+        base_fee: U256,
     },
     /// Transaction has too low fee
     /// (there is already a transaction with the same sender-nonce but higher gas price)
@@ -86,10 +93,12 @@ pub enum Error {
     InvalidRlp(String),
     /// Transaciton is still not enabled.
     TransactionTypeNotEnabled,
+    /// Transaction sender is not an EOA (see EIP-3607)
+    SenderIsNotEOA,
 }
 
-impl From<ethkey::Error> for Error {
-    fn from(err: ethkey::Error) -> Self {
+impl From<crypto::publickey::Error> for Error {
+    fn from(err: crypto::publickey::Error) -> Self {
         Error::InvalidSignature(format!("{}", err))
     }
 }
@@ -114,6 +123,15 @@ impl fmt::Display for Error {
             InsufficientGasPrice { minimal, got } => {
                 format!("Insufficient gas price. Min={}, Given={}", minimal, got)
             }
+            GasPriceLowerThanBaseFee {
+                gas_price,
+                base_fee,
+            } => {
+                format!(
+                    "Max gas price is lower then required base fee. Gas price={}, Base fee={}",
+                    gas_price, base_fee
+                )
+            }
             InsufficientGas { minimal, got } => {
                 format!("Insufficient gas. Min={}, Given={}", minimal, got)
             }
@@ -131,13 +149,14 @@ impl fmt::Display for Error {
             InvalidChainId => "Transaction of this chain ID is not allowed on this chain.".into(),
             InvalidSignature(ref err) => format!("Transaction has invalid signature: {}.", err),
             NotAllowed => {
-                "Sender does not have permissions to execute this type of transction".into()
+                "Sender does not have permissions to execute this type of transaction".into()
             }
             TooBig => "Transaction too big".into(),
             InvalidRlp(ref err) => format!("Transaction has invalid RLP structure: {}.", err),
             TransactionTypeNotEnabled => {
                 format!("Transaction type is not enabled for current block")
             }
+            SenderIsNotEOA => "Transaction sender is not an EOA (see EIP-3607)".into(),
         };
 
         f.write_fmt(format_args!("Transaction error ({})", msg))

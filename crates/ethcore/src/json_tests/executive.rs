@@ -16,6 +16,7 @@
 
 use super::test_common::*;
 use bytes::Bytes;
+use ethereum_types::BigEndianHash;
 use ethjson;
 use ethtrie;
 use evm::Finalize;
@@ -398,10 +399,11 @@ pub fn json_executive_test<H: FnMut(&str, HookType)>(
                         for (k, v) in storage {
                             let key: U256 = k.into();
                             let value: U256 = v.into();
-                            let found_storage =
-                                try_fail!(state.storage_at(&address, &From::from(&key)));
+                            let found_storage = try_fail!(
+                                state.storage_at(&address, &BigEndianHash::from_uint(&key))
+                            );
                             fail_unless(
-                                found_storage == From::from(&value),
+                                found_storage == BigEndianHash::from_uint(&value),
                                 "storage is incorrect",
                             );
                         }

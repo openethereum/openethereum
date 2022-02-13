@@ -33,29 +33,47 @@ use types::{header::Header, ids::BlockId, BlockNumber};
 
 use client::EngineClient;
 
+use error::Error as EthcoreError;
+
 pub use self::simple_list::SimpleList;
 #[cfg(test)]
 pub use self::test::TestSet;
 use self::{contract::ValidatorContract, multi::Multi, safe_contract::ValidatorSafeContract};
 use super::SystemCall;
 
-/// Creates a validator set from spec.
-pub fn new_validator_set(spec: ValidatorSpec) -> Box<dyn ValidatorSet> {
+/// Creates a validator set from the given spec and initializes a transition to POSDAO AuRa consensus.
+pub fn new_validator_set_posdao(
+    spec: ValidatorSpec,
+    posdao_transition: Option<BlockNumber>,
+) -> Box<dyn ValidatorSet> {
     match spec {
         ValidatorSpec::List(list) => {
             Box::new(SimpleList::new(list.into_iter().map(Into::into).collect()))
         }
-        ValidatorSpec::SafeContract(address) => {
-            Box::new(ValidatorSafeContract::new(address.into()))
+        ValidatorSpec::SafeContract(address) => Box::new(ValidatorSafeContract::new(
+            address.into(),
+            posdao_transition,
+        )),
+        ValidatorSpec::Contract(address) => {
+            Box::new(ValidatorContract::new(address.into(), posdao_transition))
         }
-        ValidatorSpec::Contract(address) => Box::new(ValidatorContract::new(address.into())),
         ValidatorSpec::Multi(sequence) => Box::new(Multi::new(
             sequence
                 .into_iter()
-                .map(|(block, set)| (block.into(), new_validator_set(set)))
+                .map(|(block, set)| {
+                    (
+                        block.into(),
+                        new_validator_set_posdao(set, posdao_transition),
+                    )
+                })
                 .collect(),
         )),
     }
+}
+
+/// Creates a validator set from the given spec.
+pub fn new_validator_set(spec: ValidatorSpec) -> Box<dyn ValidatorSet> {
+    new_validator_set_posdao(spec, None)
 }
 
 /// A validator set.
@@ -64,6 +82,21 @@ pub trait ValidatorSet: Send + Sync + 'static {
     // TODO [keorn]: this is a hack intended to migrate off of
     // a strict dependency on state always being available.
     fn default_caller(&self, block_id: BlockId) -> Box<Call>;
+
+    /// Called for each new block this node is creating.  If this block is
+    /// the first block of an epoch, this is called *after* `on_epoch_begin()`,
+    /// but with the same parameters.
+    ///
+    /// Returns a list of contract calls to be pushed onto the new block.
+    fn generate_engine_transactions(
+        &self,
+        _first: bool,
+        _header: &Header,
+        _call: &mut SystemCall,
+    ) -> Result<Vec<(Address, Bytes)>, EthcoreError>;
+
+    /// Called on the close of every block.
+    fn on_close_block(&self, _header: &Header, _address: &Address) -> Result<(), EthcoreError>;
 
     /// Checks if a given address is a validator,
     /// using underlying, default call mechanism.

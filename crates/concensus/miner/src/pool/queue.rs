@@ -76,16 +76,16 @@ pub struct Status {
 impl fmt::Display for Status {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         writeln!(
-			fmt,
-			"Pool: {current}/{max} ({senders} senders; {mem}/{mem_max} kB) [minGasPrice: {gp} Mwei, maxGas: {max_gas}]",
-			current = self.status.transaction_count,
-			max = self.limits.max_count,
-			senders = self.status.senders,
-			mem = self.status.mem_usage / 1024,
-			mem_max = self.limits.max_mem_usage / 1024,
-			gp = self.options.minimal_gas_price / 1_000_000,
-			max_gas = cmp::min(self.options.block_gas_limit, self.options.tx_gas_limit),
-		)
+            fmt,
+            "Pool: {current}/{max} ({senders} senders; {mem}/{mem_max} kB) [minGasPrice: {gp} Mwei, maxGas: {max_gas}]",
+            current = self.status.transaction_count,
+            max = self.limits.max_count,
+            senders = self.status.senders,
+            mem = self.status.mem_usage / 1024,
+            mem_max = self.limits.max_mem_usage / 1024,
+            gp = self.options.minimal_gas_price / 1_000_000,
+            max_gas = cmp::min(self.options.block_gas_limit, self.options.tx_gas_limit),
+        )
     }
 }
 
@@ -301,7 +301,7 @@ impl TransactionQueue {
     ///
     /// Given blockchain and state access (Client)
     /// verifies and imports transactions to the pool.
-    pub fn import<C: client::Client + client::NonceClient + Clone>(
+    pub fn import<C: client::Client + client::NonceClient + client::BalanceClient + Clone>(
         &self,
         client: C,
         transactions: Vec<verifier::Transaction>,
@@ -331,41 +331,41 @@ impl TransactionQueue {
             transaction_to_replace,
         );
 
-        let mut replace = replace::ReplaceByScoreAndReadiness::new(
+        let mut replace = replace::ReplaceByScoreReadinessAndValidity::new(
             self.pool.read().scoring().clone(),
             client,
             self.options.read().block_base_fee,
         );
 
         let results = transactions
-			.into_iter()
-			.map(|transaction| {
-				let hash = transaction.hash();
+            .into_iter()
+            .map(|transaction| {
+                let hash = transaction.hash();
 
-				if self.pool.read().find(&hash).is_some() {
-					return Err(transaction::Error::AlreadyImported);
-				}
+                if self.pool.read().find(&hash).is_some() {
+                    return Err(transaction::Error::AlreadyImported);
+                }
 
-				if let Some(err) = self.recently_rejected.get(&hash) {
-					trace!(target: "txqueue", "[{:?}] Rejecting recently rejected: {:?}", hash, err);
-					return Err(err);
-				}
+                if let Some(err) = self.recently_rejected.get(&hash) {
+                    trace!(target: "txqueue", "[{:?}] Rejecting recently rejected: {:?}", hash, err);
+                    return Err(err);
+                }
 
-				let imported = verifier
-					.verify_transaction(transaction)
-					.and_then(|verified| {
-						self.pool.write().import(verified, &mut replace).map_err(convert_error)
-					});
+                let imported = verifier
+                    .verify_transaction(transaction)
+                    .and_then(|verified| {
+                        self.pool.write().import(verified, &mut replace).map_err(convert_error)
+                    });
 
-				match imported {
-					Ok(_) => Ok(()),
-					Err(err) => {
-						self.recently_rejected.insert(hash, &err);
-						Err(err)
-					},
-				}
-			})
-			.collect::<Vec<_>>();
+                match imported {
+                    Ok(_) => Ok(()),
+                    Err(err) => {
+                        self.recently_rejected.insert(hash, &err);
+                        Err(err)
+                    },
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Notify about imported transactions.
         (self.pool.write().listener_mut().1).0.notify();

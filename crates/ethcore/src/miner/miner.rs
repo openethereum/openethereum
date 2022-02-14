@@ -40,7 +40,8 @@ use ethereum_types::{Address, H256, U256};
 use io::IoChannel;
 use miner::{
     self,
-    pool_client::{CachedNonceClient, NonceCache, PoolClient},
+    cache::Cache,
+    pool_client::{CachedNonceClient, PoolClient},
     MinerService,
 };
 use parking_lot::{Mutex, RwLock};
@@ -249,7 +250,8 @@ pub struct Miner {
     params: RwLock<AuthoringParams>,
     #[cfg(feature = "work-notify")]
     listeners: RwLock<Vec<Box<dyn NotifyWork>>>,
-    nonce_cache: NonceCache,
+    nonce_cache: Cache<Address, U256>,
+    balance_cache: Cache<Address, U256>,
     gas_pricer: Mutex<GasPricer>,
     options: MinerOptions,
     // TODO [ToDr] Arc is only required because of price updater
@@ -284,6 +286,7 @@ impl Miner {
         let verifier_options = options.pool_verification_options.clone();
         let tx_queue_strategy = options.tx_queue_strategy;
         let nonce_cache_size = cmp::max(4096, limits.max_count / 4);
+        let balance_cache_size = cmp::max(4096, limits.max_count / 4);
         let refuse_service_transactions = options.refuse_service_transactions;
         let engine = spec.engine.clone();
 
@@ -300,7 +303,8 @@ impl Miner {
             #[cfg(feature = "work-notify")]
             listeners: RwLock::new(vec![]),
             gas_pricer: Mutex::new(gas_pricer),
-            nonce_cache: NonceCache::new(nonce_cache_size),
+            nonce_cache: Cache::<Address, U256>::new("Nonce", nonce_cache_size),
+            balance_cache: Cache::<Address, U256>::new("Balance", balance_cache_size),
             options,
             transaction_queue: Arc::new(TransactionQueue::new(
                 limits,
@@ -434,6 +438,7 @@ impl Miner {
         PoolClient::new(
             chain,
             &self.nonce_cache,
+            &self.balance_cache,
             &*self.engine,
             &*self.accounts,
             self.service_transaction_checker.as_ref(),
@@ -1426,11 +1431,11 @@ impl miner::MinerService for Miner {
         };
 
         result.and_then(|sealed| {
-			let n = sealed.header.number();
-			let h = sealed.header.hash();
-			info!(target: "miner", "Submitted block imported OK. #{}: {}", Colour::White.bold().paint(format!("{}", n)), Colour::White.bold().paint(format!("{:x}", h)));
-			Ok(sealed)
-		})
+            let n = sealed.header.number();
+            let h = sealed.header.hash();
+            info!(target: "miner", "Submitted block imported OK. #{}: {}", Colour::White.bold().paint(format!("{}", n)), Colour::White.bold().paint(format!("{:x}", h)));
+            Ok(sealed)
+        })
     }
 
     // t_nb 10 notify miner about new include blocks
@@ -1456,6 +1461,7 @@ impl miner::MinerService for Miner {
         if has_new_best_block {
             // Clear nonce cache
             self.nonce_cache.clear();
+            self.balance_cache.clear();
         }
 
         // t_nb 10.1 First update gas limit in transaction queue and minimal gas price.
@@ -1463,13 +1469,13 @@ impl miner::MinerService for Miner {
         let gas_limit = chain.best_block_header().gas_limit()
             // multiplication neccesary only if OE nodes are the only miners in network, not really essential but wont hurt
             *  if self.engine.gas_limit_override(&chain.best_block_header()).is_none() {
-                self
+            self
                 .engine
                 .schedule(chain.best_block_header().number() + 1)
                 .eip1559_gas_limit_bump
-                } else {
-                    1
-                };
+        } else {
+            1
+        };
         let allow_non_eoa_sender = self
             .engine
             .allow_non_eoa_sender(chain.best_block_header().number() + 1);
@@ -1479,20 +1485,20 @@ impl miner::MinerService for Miner {
         let client = self.pool_client(chain);
         {
             retracted
-				.par_iter()
-				.for_each(|hash| {
-					let block = chain.block(BlockId::Hash(*hash))
-						.expect("Client is sending message after commit to db and inserting to chain; the block is available; qed");
-					let txs = block.transactions()
-						.into_iter()
-						.map(pool::verifier::Transaction::Retracted)
+                .par_iter()
+                .for_each(|hash| {
+                    let block = chain.block(BlockId::Hash(*hash))
+                        .expect("Client is sending message after commit to db and inserting to chain; the block is available; qed");
+                    let txs = block.transactions()
+                        .into_iter()
+                        .map(pool::verifier::Transaction::Retracted)
                         .collect();
                     // t_nb 10.2
-					let _ = self.transaction_queue.import(
-						client.clone(),
-						txs,
-					);
-				});
+                    let _ = self.transaction_queue.import(
+                        client.clone(),
+                        txs,
+                    );
+                });
         }
 
         if has_new_best_block || (imported.len() > 0 && self.options.reseal_on_uncle) {
@@ -1522,6 +1528,7 @@ impl miner::MinerService for Miner {
             if let Some(ref channel) = *self.io_channel.read() {
                 let queue = self.transaction_queue.clone();
                 let nonce_cache = self.nonce_cache.clone();
+                let balance_cache = self.balance_cache.clone();
                 let engine = self.engine.clone();
                 let accounts = self.accounts.clone();
                 let service_transaction_checker = self.service_transaction_checker.clone();
@@ -1530,6 +1537,7 @@ impl miner::MinerService for Miner {
                     let client = PoolClient::new(
                         chain,
                         &nonce_cache,
+                        &balance_cache,
                         &*engine,
                         &*accounts,
                         service_transaction_checker.as_ref(),

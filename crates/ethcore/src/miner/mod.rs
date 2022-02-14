@@ -19,6 +19,7 @@
 //! Miner module
 //! Keeps track of transactions and currently sealed pending block.
 
+mod cache;
 mod miner;
 
 pub mod pool_client;

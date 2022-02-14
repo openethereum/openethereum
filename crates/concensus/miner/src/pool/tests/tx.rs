@@ -28,6 +28,7 @@ pub struct Tx {
     pub nonce: u64,
     pub gas: u64,
     pub gas_price: u64,
+    pub value: u64,
 }
 
 impl Default for Tx {
@@ -36,6 +37,7 @@ impl Default for Tx {
             nonce: 123,
             gas: 21_000,
             gas_price: 1,
+            value: 100,
         }
     }
 }
@@ -46,6 +48,11 @@ impl Tx {
             gas_price,
             ..Default::default()
         }
+    }
+
+    pub fn with_value(mut self, value: u64) -> Self {
+        self.value = value;
+        self
     }
 
     pub fn signed(self) -> SignedTransaction {
@@ -81,7 +88,7 @@ impl Tx {
     pub fn unsigned(self) -> TypedTransaction {
         TypedTransaction::Legacy(Transaction {
             action: transaction::Action::Create,
-            value: U256::from(100),
+            value: self.value.into(),
             data: "3331600055".from_hex().unwrap(),
             gas: self.gas.into(),
             gas_price: self.gas_price.into(),
@@ -93,7 +100,7 @@ impl Tx {
         let keypair = Random.generate();
         let tx = TypedTransaction::Legacy(Transaction {
             action: transaction::Action::Create,
-            value: U256::from(100),
+            value: self.value.into(),
             data: include_str!("../res/big_transaction.data")
                 .from_hex()
                 .unwrap(),

@@ -249,7 +249,7 @@ mod tests {
         stats.propagated(&hash3, true, Some(enodeid3), 7);
 
         // when
-        stats.retain_new(10, 4);
+        stats.retain_new(10, 3);
 
         // then
         assert_eq!(stats.get_new(&hash1), None);

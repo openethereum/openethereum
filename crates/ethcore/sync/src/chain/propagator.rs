@@ -29,7 +29,7 @@ use super::sync_packet::SyncPacket::{self, *};
 
 use super::{
     random, ChainSync, ETH_PROTOCOL_VERSION_65, MAX_PEERS_PROPAGATION, MAX_PEER_LAG_PROPAGATION,
-    MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION, NEW_TRANSACTIONS_STATS_PERIOD,
+    MAX_TRANSACTION_PACKET_SIZE, MIN_PEERS_PROPAGATION,
 };
 use ethcore_miner::pool::VerifiedTransaction;
 use std::sync::Arc;
@@ -150,7 +150,7 @@ impl SyncPropagator {
 
         if are_new {
             sync.transactions_stats
-                .retain_new(block_number, NEW_TRANSACTIONS_STATS_PERIOD);
+                .retain_new(block_number, sync.new_transactions_stats_period);
         } else {
             sync.transactions_stats
                 .retain_pending(&all_transactions_hashes);

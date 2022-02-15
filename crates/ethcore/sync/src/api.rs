@@ -112,6 +112,8 @@ pub struct SyncConfig {
     pub warp_sync: WarpSync,
     /// Number of first block where EIP-1559 rules begin. New encoding/decoding block format.
     pub eip1559_transition: BlockNumber,
+    /// Number of blocks for which new transactions will be returned in a result of `parity_newTransactionsStats` RPC call
+    pub new_transactions_stats_period: u64,
 }
 
 impl Default for SyncConfig {
@@ -124,6 +126,7 @@ impl Default for SyncConfig {
             fork_block: None,
             warp_sync: WarpSync::Disabled,
             eip1559_transition: BlockNumber::max_value(),
+            new_transactions_stats_period: 0,
         }
     }
 }

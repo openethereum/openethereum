@@ -186,8 +186,6 @@ const SNAPSHOT_MIN_PEERS: usize = 3;
 
 const MAX_SNAPSHOT_CHUNKS_DOWNLOAD_AHEAD: usize = 3;
 
-const NEW_TRANSACTIONS_STATS_PERIOD: BlockNumber = 10;
-
 const WAIT_PEERS_TIMEOUT: Duration = Duration::from_secs(5);
 const STATUS_TIMEOUT: Duration = Duration::from_secs(5);
 const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
@@ -720,6 +718,8 @@ pub struct ChainSync {
     warp_sync: WarpSync,
     /// New block encoding/decoding format is introduced by the EIP1559
     eip1559_transition: BlockNumber,
+    /// Number of blocks for which new transactions will be returned in a result of `parity_newTransactionsStats` RPC call
+    new_transactions_stats_period: BlockNumber,
 }
 
 #[derive(Debug, Default)]
@@ -808,6 +808,7 @@ impl ChainSync {
             transactions_stats: TransactionsStats::default(),
             warp_sync: config.warp_sync,
             eip1559_transition: config.eip1559_transition,
+            new_transactions_stats_period: config.new_transactions_stats_period,
         };
         sync.update_targets(chain);
         sync

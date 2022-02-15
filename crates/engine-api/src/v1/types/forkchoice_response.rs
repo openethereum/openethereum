@@ -1,4 +1,4 @@
-use crate::v1::types::{PayloadId, PayloadStatus, Status};
+use crate::v1::types::{PayloadId, PayloadStatus};
 use serde::Serialize;
 
 /// Contains response for `engine_forkchoiceUpdatedV1` call.
@@ -14,6 +14,7 @@ pub struct ForkchoiceResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::v1::types::Status;
     use std::str::FromStr;
 
     #[test]

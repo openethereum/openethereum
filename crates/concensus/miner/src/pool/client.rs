@@ -90,3 +90,9 @@ pub trait NonceClient: fmt::Debug + Sync {
     /// Fetch only account nonce for given sender.
     fn account_nonce(&self, address: &Address) -> U256;
 }
+
+/// State balance client
+pub trait BalanceClient: fmt::Debug + Sync {
+    /// Fetch only account balance for given sender.
+    fn account_balance(&self, address: &Address) -> U256;
+}

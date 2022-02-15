@@ -17,3 +17,6 @@ hex = "0.4.3"
 
 ethereum-types = "0.13.1"
 ethereum = { version = "0.11.1", features = ["with-serde"]}
+
+jsonrpc-derive = "18.0.0"
+jsonrpc-core = "18.0.0"

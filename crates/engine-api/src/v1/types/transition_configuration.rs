@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct TransitionConfiguration {
     /// Maps on the `TERMINAL_TOTAL_DIFFICULTY` parameter of EIP-3675.
-    terminal_total_difficulty: U256,
+    pub terminal_total_difficulty: U256,
     /// Maps on `TERMINAL_BLOCK_HASH` parameter of EIP-3675.
-    terminal_block_hash: H256,
+    pub terminal_block_hash: H256,
     /// Maps on `TERMINAL_BLOCK_NUMBER` parameter of EIP-3675.
-    terminal_block_number: U64,
+    pub terminal_block_number: U64,
 }
 
 #[cfg(test)]

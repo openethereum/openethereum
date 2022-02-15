@@ -28,13 +28,13 @@ pub enum Status {
 #[serde(rename_all = "camelCase")]
 pub struct PayloadStatus {
     /// Status of payload processing.
-    status: Status,
+    pub status: Status,
     /// The hash of the most recent valid block
     /// in the branch defined by payload and its ancestors.
-    latest_valid_hash: Option<H256>,
+    pub latest_valid_hash: Option<H256>,
     /// A message providing additional details on the validation
     /// error if the payload is deemed `INVALID`.
-    validation_error: Option<String>,
+    pub validation_error: Option<String>,
 }
 
 #[cfg(test)]

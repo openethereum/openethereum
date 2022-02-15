@@ -9,34 +9,34 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct ExecutionPayload {
     /// Hash of the parent.
-    parent_hash: H256,
+    pub parent_hash: H256,
     /// Recipient of priority fees (`beneficiary` in the yellow paper).
-    fee_recipient: Address,
+    pub fee_recipient: Address,
     /// State root hash.
-    state_root: H256,
+    pub state_root: H256,
     /// Transactions receipts root hash.
-    receipts_root: H256,
+    pub receipts_root: H256,
     /// Logs bloom.
-    logs_bloom: Bloom,
+    pub logs_bloom: Bloom,
     /// Randomness of the block (`difficulty` in the yellow paper).
-    random: H256,
+    pub random: H256,
     /// Block number.
-    block_number: U64,
+    pub block_number: U64,
     /// Gas limit.
-    gas_limit: U64,
+    pub gas_limit: U64,
     /// Gas Used.
-    gas_used: U64,
+    pub gas_used: U64,
     /// Timestamp.
-    timestamp: U64,
+    pub timestamp: U64,
     /// Extra data.
     #[serde(with = "hex_bytes")]
-    extra_data: Bytes,
+    pub extra_data: Bytes,
     /// Base fee.
-    base_fee_per_gas: U256,
+    pub base_fee_per_gas: U256,
     /// Hash of the block.
-    block_hash: H256,
+    pub block_hash: H256,
     /// Transactions.
-    transactions: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
 }
 
 mod hex_bytes {

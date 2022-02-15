@@ -5,14 +5,14 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-struct ForkchoiceState {
+pub struct ForkchoiceState {
     /// Block hash of the head of the canonical chain.
-    head_block_hash: H256,
+    pub head_block_hash: H256,
     /// The "safe" block hash of the canonical chain under
     /// certain synchrony and honesty assumptions.
-    safe_block_hash: H256,
+    pub safe_block_hash: H256,
     /// Block hash of the most recent finalized block.
-    finalized_block_hash: H256,
+    pub finalized_block_hash: H256,
 }
 
 #[cfg(test)]

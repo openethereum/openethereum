@@ -7,11 +7,11 @@ use serde::Deserialize;
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PayloadAttributes {
     /// Value for the `timestamp` field of the new payload.
-    timestamp: U64,
+    pub timestamp: U64,
     /// Value for the `random` field of the new payload.
-    random: H256,
+    pub random: H256,
     /// Suggested value for the `feeRecipient` field of the new payload.
-    suggested_fee_recipient: Address,
+    pub suggested_fee_recipient: Address,
 }
 
 #[cfg(test)]

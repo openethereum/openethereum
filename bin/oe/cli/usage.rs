@@ -19,8 +19,8 @@ macro_rules! return_if_parse_error {
         match $e {
             Err(
                 clap_error
-				@
-				ClapError {
+                @
+                ClapError {
                     kind: ClapErrorKind::ValueValidation,
                     ..
                 },

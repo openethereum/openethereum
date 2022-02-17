@@ -11,7 +11,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.52.1
+          toolchain: stable
           override: true
       - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1

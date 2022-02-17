@@ -108,6 +108,7 @@ pub struct RunCmd {
     pub check_seal: bool,
     pub allow_missing_blocks: bool,
     pub download_old_blocks: bool,
+    pub new_transactions_stats_period: u64,
     pub verifier_settings: VerifierSettings,
     pub no_persistent_txqueue: bool,
     pub max_round_blocks_to_import: usize,
@@ -255,6 +256,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     };
     sync_config.download_old_blocks = cmd.download_old_blocks;
     sync_config.eip1559_transition = spec.params().eip1559_transition;
+    sync_config.new_transactions_stats_period = cmd.new_transactions_stats_period;
 
     let passwords = passwords_from_files(&cmd.acc_conf.password_files)?;
 
@@ -441,25 +443,26 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     }
 
     // create sync object
-    let (sync_provider, manage_network, chain_notify, priority_tasks) = modules::sync(
-        sync_config,
-        net_conf.clone().into(),
-        client.clone(),
-        forks,
-        snapshot_service.clone(),
-        &cmd.logger_config,
-        connection_filter
-            .clone()
-            .map(|f| f as Arc<dyn crate::sync::ConnectionFilter + 'static>),
-    )
-    .map_err(|e| format!("Sync error: {}", e))?;
+    let (sync_provider, manage_network, chain_notify, priority_tasks, new_transaction_hashes) =
+        modules::sync(
+            sync_config,
+            net_conf.clone().into(),
+            client.clone(),
+            forks,
+            snapshot_service.clone(),
+            &cmd.logger_config,
+            connection_filter
+                .clone()
+                .map(|f| f as Arc<dyn crate::sync::ConnectionFilter + 'static>),
+        )
+        .map_err(|e| format!("Sync error: {}", e))?;
 
     service.add_notify(chain_notify.clone());
 
     // Propagate transactions as soon as they are imported.
     let tx = ::parking_lot::Mutex::new(priority_tasks);
     let is_ready = Arc::new(atomic::AtomicBool::new(true));
-    miner.add_transactions_listener(Box::new(move |_hashes| {
+    miner.add_transactions_listener(Box::new(move |hashes| {
         // we want to have only one PendingTransactions task in the queue.
         if is_ready
             .compare_exchange(
@@ -470,6 +473,11 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             )
             .is_ok()
         {
+            for hash in hashes {
+                new_transaction_hashes
+                    .send(hash.clone())
+                    .expect("new_transaction_hashes receiving side is disconnected");
+            }
             let task =
                 crate::sync::PriorityTask::PropagateTransactions(Instant::now(), is_ready.clone());
             // we ignore error cause it means that we are closing

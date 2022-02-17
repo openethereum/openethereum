@@ -384,6 +384,9 @@ pub trait BlockChainClient:
     /// List all ready transactions that should be propagated to other peers.
     fn transactions_to_propagate(&self) -> Vec<Arc<VerifiedTransaction>>;
 
+    /// Get verified transaction with specified transaction hash.
+    fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>>;
+
     /// Sorted list of transaction gas prices from at least last sample_size blocks.
     fn gas_price_corpus(&self, sample_size: usize) -> ::stats::Corpus<U256> {
         let mut h = self.chain_info().best_block_hash;

@@ -74,6 +74,9 @@ pub struct PendingSettings {
     /// Value of score that is a boundary between includable and non-includable transactions
     /// Before EIP1559 it should be equal to zero, after EIP1559 it should be equal to block_base_fee
     pub includable_boundary: U256,
+    /// If `true` all non-local transactions in the pending set should have
+    /// `effective_priority_fee` to be at least `min_gas_price`.
+    pub enforce_priority_fees: bool,
 }
 
 impl PendingSettings {
@@ -86,6 +89,7 @@ impl PendingSettings {
             max_len: usize::max_value(),
             ordering: PendingOrdering::Priority,
             includable_boundary: Default::default(),
+            enforce_priority_fees: false,
         }
     }
 }
@@ -123,6 +127,9 @@ pub trait ScoredTransaction {
 
     /// Gets transaction gas price.
     fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256;
+
+    /// Gets the actual reward miner will get if the transaction is added into the current block.
+    fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256;
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256;
@@ -205,6 +212,10 @@ impl ScoredTransaction for VerifiedTransaction {
 
     fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256 {
         self.transaction.effective_gas_price(block_base_fee)
+    }
+
+    fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256 {
+        self.transaction.effective_priority_fee(block_base_fee)
     }
 
     /// Gets transaction nonce.

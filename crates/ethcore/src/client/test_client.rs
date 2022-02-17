@@ -127,6 +127,8 @@ pub struct TestBlockChainClient {
     pub history: RwLock<Option<u64>>,
     /// Is disabled
     pub disabled: AtomicBool,
+    /// Transaction hashes producer
+    pub new_transaction_hashes: RwLock<Option<crossbeam_channel::Sender<H256>>>,
 }
 
 /// Used for generating test client blocks.
@@ -196,6 +198,7 @@ impl TestBlockChainClient {
             history: RwLock::new(None),
             disabled: AtomicBool::new(false),
             error_on_logs: RwLock::new(None),
+            new_transaction_hashes: RwLock::new(None),
         };
 
         // insert genesis hash.
@@ -388,6 +391,14 @@ impl TestBlockChainClient {
             .import_external_transactions(self, vec![signed_tx.into()]);
         let res = res.into_iter().next().unwrap();
         assert!(res.is_ok());
+
+        // if new_transaction_hashes producer channel exists, send the transaction hash
+        let _ = self
+            .new_transaction_hashes
+            .write()
+            .as_ref()
+            .and_then(|tx| Some(tx.send(hash)));
+
         hash
     }
 
@@ -404,6 +415,13 @@ impl TestBlockChainClient {
     /// Returns true if the client has been disabled.
     pub fn is_disabled(&self) -> bool {
         self.disabled.load(AtomicOrder::SeqCst)
+    }
+
+    pub fn set_new_transaction_hashes_producer(
+        &self,
+        new_transaction_hashes: crossbeam_channel::Sender<H256>,
+    ) {
+        *self.new_transaction_hashes.write() = Some(new_transaction_hashes);
     }
 }
 
@@ -1100,6 +1118,10 @@ impl BlockChainClient for TestBlockChainClient {
             return Some(vec![0xcc]);
         }
         None
+    }
+
+    fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>> {
+        self.miner.transaction(tx_hash)
     }
 }
 

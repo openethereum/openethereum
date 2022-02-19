@@ -127,8 +127,8 @@ impl<M: Machine> Engine<M> for InstantSeal<M> {
 #[cfg(test)]
 mod tests {
     use block::*;
-    use engines::Seal;
     use common_libs::ethereum_types::{Address, H520};
+    use engines::Seal;
     use spec::Spec;
     use std::sync::Arc;
     use test_helpers::get_temp_state_db;

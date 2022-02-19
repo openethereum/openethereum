@@ -22,8 +22,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use connection::{Connection, EncryptedConnection, Packet, MAX_PAYLOAD_SIZE};
 use common_libs::ethereum_types::H256;
+use connection::{Connection, EncryptedConnection, Packet, MAX_PAYLOAD_SIZE};
 use handshake::Handshake;
 use host::*;
 use io::{IoContext, StreamToken};

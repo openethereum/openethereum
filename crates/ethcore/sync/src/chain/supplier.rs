@@ -21,8 +21,8 @@ use devp2p::PAYLOAD_SOFT_LIMIT;
 #[cfg(test)]
 pub const PAYLOAD_SOFT_LIMIT: usize = 100_000;
 
-use enum_primitive::FromPrimitive;
 use common_libs::ethereum_types::H256;
+use enum_primitive::FromPrimitive;
 use network::{self, PeerId};
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
@@ -502,11 +502,11 @@ mod test {
     use super::{super::tests::*, *};
     use blocks::SyncHeader;
     use bytes::Bytes;
+    use common_libs::ethereum_types::H256;
     use ethcore::{
         client::{BlockChainClient, EachBlockWith, TestBlockChainClient},
         spec::Spec,
     };
-    use common_libs::ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
     use std::{collections::VecDeque, str::FromStr};

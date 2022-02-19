@@ -19,6 +19,7 @@
 //! Ethcore library
 
 extern crate ansi_term;
+extern crate common_libs;
 extern crate common_types as types;
 extern crate crossbeam_utils;
 extern crate derive_more;
@@ -30,7 +31,6 @@ extern crate ethcore_call_contract as call_contract;
 extern crate ethcore_db as db;
 extern crate ethcore_io as io;
 extern crate ethcore_miner;
-extern crate common_libs;
 extern crate ethjson;
 extern crate hash_db;
 extern crate itertools;

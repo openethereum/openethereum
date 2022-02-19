@@ -24,8 +24,8 @@ use std::{
 
 use super::{error_negatively_reference_hash, JournalDB, DB_PREFIX_LEN, LATEST_ERA_KEY};
 use bytes::Bytes;
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use common_libs::ethereum_types::H256;
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use fastmap::H256FastMap;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;

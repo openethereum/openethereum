@@ -23,9 +23,9 @@ use blockchain::{
 };
 use blooms_db;
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, H256, U256};
 use crypto::publickey::KeyPair;
 use db::KeyValueDB;
-use common_libs::ethereum_types::{Address, H256, U256};
 use evm::Factory as EvmFactory;
 use hash::keccak;
 use io::IoChannel;

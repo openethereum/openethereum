@@ -28,8 +28,8 @@ extern crate rustc_hex;
 extern crate vm;
 
 use bytes::Bytes;
-use criterion::{black_box, Bencher, Criterion};
 use common_libs::ethereum_types::{Address, U256};
+use criterion::{black_box, Bencher, Criterion};
 use evm::Factory;
 use rustc_hex::FromHex;
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};

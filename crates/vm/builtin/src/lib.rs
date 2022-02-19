@@ -28,12 +28,12 @@ use std::{
 };
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use common_libs::ethereum_types::{H256, U256};
 use eip_152::compress;
 use eth_pairings::public_interface::eip2537::{
     EIP2537Executor, SCALAR_BYTE_LENGTH, SERIALIZED_G1_POINT_BYTE_LENGTH,
     SERIALIZED_G2_POINT_BYTE_LENGTH,
 };
-use common_libs::ethereum_types::{H256, U256};
 use ethjson;
 use keccak_hash::keccak;
 use log::{trace, warn};

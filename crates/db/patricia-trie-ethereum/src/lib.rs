@@ -16,8 +16,8 @@
 
 //! Façade crate for `patricia_trie` for Ethereum specific impls
 
-extern crate elastic_array;
 extern crate common_libs;
+extern crate elastic_array;
 extern crate hash_db;
 extern crate keccak_hasher;
 extern crate parity_bytes;

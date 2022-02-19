@@ -17,6 +17,7 @@
 //! Parity-specific rpc implementation.
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
+use common_libs::ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
 use crypto::{publickey::ecies, DEFAULT_MAC};
 use ethcore::{
     client::{BlockChainClient, Call, EngineInfo, StateClient},
@@ -25,7 +26,6 @@ use ethcore::{
     state::StateInfo,
 };
 use ethcore_logger::RotatingLogger;
-use common_libs::ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
 use ethkey::Brain;
 use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};

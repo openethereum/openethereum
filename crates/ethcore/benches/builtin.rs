@@ -27,10 +27,10 @@ extern crate rustc_hex;
 use std::str::FromStr;
 
 use bytes::BytesRef;
+use common_libs::ethereum_types::H160;
 use criterion::{Bencher, Criterion};
 use ethcore::{ethereum::new_byzantium_test_machine, machine::EthereumMachine};
 use ethcore_builtin::Builtin;
-use common_libs::ethereum_types::H160;
 use rustc_hex::FromHex;
 
 lazy_static! {

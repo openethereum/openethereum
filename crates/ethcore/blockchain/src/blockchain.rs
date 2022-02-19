@@ -25,6 +25,7 @@ use std::{
 
 use ansi_term::Colour;
 use blooms_db;
+use common_libs::ethereum_types::{Bloom, BloomRef, H256, U256};
 use common_types::{
     blockchain_info::BlockChainInfo,
     encoded,
@@ -48,7 +49,6 @@ use ethcore_db::{
     keys::{BlockDetails, BlockReceipts, EpochTransitions, TransactionAddress, EPOCH_KEY_PREFIX},
     CacheUpdatePolicy, Readable, Writable,
 };
-use common_libs::ethereum_types::{Bloom, BloomRef, H256, U256};
 use itertools::Itertools;
 use log::{info, trace, warn};
 use parity_bytes::Bytes;

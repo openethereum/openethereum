@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate either;
 extern crate common_libs;
+extern crate either;
 extern crate memmap;
 extern crate parking_lot;
 extern crate primal;
@@ -51,9 +51,9 @@ pub mod progpow;
 mod progpow;
 
 pub use cache::{NodeCacheBuilder, OptimizeFor};
+use common_libs::ethereum_types::{self, BigEndianHash, U256, U512};
 use compute::Light;
 pub use compute::{quick_get_difficulty, slow_hash_block_number, ProofOfWork};
-use common_libs::ethereum_types::{self, BigEndianHash, U256, U512};
 use keccak::H256;
 use parking_lot::Mutex;
 pub use seed_compute::SeedHashCompute;

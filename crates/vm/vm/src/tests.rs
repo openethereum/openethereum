@@ -21,8 +21,8 @@ use std::{
 
 use crate::access_list::AccessList;
 use bytes::Bytes;
-use error::TrapKind;
 use common_libs::ethereum_types::{Address, H256, U256};
+use error::TrapKind;
 use hash::keccak;
 use CallType;
 use ContractCreateResult;

@@ -16,11 +16,11 @@
 
 //! VM runner.
 
+use common_libs::ethereum_types::{H256, U256};
 use ethcore::{
     client::{self, EvmTestClient, EvmTestError, TransactErr, TransactSuccess},
     pod_state, spec, state, state_db, trace, TrieSpec,
 };
-use common_libs::ethereum_types::{H256, U256};
 use ethjson;
 use std::time::{Duration, Instant};
 use types::transaction;

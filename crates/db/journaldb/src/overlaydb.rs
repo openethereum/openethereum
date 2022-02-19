@@ -23,8 +23,8 @@ use std::{
 };
 
 use super::error_negatively_reference_hash;
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use common_libs::ethereum_types::H256;
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use memory_db::*;

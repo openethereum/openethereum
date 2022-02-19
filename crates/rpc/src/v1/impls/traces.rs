@@ -18,11 +18,11 @@
 
 use std::sync::Arc;
 
+use common_libs::ethereum_types::H256;
 use ethcore::client::{
     BlockChainClient, BlockId, Call, CallAnalytics, EngineInfo, StateClient, StateInfo, TraceId,
     TransactionId,
 };
-use common_libs::ethereum_types::H256;
 use types::transaction::{SignedTransaction, TypedTransaction};
 
 use jsonrpc_core::Result;

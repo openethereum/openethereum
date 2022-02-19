@@ -18,8 +18,8 @@
 
 use std::sync::Arc;
 
-use ethcore::miner::{BlockChainClient, MinerService};
 use common_libs::ethereum_types::{H256, H64};
+use ethcore::miner::{BlockChainClient, MinerService};
 use jsonrpc_core::Error;
 use rlp;
 use v1::helpers::errors;

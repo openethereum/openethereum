@@ -21,11 +21,11 @@ use std::{
     sync::Arc,
 };
 
+use common_libs::ethereum_types::{H256, U256};
 use ethcore::{
     client::{BlockChainClient, BlockId},
     miner::{self, MinerService},
 };
-use common_libs::ethereum_types::{H256, U256};
 use parking_lot::Mutex;
 use types::filter::Filter as EthcoreFilter;
 

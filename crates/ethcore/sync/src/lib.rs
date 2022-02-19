@@ -21,6 +21,7 @@
 //! https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol
 //!
 
+extern crate common_libs;
 extern crate common_types as types;
 extern crate derive_more;
 extern crate ethcore;
@@ -28,7 +29,6 @@ extern crate ethcore_io as io;
 extern crate ethcore_network as network;
 extern crate ethcore_network_devp2p as devp2p;
 extern crate ethereum_forkid;
-extern crate common_libs;
 extern crate ethkey;
 extern crate ethstore;
 extern crate fastmap;

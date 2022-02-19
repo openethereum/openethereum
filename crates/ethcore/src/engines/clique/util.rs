@@ -16,13 +16,13 @@
 
 use std::collections::BTreeSet;
 
+use common_libs::ethereum_types::{Address, H160, H256};
 use crypto::publickey::{public_to_address, recover as ec_recover, Signature};
 use engines::{
     clique::{ADDRESS_LENGTH, NULL_MIXHASH, NULL_NONCE, SIGNATURE_LENGTH, VANITY_LENGTH},
     EngineError,
 };
 use error::Error;
-use common_libs::ethereum_types::{Address, H160, H256};
 use lru_cache::LruCache;
 use parking_lot::RwLock;
 use rlp::encode;

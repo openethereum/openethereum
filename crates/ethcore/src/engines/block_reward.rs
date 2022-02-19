@@ -17,8 +17,8 @@
 //! A module with types for declaring block rewards and a client interface for interacting with a
 //! block reward contract.
 
-use ethabi::{self, ParamType};
 use common_libs::ethereum_types::{Address, H160, U256};
+use ethabi::{self, ParamType};
 
 use super::{SystemOrCodeCall, SystemOrCodeCallKind};
 use block::ExecutedBlock;

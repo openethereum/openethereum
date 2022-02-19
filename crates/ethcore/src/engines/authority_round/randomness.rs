@@ -70,12 +70,12 @@
 //! https://github.com/poanetwork/posdao-contracts/blob/4fddb108993d4962951717b49222327f3d94275b/contracts/RandomAuRa.sol
 
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, H256, U256};
 use crypto::publickey::{ecies, Error as CryptoError};
 use derive_more::Display;
 use engines::signer::EngineSigner;
 use ethabi::Hash;
 use ethabi_contract::use_contract;
-use common_libs::ethereum_types::{Address, H256, U256};
 use hash::keccak;
 use log::{debug, error};
 use rand::Rng;

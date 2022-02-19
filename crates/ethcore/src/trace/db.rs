@@ -18,8 +18,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use blockchain::BlockChainDB;
-use db::{self, cache_manager::CacheManager, CacheUpdatePolicy, Key, Readable, Writable};
 use common_libs::ethereum_types::{H256, H264};
+use db::{self, cache_manager::CacheManager, CacheUpdatePolicy, Key, Readable, Writable};
 use kvdb::DBTransaction;
 use parity_util_mem::MallocSizeOfExt;
 use parking_lot::RwLock;

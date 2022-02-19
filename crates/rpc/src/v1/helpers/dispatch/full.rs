@@ -16,11 +16,11 @@
 
 use std::sync::Arc;
 
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethcore::{
     client::BlockChainClient,
     miner::{self, MinerService},
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 use parking_lot::Mutex;
 use types::transaction::{PendingTransaction, SignedTransaction};
 

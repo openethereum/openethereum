@@ -16,11 +16,11 @@
 
 use super::helpers::*;
 use bytes::Bytes;
+use common_libs::ethereum_types::H256;
 use ethcore::{
     client::EachBlockWith,
     snapshot::{CreationStatus, ManifestData, RestorationStatus, SnapshotService},
 };
-use common_libs::ethereum_types::H256;
 use hash::keccak;
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};

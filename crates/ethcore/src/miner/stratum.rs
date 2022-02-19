@@ -23,13 +23,13 @@ use std::{
 };
 
 use client::{Client, ImportSealedBlock};
+use common_libs::ethereum_types::{H256, H64, U256};
 use ethash::{self, SeedHashCompute};
 #[cfg(feature = "work-notify")]
 use ethcore_miner::work_notify::NotifyWork;
 #[cfg(feature = "work-notify")]
 use ethcore_stratum::PushWorkHandler;
 use ethcore_stratum::{Error as StratumServiceError, JobDispatcher, Stratum as StratumService};
-use common_libs::ethereum_types::{H256, H64, U256};
 use miner::{Miner, MinerService};
 use parking_lot::Mutex;
 use rlp::encode;

@@ -16,9 +16,9 @@
 
 use std::sync::Arc;
 
+use common_libs::ethereum_types::{Address, H160};
 use crypto::publickey;
 use dir::Directories;
-use common_libs::ethereum_types::{Address, H160};
 use ethkey::Password;
 
 use crate::params::{AccountsConfig, SpecType};
@@ -71,8 +71,8 @@ mod accounts {
 #[cfg(feature = "accounts")]
 mod accounts {
     use super::*;
-    use common_libs::ethereum_types::H256;
     use crate::upgrade::upgrade_key_location;
+    use common_libs::ethereum_types::H256;
     use std::str::FromStr;
 
     pub use crate::accounts::AccountProvider;

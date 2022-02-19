@@ -19,8 +19,8 @@
 #[macro_use]
 extern crate log;
 
-extern crate ethcore_db;
 extern crate common_libs;
+extern crate ethcore_db;
 extern crate fastmap;
 extern crate hash_db;
 extern crate keccak_hasher;

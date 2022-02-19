@@ -16,9 +16,9 @@
 
 use std::collections::HashMap;
 
+use common_libs::ethereum_types::{Bloom, H256};
 use common_types::{encoded::Block, engines::ForkChoice, BlockNumber};
 use ethcore_db::keys::{BlockDetails, BlockReceipts, TransactionAddress};
-use common_libs::ethereum_types::{Bloom, H256};
 
 use crate::block_info::BlockInfo;
 

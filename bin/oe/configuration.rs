@@ -24,6 +24,7 @@ use crate::{
 };
 use ansi_term::Colour;
 
+use common_libs::ethereum_types::{Address, H256, U256};
 use crypto::publickey::{Public, Secret};
 use ethcore::{
     client::VMType,
@@ -31,7 +32,6 @@ use ethcore::{
     snapshot::SnapshotConfiguration,
     verification::queue::VerifierSettings,
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 
 use num_cpus;
 use parity_version::{version, version_data};

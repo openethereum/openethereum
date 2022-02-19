@@ -24,8 +24,8 @@ use std::{
 
 use super::{traits::JournalDB, LATEST_ERA_KEY};
 use bytes::Bytes;
-use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use common_libs::ethereum_types::H256;
+use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use memory_db::MemoryDB;

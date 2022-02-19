@@ -15,8 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! EIP-191 compliant decoding + hashing
-use eip_712::{hash_structured_data, EIP712};
 use common_libs::ethereum_types::H256;
+use eip_712::{hash_structured_data, EIP712};
 use hash::keccak;
 use jsonrpc_core::Error;
 use serde_json::{from_value, Value};

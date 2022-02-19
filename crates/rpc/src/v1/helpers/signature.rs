@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use crypto::publickey::{public_to_address, recover, Signature};
 use common_libs::ethereum_types::{H256, U64};
+use crypto::publickey::{public_to_address, recover, Signature};
 use hash::keccak;
 use jsonrpc_core::Result;
 use v1::{
@@ -59,8 +59,8 @@ pub fn verify_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::publickey::{self, Generator};
     use common_libs::ethereum_types::{H160, U64};
+    use crypto::publickey::{self, Generator};
 
     pub fn add_chain_replay_protection(v: u64, chain_id: Option<u64>) -> u64 {
         v + if let Some(n) = chain_id {

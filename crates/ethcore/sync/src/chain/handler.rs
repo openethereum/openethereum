@@ -17,13 +17,13 @@
 use api::{ETH_PROTOCOL, PAR_PROTOCOL};
 use block_sync::{BlockDownloaderImportError as DownloaderImportError, DownloadAction};
 use bytes::Bytes;
+use common_libs::ethereum_types::{H256, U256};
 use enum_primitive::FromPrimitive;
 use ethcore::{
     error::{BlockError, Error as EthcoreError, ErrorKind as EthcoreErrorKind, ImportErrorKind},
     snapshot::{ManifestData, RestorationStatus},
     verification::queue::kind::blocks::Unverified,
 };
-use common_libs::ethereum_types::{H256, U256};
 use hash::keccak;
 use network::{client_version::ClientVersion, PeerId};
 use rlp::Rlp;

@@ -16,8 +16,8 @@
 
 //! Smart contract based transaction filter.
 
-use ethabi::FunctionOutputDecoder;
 use common_libs::ethereum_types::{Address, H256, U256};
+use ethabi::FunctionOutputDecoder;
 use lru_cache::LruCache;
 
 use call_contract::CallContract;
@@ -215,8 +215,8 @@ impl TransactionFilter {
 mod test {
     use super::TransactionFilter;
     use client::{BlockChainClient, BlockId, Client, ClientConfig};
-    use crypto::publickey::{KeyPair, Secret};
     use common_libs::ethereum_types::{Address, U256};
+    use crypto::publickey::{KeyPair, Secret};
     use io::IoChannel;
     use miner::Miner;
     use spec::Spec;

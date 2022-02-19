@@ -100,12 +100,12 @@ use super::{SyncConfig, WarpSync};
 use api::{EthProtocolInfo as PeerInfoDigest, PriorityTask, ETH_PROTOCOL, PAR_PROTOCOL};
 use block_sync::{BlockDownloader, DownloadAction};
 use bytes::Bytes;
+use common_libs::ethereum_types::{H256, U256};
 use derive_more::Display;
 use ethcore::{
     client::{BlockChainClient, BlockChainInfo, BlockId, BlockQueueInfo, BlockStatus},
     snapshot::RestorationStatus,
 };
-use common_libs::ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
@@ -1667,11 +1667,11 @@ impl ChainSync {
 pub mod tests {
     use super::{PeerAsking, PeerInfo, *};
     use bytes::Bytes;
+    use common_libs::ethereum_types::{Address, H256, U256};
     use ethcore::{
         client::{BlockChainClient, BlockInfo, ChainInfo, EachBlockWith, TestBlockChainClient},
         miner::{MinerService, PendingOrdering},
     };
-    use common_libs::ethereum_types::{Address, H256, U256};
     use network::PeerId;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};

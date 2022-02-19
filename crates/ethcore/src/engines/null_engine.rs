@@ -15,11 +15,11 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use block::ExecutedBlock;
+use common_libs::ethereum_types::U256;
 use engines::{
     block_reward::{self, RewardKind},
     Engine,
 };
-use common_libs::ethereum_types::U256;
 use machine::Machine;
 use types::{
     ancestry_action::AncestryAction,

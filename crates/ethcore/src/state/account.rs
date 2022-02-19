@@ -17,8 +17,8 @@
 //! Single account in the system.
 
 use bytes::{Bytes, ToPretty};
-use error::Error;
 use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
+use error::Error;
 use ethtrie::{Result as TrieResult, SecTrieDB, TrieDB, TrieFactory};
 use hash::{keccak, KECCAK_EMPTY, KECCAK_NULL_RLP};
 use hash_db::HashDB;

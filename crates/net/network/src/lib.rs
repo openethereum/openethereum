@@ -16,8 +16,8 @@
 
 #![recursion_limit = "128"]
 
-extern crate ethcore_io as io;
 extern crate common_libs;
+extern crate ethcore_io as io;
 extern crate ethkey;
 extern crate ipnetwork;
 extern crate libc;
@@ -50,8 +50,8 @@ pub use error::{DisconnectReason, Error, ErrorKind};
 pub use io::TimerToken;
 
 use client_version::ClientVersion;
-use crypto::publickey::Secret;
 use common_libs::ethereum_types::{H512, U64};
+use crypto::publickey::Secret;
 use ipnetwork::{IpNetwork, IpNetworkError};
 use rlp::{Decodable, DecoderError, Rlp};
 use std::{

@@ -1627,9 +1627,9 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 #[allow(dead_code)]
 mod tests {
     use super::*;
+    use common_libs::ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
     use crypto::publickey::{Generator, Random};
     use error::ExecutionError;
-    use common_libs::ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
     use evm::{Factory, VMType};
     use machine::EthereumMachine;
     use rustc_hex::FromHex;

@@ -15,8 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Personal rpc interface.
-use eip_712::EIP712;
 use common_libs::ethereum_types::{H160, H256, H520, U128};
+use eip_712::EIP712;
 use jsonrpc_core::{types::Value, BoxFuture, Result};
 use jsonrpc_derive::rpc;
 use v1::types::{

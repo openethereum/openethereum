@@ -27,10 +27,10 @@ use std::{
 
 use blockchain::{BlockReceipts, TreeRoute};
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, H256, U256};
 use crypto::publickey::{Generator, Random};
 use db::{COL_STATE, NUM_COLUMNS};
 use ethcore_miner::pool::VerifiedTransaction;
-use common_libs::ethereum_types::{Address, H256, U256};
 use ethtrie;
 use hash::keccak;
 use itertools::Itertools;

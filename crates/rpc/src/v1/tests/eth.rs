@@ -18,6 +18,7 @@
 use std::{env, sync::Arc};
 
 use accounts::AccountProvider;
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethcore::{
     client::{BlockChainClient, ChainInfo, Client, ClientConfig, EvmTestClient, ImportBlock},
     ethereum,
@@ -26,7 +27,6 @@ use ethcore::{
     test_helpers,
     verification::{queue::kind::blocks::Unverified, VerifierType},
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 use ethjson::{blockchain::BlockChain, spec::ForkSpec};
 use io::IoChannel;
 use miner::external::ExternalMiner;

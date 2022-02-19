@@ -899,8 +899,8 @@ mod tests {
     use self::tempdir::TempDir;
     use super::{EthMultiStore, EthStore};
     use accounts_dir::{KeyDirectory, MemoryDirectory, RootDiskDirectory};
-    use crypto::publickey::{Generator, KeyPair, Random};
     use common_libs::ethereum_types::H256;
+    use crypto::publickey::{Generator, KeyPair, Random};
     use secret_store::{
         Derivation, SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
     };

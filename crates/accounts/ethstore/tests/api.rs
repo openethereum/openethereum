@@ -22,8 +22,8 @@ mod util;
 
 use std::str::FromStr;
 
-use crypto::publickey::{verify_address, Generator, KeyPair, Random, Secret};
 use common_libs::ethereum_types::H160;
+use crypto::publickey::{verify_address, Generator, KeyPair, Random, Secret};
 use ethstore::{
     accounts_dir::RootDiskDirectory, EthStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
 };

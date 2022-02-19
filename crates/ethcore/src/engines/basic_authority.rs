@@ -19,10 +19,10 @@
 use super::validator_set::{new_validator_set, SimpleList, ValidatorSet};
 use block::*;
 use client::EngineClient;
+use common_libs::ethereum_types::{H256, H520};
 use crypto::publickey::{self, Signature};
 use engines::{signer::EngineSigner, ConstructedVerifier, Engine, EngineError, Seal, SealingState};
 use error::{BlockError, Error};
-use common_libs::ethereum_types::{H256, H520};
 use ethjson;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::RwLock;
@@ -227,8 +227,8 @@ impl Engine<EthereumMachine> for BasicAuthority {
 mod tests {
     use accounts::AccountProvider;
     use block::*;
-    use engines::{Seal, SealingState};
     use common_libs::ethereum_types::H520;
+    use engines::{Seal, SealingState};
     use hash::keccak;
     use spec::Spec;
     use std::sync::Arc;

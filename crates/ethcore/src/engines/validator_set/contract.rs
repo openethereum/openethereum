@@ -220,8 +220,8 @@ mod tests {
     use bytes::ToPretty;
     use call_contract::CallContract;
     use client::{traits::TransactionRequest, BlockChainClient, BlockInfo, ChainInfo};
-    use ethabi::FunctionOutputDecoder;
     use common_libs::ethereum_types::{Address, H520};
+    use ethabi::FunctionOutputDecoder;
     use hash::keccak;
     use miner::{self, MinerService};
     use rlp::encode;

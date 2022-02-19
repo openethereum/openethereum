@@ -57,6 +57,7 @@ use client::{
     traits::{ForceUpdateSealing, TransactionRequest},
     EngineClient,
 };
+use common_libs::ethereum_types::{Address, H256, H520, U128, U256};
 use crypto::publickey::{self, Signature};
 use engines::{
     block_reward,
@@ -64,7 +65,6 @@ use engines::{
     ConstructedVerifier, Engine, EngineError, Seal, SealingState,
 };
 use error::{BlockError, Error, ErrorKind};
-use common_libs::ethereum_types::{Address, H256, H520, U128, U256};
 
 use ethjson::{self, uint::Uint};
 use hash::keccak;
@@ -2352,6 +2352,7 @@ mod tests {
     };
     use accounts::AccountProvider;
     use block::*;
+    use common_libs::ethereum_types::{Address, H256, H520, U256};
     use crypto::publickey::Signature;
     use engines::{
         block_reward::BlockRewardContract,
@@ -2360,7 +2361,6 @@ mod tests {
     };
     use error::{Error, ErrorKind};
     use ethabi_contract::use_contract;
-    use common_libs::ethereum_types::{Address, H256, H520, U256};
     use ethjson;
     use hash::keccak;
     use miner::{Author, MinerService};

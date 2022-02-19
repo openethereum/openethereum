@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use common_libs::ethereum_types::{Address, BigEndianHash, Bloom, H256, U256};
 use crypto::publickey::{Generator, Random};
 use ethcore::client::{Executed, TestBlockChainClient, TransactionId};
 use ethcore_logger::RotatingLogger;
-use common_libs::ethereum_types::{Address, BigEndianHash, Bloom, H256, U256};
 use miner::pool::local_transactions::Status as LocalTransactionStatus;
 use std::{str::FromStr, sync::Arc};
 use sync::ManageNetwork;

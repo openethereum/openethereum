@@ -22,6 +22,7 @@ use std::{
 };
 
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethcore::{
     block::SealedBlock,
     client::{
@@ -32,7 +33,6 @@ use ethcore::{
     error::Error,
     miner::{self, AuthoringParams, MinerService, TransactionFilter},
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 use miner::pool::{
     local_transactions::Status as LocalTransactionStatus, verifier, QueueStatus,
     VerifiedTransaction,

@@ -564,9 +564,9 @@ mod tests {
         ecip1017_eras_block_reward, Ethash, EthashParams,
     };
     use block::*;
+    use common_libs::ethereum_types::{Address, H256, H64, U256};
     use engines::Engine;
     use error::{BlockError, Error, ErrorKind};
-    use common_libs::ethereum_types::{Address, H256, H64, U256};
     use rlp;
     use spec::Spec;
     use std::{collections::BTreeMap, str::FromStr, sync::Arc};

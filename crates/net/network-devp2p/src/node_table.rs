@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use discovery::{NodeEntry, TableUpdates};
 use common_libs::ethereum_types::H512;
+use discovery::{NodeEntry, TableUpdates};
 use ip_utils::*;
 use network::{AllowIP, Error, ErrorKind, IpFilter};
 use rand::seq::SliceRandom;

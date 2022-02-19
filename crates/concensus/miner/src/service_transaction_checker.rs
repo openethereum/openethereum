@@ -17,8 +17,8 @@
 //! A service transactions contract checker.
 
 use call_contract::{CallContract, RegistryInfo};
-use ethabi::FunctionOutputDecoder;
 use common_libs::ethereum_types::Address;
+use ethabi::FunctionOutputDecoder;
 use parking_lot::RwLock;
 use std::{collections::HashMap, mem, sync::Arc};
 use types::{ids::BlockId, transaction::SignedTransaction};

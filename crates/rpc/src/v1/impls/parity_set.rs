@@ -18,11 +18,11 @@
 use std::io;
 use std::{sync::Arc, time::Duration};
 
+use common_libs::ethereum_types::{H160, H256, U256};
 use ethcore::{
     client::{BlockChainClient, Mode},
     miner::{self, MinerService},
 };
-use common_libs::ethereum_types::{H160, H256, U256};
 use fetch::{self, Fetch};
 use hash::keccak_buffer;
 use sync::ManageNetwork;

@@ -37,10 +37,10 @@ use v1::{
     types::{pubsub, Header, Log, RichHeader},
 };
 
+use common_libs::ethereum_types::H256;
 use ethcore::client::{
     BlockChainClient, BlockId, ChainNotify, ChainRouteType, EngineInfo, NewBlocks,
 };
-use common_libs::ethereum_types::H256;
 use parity_runtime::Executor;
 use parking_lot::RwLock;
 

@@ -57,6 +57,7 @@ extern crate jsonrpc_http_server as http;
 extern crate jsonrpc_ipc_server as ipc;
 extern crate jsonrpc_pubsub;
 
+extern crate common_libs;
 extern crate common_types as types;
 extern crate eip_712;
 extern crate ethash;
@@ -65,7 +66,6 @@ extern crate ethcore_logger;
 extern crate ethcore_miner as miner;
 extern crate ethcore_network as network;
 extern crate ethcore_sync as sync;
-extern crate common_libs;
 extern crate ethkey;
 extern crate ethstore;
 extern crate fetch;

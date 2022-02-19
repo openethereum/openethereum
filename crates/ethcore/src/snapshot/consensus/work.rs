@@ -32,9 +32,9 @@ use std::{
 
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
+use common_libs::ethereum_types::H256;
 use db::KeyValueDB;
 use engines::EthEngine;
-use common_libs::ethereum_types::H256;
 use rand::rngs::OsRng;
 use rlp::{Rlp, RlpStream};
 use snapshot::{block::AbridgedBlock, Error, ManifestData, Progress};

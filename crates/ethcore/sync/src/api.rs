@@ -35,11 +35,11 @@ use chain::{
     ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, ETH_PROTOCOL_VERSION_65,
     ETH_PROTOCOL_VERSION_66, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
 };
+use common_libs::ethereum_types::{H256, H512, U256, U64};
 use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
     snapshot::SnapshotService,
 };
-use common_libs::ethereum_types::{H256, H512, U256, U64};
 use io::TimerToken;
 use network::IpFilter;
 use parking_lot::{Mutex, RwLock};

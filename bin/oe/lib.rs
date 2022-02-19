@@ -41,6 +41,7 @@ extern crate toml;
 
 extern crate blooms_db;
 extern crate cli_signer;
+extern crate common_libs;
 extern crate common_types as types;
 extern crate ethcore;
 extern crate ethcore_call_contract as call_contract;
@@ -51,7 +52,6 @@ extern crate ethcore_miner as miner;
 extern crate ethcore_network as network;
 extern crate ethcore_service;
 extern crate ethcore_sync as sync;
-extern crate common_libs;
 extern crate ethkey;
 extern crate ethstore;
 extern crate fetch;

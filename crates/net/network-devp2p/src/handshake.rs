@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
+use common_libs::ethereum_types::{H256, H520};
 use connection::Connection;
 use crypto::publickey::{ecdh, ecies, recover, sign, Generator, KeyPair, Public, Random, Secret};
-use common_libs::ethereum_types::{H256, H520};
 use host::HostInfo;
 use io::{IoContext, StreamToken};
 use mio::tcp::*;
@@ -381,8 +381,8 @@ impl Handshake {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crypto::publickey::Public;
     use common_libs::ethereum_types::{H256, H512};
+    use crypto::publickey::Public;
     use io::*;
     use mio::tcp::TcpStream;
     use rustc_hex::FromHex;

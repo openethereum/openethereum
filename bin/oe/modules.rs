@@ -24,9 +24,9 @@ use ethcore::{client::BlockChainClient, snapshot::SnapshotService};
 use std::collections::BTreeSet;
 
 pub use crate::sync::{EthSync, ManageNetwork, SyncProvider};
+use common_libs::ethereum_types::H256;
 pub use ethcore::client::ChainNotify;
 use ethcore_logger::Config as LogConfig;
-use common_libs::ethereum_types::H256;
 
 pub type SyncModules = (
     Arc<dyn SyncProvider>,

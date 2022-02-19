@@ -15,8 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
-use ethcore::verification::queue::kind::blocks::Unverified;
 use common_libs::ethereum_types::H256;
+use ethcore::verification::queue::kind::blocks::Unverified;
 use hash::{keccak, KECCAK_EMPTY_LIST_RLP, KECCAK_NULL_RLP};
 use network;
 use parity_util_mem::MallocSizeOf;

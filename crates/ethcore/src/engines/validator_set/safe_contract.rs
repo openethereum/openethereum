@@ -21,9 +21,9 @@ use std::{
 };
 
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use error::{Error as EthcoreError, ErrorKind as EthcoreErrorKind};
 use ethabi::FunctionOutputDecoder;
-use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use hash::keccak;
 use kvdb::DBValue;
 use memory_cache::MemoryLruCache;
@@ -719,8 +719,8 @@ mod tests {
         traits::{EngineClient, ForceUpdateSealing},
         BlockInfo, ChainInfo, ImportBlock,
     };
-    use crypto::publickey::Secret;
     use common_libs::ethereum_types::Address;
+    use crypto::publickey::Secret;
     use hash::keccak;
     use miner::{self, MinerService};
     use rustc_hex::FromHex;

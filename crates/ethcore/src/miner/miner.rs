@@ -24,6 +24,7 @@ use std::{
 use ansi_term::Colour;
 use bytes::Bytes;
 use call_contract::CallContract;
+use common_libs::ethereum_types::{Address, H256, U256};
 #[cfg(feature = "work-notify")]
 use ethcore_miner::work_notify::NotifyWork;
 use ethcore_miner::{
@@ -36,7 +37,6 @@ use ethcore_miner::{
     },
     service_transaction_checker::ServiceTransactionChecker,
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 use io::IoChannel;
 use miner::{
     self,

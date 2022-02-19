@@ -20,6 +20,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use common_libs::ethereum_types::{Address, H64};
 use engines::{
     clique::{
         util::{extract_signers, recover_creator},
@@ -28,7 +29,6 @@ use engines::{
     EngineError,
 };
 use error::{BlockError, Error};
-use common_libs::ethereum_types::{Address, H64};
 use rand::Rng;
 use time_utils::CheckedSystemTime;
 use types::{header::Header, BlockNumber};

@@ -26,10 +26,10 @@ use std::time::Duration;
 
 use v1::{EthPubSub, EthPubSubClient, Metadata};
 
+use common_libs::ethereum_types::{Address, H256};
 use ethcore::client::{
     ChainNotify, ChainRoute, ChainRouteType, EachBlockWith, NewBlocks, TestBlockChainClient,
 };
-use common_libs::ethereum_types::{Address, H256};
 use parity_runtime::Runtime;
 
 const DURATION_ZERO: Duration = Duration::from_millis(0);

@@ -16,6 +16,7 @@
 
 use blocks::{BlockCollection, SyncBody, SyncHeader};
 use chain::BlockSet;
+use common_libs::ethereum_types::H256;
 use ethcore::{
     client::{BlockId, BlockStatus},
     error::{
@@ -23,7 +24,6 @@ use ethcore::{
         QueueErrorKind,
     },
 };
-use common_libs::ethereum_types::H256;
 use network::{client_version::ClientCapabilities, PeerId};
 use rlp::{self, Rlp};
 use std::cmp;

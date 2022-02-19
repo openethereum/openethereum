@@ -1574,8 +1574,8 @@ impl Clone for State<StateDB> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::publickey::Secret;
     use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
+    use crypto::publickey::Secret;
     use evm::CallType;
     use hash::{keccak, KECCAK_NULL_RLP};
     use machine::EthereumMachine;

@@ -32,9 +32,9 @@ use v1::{
 
 use accounts::AccountProvider;
 use bytes::ToPretty;
+use common_libs::ethereum_types::{Address, H256, H520, U256};
 use crypto::publickey::{Generator, Random, Secret};
 use ethcore::client::TestBlockChainClient;
-use common_libs::ethereum_types::{Address, H256, H520, U256};
 use parity_runtime::{Executor, Runtime};
 use parking_lot::Mutex;
 use serde_json;

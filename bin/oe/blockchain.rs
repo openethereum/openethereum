@@ -28,6 +28,7 @@ use crate::{
     user_defaults::UserDefaults,
 };
 use ansi_term::Colour;
+use common_libs::ethereum_types::{Address, H256, U256};
 use dir::Directories;
 use ethcore::{
     client::{
@@ -38,7 +39,6 @@ use ethcore::{
     verification::queue::VerifierSettings,
 };
 use ethcore_service::ClientService;
-use common_libs::ethereum_types::{Address, H256, U256};
 
 #[derive(Debug, PartialEq)]
 pub enum BlockchainCmd {

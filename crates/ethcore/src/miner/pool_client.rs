@@ -18,11 +18,11 @@
 
 use std::fmt;
 
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethcore_miner::{
     local_accounts::LocalAccounts, pool, pool::client::NonceClient,
     service_transaction_checker::ServiceTransactionChecker,
 };
-use common_libs::ethereum_types::{Address, H256, U256};
 use types::{
     header::Header,
     transaction::{self, SignedTransaction, UnverifiedTransaction},

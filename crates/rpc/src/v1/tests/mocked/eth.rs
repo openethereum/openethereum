@@ -22,11 +22,11 @@ use std::{
 };
 
 use accounts::AccountProvider;
+use common_libs::ethereum_types::{Address, Bloom, H160, H256, U256};
 use ethcore::{
     client::{BlockChainClient, EachBlockWith, EvmTestClient, Executed, TestBlockChainClient},
     miner::{self, MinerService},
 };
-use common_libs::ethereum_types::{Address, Bloom, H160, H256, U256};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;

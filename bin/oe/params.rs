@@ -23,12 +23,12 @@ use crate::{
     },
     user_defaults::UserDefaults,
 };
+use common_libs::ethereum_types::{Address, U256};
 use ethcore::{
     client::Mode,
     ethereum,
     spec::{Spec, SpecParams},
 };
-use common_libs::ethereum_types::{Address, U256};
 use fetch::Client as FetchClient;
 use journaldb::Algorithm;
 use parity_runtime::Executor;

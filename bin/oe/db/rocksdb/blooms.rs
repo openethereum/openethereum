@@ -17,8 +17,8 @@
 //! Blooms migration from rocksdb to blooms-db
 
 use super::{kvdb_rocksdb::DatabaseConfig, open_database};
-use ethcore::error::Error;
 use common_libs::ethereum_types::Bloom;
+use ethcore::error::Error;
 use rlp;
 use std::path::Path;
 

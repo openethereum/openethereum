@@ -254,8 +254,8 @@ impl txpool::Listener<Transaction> for LocalTransactionsList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::publickey::{Generator, Random};
     use common_libs::ethereum_types::U256;
+    use crypto::publickey::{Generator, Random};
     use txpool::Listener;
     use types::transaction;
 

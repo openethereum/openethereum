@@ -15,6 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::helpers::*;
+use common_libs::ethereum_types::{Address, U256};
 use crypto::publickey::{KeyPair, Secret};
 use ethcore::{
     client::{ChainInfo, ClientIoMessage},
@@ -22,7 +23,6 @@ use ethcore::{
     miner::{self, MinerService},
     spec::Spec,
 };
-use common_libs::ethereum_types::{Address, U256};
 use hash::keccak;
 use io::{IoChannel, IoHandler};
 use std::sync::Arc;

@@ -19,9 +19,9 @@ use std::sync::Arc;
 
 use accounts::AccountProvider;
 use bytes::Bytes;
+use common_libs::ethereum_types::{Address, H160, H256, H520, U128};
 use crypto::publickey::{public_to_address, recover, Signature};
 use eip_712::{hash_structured_data, EIP712};
-use common_libs::ethereum_types::{Address, H160, H256, H520, U128};
 use types::transaction::{PendingTransaction, SignedTransaction};
 
 use jsonrpc_core::{

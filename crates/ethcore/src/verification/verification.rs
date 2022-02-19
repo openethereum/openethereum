@@ -541,10 +541,10 @@ mod tests {
     use super::*;
 
     use blockchain::{BlockDetails, BlockReceipts, TransactionAddress};
+    use common_libs::ethereum_types::{Address, BloomRef, H256, U256};
     use crypto::publickey::{Generator, Random};
     use engines::EthEngine;
     use error::{BlockError::*, ErrorKind};
-    use common_libs::ethereum_types::{Address, BloomRef, H256, U256};
     use hash::keccak;
     use rlp;
     use spec::{CommonParams, Spec};

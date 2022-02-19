@@ -40,6 +40,7 @@ use crate::{
     user_defaults::UserDefaults,
 };
 use ansi_term::Colour;
+use common_libs::ethereum_types::{H256, U64};
 use dir::{DatabaseDirectories, Directories};
 use ethcore::{
     client::{BlockChainClient, BlockInfo, Client, DatabaseCompactionProfile, Mode, VMType},
@@ -49,7 +50,6 @@ use ethcore::{
 };
 use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
-use common_libs::ethereum_types::{H256, U64};
 use journaldb::Algorithm;
 use jsonrpc_core;
 use node_filter::NodeFilter;

@@ -15,11 +15,11 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::{Buf, BufMut};
+use common_libs::ethereum_types::{H128, H256, H512};
 use crypto::{
     aes::{AesCtr256, AesEcb256},
     publickey::Secret,
 };
-use common_libs::ethereum_types::{H128, H256, H512};
 use handshake::Handshake;
 use hash::{keccak, write_keccak};
 use io::{IoContext, StreamToken};

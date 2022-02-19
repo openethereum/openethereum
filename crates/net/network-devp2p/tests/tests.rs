@@ -22,10 +22,10 @@ extern crate parity_bytes;
 extern crate parity_crypto as crypto;
 extern crate parking_lot;
 
+use common_libs::ethereum_types::U64;
 use crypto::publickey::{Generator, Random};
 use ethcore_network::*;
 use ethcore_network_devp2p::NetworkService;
-use common_libs::ethereum_types::U64;
 use io::TimerToken;
 use parity_bytes::Bytes;
 use parking_lot::Mutex;

@@ -33,9 +33,9 @@ use blockchain::{
 };
 use bytes::{Bytes, ToPretty};
 use call_contract::CallContract;
+use common_libs::ethereum_types::{Address, H256, H264, U256};
 use db::{DBTransaction, DBValue, KeyValueDB};
 use ethcore_miner::pool::VerifiedTransaction;
-use common_libs::ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
 use parking_lot::{Mutex, RwLock};

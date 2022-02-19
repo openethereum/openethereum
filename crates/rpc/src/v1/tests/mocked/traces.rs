@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 
+use common_libs::ethereum_types::{Address, H256};
 use ethcore::{
     client::TestBlockChainClient,
     executed::{CallError, Executed},
@@ -24,7 +25,6 @@ use ethcore::{
         LocalizedTrace,
     },
 };
-use common_libs::ethereum_types::{Address, H256};
 
 use vm::CallType;
 

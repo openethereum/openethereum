@@ -38,8 +38,8 @@ use std::{
 };
 
 use bytes::Bytes;
-use ethcore_miner::pool::{local_transactions, QueueStatus, VerifiedTransaction};
 use common_libs::ethereum_types::{Address, H256, U256};
+use ethcore_miner::pool::{local_transactions, QueueStatus, VerifiedTransaction};
 use types::{
     block::Block,
     header::Header,

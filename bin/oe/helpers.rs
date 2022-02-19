@@ -21,12 +21,12 @@ use crate::{
     sync::{self, validate_node_url},
     upgrade::{upgrade, upgrade_data_paths},
 };
+use common_libs::ethereum_types::{Address, U256};
 use dir::{helpers::replace_home, DatabaseDirectories};
 use ethcore::{
     client::{BlockId, ClientConfig, DatabaseCompactionProfile, Mode, VMType, VerifierType},
     miner::{Penalization, PendingSet},
 };
-use common_libs::ethereum_types::{Address, U256};
 use ethkey::Password;
 use journaldb::Algorithm;
 use std::{
@@ -379,11 +379,11 @@ mod tests {
         join_set, password_from_file, to_address, to_addresses, to_block_id, to_bootnodes,
         to_duration, to_mode, to_pending_set, to_price, to_u256,
     };
+    use common_libs::ethereum_types::U256;
     use ethcore::{
         client::{BlockId, Mode},
         miner::PendingSet,
     };
-    use common_libs::ethereum_types::U256;
     use ethkey::Password;
     use std::{collections::HashSet, fs::File, io::Write, time::Duration};
     use tempdir::TempDir;

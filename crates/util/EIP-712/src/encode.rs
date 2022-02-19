@@ -20,8 +20,8 @@ use crate::{
     error::{serde_error, ErrorKind, Result},
     parser::{parse_type, Type},
 };
-use ethabi::{encode, Token as EthAbiToken};
 use common_libs::ethereum_types::{Address as EthAddress, H256, U256};
+use ethabi::{encode, Token as EthAbiToken};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use keccak_hash::keccak;

@@ -17,8 +17,8 @@
 //! Simple Client used for EVM tests.
 
 use client;
-use db;
 use common_libs::ethereum_types::{H160, H256, U256};
+use db;
 use ethtrie;
 use evm::{FinalizationResult, VMType};
 use executive;

@@ -15,8 +15,8 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::Bytes;
-use crypto::publickey::{self, ec_math_utils, Generator, Public, Random, Secret};
 use common_libs::ethereum_types::{H256, H512};
+use crypto::publickey::{self, ec_math_utils, Generator, Public, Random, Secret};
 use jsonrpc_core::Error;
 use rand::{rngs::OsRng, RngCore};
 use std::collections::BTreeSet;

@@ -618,9 +618,9 @@ pub fn enact_verified(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common_libs::ethereum_types::Address;
     use engines::EthEngine;
     use error::Error;
-    use common_libs::ethereum_types::Address;
     use factory::Factories;
     use state_db::StateDB;
     use std::sync::Arc;

@@ -15,12 +15,12 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Hasher implementation for the Keccak-256 hash
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate hash_db;
 extern crate plain_hasher;
 extern crate tiny_keccak;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash_db::Hasher;
 use plain_hasher::PlainHasher;
 use tiny_keccak::Keccak;

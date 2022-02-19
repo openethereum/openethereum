@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Traces import request.
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use types::BlockNumber;
 
 use trace::FlatBlockTraces;

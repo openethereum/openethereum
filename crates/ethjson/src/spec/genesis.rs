@@ -63,7 +63,7 @@ mod tests {
         spec::{genesis::Genesis, Ethereum, Seal},
         uint::Uint,
     };
-    use ethereum_types::{H160, H256 as Eth256, H64 as Eth64, U256};
+    use common_libs::ethereum_types::{H160, H256 as Eth256, H64 as Eth64, U256};
     use serde_json;
     use std::str::FromStr;
 

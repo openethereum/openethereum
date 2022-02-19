@@ -22,7 +22,7 @@ use std::{
 };
 
 use authcodes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use http_common::HttpMetaExtractor;
 use ipc;
 use jsonrpc_core as core;

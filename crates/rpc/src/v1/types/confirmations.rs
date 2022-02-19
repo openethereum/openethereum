@@ -21,7 +21,7 @@ use bytes::ToPretty;
 use serde::{Serialize, Serializer};
 use std::fmt;
 
-use ethereum_types::{H160, H256, H520, U256};
+use common_libs::ethereum_types::{H160, H256, H520, U256};
 use ethkey::Password;
 use v1::{
     helpers,
@@ -302,7 +302,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use serde_json;
     use std::str::FromStr;
     use v1::{helpers, types::TransactionCondition};

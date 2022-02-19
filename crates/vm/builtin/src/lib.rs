@@ -33,7 +33,7 @@ use eth_pairings::public_interface::eip2537::{
     EIP2537Executor, SCALAR_BYTE_LENGTH, SERIALIZED_G1_POINT_BYTE_LENGTH,
     SERIALIZED_G2_POINT_BYTE_LENGTH,
 };
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use ethjson;
 use keccak_hash::keccak;
 use log::{trace, warn};
@@ -1373,7 +1373,7 @@ mod tests {
         Builtin, EthereumBuiltin, FromStr, Implementation, Linear, Modexp2565Pricer, ModexpPricer,
         Pricer, Pricing,
     };
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use ethjson::spec::builtin::{
         AltBn128Pairing as JsonAltBn128PairingPricing, Builtin as JsonBuiltin,
         Linear as JsonLinearPricing, Pricing as JsonPricing, PricingAt,

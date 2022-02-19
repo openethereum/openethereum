@@ -17,7 +17,7 @@
 use network::client_version::ClientVersion;
 use std::collections::BTreeMap;
 
-use ethereum_types::{H512, U256};
+use common_libs::ethereum_types::{H512, U256};
 use serde::{Serialize, Serializer};
 use sync::{self, PeerInfo as SyncPeerInfo, TransactionStats as SyncTransactionStats};
 
@@ -175,7 +175,7 @@ pub struct ChainStatus {
 #[cfg(test)]
 mod tests {
     use super::{ChainStatus, Peers, SyncInfo, SyncStatus, TransactionStats};
-    use ethereum_types::H512;
+    use common_libs::ethereum_types::H512;
     use serde_json;
     use std::collections::BTreeMap;
 

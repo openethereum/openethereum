@@ -75,7 +75,7 @@ use derive_more::Display;
 use engines::signer::EngineSigner;
 use ethabi::Hash;
 use ethabi_contract::use_contract;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use hash::keccak;
 use log::{debug, error};
 use rand::Rng;

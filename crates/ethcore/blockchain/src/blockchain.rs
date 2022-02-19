@@ -48,7 +48,7 @@ use ethcore_db::{
     keys::{BlockDetails, BlockReceipts, EpochTransitions, TransactionAddress, EPOCH_KEY_PREFIX},
     CacheUpdatePolicy, Readable, Writable,
 };
-use ethereum_types::{Bloom, BloomRef, H256, U256};
+use common_libs::ethereum_types::{Bloom, BloomRef, H256, U256};
 use itertools::Itertools;
 use log::{info, trace, warn};
 use parity_bytes::Bytes;

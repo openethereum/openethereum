@@ -900,7 +900,7 @@ mod tests {
     use super::{EthMultiStore, EthStore};
     use accounts_dir::{KeyDirectory, MemoryDirectory, RootDiskDirectory};
     use crypto::publickey::{Generator, KeyPair, Random};
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use secret_store::{
         Derivation, SecretStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
     };

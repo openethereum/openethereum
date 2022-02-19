@@ -17,7 +17,7 @@
 //! Stores recently seen bad blocks.
 
 use bytes::{Bytes, ToPretty};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use itertools::Itertools;
 use memory_cache::MemoryLruCache;
 use parking_lot::RwLock;

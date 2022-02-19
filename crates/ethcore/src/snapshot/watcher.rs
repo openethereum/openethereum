@@ -20,7 +20,7 @@ use client::{BlockInfo, ChainNotify, Client, ClientIoMessage, NewBlocks};
 use parking_lot::Mutex;
 use types::ids::BlockId;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use io::IoChannel;
 
 use std::sync::Arc;
@@ -141,7 +141,7 @@ mod tests {
 
     use client::{ChainNotify, ChainRoute, NewBlocks};
 
-    use ethereum_types::{BigEndianHash, H256, U256};
+    use common_libs::ethereum_types::{BigEndianHash, H256, U256};
 
     use std::{collections::HashMap, time::Duration};
 

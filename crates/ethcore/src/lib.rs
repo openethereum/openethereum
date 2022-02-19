@@ -30,7 +30,7 @@ extern crate ethcore_call_contract as call_contract;
 extern crate ethcore_db as db;
 extern crate ethcore_io as io;
 extern crate ethcore_miner;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate ethjson;
 extern crate hash_db;
 extern crate itertools;

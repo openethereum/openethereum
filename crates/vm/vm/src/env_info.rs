@@ -16,7 +16,7 @@
 
 //! Environment information for transaction execution.
 
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethjson;
 use hash::keccak;
 use std::{cmp, sync::Arc};
@@ -86,7 +86,7 @@ impl From<ethjson::vm::Env> for EnvInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{Address, U256};
+    use common_libs::ethereum_types::{Address, U256};
     use ethjson;
     use std::str::FromStr;
 

@@ -32,7 +32,7 @@ use crate::{
     BlockNumber,
 };
 
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use parity_util_mem::MallocSizeOf;
 use rlp::{self, Rlp, RlpStream};
 

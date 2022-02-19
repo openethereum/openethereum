@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crypto::publickey::{Generator, KeyPair, Random, Secret};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::keccak;
 use mio::{deprecated::EventLoop, tcp::*, udp::*, *};
 use rlp::{Encodable, RlpStream};

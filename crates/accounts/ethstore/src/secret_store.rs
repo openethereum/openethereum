@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crypto::publickey::{Address, Message, Public, Secret, Signature};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use ethkey::Password;
 use json::{OpaqueKeyFile, Uuid};
 use std::{

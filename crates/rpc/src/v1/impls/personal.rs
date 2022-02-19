@@ -21,7 +21,7 @@ use accounts::AccountProvider;
 use bytes::Bytes;
 use crypto::publickey::{public_to_address, recover, Signature};
 use eip_712::{hash_structured_data, EIP712};
-use ethereum_types::{Address, H160, H256, H520, U128};
+use common_libs::ethereum_types::{Address, H160, H256, H520, U128};
 use types::transaction::{PendingTransaction, SignedTransaction};
 
 use jsonrpc_core::{

@@ -19,7 +19,7 @@
 use std::sync::Arc;
 
 use crypto::publickey;
-use ethereum_types::{H520, U256};
+use common_libs::ethereum_types::{H520, U256};
 use parity_runtime::Executor;
 use parking_lot::Mutex;
 use types::transaction::{PendingTransaction, SignedTransaction, TypedTransaction};

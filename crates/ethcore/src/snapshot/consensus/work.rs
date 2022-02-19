@@ -34,7 +34,7 @@ use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
 use db::KeyValueDB;
 use engines::EthEngine;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use rand::rngs::OsRng;
 use rlp::{Rlp, RlpStream};
 use snapshot::{block::AbridgedBlock, Error, ManifestData, Progress};
@@ -268,7 +268,7 @@ impl Rebuilder for PowRebuilder {
         engine: &dyn EthEngine,
         abort_flag: &AtomicBool,
     ) -> Result<(), ::error::Error> {
-        use ethereum_types::U256;
+        use common_libs::ethereum_types::U256;
         use snapshot::verify_old_block;
         use triehash::ordered_trie_root;
 

@@ -18,7 +18,7 @@ use std::{cmp, collections::HashMap};
 
 use super::Transaction;
 use crate::{pool, scoring, Readiness, Ready, ReplaceTransaction, Scoring, ShouldReplace};
-use ethereum_types::{H160 as Sender, U256};
+use common_libs::ethereum_types::{H160 as Sender, U256};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum DummyScoringEvent {

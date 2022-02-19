@@ -18,7 +18,7 @@ use crate::{account_utils::AccountProvider, sync::SyncProvider};
 use crypto::publickey::{Public, Secret};
 use dir::{default_data_path, helpers::replace_home};
 use ethcore::{client::Client, miner::Miner};
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use ethkey::Password;
 use parity_runtime::Executor;
 use std::{collections::BTreeMap, sync::Arc};

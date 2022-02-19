@@ -20,7 +20,7 @@ use client::{BlockChainClient, BlockId};
 use types::header::Header;
 use ethabi::FunctionOutputDecoder;
 use ethabi_contract::use_contract;
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use log::{debug, error};
 
 use_contract!(contract, "res/contracts/block_gas_limit.json");

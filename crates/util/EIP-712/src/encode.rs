@@ -21,7 +21,7 @@ use crate::{
     parser::{parse_type, Type},
 };
 use ethabi::{encode, Token as EthAbiToken};
-use ethereum_types::{Address as EthAddress, H256, U256};
+use common_libs::ethereum_types::{Address as EthAddress, H256, U256};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use keccak_hash::keccak;

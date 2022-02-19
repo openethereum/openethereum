@@ -18,7 +18,7 @@
 
 use std::collections::BTreeMap;
 
-use ethereum_types::{H160, H256, H512, H64, U256, U64};
+use common_libs::ethereum_types::{H160, H256, H512, H64, U256, U64};
 use jsonrpc_core::{BoxFuture, Result};
 use jsonrpc_derive::rpc;
 

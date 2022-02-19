@@ -27,7 +27,7 @@ use crate::{
     views::{HeaderView, TypedTransactionView},
 };
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 /// View onto block rlp.
 pub struct BlockView<'a> {
@@ -223,7 +223,7 @@ impl<'a> BlockView<'a> {
 #[cfg(test)]
 mod tests {
     use super::BlockView;
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use rustc_hex::FromHex;
     use std::str::FromStr;
 

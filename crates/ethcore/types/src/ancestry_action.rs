@@ -16,7 +16,7 @@
 
 //! Actions on ancestry blocks when working on a new block.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// Actions on a live block's parent block. Only committed when the live block is committed. Those actions here must

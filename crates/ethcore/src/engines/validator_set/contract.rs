@@ -19,7 +19,7 @@
 use std::sync::Weak;
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::RwLock;
 use types::{header::Header, ids::BlockId, transaction, BlockNumber};
@@ -221,7 +221,7 @@ mod tests {
     use call_contract::CallContract;
     use client::{traits::TransactionRequest, BlockChainClient, BlockInfo, ChainInfo};
     use ethabi::FunctionOutputDecoder;
-    use ethereum_types::{Address, H520};
+    use common_libs::ethereum_types::{Address, H520};
     use hash::keccak;
     use miner::{self, MinerService};
     use rlp::encode;

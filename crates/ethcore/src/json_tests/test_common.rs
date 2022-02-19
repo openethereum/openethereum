@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-pub use ethereum_types::{Address, H256, U256};
+pub use common_libs::ethereum_types::{Address, H256, U256};
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 

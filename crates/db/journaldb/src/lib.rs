@@ -20,7 +20,7 @@
 extern crate log;
 
 extern crate ethcore_db;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate fastmap;
 extern crate hash_db;
 extern crate keccak_hasher;
@@ -164,11 +164,11 @@ pub fn new(
 const DB_PREFIX_LEN: usize = ::kvdb::PREFIX_LEN;
 const LATEST_ERA_KEY: [u8; ::kvdb::PREFIX_LEN] = [b'l', b'a', b's', b't', 0, 0, 0, 0, 0, 0, 0, 0];
 
-fn error_key_already_exists(hash: &ethereum_types::H256) -> io::Error {
+fn error_key_already_exists(hash: &common_libs::ethereum_types::H256) -> io::Error {
     io::Error::new(io::ErrorKind::AlreadyExists, hash.to_string())
 }
 
-fn error_negatively_reference_hash(hash: &ethereum_types::H256) -> io::Error {
+fn error_negatively_reference_hash(hash: &common_libs::ethereum_types::H256) -> io::Error {
     io::Error::new(
         io::ErrorKind::Other,
         format!(

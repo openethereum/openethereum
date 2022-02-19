@@ -17,7 +17,7 @@
 //! `NodeCodec` implementation for Rlp
 
 use elastic_array::ElasticArray128;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash_db::Hasher;
 use keccak_hasher::KeccakHasher;
 use rlp::{DecoderError, Prototype, Rlp, RlpStream};

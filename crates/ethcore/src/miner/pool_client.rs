@@ -22,7 +22,7 @@ use ethcore_miner::{
     local_accounts::LocalAccounts, pool, pool::client::NonceClient,
     service_transaction_checker::ServiceTransactionChecker,
 };
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use types::{
     header::Header,
     transaction::{self, SignedTransaction, UnverifiedTransaction},
@@ -109,7 +109,7 @@ impl<'a, C: 'a> BalanceClient for CachedBalanceClient<'a, C>
 where
     C: Balance + Sync,
 {
-    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+    fn account_balance(&self, address: &common_libs::ethereum_types::H160) -> U256 {
         self.cached_client.cache().get_or_insert(*address, || {
             self.cached_client.client().latest_balance(address)
         })
@@ -271,7 +271,7 @@ impl<'a, C: 'a> BalanceClient for PoolClient<'a, C>
 where
     C: Balance + Sync,
 {
-    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+    fn account_balance(&self, address: &common_libs::ethereum_types::H160) -> U256 {
         self.cached_balances.account_balance(address)
     }
 }

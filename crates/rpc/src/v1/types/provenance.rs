@@ -16,7 +16,7 @@
 
 //! Request Provenance
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use std::fmt;
 
 /// RPC request origin
@@ -66,7 +66,7 @@ impl fmt::Display for Origin {
 #[cfg(test)]
 mod tests {
     use super::Origin;
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use serde_json;
 
     #[test]

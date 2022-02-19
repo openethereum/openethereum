@@ -21,7 +21,7 @@ use crate::{
     hash::keccak,
     transaction::error,
 };
-use ethereum_types::{Address, BigEndianHash, H160, H256, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, H160, H256, U256};
 use parity_util_mem::MallocSizeOf;
 
 use rlp::{self, DecoderError, Rlp, RlpStream};
@@ -1070,7 +1070,7 @@ impl From<SignedTransaction> for PendingTransaction {
 mod tests {
     use super::*;
     use crate::hash::keccak;
-    use ethereum_types::{H160, U256};
+    use common_libs::ethereum_types::{H160, U256};
     use std::str::FromStr;
 
     #[test]

@@ -30,7 +30,7 @@ use bytes::Bytes;
 use crypto::publickey::{Generator, Random};
 use db::{COL_STATE, NUM_COLUMNS};
 use ethcore_miner::pool::VerifiedTransaction;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethtrie;
 use hash::keccak;
 use itertools::Itertools;

@@ -28,7 +28,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use rlp::{Rlp, RlpStream};
 
 use super::ManifestData;

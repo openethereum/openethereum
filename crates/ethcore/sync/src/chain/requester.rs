@@ -16,7 +16,7 @@
 
 use block_sync::BlockRequest;
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use network::PeerId;
 use rlp::RlpStream;
 use std::time::Instant;

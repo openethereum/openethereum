@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use api::TransactionStats;
-use ethereum_types::{H256, H512};
+use common_libs::ethereum_types::{H256, H512};
 use fastmap::H256FastMap;
 use std::{
     collections::{HashMap, HashSet},
@@ -144,7 +144,7 @@ impl TransactionsStats {
 mod tests {
 
     use super::{Stats, TransactionsStats};
-    use ethereum_types::{H256, H512};
+    use common_libs::ethereum_types::{H256, H512};
     use std::collections::{HashMap, HashSet};
 
     #[test]

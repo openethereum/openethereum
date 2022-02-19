@@ -22,7 +22,7 @@ use engines::{
     EngineError,
 };
 use error::Error;
-use ethereum_types::{Address, H160, H256};
+use common_libs::ethereum_types::{Address, H160, H256};
 use lru_cache::LruCache;
 use parking_lot::RwLock;
 use rlp::encode;

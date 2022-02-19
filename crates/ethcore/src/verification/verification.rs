@@ -544,7 +544,7 @@ mod tests {
     use crypto::publickey::{Generator, Random};
     use engines::EthEngine;
     use error::{BlockError::*, ErrorKind};
-    use ethereum_types::{Address, BloomRef, H256, U256};
+    use common_libs::ethereum_types::{Address, BloomRef, H256, U256};
     use hash::keccak;
     use rlp;
     use spec::{CommonParams, Spec};

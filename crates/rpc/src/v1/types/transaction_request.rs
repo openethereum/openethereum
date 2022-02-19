@@ -17,7 +17,7 @@
 //! `TransactionRequest` type
 
 use ansi_term::Colour;
-use ethereum_types::{H160, U256, U64};
+use common_libs::ethereum_types::{H160, U256, U64};
 use v1::{
     helpers,
     types::{AccessList, Bytes, TransactionCondition},
@@ -167,7 +167,7 @@ impl Into<helpers::TransactionRequest> for TransactionRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{H160, U256};
+    use common_libs::ethereum_types::{H160, U256};
     use rustc_hex::FromHex;
     use serde_json;
     use std::str::FromStr;

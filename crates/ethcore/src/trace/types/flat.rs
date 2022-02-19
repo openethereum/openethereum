@@ -17,7 +17,7 @@
 //! Flat trace module
 
 use super::trace::{Action, Res};
-use ethereum_types::Bloom;
+use common_libs::ethereum_types::Bloom;
 use parity_util_mem::MallocSizeOf;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 

@@ -17,7 +17,7 @@
 //! Provides CallContract and RegistryInfo traits
 
 use bytes::Bytes;
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use types::ids::BlockId;
 
 /// Provides `call_contract` method

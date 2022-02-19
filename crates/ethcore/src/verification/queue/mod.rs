@@ -21,7 +21,7 @@ use blockchain::BlockChain;
 use client::ClientIoMessage;
 use engines::EthEngine;
 use error::{BlockError, Error, ErrorKind, ImportErrorKind};
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use io::*;
 use len_caching_lock::LenCachingMutex;
 use parity_util_mem::{MallocSizeOf, MallocSizeOfExt};

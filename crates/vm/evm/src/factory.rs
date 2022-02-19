@@ -17,7 +17,7 @@
 //! Evm factory.
 //!
 use super::{interpreter::SharedCache, vm::ActionParams, vmtype::VMType};
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use std::sync::Arc;
 use vm::{Exec, Schedule};
 

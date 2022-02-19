@@ -18,7 +18,7 @@
 
 #![allow(missing_docs)]
 
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 
 use pool::VerifiedTransaction;
 use types::transaction::Action;

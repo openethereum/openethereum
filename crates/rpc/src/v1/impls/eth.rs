@@ -22,7 +22,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64};
+use common_libs::ethereum_types::{Address, BigEndianHash, H160, H256, H64, U256, U64};
 use parking_lot::Mutex;
 
 use ethash::{self, SeedHashCompute};

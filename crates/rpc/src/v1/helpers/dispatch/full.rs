@@ -20,7 +20,7 @@ use ethcore::{
     client::BlockChainClient,
     miner::{self, MinerService},
 };
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use parking_lot::Mutex;
 use types::transaction::{PendingTransaction, SignedTransaction};
 

@@ -43,7 +43,7 @@ pub use self::types::{
     Tracing,
 };
 
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use kvdb::DBTransaction;
 use types::BlockNumber;
 use vm::{ActionParams, Error as VmError};

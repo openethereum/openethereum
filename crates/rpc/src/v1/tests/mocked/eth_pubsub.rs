@@ -29,7 +29,7 @@ use v1::{EthPubSub, EthPubSubClient, Metadata};
 use ethcore::client::{
     ChainNotify, ChainRoute, ChainRouteType, EachBlockWith, NewBlocks, TestBlockChainClient,
 };
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use parity_runtime::Runtime;
 
 const DURATION_ZERO: Duration = Duration::from_millis(0);

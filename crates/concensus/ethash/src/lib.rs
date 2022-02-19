@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 extern crate either;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate memmap;
 extern crate parking_lot;
 extern crate primal;
@@ -53,7 +53,7 @@ mod progpow;
 pub use cache::{NodeCacheBuilder, OptimizeFor};
 use compute::Light;
 pub use compute::{quick_get_difficulty, slow_hash_block_number, ProofOfWork};
-use ethereum_types::{BigEndianHash, U256, U512};
+use common_libs::ethereum_types::{self, BigEndianHash, U256, U512};
 use keccak::H256;
 use parking_lot::Mutex;
 pub use seed_compute::SeedHashCompute;
@@ -212,7 +212,7 @@ fn test_lru() {
 
 #[test]
 fn test_difficulty_to_boundary() {
-    use ethereum_types::{BigEndianHash, H256};
+    use common_libs::ethereum_types::{BigEndianHash, H256};
     use std::str::FromStr;
 
     assert_eq!(
@@ -235,7 +235,7 @@ fn test_difficulty_to_boundary() {
 
 #[test]
 fn test_difficulty_to_boundary_regression() {
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
 
     // the last bit was originally being truncated when performing the conversion
     // https://github.com/openethereum/openethereum/issues/8397

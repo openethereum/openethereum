@@ -27,7 +27,7 @@ use super::{
 };
 use bytes::Bytes;
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash_db::HashDB;
 use keccak_hasher::KeccakHasher;
 use memory_db::*;

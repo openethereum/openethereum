@@ -16,7 +16,7 @@
 
 use super::super::instructions::{self, Instruction};
 use bit_set::BitSet;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::KECCAK_EMPTY;
 use memory_cache::MemoryLruCache;
 use parity_util_mem::{MallocSizeOf, MallocSizeOfOps};

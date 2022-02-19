@@ -40,7 +40,7 @@ use v1::{
 use ethcore::client::{
     BlockChainClient, BlockId, ChainNotify, ChainRouteType, EngineInfo, NewBlocks,
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use parity_runtime::Executor;
 use parking_lot::RwLock;
 

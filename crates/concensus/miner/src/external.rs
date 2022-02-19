@@ -16,7 +16,7 @@
 
 //! External Miner hashrate tracker.
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use parking_lot::Mutex;
 use std::{
     collections::HashMap,
@@ -80,7 +80,7 @@ impl ExternalMinerService for ExternalMiner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{H256, U256};
+    use common_libs::ethereum_types::{H256, U256};
     use std::{thread::sleep, time::Duration};
 
     fn miner() -> ExternalMiner {

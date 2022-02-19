@@ -36,7 +36,7 @@ use types::{header::Header, ids::BlockId};
 
 use bytes::Bytes;
 use db::{DBValue, KeyValueDB};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use ethtrie::{TrieDB, TrieDBMut};
 use hash_db::HashDB;
 use journaldb::{self, Algorithm, JournalDB};

@@ -61,7 +61,7 @@ use vm::{ActionValue, CallType, CreateContractAddress, EnvInfo, Schedule};
 use block::ExecutedBlock;
 use bytes::Bytes;
 use crypto::publickey::Signature;
-use ethereum_types::{Address, H256, H64, U256};
+use common_libs::ethereum_types::{Address, H256, H64, U256};
 use machine::{self, AuxiliaryData, AuxiliaryRequest, Machine};
 use types::ancestry_action::AncestryAction;
 use unexpected::{Mismatch, OutOfBounds};

@@ -16,7 +16,7 @@
 
 //! Epoch verifiers and transitions.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 

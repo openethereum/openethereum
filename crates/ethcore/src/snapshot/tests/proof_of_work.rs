@@ -144,7 +144,7 @@ fn chunk_and_restore_4k() {
 
 #[test]
 fn checks_flag() {
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use rlp::RlpStream;
 
     let mut stream = RlpStream::new_list(5);

@@ -18,7 +18,7 @@
 
 use super::ViewRlp;
 use crate::{bytes::Bytes, hash::keccak, BlockNumber};
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use rlp::{self};
 
 /// View onto block header rlp.
@@ -159,7 +159,7 @@ impl<'a> HeaderView<'a> {
 #[cfg(test)]
 mod tests {
     use super::HeaderView;
-    use ethereum_types::{Bloom, H160, H256};
+    use common_libs::ethereum_types::{Bloom, H160, H256};
     use rustc_hex::FromHex;
     use std::str::FromStr;
 

@@ -21,7 +21,7 @@ use std::{
     sync::Arc,
 };
 
-use ethereum_types::{H256, H64, U256};
+use common_libs::ethereum_types::{H256, H64, U256};
 use ethjson::{self, uint::Uint};
 use hash::KECCAK_EMPTY_LIST_RLP;
 use rlp::Rlp;
@@ -566,7 +566,7 @@ mod tests {
     use block::*;
     use engines::Engine;
     use error::{BlockError, Error, ErrorKind};
-    use ethereum_types::{Address, H256, H64, U256};
+    use common_libs::ethereum_types::{Address, H256, H64, U256};
     use rlp;
     use spec::Spec;
     use std::{collections::BTreeMap, str::FromStr, sync::Arc};

@@ -18,7 +18,7 @@
 
 use account_db::{AccountDB, AccountDBMut};
 use bytes::Bytes;
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use ethtrie::{TrieDB, TrieDBMut};
 use hash::{KECCAK_EMPTY, KECCAK_NULL_RLP};
 use hash_db::HashDB;
@@ -226,7 +226,7 @@ mod tests {
     use test_helpers::get_temp_state_db;
     use types::basic_account::BasicAccount;
 
-    use ethereum_types::{Address, H256};
+    use common_libs::ethereum_types::{Address, H256};
     use hash::{keccak, KECCAK_EMPTY, KECCAK_NULL_RLP};
     use hash_db::HashDB;
     use kvdb::DBValue;

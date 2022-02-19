@@ -17,7 +17,7 @@
 //! Façade crate for `patricia_trie` for Ethereum specific impls
 
 extern crate elastic_array;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate hash_db;
 extern crate keccak_hasher;
 extern crate parity_bytes;
@@ -28,7 +28,7 @@ mod rlp_node_codec;
 
 pub use rlp_node_codec::RlpNodeCodec;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use keccak_hasher::KeccakHasher;
 use rlp::DecoderError;
 
@@ -47,7 +47,6 @@ pub type RlpCodec = RlpNodeCodec<KeccakHasher>;
 /// extern crate hash_db;
 /// extern crate keccak_hasher;
 /// extern crate memory_db;
-/// extern crate ethereum_types;
 /// extern crate elastic_array;
 /// extern crate journaldb;
 ///
@@ -55,7 +54,7 @@ pub type RlpCodec = RlpNodeCodec<KeccakHasher>;
 /// use hash_db::*;
 /// use keccak_hasher::KeccakHasher;
 /// use memory_db::*;
-/// use ethereum_types::H256;
+/// use common_libs::ethereum_types::H256;
 /// use ethtrie::{TrieDB, TrieDBMut};
 /// use elastic_array::ElasticArray128;
 ///
@@ -92,7 +91,6 @@ pub type FatDB<'db> = trie::FatDB<'db, KeccakHasher, RlpCodec>;
 /// extern crate keccak_hash;
 /// extern crate keccak_hasher;
 /// extern crate memory_db;
-/// extern crate ethereum_types;
 /// extern crate elastic_array;
 /// extern crate journaldb;
 ///
@@ -100,7 +98,7 @@ pub type FatDB<'db> = trie::FatDB<'db, KeccakHasher, RlpCodec>;
 /// use ethtrie::{TrieDBMut, trie::TrieMut};
 /// use keccak_hasher::KeccakHasher;
 /// use memory_db::*;
-/// use ethereum_types::H256;
+/// use common_libs::ethereum_types::H256;
 /// use elastic_array::ElasticArray128;
 ///
 /// type DBValue = ElasticArray128<u8>;

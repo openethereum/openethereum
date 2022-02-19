@@ -27,7 +27,7 @@ use client::{
 };
 use crypto::publickey::KeyPair;
 use ethereum;
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use executive::{Executive, TransactOptions};
 use hash::keccak;
 use io::IoChannel;

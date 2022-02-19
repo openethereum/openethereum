@@ -25,7 +25,7 @@ use std::{
 
 use accounts::AccountProvider;
 use crypto::publickey::Secret;
-use ethereum_types::{Address, H160, H256, H520};
+use common_libs::ethereum_types::{Address, H160, H256, H520};
 use ethkey::{Brain, Password};
 use ethstore::KeyFile;
 use jsonrpc_core::Result;

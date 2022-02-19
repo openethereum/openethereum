@@ -16,7 +16,7 @@
 
 //! Transaction Execution environment.
 use bytes::{Bytes, BytesRef};
-use ethereum_types::{Address, H256, U256, U512};
+use common_libs::ethereum_types::{Address, H256, U256, U512};
 use evm::{CallType, FinalizationResult, Finalize};
 use executed::ExecutionError;
 pub use executed::{Executed, ExecutionResult};
@@ -36,7 +36,7 @@ use vm::{
 
 #[cfg(any(test, feature = "test-helpers"))]
 /// Precompile that can never be prunned from state trie (0x3, only in tests)
-const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(ethereum_types::H160([
+const UNPRUNABLE_PRECOMPILE_ADDRESS: Option<Address> = Some(common_libs::ethereum_types::H160([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
 ]));
 
@@ -1629,7 +1629,7 @@ mod tests {
     use super::*;
     use crypto::publickey::{Generator, Random};
     use error::ExecutionError;
-    use ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
+    use common_libs::ethereum_types::{Address, BigEndianHash, H160, H256, U256, U512};
     use evm::{Factory, VMType};
     use machine::EthereumMachine;
     use rustc_hex::FromHex;

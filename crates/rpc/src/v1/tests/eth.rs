@@ -26,7 +26,7 @@ use ethcore::{
     test_helpers,
     verification::{queue::kind::blocks::Unverified, VerifierType},
 };
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use ethjson::{blockchain::BlockChain, spec::ForkSpec};
 use io::IoChannel;
 use miner::external::ExternalMiner;

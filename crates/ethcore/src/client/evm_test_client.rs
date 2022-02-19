@@ -18,7 +18,7 @@
 
 use client;
 use db;
-use ethereum_types::{H160, H256, U256};
+use common_libs::ethereum_types::{H160, H256, U256};
 use ethtrie;
 use evm::{FinalizationResult, VMType};
 use executive;

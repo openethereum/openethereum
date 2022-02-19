@@ -18,7 +18,7 @@
 
 use std::collections::BTreeSet;
 
-use ethereum_types::{H160, H256, H512};
+use common_libs::ethereum_types::{H160, H256, H512};
 use ethkey::Password;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;

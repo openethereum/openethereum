@@ -16,7 +16,7 @@
 
 //! EIP-191 specific types
 
-use ethereum_types::H160;
+use common_libs::ethereum_types::H160;
 use serde::{de, Deserialize, Deserializer};
 use v1::types::Bytes;
 

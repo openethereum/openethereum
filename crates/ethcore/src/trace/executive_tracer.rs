@@ -16,7 +16,7 @@
 
 //! Simple executive tracer.
 
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use log::{debug, warn};
 use std::cmp::min;
 use trace::{

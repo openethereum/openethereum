@@ -1,4 +1,4 @@
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use serde_json;
 
 type Res = Result<U256, serde_json::Error>;

@@ -16,7 +16,7 @@
 
 //! Transaction Execution environment.
 use bytes::Bytes;
-use ethereum_types::{Address, BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
 use executive::*;
 use machine::EthereumMachine as Machine;
 use state::{Backend as StateBackend, CleanupMode, State, Substate};
@@ -563,7 +563,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{Address, U256};
+    use common_libs::ethereum_types::{Address, U256};
     use evm::{CallType, EnvInfo, Ext};
     use state::{State, Substate};
     use std::str::FromStr;

@@ -23,7 +23,6 @@
 #[macro_use]
 extern crate criterion;
 extern crate ethcore;
-extern crate ethereum_types;
 extern crate evm;
 extern crate rustc_hex;
 extern crate vm;
@@ -31,7 +30,7 @@ extern crate vm;
 use criterion::{black_box, Criterion};
 use std::sync::Arc;
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use evm::Factory;
 use rustc_hex::FromHex;
 use vm::{tests::FakeExt, ActionParams, Ext};

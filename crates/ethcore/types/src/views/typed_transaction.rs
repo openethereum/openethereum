@@ -25,7 +25,7 @@ use crate::{
     views::ViewRlp,
 };
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use rlp::Rlp;
 
 /// View onto transaction rlp. Assumption is this is part of block.

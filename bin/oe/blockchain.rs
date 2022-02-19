@@ -38,7 +38,7 @@ use ethcore::{
     verification::queue::VerifierSettings,
 };
 use ethcore_service::ClientService;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 
 #[derive(Debug, PartialEq)]
 pub enum BlockchainCmd {

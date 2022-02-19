@@ -16,7 +16,7 @@
 
 use bytes::Bytes;
 use client::Client;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use snapshot::ManifestData;
 use std::fmt;
 

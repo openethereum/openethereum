@@ -36,7 +36,7 @@ use rand::Rng;
 use tempdir::TempDir;
 
 use self::trie_standardmap::{Alphabet, StandardMap, ValueMode};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use ethtrie::{SecTrieDBMut, TrieDB, TrieDBMut};
 use hash_db::HashDB;
 use journaldb;

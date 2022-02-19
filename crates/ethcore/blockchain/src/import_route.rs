@@ -17,7 +17,7 @@
 //! Import route.
 
 use crate::block_info::{BlockInfo, BlockLocation};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 /// Import route for newly inserted block.
 #[derive(Debug, PartialEq, Clone)]
@@ -70,7 +70,7 @@ impl From<BlockInfo> for ImportRoute {
 mod tests {
     use super::ImportRoute;
     use crate::block_info::{BlockInfo, BlockLocation, BranchBecomingCanonChainData};
-    use ethereum_types::{BigEndianHash, U256};
+    use common_libs::ethereum_types::{BigEndianHash, U256};
 
     #[test]
     fn import_route_none() {

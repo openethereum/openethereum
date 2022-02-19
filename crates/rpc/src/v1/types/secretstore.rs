@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::H512;
+use common_libs::ethereum_types::H512;
 use v1::types::Bytes;
 
 /// Encrypted document key.
@@ -32,7 +32,7 @@ pub struct EncryptedDocumentKey {
 #[cfg(test)]
 mod tests {
     use super::EncryptedDocumentKey;
-    use ethereum_types::H512;
+    use common_libs::ethereum_types::H512;
     use serde_json;
 
     #[test]

@@ -22,7 +22,7 @@ use blockchain::{BlockReceipts, TreeRoute};
 use bytes::Bytes;
 use call_contract::{CallContract, RegistryInfo};
 use ethcore_miner::pool::VerifiedTransaction;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use evm::Schedule;
 use itertools::Itertools;
 use kvdb::DBValue;

@@ -39,7 +39,7 @@ use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
     snapshot::SnapshotService,
 };
-use ethereum_types::{H256, H512, U256, U64};
+use common_libs::ethereum_types::{H256, H512, U256, U64};
 use io::TimerToken;
 use network::IpFilter;
 use parking_lot::{Mutex, RwLock};

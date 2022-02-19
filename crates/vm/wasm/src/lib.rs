@@ -17,7 +17,7 @@
 //! Wasm Interpreter
 
 extern crate byteorder;
-extern crate ethereum_types;
+extern crate common_libs;
 #[macro_use]
 extern crate log;
 extern crate libc;
@@ -39,7 +39,7 @@ use wasmi::{Error as InterpreterError, Trap};
 
 use runtime::{Runtime, RuntimeContext};
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 
 /// Wrapped interpreter error
 #[derive(Debug)]

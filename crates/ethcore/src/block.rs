@@ -34,7 +34,7 @@
 use std::{cmp, collections::HashSet, ops, sync::Arc};
 
 use bytes::Bytes;
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 
 use engines::EthEngine;
 use error::{BlockError, Error};
@@ -620,7 +620,7 @@ mod tests {
     use super::*;
     use engines::EthEngine;
     use error::Error;
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use factory::Factories;
     use state_db::StateDB;
     use std::sync::Arc;

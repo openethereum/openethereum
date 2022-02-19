@@ -17,7 +17,7 @@
 //! Receipt
 
 use super::transaction::TypedTxId;
-use ethereum_types::{Address, Bloom, H160, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H160, H256, U256};
 use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::ops::{Deref, DerefMut};
@@ -322,7 +322,7 @@ pub struct LocalizedReceipt {
 mod tests {
     use super::{LegacyReceipt, TransactionOutcome, TypedReceipt, TypedTxId};
     use crate::log_entry::LogEntry;
-    use ethereum_types::{H160, H256};
+    use common_libs::ethereum_types::{H160, H256};
     use std::str::FromStr;
 
     #[test]

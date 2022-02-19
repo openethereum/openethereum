@@ -22,7 +22,7 @@ use std::{
     sync::Arc,
 };
 
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use types::{
     header::Header,
     transaction::{
@@ -579,7 +579,7 @@ impl super::Machine for EthereumMachine {
 mod tests {
     use super::*;
     use crate::ethereum::new_london_test_machine;
-    use ethereum_types::H160;
+    use common_libs::ethereum_types::H160;
     use std::str::FromStr;
 
     fn get_default_ethash_extensions() -> EthashExtensions {

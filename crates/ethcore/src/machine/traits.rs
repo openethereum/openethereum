@@ -18,7 +18,7 @@
 //! This will define traits for the header, block, and state of a blockchain.
 
 use block::ExecutedBlock;
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 
 /// Generalization of types surrounding blockchain-suitable state machines.
 pub trait Machine: Send + Sync {

@@ -51,7 +51,7 @@ extern crate ethcore_miner as miner;
 extern crate ethcore_network as network;
 extern crate ethcore_service;
 extern crate ethcore_sync as sync;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate ethkey;
 extern crate ethstore;
 extern crate fetch;

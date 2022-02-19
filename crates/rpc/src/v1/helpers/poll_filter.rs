@@ -16,7 +16,7 @@
 
 //! Helper type with all filter state data.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use parking_lot::Mutex;
 use std::{
     collections::{BTreeSet, HashSet, VecDeque},

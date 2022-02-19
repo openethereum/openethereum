@@ -37,7 +37,7 @@ pub enum ValidatorSet {
 #[cfg(test)]
 mod tests {
     use crate::{hash::Address, spec::validator_set::ValidatorSet, uint::Uint};
-    use ethereum_types::{H160, U256};
+    use common_libs::ethereum_types::{H160, U256};
     use serde_json;
     use std::str::FromStr;
 

@@ -17,7 +17,7 @@
 //! Block RLP compression.
 
 use bytes::Bytes;
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 use triehash::ordered_trie_root;
@@ -157,7 +157,7 @@ mod tests {
     use super::AbridgedBlock;
 
     use bytes::Bytes;
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use types::{
         block::Block,
         transaction::{Action, Transaction, TypedTransaction},

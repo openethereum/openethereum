@@ -30,7 +30,7 @@ use std::{
     },
 };
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use hash::KECCAK_EMPTY;
 use txpool;
 use types::transaction;

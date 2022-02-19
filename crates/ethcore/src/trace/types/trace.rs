@@ -17,7 +17,7 @@
 //! Tracing datatypes.
 
 use bytes::Bytes;
-use ethereum_types::{Address, Bloom, BloomInput, U256};
+use common_libs::ethereum_types::{Address, Bloom, BloomInput, U256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::error::Error;

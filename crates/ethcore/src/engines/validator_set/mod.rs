@@ -26,7 +26,7 @@ mod test;
 use std::sync::Weak;
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use ethjson::spec::ValidatorSet as ValidatorSpec;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use types::{header::Header, ids::BlockId, BlockNumber};

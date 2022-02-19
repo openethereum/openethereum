@@ -19,7 +19,7 @@
 use jsonrpc_core::BoxFuture;
 use jsonrpc_derive::rpc;
 
-use ethereum_types::{H160, H256, H520};
+use common_libs::ethereum_types::{H160, H256, H520};
 use v1::types::{Bytes, RichRawTransaction, TransactionRequest};
 
 /// Signing methods implementation relying on unlocked accounts.

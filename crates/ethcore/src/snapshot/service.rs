@@ -45,7 +45,7 @@ use types::ids::BlockId;
 use io::IoChannel;
 
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use journaldb::Algorithm;
 use kvdb::DBTransaction;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
@@ -1063,7 +1063,7 @@ mod tests {
 
     #[test]
     fn cannot_finish_with_invalid_chunks() {
-        use ethereum_types::H256;
+        use common_libs::ethereum_types::H256;
         use kvdb_rocksdb::DatabaseConfig;
 
         let spec = Spec::new_test();

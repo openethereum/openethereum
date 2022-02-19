@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::panic_payload;
-use ethereum_types::{Address, BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
 use std::cmp;
 use vm::{self, CallType};
 use wasmi::{

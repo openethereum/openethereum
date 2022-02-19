@@ -20,7 +20,7 @@ use std::fmt;
 
 use types::ids::BlockId;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use ethtrie::TrieError;
 use rlp::DecoderError;
 

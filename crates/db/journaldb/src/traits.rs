@@ -20,7 +20,7 @@ use std::{io, sync::Arc};
 
 use bytes::Bytes;
 use ethcore_db::{DBTransaction, DBValue, KeyValueDB};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash_db::{AsHashDB, HashDB};
 use keccak_hasher::KeccakHasher;
 use std::collections::{BTreeMap, HashMap};

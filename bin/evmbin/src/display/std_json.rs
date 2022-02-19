@@ -22,7 +22,7 @@ use super::config::Config;
 use bytes::ToPretty;
 use display;
 use ethcore::{pod_state, trace};
-use ethereum_types::{BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{BigEndianHash, H256, U256};
 use info as vm;
 
 pub trait Writer: io::Write + Send + Sized {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{H160, U256, U64};
+use common_libs::ethereum_types::{H160, U256, U64};
 use v1::{
     helpers::CallRequest as Request,
     types::{AccessList, Bytes},
@@ -75,7 +75,7 @@ impl Into<Request> for CallRequest {
 #[cfg(test)]
 mod tests {
     use super::CallRequest;
-    use ethereum_types::{H160, U256};
+    use common_libs::ethereum_types::{H160, U256};
     use rustc_hex::FromHex;
     use serde_json;
     use std::str::FromStr;

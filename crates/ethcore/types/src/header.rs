@@ -21,7 +21,7 @@ use crate::{
     hash::{keccak, KECCAK_EMPTY_LIST_RLP, KECCAK_NULL_RLP},
     BlockNumber,
 };
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use parity_util_mem::MallocSizeOf;
 use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 
@@ -457,7 +457,7 @@ mod tests {
     use crate::BlockNumber;
 
     use super::Header;
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use rlp::{self, Rlp};
     use rustc_hex::FromHex;
 

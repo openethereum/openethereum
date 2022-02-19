@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Web3 rpc interface.
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 

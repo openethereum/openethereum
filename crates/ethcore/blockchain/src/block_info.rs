@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use common_types::BlockNumber;
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 
 /// Brief info about inserted block.
 #[derive(Clone)]

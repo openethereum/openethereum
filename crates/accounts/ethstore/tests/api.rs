@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate ethereum_types;
 extern crate ethstore;
 extern crate parity_crypto as crypto;
 extern crate rand;
@@ -24,7 +23,7 @@ mod util;
 use std::str::FromStr;
 
 use crypto::publickey::{verify_address, Generator, KeyPair, Random, Secret};
-use ethereum_types::H160;
+use common_libs::ethereum_types::H160;
 use ethstore::{
     accounts_dir::RootDiskDirectory, EthStore, SecretVaultRef, SimpleSecretStore, StoreAccountRef,
 };

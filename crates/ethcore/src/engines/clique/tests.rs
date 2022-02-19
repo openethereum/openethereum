@@ -21,7 +21,7 @@ use block::*;
 use crypto::publickey::{KeyPair, Secret};
 use engines::Engine;
 use error::{Error, ErrorKind};
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use state_db::StateDB;
 use test_helpers::get_temp_state_db;
 

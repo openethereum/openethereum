@@ -24,7 +24,7 @@ use engines::EthEngine;
 use snapshot::{Error, ManifestData, Progress};
 use types::BlockNumber;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 mod authority;
 mod work;

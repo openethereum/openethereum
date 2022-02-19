@@ -20,7 +20,7 @@ use serde::{
 };
 use std::fmt;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 /// Type of derivation
 pub enum DerivationType {

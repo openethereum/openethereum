@@ -19,7 +19,7 @@
 use block::*;
 use client::{BlockChainClient, Client, ClientConfig, *};
 use crypto::publickey::KeyPair;
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use hash::keccak;
 use io::*;
 use miner::Miner;

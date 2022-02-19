@@ -16,7 +16,7 @@
 
 use super::test_common::*;
 use bytes::Bytes;
-use ethereum_types::BigEndianHash;
+use common_libs::ethereum_types::BigEndianHash;
 use ethjson;
 use ethtrie;
 use evm::Finalize;

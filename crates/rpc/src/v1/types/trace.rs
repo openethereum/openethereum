@@ -21,7 +21,7 @@ use ethcore::{
     trace as et,
     trace::{trace, FlatTrace, LocalizedTrace as EthLocalizedTrace, TraceError},
 };
-use ethereum_types::{H160, H256, U256};
+use common_libs::ethereum_types::{H160, H256, U256};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use types::{account_diff, state_diff};
 use vm;
@@ -679,7 +679,7 @@ impl From<(H256, Executed)> for TraceResultsWithTransactionHash {
 mod tests {
     use super::*;
     use ethcore::trace::TraceError;
-    use ethereum_types::{Address, H256};
+    use common_libs::ethereum_types::{Address, H256};
     use serde_json;
     use std::collections::BTreeMap;
     use v1::types::Bytes;

@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use ethcore::snapshot::{ManifestData, SnapshotService};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::keccak;
 
 use std::{collections::HashSet, iter::FromIterator};

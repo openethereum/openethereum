@@ -74,7 +74,7 @@ use engines::{
     Engine, EngineError, Seal, SealingState,
 };
 use error::{BlockError, Error};
-use ethereum_types::{Address, H160, H256, H64, U256};
+use common_libs::ethereum_types::{Address, H160, H256, H64, U256};
 use hash::KECCAK_EMPTY_LIST_RLP;
 use itertools::Itertools;
 use lru_cache::LruCache;

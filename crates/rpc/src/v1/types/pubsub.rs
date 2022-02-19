@@ -16,7 +16,7 @@
 
 //! Pub-Sub types.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{from_value, Value};
 use v1::types::{Filter, Log, RichHeader};

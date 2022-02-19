@@ -30,7 +30,7 @@
 use std::cmp;
 
 use super::{verifier, PrioritizationStrategy, ScoredTransaction, VerifiedTransaction};
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use txpool::{self, scoring};
 
 /// Transaction with the same (sender, nonce) can be replaced only if

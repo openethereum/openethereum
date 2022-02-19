@@ -16,11 +16,11 @@
 
 //! Generates Keccak-flavoured trie roots.
 
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate keccak_hasher;
 extern crate triehash;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use keccak_hasher::KeccakHasher;
 
 /// Generates a trie root hash for a vector of key-value tuples
@@ -55,7 +55,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{ordered_trie_root, sec_trie_root, trie_root};
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use keccak_hasher::KeccakHasher;
     use std::str::FromStr;
     use triehash;

@@ -35,7 +35,7 @@ use bytes::{Bytes, ToPretty};
 use call_contract::CallContract;
 use db::{DBTransaction, DBValue, KeyValueDB};
 use ethcore_miner::pool::VerifiedTransaction;
-use ethereum_types::{Address, H256, H264, U256};
+use common_libs::ethereum_types::{Address, H256, H264, U256};
 use hash::keccak;
 use itertools::Itertools;
 use parking_lot::{Mutex, RwLock};
@@ -3595,7 +3595,7 @@ impl PrometheusMetrics for Client {
 #[cfg(test)]
 mod tests {
     use blockchain::{BlockProvider, ExtrasInsert};
-    use ethereum_types::{H160, H256};
+    use common_libs::ethereum_types::{H160, H256};
     use spec::Spec;
     use test_helpers::generate_dummy_client_with_spec_and_data;
 

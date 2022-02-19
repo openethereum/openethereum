@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{H160, H256};
+use common_libs::ethereum_types::{H160, H256};
 use jsonrpc_core::Error as RpcError;
 use serde::{
     de::{DeserializeOwned, Error},
@@ -174,7 +174,7 @@ impl Serialize for FilterChanges {
 #[cfg(test)]
 mod tests {
     use super::{Filter, Topic, VariadicValue};
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use serde_json;
     use std::str::FromStr;
     use types::{filter::Filter as EthFilter, ids::BlockId};

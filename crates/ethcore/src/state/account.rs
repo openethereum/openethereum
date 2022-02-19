@@ -18,7 +18,7 @@
 
 use bytes::{Bytes, ToPretty};
 use error::Error;
-use ethereum_types::{Address, BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
 use ethtrie::{Result as TrieResult, SecTrieDB, TrieDB, TrieFactory};
 use hash::{keccak, KECCAK_EMPTY, KECCAK_NULL_RLP};
 use hash_db::HashDB;
@@ -691,7 +691,7 @@ mod tests {
     use super::*;
     use account_db::*;
     use bytes::Bytes;
-    use ethereum_types::{Address, H256};
+    use common_libs::ethereum_types::{Address, H256};
     use journaldb::new_memory_db;
     use rlp_compress::{compress, decompress, snapshot_swapper};
     use std::str::FromStr;

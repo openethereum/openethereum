@@ -16,7 +16,7 @@
 
 //! Traces specific rpc interface.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use v1::types::{

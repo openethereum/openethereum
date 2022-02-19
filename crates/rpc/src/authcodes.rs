@@ -22,7 +22,7 @@ use std::{
     time,
 };
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::keccak;
 use itertools::Itertools;
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
@@ -237,7 +237,7 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
 
     fn generate_hash(val: &str, time: u64) -> H256 {
         keccak(format!("{}:{}", val, time))

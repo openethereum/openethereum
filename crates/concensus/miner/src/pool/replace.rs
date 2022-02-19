@@ -26,7 +26,7 @@
 use std::cmp;
 
 use super::{client, ScoredTransaction};
-use ethereum_types::{H160 as Address, U256};
+use common_libs::ethereum_types::{H160 as Address, U256};
 use txpool::{
     self,
     scoring::{Choice, Scoring},

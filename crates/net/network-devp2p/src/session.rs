@@ -23,7 +23,7 @@ use std::{
 };
 
 use connection::{Connection, EncryptedConnection, Packet, MAX_PAYLOAD_SIZE};
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use handshake::Handshake;
 use host::*;
 use io::{IoContext, StreamToken};

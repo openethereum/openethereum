@@ -28,7 +28,7 @@ use ethcore::{
     ethereum,
     spec::{Spec, SpecParams},
 };
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use fetch::Client as FetchClient;
 use journaldb::Algorithm;
 use parity_runtime::Executor;

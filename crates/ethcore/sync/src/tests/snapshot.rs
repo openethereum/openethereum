@@ -20,7 +20,7 @@ use ethcore::{
     client::EachBlockWith,
     snapshot::{CreationStatus, ManifestData, RestorationStatus, SnapshotService},
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::keccak;
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};

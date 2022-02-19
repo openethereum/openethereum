@@ -17,7 +17,7 @@
 use std::{cmp, collections::HashSet};
 
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use fastmap::H256FastSet;
 use network::{client_version::ClientCapabilities, PeerId};
 use rand::RngCore;

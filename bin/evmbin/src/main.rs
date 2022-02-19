@@ -29,7 +29,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate docopt;
 extern crate env_logger;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate evm;
 extern crate panic_hook;
 extern crate parity_bytes as bytes;
@@ -45,7 +45,7 @@ extern crate tempdir;
 use bytes::Bytes;
 use docopt::Docopt;
 use ethcore::{json_tests, spec, TrieSpec};
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use ethjson::spec::ForkSpec;
 use evm::EnvInfo;
 use rustc_hex::FromHex;
@@ -439,7 +439,7 @@ fn die<T: fmt::Display>(msg: T) -> ! {
 mod tests {
     use super::{Args, USAGE};
     use docopt::Docopt;
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
 
     fn run<T: AsRef<str>>(args: &[T]) -> Args {
         Docopt::new(USAGE)

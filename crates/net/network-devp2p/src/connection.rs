@@ -19,7 +19,7 @@ use crypto::{
     aes::{AesCtr256, AesEcb256},
     publickey::Secret,
 };
-use ethereum_types::{H128, H256, H512};
+use common_libs::ethereum_types::{H128, H256, H512};
 use handshake::Handshake;
 use hash::{keccak, write_keccak};
 use io::{IoContext, StreamToken};
@@ -736,7 +736,7 @@ mod tests {
 
     #[test]
     pub fn test_encryption() {
-        use ethereum_types::{H128, H256};
+        use common_libs::ethereum_types::{H128, H256};
         use std::str::FromStr;
         let key =
             H256::from_str("2212767d793a7a3d66f869ae324dd11bd17044b82c9f463b8a541a4d089efec5")

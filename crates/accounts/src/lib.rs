@@ -635,7 +635,7 @@ impl AccountProvider {
 mod tests {
     use super::{AccountProvider, Unlock};
     use crypto::publickey::{Address, Generator, Random};
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use ethstore::{Derivation, StoreAccountRef};
     use std::time::{Duration, Instant};
 

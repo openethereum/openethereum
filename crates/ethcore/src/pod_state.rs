@@ -16,7 +16,7 @@
 
 //! State of all accounts in the system expressed in Plain Old Data.
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use ethjson;
 use itertools::Itertools;
 use pod_account::{self, PodAccount};
@@ -103,7 +103,7 @@ pub fn diff_pod(pre: &PodState, post: &PodState) -> StateDiff {
 #[cfg(test)]
 mod test {
     use super::PodState;
-    use ethereum_types::H160;
+    use common_libs::ethereum_types::H160;
     use pod_account::PodAccount;
     use std::collections::BTreeMap;
     use types::{account_diff::*, state_diff::*};

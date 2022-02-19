@@ -16,10 +16,10 @@
 
 //! Provides a `H256FastMap` type with H256 keys and fast hashing function.
 
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate plain_hasher;
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use plain_hasher::PlainHasher;
 use std::{
     collections::{HashMap, HashSet},

@@ -22,7 +22,7 @@ use ethcore::client::{
     BlockChainClient, BlockId, Call, CallAnalytics, EngineInfo, StateClient, StateInfo, TraceId,
     TransactionId,
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use types::transaction::{SignedTransaction, TypedTransaction};
 
 use jsonrpc_core::Result;

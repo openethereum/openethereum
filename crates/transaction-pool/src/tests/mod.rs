@@ -25,7 +25,7 @@ use self::{
 use std::sync::Arc;
 
 use super::*;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 
 #[derive(Debug, PartialEq)]
 pub struct Transaction {

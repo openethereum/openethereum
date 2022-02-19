@@ -22,7 +22,7 @@ use super::config::Config;
 use bytes::ToPretty;
 use display;
 use ethcore::trace;
-use ethereum_types::{BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{BigEndianHash, H256, U256};
 use info as vm;
 
 /// JSON formatting informant.

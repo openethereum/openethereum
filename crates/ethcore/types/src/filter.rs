@@ -17,7 +17,7 @@
 //! Blockchain filter
 
 use crate::{ids::BlockId, log_entry::LogEntry};
-use ethereum_types::{Address, Bloom, BloomInput, H256};
+use common_libs::ethereum_types::{Address, Bloom, BloomInput, H256};
 
 /// Blockchain Filter.
 #[derive(Debug, PartialEq)]
@@ -119,7 +119,7 @@ impl Filter {
 #[cfg(test)]
 mod tests {
     use crate::{filter::Filter, ids::BlockId, log_entry::LogEntry};
-    use ethereum_types::{Bloom, H160, H256};
+    use common_libs::ethereum_types::{Bloom, H160, H256};
     use std::str::FromStr;
 
     #[test]

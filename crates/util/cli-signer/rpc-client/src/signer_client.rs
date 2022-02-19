@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use client::{Rpc, RpcError};
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use futures::Canceled;
 use rpc::signer::{ConfirmationRequest, TransactionCondition, TransactionModification};
 use serde;

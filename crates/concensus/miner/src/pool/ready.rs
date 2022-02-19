@@ -40,7 +40,7 @@
 
 use std::{cmp, collections::HashMap};
 
-use ethereum_types::{H160 as Address, U256};
+use common_libs::ethereum_types::{H160 as Address, U256};
 use txpool::{self, VerifiedTransaction as PoolVerifiedTransaction};
 use types::transaction;
 

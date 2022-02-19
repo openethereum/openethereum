@@ -30,7 +30,7 @@ use self::{
     url::Url,
 };
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use parking_lot::Mutex;
 
 use futures::Future;

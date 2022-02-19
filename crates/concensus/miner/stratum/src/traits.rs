@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use jsonrpc_tcp_server::PushMessageError;
 use std;
 

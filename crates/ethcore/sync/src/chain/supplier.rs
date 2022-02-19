@@ -22,7 +22,7 @@ use devp2p::PAYLOAD_SOFT_LIMIT;
 pub const PAYLOAD_SOFT_LIMIT: usize = 100_000;
 
 use enum_primitive::FromPrimitive;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use network::{self, PeerId};
 use parking_lot::RwLock;
 use rlp::{Rlp, RlpStream};
@@ -506,7 +506,7 @@ mod test {
         client::{BlockChainClient, EachBlockWith, TestBlockChainClient},
         spec::Spec,
     };
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};
     use std::{collections::VecDeque, str::FromStr};

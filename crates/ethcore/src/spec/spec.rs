@@ -25,7 +25,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use ethereum_types::{Address, Bloom, H160, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H160, H256, U256};
 use ethjson;
 use hash::{keccak, KECCAK_NULL_RLP};
 use parking_lot::RwLock;
@@ -1225,7 +1225,7 @@ impl Spec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::{H160, H256};
+    use common_libs::ethereum_types::{H160, H256};
     use state::State;
     use std::str::FromStr;
     use tempdir::TempDir;

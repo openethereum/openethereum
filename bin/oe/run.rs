@@ -49,7 +49,7 @@ use ethcore::{
 };
 use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
-use ethereum_types::{H256, U64};
+use common_libs::ethereum_types::{H256, U64};
 use journaldb::Algorithm;
 use jsonrpc_core;
 use node_filter::NodeFilter;

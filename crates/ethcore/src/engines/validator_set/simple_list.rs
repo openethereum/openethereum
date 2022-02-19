@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 /// Preconfigured validator list.
 use parity_util_mem::MallocSizeOf;
 
@@ -132,7 +132,7 @@ impl AsRef<dyn ValidatorSet> for SimpleList {
 #[cfg(test)]
 mod tests {
     use super::{super::ValidatorSet, SimpleList};
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use std::str::FromStr;
 
     #[test]

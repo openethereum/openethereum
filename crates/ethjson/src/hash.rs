@@ -16,7 +16,7 @@
 
 //! Lenient hash json deserialization for test json files.
 
-use ethereum_types::{
+use common_libs::ethereum_types::{
     Bloom as Hash2048, H160 as Hash160, H256 as Hash256, H520 as Hash520, H64 as Hash64,
 };
 use serde::{
@@ -113,7 +113,7 @@ impl_hash!(Bloom, Hash2048);
 #[cfg(test)]
 mod test {
     use crate::hash::H256;
-    use ethereum_types;
+    use common_libs::ethereum_types;
     use serde_json;
     use std::str::FromStr;
 

@@ -19,7 +19,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use blockchain::BlockChainDB;
 use db::{self, cache_manager::CacheManager, CacheUpdatePolicy, Key, Readable, Writable};
-use ethereum_types::{H256, H264};
+use common_libs::ethereum_types::{H256, H264};
 use kvdb::DBTransaction;
 use parity_util_mem::MallocSizeOfExt;
 use parking_lot::RwLock;
@@ -406,7 +406,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use evm::CallType;
     use kvdb::DBTransaction;
     use std::{collections::HashMap, sync::Arc};

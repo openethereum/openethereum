@@ -31,7 +31,7 @@ use ethcore::{
     test_helpers,
 };
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use io::{IoChannel, IoContext, IoHandler};
 use network::{self, client_version::ClientVersion, PacketId, PeerId, ProtocolId, SessionInfo};
 use parking_lot::RwLock;

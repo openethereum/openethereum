@@ -21,7 +21,7 @@ use std::collections::{
     VecDeque,
 };
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use types::BlockNumber;
 
 use engines::validator_set::SimpleList;
@@ -192,7 +192,7 @@ impl RollingFinality {
 #[cfg(test)]
 mod tests {
     use super::RollingFinality;
-    use ethereum_types::{Address, H256};
+    use common_libs::ethereum_types::{Address, H256};
     use types::BlockNumber;
 
     #[test]

@@ -20,7 +20,7 @@ use ethcore::{
     client::{self, EvmTestClient, EvmTestError, TransactErr, TransactSuccess},
     pod_state, spec, state, state_db, trace, TrieSpec,
 };
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use ethjson;
 use std::time::{Duration, Instant};
 use types::transaction;
@@ -262,7 +262,7 @@ where
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use rustc_hex::FromHex;
     use std::sync::Arc;
     use tempdir::TempDir;

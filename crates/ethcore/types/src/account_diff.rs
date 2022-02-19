@@ -17,7 +17,7 @@
 //! Diff between two accounts.
 
 use crate::bytes::Bytes;
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use std::{cmp::*, collections::BTreeMap, fmt};
 
 #[derive(Debug, PartialEq, Eq, Clone)]

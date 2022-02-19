@@ -21,7 +21,7 @@ use crypto::{
     publickey::{verify_public, KeyPair, Signature},
     DEFAULT_MAC,
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 use jsonrpc_core::{IoHandler, Success};
 use serde_json;

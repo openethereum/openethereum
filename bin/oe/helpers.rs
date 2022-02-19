@@ -26,7 +26,7 @@ use ethcore::{
     client::{BlockId, ClientConfig, DatabaseCompactionProfile, Mode, VMType, VerifierType},
     miner::{Penalization, PendingSet},
 };
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use ethkey::Password;
 use journaldb::Algorithm;
 use std::{
@@ -383,7 +383,7 @@ mod tests {
         client::{BlockId, Mode},
         miner::PendingSet,
     };
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use ethkey::Password;
     use std::{collections::HashSet, fs::File, io::Write, time::Duration};
     use tempdir::TempDir;

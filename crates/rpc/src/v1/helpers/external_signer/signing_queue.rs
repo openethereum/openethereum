@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use super::oneshot;
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use parking_lot::{Mutex, RwLock};
 use v1::{
     helpers::{
@@ -242,7 +242,7 @@ impl SigningQueue for ConfirmationsQueue {
 
 #[cfg(test)]
 mod test {
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use jsonrpc_core::futures::Future;
     use parking_lot::Mutex;
     use std::sync::Arc;

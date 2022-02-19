@@ -16,7 +16,7 @@
 
 //! Execution environment substate.
 use super::CleanupMode;
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use evm::{CleanDustMode, Schedule};
 use std::collections::HashSet;
 use types::log_entry::LogEntry;
@@ -88,7 +88,7 @@ impl Substate {
 #[cfg(test)]
 mod tests {
     use super::Substate;
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use types::log_entry::LogEntry;
 
     #[test]

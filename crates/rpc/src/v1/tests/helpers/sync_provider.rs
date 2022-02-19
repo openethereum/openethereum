@@ -16,7 +16,7 @@
 
 //! Test implementation of SyncProvider.
 
-use ethereum_types::{H256, H512};
+use common_libs::ethereum_types::{H256, H512};
 use network::client_version::ClientVersion;
 use parking_lot::RwLock;
 use stats::{PrometheusMetrics, PrometheusRegistry};

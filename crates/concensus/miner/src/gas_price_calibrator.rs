@@ -19,7 +19,7 @@
 use std::time::{Duration, Instant};
 
 use ansi_term::Colour;
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use parity_runtime::Executor;
 use price_info::{fetch::Client as FetchClient, Client as PriceInfoClient, PriceInfo};
 

@@ -23,7 +23,7 @@ use std::{
 use bytes::Bytes;
 use error::{Error as EthcoreError, ErrorKind as EthcoreErrorKind};
 use ethabi::FunctionOutputDecoder;
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use hash::keccak;
 use kvdb::DBValue;
 use memory_cache::MemoryLruCache;
@@ -720,7 +720,7 @@ mod tests {
         BlockInfo, ChainInfo, ImportBlock,
     };
     use crypto::publickey::Secret;
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use hash::keccak;
     use miner::{self, MinerService};
     use rustc_hex::FromHex;

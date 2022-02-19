@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use bytes::ToPretty;
-use ethereum_types::{Address, H520, U256};
+use common_libs::ethereum_types::{Address, H520, U256};
 use std::{str::FromStr, sync::Arc};
 
 use accounts::AccountProvider;

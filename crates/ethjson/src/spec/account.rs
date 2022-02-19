@@ -52,7 +52,7 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::{bytes::Bytes, spec::account::Account, uint::Uint};
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use serde_json;
     use std::collections::BTreeMap;
 

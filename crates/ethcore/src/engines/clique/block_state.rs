@@ -28,7 +28,7 @@ use engines::{
     EngineError,
 };
 use error::{BlockError, Error};
-use ethereum_types::{Address, H64};
+use common_libs::ethereum_types::{Address, H64};
 use rand::Rng;
 use time_utils::CheckedSystemTime;
 use types::{header::Header, BlockNumber};

@@ -39,7 +39,7 @@ use std::{
 
 use bytes::Bytes;
 use ethcore_miner::pool::{local_transactions, QueueStatus, VerifiedTransaction};
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use types::{
     block::Block,
     header::Header,

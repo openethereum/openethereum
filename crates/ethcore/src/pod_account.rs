@@ -17,7 +17,7 @@
 //! Account system expressed in Plain Old Data.
 
 use bytes::Bytes;
-use ethereum_types::{BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{BigEndianHash, H256, U256};
 use ethjson;
 use ethtrie::RlpCodec;
 use hash::keccak;
@@ -217,7 +217,7 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 #[cfg(test)]
 mod test {
     use super::{diff_pod, PodAccount};
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use std::collections::BTreeMap;
     use types::account_diff::*;
 

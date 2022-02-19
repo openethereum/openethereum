@@ -19,7 +19,7 @@
 use engines::EthEngine;
 use error::Error;
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use parity_util_mem::MallocSizeOf;
 
 pub use self::{blocks::Blocks, headers::Headers};
@@ -88,7 +88,7 @@ pub mod blocks {
     use verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
 
     use bytes::Bytes;
-    use ethereum_types::{H256, U256};
+    use common_libs::ethereum_types::{H256, U256};
     use parity_util_mem::MallocSizeOf;
 
     /// A mode for verifying blocks.
@@ -218,7 +218,7 @@ pub mod headers {
     use types::header::Header;
     use verification::verify_header_params;
 
-    use ethereum_types::{H256, U256};
+    use common_libs::ethereum_types::{H256, U256};
 
     impl BlockLike for Header {
         fn hash(&self) -> H256 {

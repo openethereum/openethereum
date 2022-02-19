@@ -17,7 +17,7 @@
 //! VM errors module
 
 use action_params::ActionParams;
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use ethtrie;
 use std::fmt;
 use ResumeCall;

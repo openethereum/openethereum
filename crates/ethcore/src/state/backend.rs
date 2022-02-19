@@ -26,7 +26,7 @@ use std::{
     sync::Arc,
 };
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use hash_db::{AsHashDB, HashDB};
 use journaldb::AsKeyedHashDB;
 use keccak_hasher::KeccakHasher;

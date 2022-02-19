@@ -20,7 +20,7 @@ extern crate ethabi;
 extern crate ethcore;
 extern crate ethcore_network as network;
 extern crate ethcore_network_devp2p as devp2p;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate lru_cache;
 extern crate parking_lot;
 
@@ -41,7 +41,7 @@ use std::sync::Weak;
 use devp2p::NodeId;
 use ethabi::FunctionOutputDecoder;
 use ethcore::client::{BlockChainClient, BlockId};
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use network::{ConnectionDirection, ConnectionFilter};
 
 use_contract!(peer_set, "res/peer_set.json");
@@ -103,7 +103,7 @@ mod test {
         spec::Spec,
         test_helpers,
     };
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use io::IoChannel;
     use network::{ConnectionDirection, ConnectionFilter, NodeId};
     use std::{

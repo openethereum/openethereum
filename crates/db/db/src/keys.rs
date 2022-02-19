@@ -21,7 +21,7 @@ use std::io::Write;
 use common_types::{
     engines::epoch::Transition as EpochTransition, receipt::TypedReceipt, BlockNumber,
 };
-use ethereum_types::{H256, H264, U256};
+use common_libs::ethereum_types::{H256, H264, U256};
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use parity_util_mem::MallocSizeOf;
 use rlp;

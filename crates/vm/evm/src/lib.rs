@@ -18,7 +18,7 @@
 
 extern crate bit_set;
 extern crate ethcore_builtin as builtin;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate keccak_hash as hash;
 extern crate memory_cache;
 extern crate num_bigint;

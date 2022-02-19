@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use discovery::{NodeEntry, TableUpdates};
-use ethereum_types::H512;
+use common_libs::ethereum_types::H512;
 use ip_utils::*;
 use network::{AllowIP, Error, ErrorKind, IpFilter};
 use rand::seq::SliceRandom;
@@ -578,7 +578,7 @@ mod json {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::H512;
+    use common_libs::ethereum_types::H512;
     use ipnetwork::IpNetwork;
     use std::{
         net::{Ipv4Addr, SocketAddr, SocketAddrV4},

@@ -17,7 +17,7 @@
 //! Log entry type definition.
 
 use crate::{bytes::Bytes, BlockNumber};
-use ethereum_types::{Address, Bloom, BloomInput, H256};
+use common_libs::ethereum_types::{Address, Bloom, BloomInput, H256};
 use parity_util_mem::MallocSizeOf;
 use std::ops::Deref;
 
@@ -75,7 +75,7 @@ impl Deref for LocalizedLogEntry {
 #[cfg(test)]
 mod tests {
     use super::LogEntry;
-    use ethereum_types::{Address, Bloom};
+    use common_libs::ethereum_types::{Address, Bloom};
 
     #[test]
     fn test_empty_log_bloom() {

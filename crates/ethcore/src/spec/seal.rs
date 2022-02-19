@@ -16,7 +16,7 @@
 
 //! Spec seal.
 
-use ethereum_types::{H256, H520, H64};
+use common_libs::ethereum_types::{H256, H520, H64};
 use ethjson;
 use rlp::RlpStream;
 

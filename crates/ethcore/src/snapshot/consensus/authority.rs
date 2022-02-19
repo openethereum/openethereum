@@ -33,7 +33,7 @@ use snapshot::{Error, ManifestData, Progress};
 use blockchain::{BlockChain, BlockChainDB, BlockProvider};
 use bytes::Bytes;
 use db::KeyValueDB;
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use itertools::{Itertools, Position};
 use rlp::{Rlp, RlpStream};
 use types::{

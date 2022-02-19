@@ -17,7 +17,7 @@
 use ethcore::snapshot::{CreationStatus, ManifestData, RestorationStatus, SnapshotService};
 
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use parking_lot::Mutex;
 
 /// Mocked snapshot service (used for sync info extensions).

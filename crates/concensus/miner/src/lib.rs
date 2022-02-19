@@ -24,7 +24,7 @@ extern crate common_types as types;
 extern crate ethabi;
 extern crate ethabi_derive;
 extern crate ethcore_call_contract as call_contract;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate futures;
 extern crate keccak_hash as hash;
 extern crate linked_hash_map;

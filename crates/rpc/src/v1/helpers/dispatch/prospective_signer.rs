@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use jsonrpc_core::{
     futures::{Async, Future, IntoFuture, Poll},
     Error, Result,

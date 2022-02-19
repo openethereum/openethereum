@@ -18,7 +18,7 @@
 
 use std::sync::Arc;
 
-use ethereum_types::{Address, H160, H256, H520, U256};
+use common_libs::ethereum_types::{Address, H160, H256, H520, U256};
 use jsonrpc_core::{
     futures::{future, Future},
     BoxFuture, Result,

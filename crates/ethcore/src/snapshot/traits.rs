@@ -16,7 +16,7 @@
 
 use super::{CreationStatus, ManifestData, RestorationStatus};
 use bytes::Bytes;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 /// The interface for a snapshot network service.
 /// This handles:

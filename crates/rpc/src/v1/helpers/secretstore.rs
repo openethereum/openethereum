@@ -16,7 +16,7 @@
 
 use bytes::Bytes;
 use crypto::publickey::{self, ec_math_utils, Generator, Public, Random, Secret};
-use ethereum_types::{H256, H512};
+use common_libs::ethereum_types::{H256, H512};
 use jsonrpc_core::Error;
 use rand::{rngs::OsRng, RngCore};
 use std::collections::BTreeSet;

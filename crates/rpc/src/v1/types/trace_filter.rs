@@ -17,7 +17,7 @@
 //! Trace filter deserialization.
 
 use ethcore::{client, client::BlockId};
-use ethereum_types::H160;
+use common_libs::ethereum_types::H160;
 use v1::types::BlockNumber;
 
 /// Trace filter
@@ -69,7 +69,7 @@ impl Into<client::TraceFilter> for TraceFilter {
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use serde_json;
     use v1::types::{BlockNumber, TraceFilter};
 

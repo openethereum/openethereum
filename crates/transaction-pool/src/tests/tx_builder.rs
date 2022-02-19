@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{Address, Transaction, H256, U256};
-use ethereum_types::BigEndianHash;
+use common_libs::ethereum_types::BigEndianHash;
 
 #[derive(Debug, Default, Clone)]
 pub struct TransactionBuilder {

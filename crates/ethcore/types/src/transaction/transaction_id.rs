@@ -16,7 +16,7 @@
 
 //! Transaction Id.
 
-use ethereum_types::U64;
+use common_libs::ethereum_types::U64;
 use serde_repr::*;
 
 #[derive(Serialize_repr, Eq, Hash, Deserialize_repr, Debug, Copy, Clone, PartialEq)]

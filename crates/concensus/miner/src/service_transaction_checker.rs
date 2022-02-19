@@ -18,7 +18,7 @@
 
 use call_contract::{CallContract, RegistryInfo};
 use ethabi::FunctionOutputDecoder;
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use parking_lot::RwLock;
 use std::{collections::HashMap, mem, sync::Arc};
 use types::{ids::BlockId, transaction::SignedTransaction};

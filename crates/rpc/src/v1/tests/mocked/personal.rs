@@ -20,7 +20,7 @@ use accounts::AccountProvider;
 use bytes::ToPretty;
 use crypto::publickey::Secret;
 use ethcore::client::TestBlockChainClient;
-use ethereum_types::{Address, H520, U256};
+use common_libs::ethereum_types::{Address, H520, U256};
 use hash::keccak;
 use jsonrpc_core::IoHandler;
 use parity_runtime::Runtime;

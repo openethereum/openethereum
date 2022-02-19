@@ -17,7 +17,7 @@
 //! Parity Accounts-related rpc interface.
 use std::collections::BTreeMap;
 
-use ethereum_types::{H160, H256, H520};
+use common_libs::ethereum_types::{H160, H256, H520};
 use ethkey::Password;
 use ethstore::KeyFile;
 use jsonrpc_core::Result;

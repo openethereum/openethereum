@@ -18,7 +18,7 @@
 //! block reward contract.
 
 use ethabi::{self, ParamType};
-use ethereum_types::{Address, H160, U256};
+use common_libs::ethereum_types::{Address, H160, U256};
 
 use super::{SystemOrCodeCall, SystemOrCodeCallKind};
 use block::ExecutedBlock;
@@ -196,7 +196,7 @@ pub fn apply_block_rewards<M: Machine>(
 #[cfg(test)]
 mod test {
     use client::PrepareOpenBlock;
-    use ethereum_types::{H160, U256};
+    use common_libs::ethereum_types::{H160, U256};
     use spec::Spec;
     use test_helpers::generate_dummy_client_with_spec;
 

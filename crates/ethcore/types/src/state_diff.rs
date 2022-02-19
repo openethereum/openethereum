@@ -17,7 +17,7 @@
 //! State diff module.
 
 use crate::account_diff::*;
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use std::{collections::BTreeMap, fmt, ops::*};
 
 /// Expression for the delta between two system states. Encoded the

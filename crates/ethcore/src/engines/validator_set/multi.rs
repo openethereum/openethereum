@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 use std::sync::Weak;
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use parking_lot::RwLock;
 use types::{header::Header, ids::BlockId, BlockNumber};
 
@@ -213,7 +213,7 @@ mod tests {
     };
     use crypto::publickey::Secret;
     use engines::{validator_set::ValidatorSet, EpochChange};
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use hash::keccak;
     use miner::{self, MinerService};
     use spec::Spec;

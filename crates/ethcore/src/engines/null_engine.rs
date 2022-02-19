@@ -19,7 +19,7 @@ use engines::{
     block_reward::{self, RewardKind},
     Engine,
 };
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use machine::Machine;
 use types::{
     ancestry_action::AncestryAction,

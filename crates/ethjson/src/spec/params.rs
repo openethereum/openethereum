@@ -175,7 +175,7 @@ pub struct Params {
 #[cfg(test)]
 mod tests {
     use crate::{spec::params::Params, uint::Uint};
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use serde_json;
 
     #[test]

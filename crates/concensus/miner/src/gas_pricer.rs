@@ -16,7 +16,7 @@
 
 //! Auto-updates minimal gas price requirement.
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 #[cfg(feature = "price-info")]
 use gas_price_calibrator::GasPriceCalibrator;
 

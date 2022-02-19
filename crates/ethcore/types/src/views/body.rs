@@ -25,7 +25,7 @@ use crate::{
     views::{HeaderView, TypedTransactionView},
     BlockNumber,
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 
 /// View onto block rlp.
 pub struct BodyView<'a> {

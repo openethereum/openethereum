@@ -25,7 +25,7 @@ use ethcore::{
     client::{BlockChainClient, BlockId},
     miner::{self, MinerService},
 };
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use parking_lot::Mutex;
 use types::filter::Filter as EthcoreFilter;
 

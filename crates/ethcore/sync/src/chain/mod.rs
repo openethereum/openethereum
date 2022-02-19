@@ -105,7 +105,7 @@ use ethcore::{
     client::{BlockChainClient, BlockChainInfo, BlockId, BlockQueueInfo, BlockStatus},
     snapshot::RestorationStatus,
 };
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
 use network::{self, client_version::ClientVersion, PeerId};
@@ -1671,7 +1671,7 @@ pub mod tests {
         client::{BlockChainClient, BlockInfo, ChainInfo, EachBlockWith, TestBlockChainClient},
         miner::{MinerService, PendingOrdering},
     };
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use network::PeerId;
     use parking_lot::RwLock;
     use rlp::{Rlp, RlpStream};

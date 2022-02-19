@@ -16,7 +16,7 @@
 
 //! A map of subscribers.
 
-use ethereum_types::H64;
+use common_libs::ethereum_types::H64;
 use jsonrpc_pubsub::{
     typed::{Sink, Subscriber},
     SubscriptionId,

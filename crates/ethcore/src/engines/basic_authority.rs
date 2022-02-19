@@ -22,7 +22,7 @@ use client::EngineClient;
 use crypto::publickey::{self, Signature};
 use engines::{signer::EngineSigner, ConstructedVerifier, Engine, EngineError, Seal, SealingState};
 use error::{BlockError, Error};
-use ethereum_types::{H256, H520};
+use common_libs::ethereum_types::{H256, H520};
 use ethjson;
 use machine::{AuxiliaryData, Call, EthereumMachine};
 use parking_lot::RwLock;
@@ -228,7 +228,7 @@ mod tests {
     use accounts::AccountProvider;
     use block::*;
     use engines::{Seal, SealingState};
-    use ethereum_types::H520;
+    use common_libs::ethereum_types::H520;
     use hash::keccak;
     use spec::Spec;
     use std::sync::Arc;

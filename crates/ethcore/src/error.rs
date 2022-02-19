@@ -23,7 +23,7 @@
 use std::{error, fmt, time::SystemTime};
 
 use crypto::publickey::Error as EthkeyError;
-use ethereum_types::{Address, Bloom, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H256, U256};
 use ethtrie::TrieError;
 use rlp;
 use snappy::InvalidInput;

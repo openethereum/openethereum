@@ -22,7 +22,7 @@
 
 use std::fmt;
 
-use ethereum_types::{H160 as Address, H256, U256};
+use common_libs::ethereum_types::{H160 as Address, H256, U256};
 use types::transaction;
 
 /// Account Details

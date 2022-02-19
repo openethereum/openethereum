@@ -28,7 +28,7 @@ use vm::{AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
 
 use rustc_hex::FromHex;
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 
 evm_test! {test_blockhash_eip210: test_blockhash_eip210_int}
 fn test_blockhash_eip210(factory: Factory) {

@@ -20,7 +20,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use transient_hashmap::TransientHashMap;
 
-use ethereum_types::{H160, H256, H520, U256};
+use common_libs::ethereum_types::{H160, H256, H520, U256};
 
 use jsonrpc_core::{
     futures::{future, future::Either, Async, Future, Poll},

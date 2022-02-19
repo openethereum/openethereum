@@ -16,7 +16,7 @@
 
 //! Lenient uint json deserialization for test json files.
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use serde::{
     de::{Error, Unexpected, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -149,7 +149,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::uint::Uint;
-    use ethereum_types::U256;
+    use common_libs::ethereum_types::U256;
     use serde_json;
 
     #[test]

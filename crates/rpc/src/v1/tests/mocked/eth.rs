@@ -26,7 +26,7 @@ use ethcore::{
     client::{BlockChainClient, EachBlockWith, EvmTestClient, Executed, TestBlockChainClient},
     miner::{self, MinerService},
 };
-use ethereum_types::{Address, Bloom, H160, H256, U256};
+use common_libs::ethereum_types::{Address, Bloom, H160, H256, U256};
 use miner::external::ExternalMiner;
 use parity_runtime::Runtime;
 use parking_lot::Mutex;
@@ -750,7 +750,7 @@ fn rpc_eth_transaction_count_by_number_pending() {
 
 #[test]
 fn rpc_eth_pending_transaction_by_hash() {
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
     use types::transaction::SignedTransaction;
 
     let tester = EthTester::default();

@@ -18,7 +18,7 @@
 
 use std::{fmt, sync::Arc};
 
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use txpool::{self, VerifiedTransaction};
 
 use pool::VerifiedTransaction as Transaction;
@@ -124,7 +124,7 @@ impl txpool::Listener<Transaction> for Logger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::H160;
+    use common_libs::ethereum_types::H160;
     use parking_lot::Mutex;
     use txpool::Listener;
     use types::transaction;

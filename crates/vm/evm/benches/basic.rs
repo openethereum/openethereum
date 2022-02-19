@@ -19,7 +19,6 @@
 #[macro_use]
 extern crate criterion;
 extern crate bit_set;
-extern crate ethereum_types;
 extern crate evm;
 extern crate keccak_hash as hash;
 extern crate memory_cache;
@@ -30,7 +29,7 @@ extern crate vm;
 
 use bytes::Bytes;
 use criterion::{black_box, Bencher, Criterion};
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use evm::Factory;
 use rustc_hex::FromHex;
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};

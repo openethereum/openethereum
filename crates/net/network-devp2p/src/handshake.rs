@@ -16,7 +16,7 @@
 
 use connection::Connection;
 use crypto::publickey::{ecdh, ecies, recover, sign, Generator, KeyPair, Public, Random, Secret};
-use ethereum_types::{H256, H520};
+use common_libs::ethereum_types::{H256, H520};
 use host::HostInfo;
 use io::{IoContext, StreamToken};
 use mio::tcp::*;
@@ -382,7 +382,7 @@ impl Handshake {
 mod test {
     use super::*;
     use crypto::publickey::Public;
-    use ethereum_types::{H256, H512};
+    use common_libs::ethereum_types::{H256, H512};
     use io::*;
     use mio::tcp::TcpStream;
     use rustc_hex::FromHex;

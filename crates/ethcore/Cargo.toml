@@ -27,7 +27,6 @@ ethcore-db = { path = "../db/db" }
 ethcore-io = { path = "../runtime/io" }
 ethcore-miner = { path = "../concensus/miner" }
 ethcore-stratum = { path = "../concensus/miner/stratum", optional = true }
-ethereum-types = "0.9.2"
 ethjson = { path = "../ethjson" }
 ethkey = { path = "../accounts/ethkey" }
 evm = { path = "../vm/evm" }
@@ -80,6 +79,12 @@ walkdir = "2.3"
 wasm = { path = "../vm/wasm" }
 derive_more = "0.99"
 scopeguard = "1.1.0"
+
+[dependencies.common-libs]
+path = "../common-libs"
+features = [
+    "ethereum-types"
+]
 
 [dev-dependencies]
 blooms-db = { path = "../db/blooms-db" }

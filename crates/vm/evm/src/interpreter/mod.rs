@@ -24,7 +24,7 @@ mod shared_cache;
 mod stack;
 
 use bytes::Bytes;
-use ethereum_types::{Address, BigEndianHash, H256, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
 use hash::keccak;
 use num_bigint::BigUint;
 use std::{cmp, marker::PhantomData, mem, sync::Arc};
@@ -1543,7 +1543,7 @@ fn address_to_u256(value: Address) -> U256 {
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::Address;
+    use common_libs::ethereum_types::Address;
     use factory::Factory;
     use rustc_hex::FromHex;
     use std::sync::Arc;

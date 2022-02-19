@@ -16,7 +16,7 @@
 
 //! Blockchain generator for tests.
 
-use ethereum_types::{Bloom, H256, U256};
+use common_libs::ethereum_types::{Bloom, H256, U256};
 use std::collections::VecDeque;
 
 use common_types::{

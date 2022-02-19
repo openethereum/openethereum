@@ -19,7 +19,7 @@
 use std::fmt;
 
 use crate::{security_level::SecurityLevel, BlockNumber};
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 
 /// Information about the blockchain gathered together.
 #[derive(Clone, Debug)]

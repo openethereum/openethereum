@@ -16,7 +16,7 @@
 
 //! Return types for RPC calls
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use v1::types::BlockNumber;
 
 /// Account information.

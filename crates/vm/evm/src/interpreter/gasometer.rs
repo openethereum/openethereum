@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::u256_to_address;
-use ethereum_types::{Address, BigEndianHash, U256};
+use common_libs::ethereum_types::{Address, BigEndianHash, U256};
 use std::cmp;
 
 use super::stack::VecStack;

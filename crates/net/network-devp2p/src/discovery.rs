@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crypto::publickey::{recover, sign, KeyPair, Secret};
-use ethereum_types::{H256, H520};
+use common_libs::ethereum_types::{H256, H520};
 use hash::keccak;
 use lru_cache::LruCache;
 use network::{Error, ErrorKind, IpFilter};

@@ -172,7 +172,7 @@ impl<K: hash::Hash + Eq, V> DiskMap<K, V> {
 mod tests {
     use super::AddressBook;
     use crate::account_data::AccountMeta;
-    use ethereum_types::H160;
+    use common_libs::ethereum_types::H160;
     use std::collections::HashMap;
     use tempdir::TempDir;
 

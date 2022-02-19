@@ -84,7 +84,7 @@ fn do_generate_request_id(packet: &Bytes) -> (Bytes, Option<RequestId>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_types::H256;
+    use common_libs::ethereum_types::H256;
 
     #[test]
     fn test_prepend_request_id() {

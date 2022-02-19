@@ -25,7 +25,7 @@ use ethcore::{
     state::StateInfo,
 };
 use ethcore_logger::RotatingLogger;
-use ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
+use common_libs::ethereum_types::{Address, H160, H256, H512, H64, U256, U64};
 use ethkey::Brain;
 use ethstore::random_phrase;
 use jsonrpc_core::{futures::future, BoxFuture, Result};

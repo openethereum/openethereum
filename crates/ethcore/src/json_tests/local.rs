@@ -1,5 +1,5 @@
 use super::HookType;
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use ethjson::{self, blockchain::Block};
 use log::warn;
 use rlp::RlpStream;

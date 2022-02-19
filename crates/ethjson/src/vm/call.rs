@@ -35,7 +35,7 @@ pub struct Call {
 #[cfg(test)]
 mod tests {
     use crate::{hash::Address, maybe::MaybeEmpty, uint::Uint, vm::Call};
-    use ethereum_types::{H160 as Hash160, U256};
+    use common_libs::ethereum_types::{H160 as Hash160, U256};
 
     use serde_json;
     use std::str::FromStr;

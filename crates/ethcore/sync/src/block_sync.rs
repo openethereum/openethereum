@@ -23,7 +23,7 @@ use ethcore::{
         QueueErrorKind,
     },
 };
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use network::{client_version::ClientCapabilities, PeerId};
 use rlp::{self, Rlp};
 use std::cmp;

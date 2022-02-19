@@ -16,7 +16,7 @@
 
 //! Basic account type -- the decoded RLP from the state trie.
 
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 
 /// Basic account type.
 #[derive(Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]

@@ -46,7 +46,7 @@ use types::{
 use vm::EnvInfo;
 
 use bytes::Bytes;
-use ethereum_types::{Address, H256, U256};
+use common_libs::ethereum_types::{Address, H256, U256};
 use hash_db::{AsHashDB, HashDB};
 use keccak_hasher::KeccakHasher;
 use kvdb::DBValue;
@@ -1153,7 +1153,7 @@ impl<B: Backend> State<B> {
         account: &Account,
         address: &Address,
     ) -> Result<PodAccount, Error> {
-        use ethereum_types::BigEndianHash;
+        use common_libs::ethereum_types::BigEndianHash;
         let mut pod_storage = BTreeMap::new();
         let addr_hash = account.address_hash(address);
         let accountdb = self
@@ -1575,7 +1575,7 @@ impl Clone for State<StateDB> {
 mod tests {
     use super::*;
     use crypto::publickey::Secret;
-    use ethereum_types::{Address, BigEndianHash, H256, U256};
+    use common_libs::ethereum_types::{Address, BigEndianHash, H256, U256};
     use evm::CallType;
     use hash::{keccak, KECCAK_NULL_RLP};
     use machine::EthereumMachine;

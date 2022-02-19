@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crypto::publickey::{Generator, Random};
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use rustc_hex::FromHex;
 use types::transaction::{
     self, AccessListTx, EIP1559TransactionTx, SignedTransaction, Transaction, TypedTransaction,

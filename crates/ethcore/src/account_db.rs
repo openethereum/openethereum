@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! DB backend wrapper for Account trie
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use hash::{keccak, KECCAK_NULL_RLP};
 use hash_db::{AsHashDB, HashDB};
 use keccak_hasher::KeccakHasher;
@@ -23,7 +23,7 @@ use kvdb::DBValue;
 use rlp::NULL_RLP;
 
 #[cfg(test)]
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 
 // combines a key with an address hash to ensure uniqueness.
 // leaves the first 96 bits untouched in order to support partial key lookup.

@@ -32,7 +32,7 @@ use types::basic_account::BasicAccount;
 use error::{Error, ErrorKind};
 
 use self::rand_xorshift::XorShiftRng;
-use ethereum_types::H256;
+use common_libs::ethereum_types::H256;
 use journaldb::{self, Algorithm};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::Mutex;
@@ -123,7 +123,7 @@ fn snap_and_restore() {
 
 #[test]
 fn get_code_from_prev_chunk() {
-    use ethereum_types::{H256, U256};
+    use common_libs::ethereum_types::{H256, U256};
     use hash_db::HashDB;
     use rlp::RlpStream;
     use std::collections::HashSet;

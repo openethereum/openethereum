@@ -23,7 +23,7 @@ use std::fmt;
 use client::{traits::EngineClient, BlockChainClient};
 use ethabi::{self, FunctionOutputDecoder};
 use ethabi_contract::use_contract;
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use log::{debug, error};
 use types::{header::Header, ids::BlockId};
 

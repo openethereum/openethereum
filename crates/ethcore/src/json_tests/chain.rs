@@ -19,7 +19,7 @@ use client::{
     Balance, BlockChainClient, BlockId, ChainInfo, Client, ClientConfig, EvmTestClient,
     ImportBlock, Nonce, StateOrBlock,
 };
-use ethereum_types::{H256, U256};
+use common_libs::ethereum_types::{H256, U256};
 use ethjson;
 use io::IoChannel;
 use log::warn;

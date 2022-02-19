@@ -17,7 +17,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use accounts::{AccountProvider, AccountProviderSettings};
-use ethereum_types::Address;
+use common_libs::ethereum_types::Address;
 use ethstore::{accounts_dir::RootDiskDirectory, EthStore};
 use tempdir::TempDir;
 

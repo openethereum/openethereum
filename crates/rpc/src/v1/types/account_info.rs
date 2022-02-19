@@ -16,7 +16,7 @@
 
 //! Return types for RPC calls
 
-use ethereum_types::{Address, Public, H160, H256, U256};
+use common_libs::ethereum_types::{Address, Public, H160, H256, U256};
 use v1::types::Bytes;
 
 /// Account information.

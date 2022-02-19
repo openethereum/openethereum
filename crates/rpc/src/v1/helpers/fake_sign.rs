@@ -20,7 +20,7 @@ use types::transaction::{
     TypedTxId,
 };
 
-use ethereum_types::U256;
+use common_libs::ethereum_types::U256;
 use jsonrpc_core::{Error, ErrorCode};
 use v1::helpers::CallRequest;
 

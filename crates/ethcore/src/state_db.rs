@@ -22,7 +22,7 @@ use std::{
     sync::Arc,
 };
 
-use ethereum_types::{Address, H256};
+use common_libs::ethereum_types::{Address, H256};
 use hash_db::HashDB;
 use journaldb::JournalDB;
 use keccak_hasher::KeccakHasher;
@@ -445,7 +445,7 @@ unsafe impl Sync for SyncAccount {}
 
 #[cfg(test)]
 mod tests {
-    use ethereum_types::{Address, H256, U256};
+    use common_libs::ethereum_types::{Address, H256, U256};
     use kvdb::DBTransaction;
     use state::{Account, Backend};
     use test_helpers::get_temp_state_db;

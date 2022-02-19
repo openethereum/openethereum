@@ -38,13 +38,13 @@
 /// Unix: $BASE/openethereum/
 ///
 extern crate app_dirs;
-extern crate ethereum_types;
+extern crate common_libs;
 extern crate home;
 extern crate journaldb;
 
 pub mod helpers;
 use app_dirs::{data_root, get_app_root, AppDataType, AppInfo};
-use ethereum_types::{H256, H64};
+use common_libs::ethereum_types::{H256, H64};
 use helpers::{replace_home, replace_home_and_local};
 use journaldb::Algorithm;
 use std::{

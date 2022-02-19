@@ -22,7 +22,7 @@ use ethcore::{
     miner::{self, MinerService},
     spec::Spec,
 };
-use ethereum_types::{Address, U256};
+use common_libs::ethereum_types::{Address, U256};
 use hash::keccak;
 use io::{IoChannel, IoHandler};
 use std::sync::Arc;

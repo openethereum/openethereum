@@ -18,7 +18,6 @@ ethcore-network-devp2p = { path = "../../net/network-devp2p" }
 ethcore-miner = { path = "../../concensus/miner" }
 ethereum-forkid = "0.2"
 primitive_types07 = { package = "primitive-types", version = "0.7"}
-ethereum-types = "0.9.2"
 ethkey = { path = "../../accounts/ethkey" }
 ethstore = { path = "../../accounts/ethstore" }
 fastmap = { path = "../../util/fastmap" }
@@ -39,6 +38,12 @@ trace-time = "0.1"
 triehash-ethereum = {version = "0.2", path = "../../util/triehash-ethereum" }
 stats = { path = "../../util/stats" }
 crossbeam-channel = "0.5.2"
+
+[dependencies.common-libs]
+path = "../../common-libs"
+features = [
+    "ethereum-types"
+]
 
 [dev-dependencies]
 env_logger = "0.5"

@@ -26,15 +26,15 @@ mod tests {
 
         let forkchoice_state = ForkchoiceState {
             head_block_hash: H256::from_str(
-                "0x3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858",
+                "3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858",
             )
             .unwrap(),
             safe_block_hash: H256::from_str(
-                "0x3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858",
+                "3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858",
             )
             .unwrap(),
             finalized_block_hash: H256::from_str(
-                "0x3b8fb240d288781d4aac94d3fd16809ee413bc99294a085798a589dae51ddd4a",
+                "3b8fb240d288781d4aac94d3fd16809ee413bc99294a085798a589dae51ddd4a",
             )
             .unwrap(),
         };

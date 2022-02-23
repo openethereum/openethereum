@@ -26,13 +26,11 @@ mod tests {
         let payload_attributes = PayloadAttributes {
             timestamp: 5.into(),
             random: H256::from_str(
-                "0x0d98f14f2a081328c81806658c0eae43c155568a895b11141bbbda07d0a30993",
+                "0d98f14f2a081328c81806658c0eae43c155568a895b11141bbbda07d0a30993",
             )
             .unwrap(),
-            suggested_fee_recipient: Address::from_str(
-                "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
-            )
-            .unwrap(),
+            suggested_fee_recipient: Address::from_str("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+                .unwrap(),
         };
         let deserialized: PayloadAttributes = serde_json::from_str(s).unwrap();
 

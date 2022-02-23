@@ -48,10 +48,8 @@ mod tests {
         let payload_status = PayloadStatus {
             status: Status::Valid,
             latest_valid_hash: Some(
-                H256::from_str(
-                    "0x3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858",
-                )
-                .unwrap(),
+                H256::from_str("3559e851470f6e7bbed1db474980683e8c315bfce99b2a6ef47c057c04de7858")
+                    .unwrap(),
             ),
             validation_error: None,
         };

@@ -42,7 +42,7 @@ mod tests {
                 latest_valid_hash: None,
                 validation_error: None,
             },
-            payload_id: Some(PayloadId::from_str("0xa247243752eb10b4").unwrap()),
+            payload_id: Some(PayloadId::from_str("a247243752eb10b4").unwrap()),
         };
 
         let serialized = serde_json::to_string(&payload_status).unwrap();

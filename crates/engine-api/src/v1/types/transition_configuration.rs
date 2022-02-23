@@ -25,7 +25,7 @@ mod tests {
         let transition_configuration = TransitionConfiguration {
             terminal_total_difficulty: 255.into(),
             terminal_block_hash: H256::from_str(
-                "0x0d98f14f2a081328c81806658c0eae43c155568a895b11141bbbda07d0a30993",
+                "0d98f14f2a081328c81806658c0eae43c155568a895b11141bbbda07d0a30993",
             )
             .unwrap(),
             terminal_block_number: 16.into(),

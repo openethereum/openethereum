@@ -812,7 +812,7 @@ dependencies = [
 name = "eip-712"
 version = "0.1.0"
 dependencies = [
- "ethabi",
+ "ethabi 12.0.0",
  "ethereum-types 0.9.2",
  "failure",
  "indexmap",
@@ -915,6 +915,19 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
+version = "11.0.0"
+source = "git+https://github.com/rimrakhimov/ethabi?branch=rimrakhimov/remove-syn-export-span#222e6482ac45d9c01f9e895ade8e439f86dbfc2f"
+dependencies = [
+ "ethereum-types 0.9.2",
+ "rustc-hex 2.1.0",
+ "serde",
+ "serde_json",
+ "tiny-keccak 1.5.0",
+ "uint",
+]
+
+[[package]]
+name = "ethabi"
 version = "12.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "052a565e3de82944527d6d10a465697e6bb92476b772ca7141080c901f6a63c6"
@@ -935,11 +948,10 @@ checksum = "88d4002f1f77d8233685dafd8589efe1c9dfa63e21ca6c11134372acc7f68032"
 
 [[package]]
 name = "ethabi-derive"
-version = "12.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7c0fe66618e0cfcf111afc863e7940413f2a88240cf63b38cc61206fe7be025"
+version = "11.0.0"
+source = "git+https://github.com/rimrakhimov/ethabi?branch=rimrakhimov/remove-syn-export-span#222e6482ac45d9c01f9e895ade8e439f86dbfc2f"
 dependencies = [
- "ethabi",
+ "ethabi 11.0.0",
  "heck",
  "proc-macro2 1.0.20",
  "quote 1.0.7",
@@ -1005,7 +1017,7 @@ dependencies = [
  "eip-152",
  "env_logger",
  "error-chain",
- "ethabi",
+ "ethabi 12.0.0",
  "ethabi-contract",
  "ethabi-derive",
  "ethash",
@@ -1219,7 +1231,7 @@ dependencies = [
  "common-types",
  "env_logger",
  "error-chain",
- "ethabi",
+ "ethabi 12.0.0",
  "ethabi-contract",
  "ethabi-derive",
  "ethash",
@@ -2800,7 +2812,7 @@ dependencies = [
 name = "node-filter"
 version = "1.12.0"
 dependencies = [
- "ethabi",
+ "ethabi 12.0.0",
  "ethabi-contract",
  "ethabi-derive",
  "ethcore",
@@ -2944,7 +2956,7 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "openethereum"
-version = "3.3.3"
+version = "3.3.4"
 dependencies = [
  "ansi_term 0.10.2",
  "atty",
@@ -3295,7 +3307,7 @@ dependencies = [
 
 [[package]]
 name = "parity-version"
-version = "3.3.3"
+version = "3.3.4"
 dependencies = [
  "parity-bytes",
  "rlp",

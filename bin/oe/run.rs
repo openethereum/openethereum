@@ -51,12 +51,8 @@ use ethcore_logger::{Config as LogConfig, RotatingLogger};
 use ethcore_service::ClientService;
 use ethereum_types::{H256, U64};
 use journaldb::Algorithm;
-use jsonrpc_core;
 use node_filter::NodeFilter;
-use parity_rpc::{
-    informant, is_major_importing, FutureOutput, FutureResponse, FutureResult, Metadata,
-    NetworkSettings, Origin, PubSubSession,
-};
+use parity_rpc::{informant, is_major_importing, NetworkSettings};
 use parity_runtime::Runtime;
 use parity_version::version;
 
@@ -524,7 +520,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     };
 
     // start rpc servers
-    let rpc_direct = rpc::setup_apis(rpc_apis::ApiSet::All, &dependencies);
     let ws_server = rpc::new_ws(cmd.ws_conf.clone(), &dependencies)?;
     let ipc_server = rpc::new_ipc(cmd.ipc_conf, &dependencies)?;
 
@@ -605,7 +600,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
 
     Ok(RunningClient {
         inner: RunningClientInner::Full {
-            rpc: rpc_direct,
             informant,
             client,
             client_service: Arc::new(service),
@@ -644,8 +638,6 @@ pub struct RunningClient {
 
 enum RunningClientInner {
     Full {
-        rpc:
-            jsonrpc_core::MetaIoHandler<Metadata, informant::Middleware<informant::ClientNotifier>>,
         informant: Arc<Informant<FullNodeInformantData>>,
         client: Arc<Client>,
         client_service: Arc<ClientService>,
@@ -654,28 +646,10 @@ enum RunningClientInner {
 }
 
 impl RunningClient {
-    /// Performs an asynchronous RPC query.
-    // FIXME: [tomaka] This API should be better, with for example a Future
-    pub fn rpc_query(
-        &self,
-        request: &str,
-        session: Option<Arc<PubSubSession>>,
-    ) -> FutureResult<FutureResponse, FutureOutput> {
-        let metadata = Metadata {
-            origin: Origin::CApi,
-            session,
-        };
-
-        match self.inner {
-            RunningClientInner::Full { ref rpc, .. } => rpc.handle_request(request, metadata),
-        }
-    }
-
     /// Shuts down the client.
     pub fn shutdown(self) {
         match self.inner {
             RunningClientInner::Full {
-                rpc,
                 informant,
                 client,
                 client_service,
@@ -690,9 +664,6 @@ impl RunningClient {
                 trace!(target: "shutdown", "ClientService shut down");
                 drop(client_service);
                 trace!(target: "shutdown", "ClientService dropped");
-                // drop this stuff as soon as exit detected.
-                drop(rpc);
-                trace!(target: "shutdown", "RPC dropped");
                 drop(keep_alive);
                 trace!(target: "shutdown", "KeepAlive dropped");
                 // to make sure timer does not spawn requests while shutdown is in progress

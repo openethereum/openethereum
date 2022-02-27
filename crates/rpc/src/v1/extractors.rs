@@ -23,22 +23,27 @@ use std::{
 
 use authcodes;
 use ethereum_types::H256;
-use http_common::HttpMetaExtractor;
 use ipc;
 use jsonrpc_core as core;
 use jsonrpc_core::futures::future::Either;
 use jsonrpc_pubsub::Session;
 use ws;
+use http::hyper;
 
 use v1::{informant::RpcStats, Metadata, Origin};
 
 /// Common HTTP & IPC metadata extractor.
 pub struct RpcExtractor;
 
-impl HttpMetaExtractor for RpcExtractor {
-    type Metadata = Metadata;
+impl http::MetaExtractor<Metadata> for RpcExtractor {
+    fn read_metadata(&self, req: &hyper::Request<hyper::Body>) -> Metadata {
+        let as_string = |header: Option<&hyper::header::HeaderValue>| {
+            header.and_then(|val| val.to_str().ok().map(ToOwned::to_owned))
+        };
 
-    fn read_metadata(&self, origin: Option<String>, user_agent: Option<String>) -> Metadata {
+        let origin = as_string(req.headers().get("origin"));
+        let user_agent = as_string(req.headers().get("user-agent"));
+
         Metadata {
             origin: Origin::Rpc(format!(
                 "{} / {}",
@@ -256,7 +261,6 @@ impl<M: core::Middleware<Metadata>> core::Middleware<Metadata> for WsDispatcher<
 #[cfg(test)]
 mod tests {
     use super::RpcExtractor;
-    use HttpMetaExtractor;
     use Origin;
 
     #[test]

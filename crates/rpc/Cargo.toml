@@ -65,6 +65,7 @@ fake-fetch = { path = "../net/fake-fetch" }
 macros = { path = "../util/macros" }
 pretty_assertions = "0.1"
 txpool = { path = "../transaction-pool" }
+rpc-server = { path = "../rpc-servers", package = "oe-rpc-server" }
 
 [features]
 accounts = ["ethcore-accounts"]

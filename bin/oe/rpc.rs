@@ -189,7 +189,7 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
         }
         false => None,
     };
-    let start_result = rpc::start_ws(
+    let start_result = rpc_server::start_ws(
         &addr,
         handler,
         allowed_origins,
@@ -239,7 +239,7 @@ pub fn new_http<D: rpc_apis::Dependencies>(
     let cors_domains = into_domains(conf.cors);
     let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
 
-    let start_result = rpc::start_http(
+    let start_result = rpc_server::start_http(
         &addr,
         cors_domains,
         allowed_hosts,
@@ -283,7 +283,7 @@ pub fn new_ipc<D: rpc_apis::Dependencies>(
         }
     }
 
-    match rpc::start_ipc(&conf.socket_addr, handler, rpc::RpcExtractor) {
+    match rpc_server::start_ipc(&conf.socket_addr, handler, rpc::RpcExtractor) {
         Ok(server) => Ok(Some(server)),
         Err(io_error) => Err(format!("IPC error: {}", io_error)),
     }

@@ -20,7 +20,6 @@ use std::{env, sync::Arc};
 use accounts::AccountProvider;
 use ethcore::{
     client::{BlockChainClient, ChainInfo, Client, ClientConfig, EvmTestClient, ImportBlock},
-    ethereum,
     miner::Miner,
     spec::{Genesis, Spec},
     test_helpers,

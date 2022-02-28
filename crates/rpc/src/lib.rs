@@ -75,7 +75,6 @@ extern crate parity_crypto as crypto;
 extern crate parity_runtime;
 extern crate parity_version as version;
 extern crate rlp;
-extern crate rpc_server;
 extern crate stats;
 extern crate vm;
 
@@ -109,6 +108,9 @@ extern crate ethcore_io as io;
 
 #[cfg(test)]
 extern crate tempdir;
+
+#[cfg(test)]
+extern crate rpc_server;
 
 pub extern crate jsonrpc_ws_server as ws;
 

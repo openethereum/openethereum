@@ -20,4 +20,4 @@ mod helpers;
 mod http_client;
 // #[cfg(test)]
 mod rpc;
-mod ws;
+pub mod ws;

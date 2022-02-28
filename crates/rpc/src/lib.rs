@@ -106,10 +106,10 @@ extern crate fake_fetch;
 #[cfg(test)]
 extern crate ethcore_io as io;
 
-#[cfg(test)]
+// #[cfg(test)]
 extern crate tempdir;
 
-#[cfg(test)]
+// #[cfg(test)]
 extern crate rpc_server;
 
 pub extern crate jsonrpc_ws_server as ws;
@@ -117,8 +117,8 @@ pub extern crate jsonrpc_ws_server as ws;
 mod authcodes;
 pub mod v1;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+pub mod tests;
 
 pub use http::{
     cors::AccessControlAllowHeaders, hyper, AccessControlAllowOrigin, DomainsValidation, Host,

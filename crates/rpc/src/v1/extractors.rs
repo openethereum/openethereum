@@ -261,7 +261,10 @@ impl<M: core::Middleware<Metadata>> core::Middleware<Metadata> for WsDispatcher<
 #[cfg(test)]
 mod tests {
     use super::RpcExtractor;
-    use http::{hyper::Body, hyper::Request, MetaExtractor};
+    use http::{
+        hyper::{Body, Request},
+        MetaExtractor,
+    };
     use Origin;
 
     #[test]

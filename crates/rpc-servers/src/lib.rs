@@ -18,8 +18,7 @@
 
 #![warn(missing_docs)]
 
-use std::io;
-use std::net::SocketAddr;
+use std::{io, net::SocketAddr};
 
 pub use jsonrpc_core::{MetaIoHandler, Metadata, Middleware};
 

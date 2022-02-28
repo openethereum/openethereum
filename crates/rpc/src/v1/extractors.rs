@@ -23,12 +23,12 @@ use std::{
 
 use authcodes;
 use ethereum_types::H256;
+use http::hyper;
 use ipc;
 use jsonrpc_core as core;
 use jsonrpc_core::futures::future::Either;
 use jsonrpc_pubsub::Session;
 use ws;
-use http::hyper;
 
 use v1::{informant::RpcStats, Metadata, Origin};
 
@@ -261,7 +261,7 @@ impl<M: core::Middleware<Metadata>> core::Middleware<Metadata> for WsDispatcher<
 #[cfg(test)]
 mod tests {
     use super::RpcExtractor;
-    use http::{MetaExtractor, hyper::Request, hyper::Body};
+    use http::{hyper::Body, hyper::Request, MetaExtractor};
     use Origin;
 
     #[test]
@@ -269,9 +269,15 @@ mod tests {
         // given
         let extractor = RpcExtractor;
         let req1 = Request::get("127.0.0.1").body(Body::empty()).unwrap();
-        let req2 = Request::get("127.0.0.1").header("user-agent", "http://openethereum.github.io").body(Body::empty()).unwrap();
-        let req3 = Request::get("127.0.0.1").header("origin", "http://openethereum.github.io").header("user-agent", "http://openethereum.github.io").body(Body::empty()).unwrap();
-
+        let req2 = Request::get("127.0.0.1")
+            .header("user-agent", "http://openethereum.github.io")
+            .body(Body::empty())
+            .unwrap();
+        let req3 = Request::get("127.0.0.1")
+            .header("origin", "http://openethereum.github.io")
+            .header("user-agent", "http://openethereum.github.io")
+            .body(Body::empty())
+            .unwrap();
 
         // when
         let meta1 = extractor.read_metadata(&req1);

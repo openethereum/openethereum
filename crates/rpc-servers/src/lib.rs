@@ -73,14 +73,14 @@ pub fn start_http_with_middleware<M, S, H, T, R>(
     max_payload: usize,
     keep_alive: bool,
 ) -> ::std::io::Result<HttpServer>
-    where
-        M: Metadata + Unpin,
-        S: Middleware<M>,
-        S::Future: Unpin,
-        S::CallFuture: Unpin,
-        H: Into<jsonrpc_core::MetaIoHandler<M, S>>,
-        T: http::MetaExtractor<M>,
-        R: http::RequestMiddleware,
+where
+    M: Metadata + Unpin,
+    S: Middleware<M>,
+    S::Future: Unpin,
+    S::CallFuture: Unpin,
+    H: Into<jsonrpc_core::MetaIoHandler<M, S>>,
+    T: http::MetaExtractor<M>,
+    R: http::RequestMiddleware,
 {
     Ok(http::ServerBuilder::with_meta_extractor(handler, extractor)
         .keep_alive(keep_alive)
@@ -118,15 +118,15 @@ pub fn start_ws<M, S, H, T, U, V>(
     stats: U,
     max_payload: usize,
 ) -> Result<ws::Server, ws::Error>
-    where
-        M: jsonrpc_core::Metadata + Unpin,
-        S: jsonrpc_core::Middleware<M>,
-        S::Future: Unpin,
-        S::CallFuture: Unpin,
-        H: Into<jsonrpc_core::MetaIoHandler<M, S>>,
-        T: ws::MetaExtractor<M>,
-        U: ws::SessionStats,
-        V: ws::RequestMiddleware,
+where
+    M: jsonrpc_core::Metadata + Unpin,
+    S: jsonrpc_core::Middleware<M>,
+    S::Future: Unpin,
+    S::CallFuture: Unpin,
+    H: Into<jsonrpc_core::MetaIoHandler<M, S>>,
+    T: ws::MetaExtractor<M>,
+    U: ws::SessionStats,
+    V: ws::RequestMiddleware,
 {
     ws::ServerBuilder::with_meta_extractor(handler, extractor)
         .request_middleware(middleware)

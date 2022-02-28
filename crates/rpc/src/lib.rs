@@ -75,9 +75,9 @@ extern crate parity_crypto as crypto;
 extern crate parity_runtime;
 extern crate parity_version as version;
 extern crate rlp;
+extern crate rpc_server;
 extern crate stats;
 extern crate vm;
-extern crate rpc_server;
 
 #[cfg(any(test, feature = "ethcore-accounts"))]
 extern crate ethcore_accounts as accounts;

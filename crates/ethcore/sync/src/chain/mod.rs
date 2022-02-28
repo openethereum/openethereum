@@ -426,9 +426,15 @@ impl ChainSyncApi {
         chain: &dyn BlockChainClient,
         fork_filter: ForkFilterApi,
         priority_tasks: mpsc::Receiver<PriorityTask>,
+        new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     ) -> Self {
         ChainSyncApi {
-            sync: RwLock::new(ChainSync::new(config, chain, fork_filter)),
+            sync: RwLock::new(ChainSync::new(
+                config,
+                chain,
+                fork_filter,
+                new_transaction_hashes,
+            )),
             priority_tasks: Mutex::new(priority_tasks),
         }
     }
@@ -449,11 +455,21 @@ impl ChainSyncApi {
         self.sync.read().status()
     }
 
-    /// Returns transactions propagation statistics
-    pub fn transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
+    /// Returns pending transactions propagation statistics
+    pub fn pending_transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
         self.sync
             .read()
-            .transactions_stats()
+            .pending_transactions_stats()
+            .iter()
+            .map(|(hash, stats)| (*hash, stats.into()))
+            .collect()
+    }
+
+    /// Returns new transactions propagation statistics
+    pub fn new_transactions_stats(&self) -> BTreeMap<H256, ::TransactionStats> {
+        self.sync
+            .read()
+            .new_transactions_stats()
             .iter()
             .map(|(hash, stats)| (*hash, stats.into()))
             .collect()
@@ -542,7 +558,8 @@ impl ChainSyncApi {
                     debug!(target: "sync", "Finished block propagation, took {}ms", as_ms(started));
                 }
                 PriorityTask::PropagateTransactions(time, _) => {
-                    SyncPropagator::propagate_new_transactions(&mut sync, io, || {
+                    let hashes = sync.new_transaction_hashes(None);
+                    SyncPropagator::propagate_new_transactions(&mut sync, io, hashes, || {
                         check_deadline(deadline).is_some()
                     });
                     debug!(target: "sync", "Finished transaction propagation, took {}ms", as_ms(time));
@@ -691,6 +708,8 @@ pub struct ChainSync {
     delayed_requests_ids: HashSet<(PeerId, u8)>,
     /// Sync start timestamp. Measured when first peer is connected
     sync_start_time: Option<Instant>,
+    /// Receiver of transactions that came after last propagation and should be broadcast
+    new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     /// Transactions propagation statistics
     transactions_stats: TransactionsStats,
     /// Enable ancient block downloading
@@ -699,6 +718,8 @@ pub struct ChainSync {
     warp_sync: WarpSync,
     /// New block encoding/decoding format is introduced by the EIP1559
     eip1559_transition: BlockNumber,
+    /// Number of blocks for which new transactions will be returned in a result of `parity_newTransactionsStats` RPC call
+    new_transactions_stats_period: BlockNumber,
 }
 
 #[derive(Debug, Default)]
@@ -755,6 +776,7 @@ impl ChainSync {
         config: SyncConfig,
         chain: &dyn BlockChainClient,
         fork_filter: ForkFilterApi,
+        new_transaction_hashes: crossbeam_channel::Receiver<H256>,
     ) -> Self {
         let chain_info = chain.chain_info();
         let best_block = chain.chain_info().best_block_number;
@@ -782,9 +804,11 @@ impl ChainSync {
             download_old_blocks: config.download_old_blocks,
             snapshot: Snapshot::new(),
             sync_start_time: None,
+            new_transaction_hashes,
             transactions_stats: TransactionsStats::default(),
             warp_sync: config.warp_sync,
             eip1559_transition: config.eip1559_transition,
+            new_transactions_stats_period: config.new_transactions_stats_period,
         };
         sync.update_targets(chain);
         sync
@@ -842,9 +866,42 @@ impl ChainSync {
         })
     }
 
-    /// Returns transactions propagation statistics
-    pub fn transactions_stats(&self) -> &H256FastMap<TransactionStats> {
-        self.transactions_stats.stats()
+    /// Returns pending transactions propagation statistics
+    pub fn pending_transactions_stats(&self) -> &H256FastMap<TransactionStats> {
+        self.transactions_stats.pending_transactions_stats()
+    }
+
+    /// Returns new transactions propagation statistics
+    pub fn new_transactions_stats(&self) -> &H256FastMap<TransactionStats> {
+        self.transactions_stats.new_transactions_stats()
+    }
+
+    /// Get transaction hashes that were imported but not yet processed,
+    /// but no more than `max_len` if provided.
+    pub fn new_transaction_hashes(&self, max_len: Option<usize>) -> Vec<H256> {
+        let size = std::cmp::min(
+            self.new_transaction_hashes.len(),
+            max_len.unwrap_or(usize::MAX),
+        );
+        let mut hashes = Vec::with_capacity(size);
+        for _ in 0..size {
+            match self.new_transaction_hashes.try_recv() {
+                Ok(hash) => hashes.push(hash),
+                Err(err) => {
+                    // In general that should not be the case as the `size`
+                    // must not be greater than number of messages in the channel.
+                    // However if any error occurs we just log it for further analysis and break the loop.
+                    debug!(target: "sync", "Error while receiving new transaction hashes: {}", err);
+                    break;
+                }
+            }
+        }
+        trace!(
+            target: "sync",
+            "New transaction hashes received for processing. Expected: {}. Actual: {}",
+            size, hashes.len()
+        );
+        hashes
     }
 
     /// Updates transactions were received by a peer
@@ -1590,7 +1647,7 @@ impl ChainSync {
     /// propagates new transactions to all peers
     pub fn propagate_new_transactions(&mut self, io: &mut dyn SyncIo) {
         let deadline = Instant::now() + Duration::from_millis(500);
-        SyncPropagator::propagate_new_transactions(self, io, || {
+        SyncPropagator::propagate_ready_transactions(self, io, || {
             if deadline > Instant::now() {
                 true
             } else {
@@ -1705,10 +1762,19 @@ pub mod tests {
     }
 
     pub fn dummy_sync(client: &dyn BlockChainClient) -> ChainSync {
+        let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+        dummy_sync_with_tx_hashes_rx(client, transaction_hashes_rx)
+    }
+
+    pub fn dummy_sync_with_tx_hashes_rx(
+        client: &dyn BlockChainClient,
+        transaction_hashes_rx: crossbeam_channel::Receiver<H256>,
+    ) -> ChainSync {
         ChainSync::new(
             SyncConfig::default(),
             client,
             ForkFilterApi::new_dummy(client),
+            transaction_hashes_rx,
         )
     }
 
@@ -1716,11 +1782,16 @@ pub mod tests {
         peer_latest_hash: H256,
         client: &dyn BlockChainClient,
     ) -> ChainSync {
-        let mut sync = ChainSync::new(
-            SyncConfig::default(),
-            client,
-            ForkFilterApi::new_dummy(client),
-        );
+        let (_, transaction_hashes_rx) = crossbeam_channel::unbounded();
+        dummy_sync_with_peer_and_tx_hashes_rx(peer_latest_hash, client, transaction_hashes_rx)
+    }
+
+    pub fn dummy_sync_with_peer_and_tx_hashes_rx(
+        peer_latest_hash: H256,
+        client: &dyn BlockChainClient,
+        transaction_hashes_rx: crossbeam_channel::Receiver<H256>,
+    ) -> ChainSync {
+        let mut sync = dummy_sync_with_tx_hashes_rx(client, transaction_hashes_rx);
         insert_dummy_peer(&mut sync, 0, peer_latest_hash);
         sync
     }

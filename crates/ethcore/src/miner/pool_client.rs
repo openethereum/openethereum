@@ -16,49 +16,103 @@
 
 //! Blockchain access for transaction pool.
 
-use std::{collections::HashMap, fmt, sync::Arc};
+use std::fmt;
 
 use ethcore_miner::{
     local_accounts::LocalAccounts, pool, pool::client::NonceClient,
     service_transaction_checker::ServiceTransactionChecker,
 };
 use ethereum_types::{Address, H256, U256};
-use parking_lot::RwLock;
 use types::{
     header::Header,
     transaction::{self, SignedTransaction, UnverifiedTransaction},
 };
 
 use call_contract::CallContract;
-use client::{BlockId, BlockInfo, Nonce, TransactionId};
+use client::{Balance, BlockId, BlockInfo, Nonce, TransactionId};
 use engines::EthEngine;
-use miner;
+use ethcore_miner::pool::client::BalanceClient;
+use miner::{
+    self,
+    cache::{Cache, CachedClient},
+};
 use transaction_ext::Transaction;
 
-/// Cache for state nonces.
-#[derive(Debug, Clone)]
-pub struct NonceCache {
-    nonces: Arc<RwLock<HashMap<Address, U256>>>,
-    limit: usize,
+pub(crate) struct CachedNonceClient<'a, C: 'a> {
+    cached_client: CachedClient<'a, C, Address, U256>,
 }
 
-impl NonceCache {
-    /// Create new cache with a limit of `limit` entries.
-    pub fn new(limit: usize) -> Self {
-        NonceCache {
-            nonces: Arc::new(RwLock::new(HashMap::with_capacity(limit / 2))),
-            limit,
+impl<'a, C: 'a> CachedNonceClient<'a, C> {
+    pub fn new(client: &'a C, cache: &'a Cache<Address, U256>) -> Self {
+        Self {
+            cached_client: CachedClient::new(client, cache),
         }
     }
+}
 
-    /// Retrieve a cached nonce for given sender.
-    pub fn get(&self, sender: &Address) -> Option<U256> {
-        self.nonces.read().get(sender).cloned()
+impl<'a, C: 'a> Clone for CachedNonceClient<'a, C> {
+    fn clone(&self) -> Self {
+        Self {
+            cached_client: self.cached_client.clone(),
+        }
     }
+}
 
-    /// Clear all entries from the cache.
-    pub fn clear(&self) {
-        self.nonces.write().clear();
+impl<'a, C: 'a> fmt::Debug for CachedNonceClient<'a, C> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("CachedNonceClient")
+            .field("cached_client", &self.cached_client)
+            .finish()
+    }
+}
+
+impl<'a, C: 'a> NonceClient for CachedNonceClient<'a, C>
+where
+    C: Nonce + Sync,
+{
+    fn account_nonce(&self, address: &Address) -> U256 {
+        self.cached_client.cache().get_or_insert(*address, || {
+            self.cached_client.client().latest_nonce(address)
+        })
+    }
+}
+
+pub(crate) struct CachedBalanceClient<'a, C: 'a> {
+    cached_client: CachedClient<'a, C, Address, U256>,
+}
+
+impl<'a, C: 'a> CachedBalanceClient<'a, C> {
+    pub fn new(client: &'a C, cache: &'a Cache<Address, U256>) -> Self {
+        Self {
+            cached_client: CachedClient::new(client, cache),
+        }
+    }
+}
+
+impl<'a, C: 'a> Clone for CachedBalanceClient<'a, C> {
+    fn clone(&self) -> Self {
+        Self {
+            cached_client: self.cached_client.clone(),
+        }
+    }
+}
+
+impl<'a, C: 'a> fmt::Debug for CachedBalanceClient<'a, C> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("CachedBalanceClient")
+            .field("cached_client", &self.cached_client)
+            .finish()
+    }
+}
+
+impl<'a, C: 'a> BalanceClient for CachedBalanceClient<'a, C>
+where
+    C: Balance + Sync,
+{
+    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+        self.cached_client.cache().get_or_insert(*address, || {
+            self.cached_client.client().latest_balance(address)
+        })
     }
 }
 
@@ -66,6 +120,7 @@ impl NonceCache {
 pub struct PoolClient<'a, C: 'a> {
     chain: &'a C,
     cached_nonces: CachedNonceClient<'a, C>,
+    cached_balances: CachedBalanceClient<'a, C>,
     engine: &'a dyn EthEngine,
     accounts: &'a dyn LocalAccounts,
     best_block_header: Header,
@@ -77,6 +132,7 @@ impl<'a, C: 'a> Clone for PoolClient<'a, C> {
         PoolClient {
             chain: self.chain,
             cached_nonces: self.cached_nonces.clone(),
+            cached_balances: self.cached_balances.clone(),
             engine: self.engine,
             accounts: self.accounts.clone(),
             best_block_header: self.best_block_header.clone(),
@@ -92,7 +148,8 @@ where
     /// Creates new client given chain, nonce cache, accounts and service transaction verifier.
     pub fn new(
         chain: &'a C,
-        cache: &'a NonceCache,
+        cached_nonces: &'a Cache<Address, U256>,
+        cached_balances: &'a Cache<Address, U256>,
         engine: &'a dyn EthEngine,
         accounts: &'a dyn LocalAccounts,
         service_transaction_checker: Option<&'a ServiceTransactionChecker>,
@@ -100,7 +157,8 @@ where
         let best_block_header = chain.best_block_header();
         PoolClient {
             chain,
-            cached_nonces: CachedNonceClient::new(chain, cache),
+            cached_nonces: CachedNonceClient::new(chain, cached_nonces),
+            cached_balances: CachedBalanceClient::new(chain, cached_balances),
             engine,
             accounts,
             best_block_header,
@@ -167,7 +225,7 @@ where
     fn account_details(&self, address: &Address) -> pool::client::AccountDetails {
         pool::client::AccountDetails {
             nonce: self.cached_nonces.account_nonce(address),
-            balance: self.chain.latest_balance(address),
+            balance: self.cached_balances.account_balance(address),
             code_hash: self.chain.code_hash(address, BlockId::Latest),
             is_local: self.accounts.is_local(address),
         }
@@ -209,63 +267,11 @@ where
     }
 }
 
-pub(crate) struct CachedNonceClient<'a, C: 'a> {
-    client: &'a C,
-    cache: &'a NonceCache,
-}
-
-impl<'a, C: 'a> Clone for CachedNonceClient<'a, C> {
-    fn clone(&self) -> Self {
-        CachedNonceClient {
-            client: self.client,
-            cache: self.cache,
-        }
-    }
-}
-
-impl<'a, C: 'a> fmt::Debug for CachedNonceClient<'a, C> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("CachedNonceClient")
-            .field("cache", &self.cache.nonces.read().len())
-            .field("limit", &self.cache.limit)
-            .finish()
-    }
-}
-
-impl<'a, C: 'a> CachedNonceClient<'a, C> {
-    pub fn new(client: &'a C, cache: &'a NonceCache) -> Self {
-        CachedNonceClient { client, cache }
-    }
-}
-
-impl<'a, C: 'a> NonceClient for CachedNonceClient<'a, C>
+impl<'a, C: 'a> BalanceClient for PoolClient<'a, C>
 where
-    C: Nonce + Sync,
+    C: Balance + Sync,
 {
-    fn account_nonce(&self, address: &Address) -> U256 {
-        if let Some(nonce) = self.cache.nonces.read().get(address) {
-            return *nonce;
-        }
-
-        // We don't check again if cache has been populated.
-        // It's not THAT expensive to fetch the nonce from state.
-        let mut cache = self.cache.nonces.write();
-        let nonce = self.client.latest_nonce(address);
-        cache.insert(*address, nonce);
-
-        if cache.len() < self.cache.limit {
-            return nonce;
-        }
-
-        debug!(target: "txpool", "NonceCache: reached limit.");
-        trace_time!("nonce_cache:clear");
-
-        // Remove excessive amount of entries from the cache
-        let to_remove: Vec<_> = cache.keys().take(self.cache.limit / 2).cloned().collect();
-        for x in to_remove {
-            cache.remove(&x);
-        }
-
-        nonce
+    fn account_balance(&self, address: &ethereum_types::H160) -> U256 {
+        self.cached_balances.account_balance(address)
     }
 }

@@ -23,7 +23,7 @@ use std::{
 
 use authcodes;
 use ethereum_types::H256;
-use http_common::HttpMetaExtractor;
+use http::hyper;
 use ipc;
 use jsonrpc_core as core;
 use jsonrpc_core::futures::future::Either;
@@ -35,10 +35,15 @@ use v1::{informant::RpcStats, Metadata, Origin};
 /// Common HTTP & IPC metadata extractor.
 pub struct RpcExtractor;
 
-impl HttpMetaExtractor for RpcExtractor {
-    type Metadata = Metadata;
+impl http::MetaExtractor<Metadata> for RpcExtractor {
+    fn read_metadata(&self, req: &hyper::Request<hyper::Body>) -> Metadata {
+        let as_string = |header: Option<&hyper::header::HeaderValue>| {
+            header.and_then(|val| val.to_str().ok().map(ToOwned::to_owned))
+        };
 
-    fn read_metadata(&self, origin: Option<String>, user_agent: Option<String>) -> Metadata {
+        let origin = as_string(req.headers().get("origin"));
+        let user_agent = as_string(req.headers().get("user-agent"));
+
         Metadata {
             origin: Origin::Rpc(format!(
                 "{} / {}",
@@ -256,18 +261,31 @@ impl<M: core::Middleware<Metadata>> core::Middleware<Metadata> for WsDispatcher<
 #[cfg(test)]
 mod tests {
     use super::RpcExtractor;
-    use HttpMetaExtractor;
+    use http::{
+        hyper::{Body, Request},
+        MetaExtractor,
+    };
     use Origin;
 
     #[test]
     fn should_extract_rpc_origin() {
         // given
         let extractor = RpcExtractor;
+        let req1 = Request::get("127.0.0.1").body(Body::empty()).unwrap();
+        let req2 = Request::get("127.0.0.1")
+            .header("user-agent", "http://openethereum.github.io")
+            .body(Body::empty())
+            .unwrap();
+        let req3 = Request::get("127.0.0.1")
+            .header("origin", "http://openethereum.github.io")
+            .header("user-agent", "http://openethereum.github.io")
+            .body(Body::empty())
+            .unwrap();
 
         // when
-        let meta1 = extractor.read_metadata(None, None);
-        let meta2 = extractor.read_metadata(None, Some("http://openethereum.github.io".to_owned()));
-        let meta3 = extractor.read_metadata(None, Some("http://openethereum.github.io".to_owned()));
+        let meta1 = extractor.read_metadata(&req1);
+        let meta2 = extractor.read_metadata(&req2);
+        let meta3 = extractor.read_metadata(&req3);
 
         // then
         assert_eq!(
@@ -280,7 +298,7 @@ mod tests {
         );
         assert_eq!(
             meta3.origin,
-            Origin::Rpc("unknown origin / http://openethereum.github.io".into())
+            Origin::Rpc("http://openethereum.github.io / http://openethereum.github.io".into())
         );
     }
 }

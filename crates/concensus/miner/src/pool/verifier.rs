@@ -135,6 +135,16 @@ impl Transaction {
         }
     }
 
+    /// Return maximum transaction fee that may go to the miner:
+    /// transaction gas price for non 1559 transactions or maxPriorityFeePerGas for 1559 transactions.
+    pub fn max_priority_fee(&self) -> U256 {
+        match *self {
+            Transaction::Unverified(ref tx) => tx.max_priority_fee_per_gas(),
+            Transaction::Retracted(ref tx) => tx.max_priority_fee_per_gas(),
+            Transaction::Local(ref tx) => tx.max_priority_fee_per_gas(),
+        }
+    }
+
     /// Check if transaction has zero gas price
     pub fn has_zero_gas_price(&self) -> bool {
         match *self {
@@ -254,19 +264,19 @@ impl<C: Client> txpool::Verifier<Transaction>
         // or the effective minimal gas price in case the pool is full.
 
         if !has_zero_gas_price && !is_own {
-            let effective_priority_fee = tx.effective_priority_fee(self.options.block_base_fee);
+            let max_priority_fee = tx.max_priority_fee();
 
-            if effective_priority_fee < self.options.minimal_gas_price {
+            if max_priority_fee < self.options.minimal_gas_price {
                 trace!(
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    effective_priority_fee,
+                    max_priority_fee,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: effective_priority_fee,
+                    got: max_priority_fee,
                 });
             }
 
@@ -335,10 +345,9 @@ impl<C: Client> txpool::Verifier<Transaction>
             }
         }
 
-        let effective_priority_fee =
-            transaction.effective_priority_fee(self.options.block_base_fee);
+        let max_priority_fee = transaction.max_priority_fee_per_gas();
 
-        if effective_priority_fee < self.options.minimal_gas_price {
+        if max_priority_fee < self.options.minimal_gas_price {
             let transaction_type = self.client.transaction_type(&transaction);
             if let TransactionType::Service = transaction_type {
                 debug!(target: "txqueue", "Service tx {:?} below minimal gas price accepted", hash);
@@ -349,12 +358,12 @@ impl<C: Client> txpool::Verifier<Transaction>
                     target: "txqueue",
                     "[{:?}] Rejected tx below minimal gas price threshold: {} < {}",
                     hash,
-                    effective_priority_fee,
+                    max_priority_fee,
                     self.options.minimal_gas_price,
                 );
                 bail!(transaction::Error::InsufficientGasPrice {
                     minimal: self.options.minimal_gas_price,
-                    got: effective_priority_fee,
+                    got: max_priority_fee,
                 });
             }
         }

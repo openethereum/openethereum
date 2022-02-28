@@ -18,6 +18,6 @@
 
 mod helpers;
 mod http_client;
-#[cfg(test)]
+// #[cfg(test)]
 mod rpc;
 pub mod ws;

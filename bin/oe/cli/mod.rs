@@ -718,6 +718,10 @@ usage! {
             "--max-round-blocks-to-import=[S]",
             "Maximal number of blocks to import for each import round.",
 
+            ARG arg_new_transactions_stats_period: (u64) = 0u64, or |c: &Config| c.mining.as_ref()?.new_transactions_stats_period.clone(),
+            "--new-transactions-stats-period=[N]",
+            "Specify number of blocks for which new transactions will be returned in a result of `parity_newTransactionsStats` RPC call. Setting this parameter to 0 will return only transactions imported during the current block. (default: 0)",
+
         ["Internal Options"]
             FLAG flag_can_restart: (bool) = false, or |_| None,
             "--can-restart",
@@ -990,6 +994,7 @@ struct Mining {
     refuse_service_transactions: Option<bool>,
     infinite_pending_block: Option<bool>,
     max_round_blocks_to_import: Option<usize>,
+    new_transactions_stats_period: Option<u64>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1399,6 +1404,7 @@ mod tests {
                 flag_refuse_service_transactions: false,
                 flag_infinite_pending_block: false,
                 arg_max_round_blocks_to_import: 1usize,
+                arg_new_transactions_stats_period: 0u64,
 
                 flag_stratum: false,
                 arg_stratum_interface: "local".to_owned(),
@@ -1606,6 +1612,7 @@ mod tests {
                     refuse_service_transactions: None,
                     infinite_pending_block: None,
                     max_round_blocks_to_import: None,
+                    new_transactions_stats_period: None,
                 }),
                 footprint: Some(Footprint {
                     tracing: Some("on".into()),

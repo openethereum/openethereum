@@ -2745,6 +2745,10 @@ impl BlockChainClient for Client {
             .ready_transactions(self, max_len, ::miner::PendingOrdering::Priority)
     }
 
+    fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>> {
+        self.importer.miner.transaction(tx_hash)
+    }
+
     fn signing_chain_id(&self) -> Option<u64> {
         self.engine.signing_chain_id(&self.latest_env_info())
     }

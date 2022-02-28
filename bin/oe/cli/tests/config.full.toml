@@ -101,6 +101,7 @@ extra_data = "Parity"
 remove_solved = false
 notify_work = ["http://localhost:3001"]
 refuse_service_transactions = false
+new_transactions_stats_period = 0
 
 [footprint]
 tracing = "auto"

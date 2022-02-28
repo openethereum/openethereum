@@ -238,11 +238,13 @@ pub fn new_http<D: rpc_apis::Dependencies>(
 
     let cors_domains = into_domains(conf.cors);
     let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
+    let health_api = Some(("/api/health", "parity_nodeStatus"));
 
     let start_result = rpc_server::start_http(
         &addr,
         cors_domains,
         allowed_hosts,
+        health_api,
         handler,
         rpc::RpcExtractor,
         conf.server_threads,

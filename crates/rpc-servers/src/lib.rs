@@ -30,10 +30,11 @@ pub type HttpServer = http::Server;
 pub type WsServer = ws::Server;
 
 /// Start http server asynchronously and returns result with `Server` handle on success or an error.
-pub fn start_http<M, S, H, T>(
+pub fn start_http<M, S, H, T, A, B>(
     addr: &SocketAddr,
     cors_domains: http::DomainsValidation<http::AccessControlAllowOrigin>,
     allowed_hosts: http::DomainsValidation<http::Host>,
+    health_api: Option<(A, B)>,
     handler: H,
     extractor: T,
     threads: usize,
@@ -47,13 +48,15 @@ where
     S::CallFuture: Unpin,
     H: Into<MetaIoHandler<M, S>>,
     T: http::MetaExtractor<M>,
+    A: Into<String>,
+    B: Into<String>,
 {
     Ok(http::ServerBuilder::with_meta_extractor(handler, extractor)
         .keep_alive(keep_alive)
         .threads(threads)
         .cors(cors_domains)
         .allowed_hosts(allowed_hosts)
-        .health_api(("/api/health", "parity_nodeStatus"))
+        .health_api(health_api)
         .cors_allow_headers(http::cors::AccessControlAllowHeaders::Any)
         .max_request_body_size(max_payload * 1024 * 1024)
         .start_http(addr)?)

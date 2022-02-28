@@ -77,6 +77,7 @@ extern crate parity_version as version;
 extern crate rlp;
 extern crate stats;
 extern crate vm;
+extern crate rpc_server;
 
 #[cfg(any(test, feature = "ethcore-accounts"))]
 extern crate ethcore_accounts as accounts;
@@ -106,10 +107,16 @@ extern crate fake_fetch;
 #[cfg(test)]
 extern crate ethcore_io as io;
 
+#[cfg(test)]
+extern crate tempdir;
+
 pub extern crate jsonrpc_ws_server as ws;
 
 mod authcodes;
 pub mod v1;
+
+#[cfg(test)]
+mod tests;
 
 pub use http::{
     cors::AccessControlAllowHeaders, hyper, AccessControlAllowOrigin, DomainsValidation, Host,

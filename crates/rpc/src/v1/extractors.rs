@@ -261,17 +261,22 @@ impl<M: core::Middleware<Metadata>> core::Middleware<Metadata> for WsDispatcher<
 #[cfg(test)]
 mod tests {
     use super::RpcExtractor;
+    use http::{MetaExtractor, hyper::Request, hyper::Body};
     use Origin;
 
     #[test]
     fn should_extract_rpc_origin() {
         // given
         let extractor = RpcExtractor;
+        let req1 = Request::get("127.0.0.1").body(Body::empty()).unwrap();
+        let req2 = Request::get("127.0.0.1").header("user-agent", "http://openethereum.github.io").body(Body::empty()).unwrap();
+        let req3 = Request::get("127.0.0.1").header("origin", "http://openethereum.github.io").header("user-agent", "http://openethereum.github.io").body(Body::empty()).unwrap();
+
 
         // when
-        let meta1 = extractor.read_metadata(None, None);
-        let meta2 = extractor.read_metadata(None, Some("http://openethereum.github.io".to_owned()));
-        let meta3 = extractor.read_metadata(None, Some("http://openethereum.github.io".to_owned()));
+        let meta1 = extractor.read_metadata(&req1);
+        let meta2 = extractor.read_metadata(&req2);
+        let meta3 = extractor.read_metadata(&req3);
 
         // then
         assert_eq!(
@@ -284,7 +289,7 @@ mod tests {
         );
         assert_eq!(
             meta3.origin,
-            Origin::Rpc("unknown origin / http://openethereum.github.io".into())
+            Origin::Rpc("http://openethereum.github.io / http://openethereum.github.io".into())
         );
     }
 }

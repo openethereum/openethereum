@@ -21,7 +21,7 @@
 use std::io;
 use std::net::SocketAddr;
 
-use jsonrpc_core::{MetaIoHandler, Metadata, Middleware};
+pub use jsonrpc_core::{MetaIoHandler, Metadata, Middleware};
 
 /// Type alias for ipc server
 pub type IpcServer = ipc::Server;

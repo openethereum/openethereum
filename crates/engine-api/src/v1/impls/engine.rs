@@ -1,9 +1,11 @@
 //! Engine rpc implementation.
 
-use crate::v1::traits::Engine;
-use crate::v1::types::{
-    ExecutionPayload, ForkchoiceResponse, ForkchoiceState, PayloadAttributes, PayloadId,
-    PayloadStatus, TransitionConfiguration, Status
+use crate::v1::{
+    traits::Engine,
+    types::{
+        ExecutionPayload, ForkchoiceResponse, ForkchoiceState, PayloadAttributes, PayloadId,
+        PayloadStatus, Status, TransitionConfiguration,
+    },
 };
 
 use jsonrpc_core::Result;
@@ -16,7 +18,7 @@ impl Engine for EngineClient {
         Ok(PayloadStatus {
             status: Status::Valid,
             latest_valid_hash: None,
-            validation_error: None
+            validation_error: None,
         })
     }
 
@@ -29,9 +31,9 @@ impl Engine for EngineClient {
             payload_status: PayloadStatus {
                 status: Status::Valid,
                 latest_valid_hash: None,
-                validation_error: None
+                validation_error: None,
             },
-            payload_id: None
+            payload_id: None,
         })
     }
 
@@ -50,7 +52,7 @@ impl Engine for EngineClient {
             extra_data: Default::default(),
             base_fee_per_gas: Default::default(),
             block_hash: Default::default(),
-            transactions: Default::default()
+            transactions: Default::default(),
         })
     }
 
@@ -61,7 +63,7 @@ impl Engine for EngineClient {
         Ok(TransitionConfiguration {
             terminal_total_difficulty: Default::default(),
             terminal_block_hash: Default::default(),
-            terminal_block_number: Default::default()
+            terminal_block_number: Default::default(),
         })
     }
 }

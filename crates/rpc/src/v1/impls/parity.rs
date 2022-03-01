@@ -40,7 +40,6 @@ use v1::{
         external_signer::{SignerService, SigningQueue},
         fake_sign, verify_signature, NetworkSettings,
     },
-    metadata::Metadata,
     traits::Parity,
     types::{
         block_number_to_id, BlockNumber, Bytes, CallRequest, ChainStatus, Header, Histogram,
@@ -109,8 +108,6 @@ where
         + 'static,
     M: MinerService<State = S> + 'static,
 {
-    type Metadata = Metadata;
-
     fn transactions_limit(&self) -> Result<usize> {
         Ok(self.miner.queue_status().limits.max_count)
     }

@@ -31,9 +31,6 @@ use v1::types::{
 /// Parity-specific rpc interface.
 #[rpc(server)]
 pub trait Parity {
-    /// RPC Metadata
-    type Metadata;
-
     /// Returns current transactions limit.
     #[rpc(name = "parity_transactionsLimit")]
     fn transactions_limit(&self) -> Result<usize>;

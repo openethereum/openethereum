@@ -55,7 +55,6 @@ use v1::{
         dispatch::{default_gas_price, default_max_priority_fee_per_gas, FullDispatcher},
         errors, fake_sign, limit_logs,
     },
-    metadata::Metadata,
     traits::Eth,
     types::{
         block_number_to_id, Block, BlockNumber, BlockTransactions, Bytes, CallRequest, EthAccount,
@@ -609,8 +608,6 @@ where
     M: MinerService<State = T> + 'static,
     EM: ExternalMinerService + 'static,
 {
-    type Metadata = Metadata;
-
     fn protocol_version(&self) -> Result<String> {
         let version = self.sync.status().protocol_version.to_owned();
         Ok(format!("{}", version))

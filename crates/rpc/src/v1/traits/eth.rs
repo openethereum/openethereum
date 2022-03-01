@@ -27,9 +27,6 @@ use v1::types::{
 /// Eth rpc interface.
 #[rpc(server)]
 pub trait Eth {
-    /// RPC Metadata
-    type Metadata;
-
     /// Returns protocol version encoded as a string (quotes are necessary).
     #[rpc(name = "eth_protocolVersion")]
     fn protocol_version(&self) -> Result<String>;

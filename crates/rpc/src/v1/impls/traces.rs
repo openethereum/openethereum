@@ -33,7 +33,6 @@ use v1::{
         block_number_to_id, BlockNumber, Bytes, CallRequest, Index, LocalizedTrace, TraceFilter,
         TraceOptions, TraceResults, TraceResultsWithTransactionHash,
     },
-    Metadata,
 };
 
 fn to_call_analytics(flags: TraceOptions) -> CallAnalytics {
@@ -63,8 +62,6 @@ where
     S: StateInfo + 'static,
     C: BlockChainClient + StateClient<State = S> + Call<State = S> + EngineInfo + 'static,
 {
-    type Metadata = Metadata;
-
     fn filter(&self, filter: TraceFilter) -> Result<Option<Vec<LocalizedTrace>>> {
         Ok(self
             .client

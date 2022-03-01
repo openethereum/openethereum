@@ -3,7 +3,7 @@
 use crate::v1::traits::Engine;
 use crate::v1::types::{
     ExecutionPayload, ForkchoiceResponse, ForkchoiceState, PayloadAttributes, PayloadId,
-    PayloadStatus, TransitionConfiguration,
+    PayloadStatus, TransitionConfiguration, Status
 };
 
 use jsonrpc_core::Result;
@@ -13,7 +13,11 @@ pub struct EngineClient {}
 
 impl Engine for EngineClient {
     fn new_payload(&self, _payload: ExecutionPayload) -> Result<PayloadStatus> {
-        todo!()
+        Ok(PayloadStatus {
+            status: Status::Valid,
+            latest_valid_hash: None,
+            validation_error: None
+        })
     }
 
     fn forkchoice_updated(
@@ -21,17 +25,43 @@ impl Engine for EngineClient {
         _state: ForkchoiceState,
         _payload_attributes: Option<PayloadAttributes>,
     ) -> Result<ForkchoiceResponse> {
-        todo!()
+        Ok(ForkchoiceResponse {
+            payload_status: PayloadStatus {
+                status: Status::Valid,
+                latest_valid_hash: None,
+                validation_error: None
+            },
+            payload_id: None
+        })
     }
 
     fn get_payload(&self, _payload_id: PayloadId) -> Result<ExecutionPayload> {
-        todo!()
+        Ok(ExecutionPayload {
+            parent_hash: Default::default(),
+            fee_recipient: Default::default(),
+            state_root: Default::default(),
+            receipts_root: Default::default(),
+            logs_bloom: Default::default(),
+            random: Default::default(),
+            block_number: Default::default(),
+            gas_limit: Default::default(),
+            gas_used: Default::default(),
+            timestamp: Default::default(),
+            extra_data: Default::default(),
+            base_fee_per_gas: Default::default(),
+            block_hash: Default::default(),
+            transactions: Default::default()
+        })
     }
 
     fn exchange_transition_configuration(
         &self,
         _configuration: TransitionConfiguration,
     ) -> Result<TransitionConfiguration> {
-        todo!()
+        Ok(TransitionConfiguration {
+            terminal_total_difficulty: Default::default(),
+            terminal_block_hash: Default::default(),
+            terminal_block_number: Default::default()
+        })
     }
 }

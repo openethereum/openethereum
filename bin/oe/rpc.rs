@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{collections::HashSet, io, path::PathBuf, sync::Arc};
+use std::{io, path::PathBuf, sync::Arc};
 
 use crate::{
     helpers::parity_ipc_path,
@@ -25,15 +25,15 @@ use jsonrpc_core::MetaIoHandler;
 use parity_rpc::{
     self as rpc,
     informant::{Middleware, RpcStats},
-    DomainsValidation, Metadata,
+    Metadata,
 };
 use parity_runtime::Executor;
+
+use rpc_utils::{into_domains, with_domain, DAPPS_DOMAIN};
 
 pub use parity_rpc::{HttpServer, IpcServer, RequestMiddleware};
 //pub use parity_rpc::ws::Server as WsServer;
 pub use parity_rpc::ws::{ws, Server as WsServer};
-
-pub const DAPPS_DOMAIN: &'static str = "web3.site";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HttpConfiguration {
@@ -57,7 +57,7 @@ impl Default for HttpConfiguration {
             port: 8545,
             apis: ApiSet::UnsafeContext,
             cors: Some(vec![]),
-            hosts: Some(vec![]),
+            hosts: Some(vec!["127.0.0.1".into()]),
             server_threads: 1,
             processing_threads: 4,
             max_payload: 5,
@@ -116,7 +116,7 @@ impl Default for WsConfiguration {
                 "chrome-extension://*".into(),
                 "moz-extension://*".into(),
             ]),
-            hosts: Some(Vec::new()),
+            hosts: Some(vec!["127.0.0.1".into()]),
             signer_path: replace_home(&data_dir, "$BASE/signer").into(),
             support_token_api: true,
             max_payload: 5,
@@ -289,41 +289,6 @@ pub fn new_ipc<D: rpc_apis::Dependencies>(
         Ok(server) => Ok(Some(server)),
         Err(io_error) => Err(format!("IPC error: {}", io_error)),
     }
-}
-
-fn into_domains<T: From<String>>(items: Option<Vec<String>>) -> DomainsValidation<T> {
-    items
-        .map(|vals| vals.into_iter().map(T::from).collect())
-        .into()
-}
-
-fn with_domain(
-    items: Option<Vec<String>>,
-    domain: &str,
-    dapps_address: &Option<rpc::Host>,
-) -> Option<Vec<String>> {
-    fn extract_port(s: &str) -> Option<u16> {
-        s.split(':').nth(1).and_then(|s| s.parse().ok())
-    }
-
-    items.map(move |items| {
-        let mut items = items.into_iter().collect::<HashSet<_>>();
-        {
-            let mut add_hosts = |address: &Option<rpc::Host>| {
-                if let Some(host) = address.clone() {
-                    items.insert(host.to_string());
-                    items.insert(host.replace("127.0.0.1", "localhost"));
-                    items.insert(format!("http://*.{}", domain)); //proxypac
-                    if let Some(port) = extract_port(&*host) {
-                        items.insert(format!("http://*.{}:{}", domain, port));
-                    }
-                }
-            };
-
-            add_hosts(dapps_address);
-        }
-        items.into_iter().collect()
-    })
 }
 
 pub fn setup_apis<D>(

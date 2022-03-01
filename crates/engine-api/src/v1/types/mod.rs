@@ -11,6 +11,5 @@ pub use forkchoice_response::ForkchoiceResponse;
 pub use forkchoice_state::ForkchoiceState;
 pub use payload_attributes::PayloadAttributes;
 pub use payload_id::PayloadId;
-pub use payload_status::PayloadStatus;
-pub use payload_status::Status;
+pub use payload_status::{PayloadStatus, Status};
 pub use transition_configuration::TransitionConfiguration;

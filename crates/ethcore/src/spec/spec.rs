@@ -637,6 +637,15 @@ fn load_from(spec_params: SpecParams, s: ethjson::spec::Spec) -> Result<Spec, Er
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
 
+    let eip1559_transition = params.eip1559_transition;
+    let initial_base_fee = params.eip1559_base_fee_initial_value;
+
+    {
+        // Assert that 'eip1559BaseFeeInitialValue' value is valid.
+        let min_base_fee = params.eip1559_base_fee_min_value.unwrap_or(0.into());
+        assert!(initial_base_fee >= min_base_fee, "Spec params: 'eip1559BaseFeeInitialValue' must not be less than 'eip1559BaseFeeMinValue'");
+    }
+
     let (engine, hard_forks) = Spec::engine(spec_params, s.engine, params, builtins);
 
     let mut s = Spec {
@@ -654,7 +663,13 @@ fn load_from(spec_params: SpecParams, s: ethjson::spec::Spec) -> Result<Spec, Er
         timestamp: g.timestamp,
         extra_data: g.extra_data,
         seal_rlp: seal_rlp,
-        base_fee: g.base_fee,
+        base_fee: g.base_fee.or_else(|| {
+            if eip1559_transition == 0 {
+                Some(initial_base_fee)
+            } else {
+                None
+            }
+        }),
         hard_forks,
         constructors: s
             .accounts

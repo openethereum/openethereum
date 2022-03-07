@@ -13,6 +13,12 @@ use jsonrpc_core::Result;
 /// Engine rpc implementation.
 pub struct EngineClient {}
 
+impl EngineClient {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 impl Engine for EngineClient {
     fn new_payload(&self, _payload: ExecutionPayload) -> Result<PayloadStatus> {
         Ok(PayloadStatus {

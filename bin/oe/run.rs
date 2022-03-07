@@ -25,7 +25,7 @@ use std::{
 use crate::{
     account_utils,
     cache::CacheConfig,
-    db, engine_api_apis, engine_api_rpc,
+    db,
     helpers::{execute_upgrades, passwords_from_files, to_client_config},
     informant::{FullNodeInformantData, Informant},
     metrics::{start_prometheus_metrics, MetricsConfiguration},
@@ -41,7 +41,6 @@ use crate::{
 };
 use ansi_term::Colour;
 use dir::{DatabaseDirectories, Directories};
-use engine_api::v1::EngineClient;
 use ethcore::{
     client::{BlockChainClient, BlockInfo, Client, DatabaseCompactionProfile, Mode, VMType},
     miner::{self, stratum, Miner, MinerOptions, MinerService},
@@ -534,27 +533,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         &dependencies,
     )?;
 
-    let engine_client = EngineClient {};
-    let eth_client_deps = engine_api_apis::EthClientDependencies {
-        client: deps_for_rpc_apis.client.clone(),
-        snapshot: deps_for_rpc_apis.snapshot.clone(),
-        sync: deps_for_rpc_apis.sync.clone(),
-        accounts: deps_for_rpc_apis.accounts.clone(),
-        miner: deps_for_rpc_apis.miner.clone(),
-        external_miner: deps_for_rpc_apis.external_miner.clone(),
-        experimental_rpcs: deps_for_rpc_apis.experimental_rpcs,
-        gas_price_percentile: deps_for_rpc_apis.gas_price_percentile,
-        allow_missing_blocks: deps_for_rpc_apis.allow_missing_blocks,
-        no_ancient_blocks: deps_for_rpc_apis.no_ancient_blocks,
-    };
-    let engine_api_http_server = engine_api_rpc::new_http(
-        "HTTP ENGINE-API-RPC",
-        "engine-api",
-        engine_api_rpc::HttpConfiguration::default(),
-        engine_client,
-        eth_client_deps,
-    );
-
     // secret store key server
     let secretstore_deps = secretstore::Dependencies {
         client: client.clone(),
@@ -632,7 +610,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
                 ipc_server,
                 secretstore_key_server,
                 runtime,
-                engine_api_http_server,
             )),
         },
     })

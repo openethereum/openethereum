@@ -40,6 +40,7 @@ extern crate serde_derive;
 extern crate toml;
 
 extern crate blooms_db;
+extern crate chrono;
 extern crate cli_signer;
 extern crate common_types as types;
 extern crate engine_api;
@@ -58,6 +59,7 @@ extern crate ethstore;
 extern crate fetch;
 extern crate hyper;
 extern crate journaldb;
+extern crate jsonwebtoken;
 extern crate keccak_hash as hash;
 extern crate kvdb;
 extern crate node_filter;
@@ -69,9 +71,8 @@ extern crate parity_rpc;
 extern crate parity_runtime;
 extern crate parity_version;
 extern crate prometheus;
-extern crate stats;
-
 extern crate rpc_server;
+extern crate stats;
 
 #[macro_use]
 extern crate log as rlog;
@@ -104,6 +105,7 @@ mod engine_api_apis;
 mod engine_api_rpc;
 mod helpers;
 mod informant;
+mod jwt_handler;
 mod metrics;
 mod modules;
 mod params;

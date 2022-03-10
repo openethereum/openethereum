@@ -122,7 +122,7 @@ pub mod tests;
 
 pub use http::{
     cors::AccessControlAllowHeaders, hyper, AccessControlAllowOrigin, DomainsValidation, Host,
-    RequestMiddleware, RequestMiddlewareAction,
+    RequestMiddleware, RequestMiddlewareAction, Response,
 };
 pub use ipc::{
     MetaExtractor as IpcMetaExtractor, RequestContext as IpcRequestContext, Server as IpcServer,

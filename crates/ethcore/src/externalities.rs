@@ -462,7 +462,7 @@ where
         Ok(())
     }
 
-    fn suicide(&mut self, refund_address: &Address) -> vm::Result<()> {
+    fn selfdestruct(&mut self, refund_address: &Address) -> vm::Result<()> {
         if self.static_flag {
             return Err(vm::Error::MutableCallInStaticContext);
         }
@@ -484,8 +484,8 @@ where
         }
 
         self.tracer
-            .trace_suicide(address, balance, refund_address.clone());
-        self.substate.suicides.insert(address);
+            .trace_selfdestruct(address, balance, refund_address.clone());
+        self.substate.selfdestructs.insert(address);
 
         Ok(())
     }
@@ -804,7 +804,7 @@ mod tests {
     }
 
     #[test]
-    fn can_suicide() {
+    fn can_selfdestruct() {
         let refund_account = &Address::default();
 
         let mut setup = TestSetup::new();
@@ -828,10 +828,10 @@ mod tests {
                 &mut vm_tracer,
                 false,
             );
-            ext.suicide(refund_account).unwrap();
+            ext.selfdestruct(refund_account).unwrap();
         }
 
-        assert_eq!(setup.sub_state.suicides.len(), 1);
+        assert_eq!(setup.sub_state.selfdestructs.len(), 1);
     }
 
     #[test]

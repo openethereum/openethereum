@@ -284,7 +284,7 @@ impl CommonParams {
             schedule.sstore_reset_gas = ::vm::schedule::EIP2929_SSTORE_RESET_GAS;
         }
         if block_number >= self.eip3529_transition {
-            schedule.suicide_refund_gas = 0;
+            schedule.selfdestruct_refund_gas = 0;
             schedule.sstore_refund_gas = ::vm::schedule::EIP3529_SSTORE_CLEARS_SCHEDULE;
             schedule.max_refund_quotient = ::vm::schedule::EIP3529_MAX_REFUND_QUOTIENT;
         }

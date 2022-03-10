@@ -129,7 +129,7 @@ mod tests {
     use evm::CallType;
     use rlp::*;
     use trace::{
-        trace::{Action, Call, CallResult, Res, Reward, Suicide},
+        trace::{Action, Call, CallResult, Res, Reward, Selfdestruct},
         RewardType,
     };
 
@@ -196,7 +196,7 @@ mod tests {
         };
 
         let flat_trace2 = FlatTrace {
-            action: Action::Suicide(Suicide {
+            action: Action::Selfdestruct(Selfdestruct {
                 address: "412fda7643b37d436cb40628f6dbbb80a07267ed".parse().unwrap(),
                 balance: 0.into(),
                 refund_address: "3d0768da09ce77d25e2d998e6a7b6ed4b9116c2d".parse().unwrap(),

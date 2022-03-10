@@ -347,7 +347,7 @@ enum_with_from_u8! {
         #[doc = "like CALL but it does not take value, nor modify the state"]
         STATICCALL = 0xfa,
         #[doc = "halt execution and register account for later deletion"]
-        SUICIDE = 0xff,
+        SELFDESTRUCT = 0xff,
     }
 }
 
@@ -610,7 +610,7 @@ lazy_static! {
         arr[RETURN as usize] = Some(InstructionInfo::new("RETURN", 2, 0, GasPriceTier::Zero));
         arr[DELEGATECALL as usize] = Some(InstructionInfo::new("DELEGATECALL", 6, 1, GasPriceTier::Special));
         arr[STATICCALL as usize] = Some(InstructionInfo::new("STATICCALL", 6, 1, GasPriceTier::Special));
-        arr[SUICIDE as usize] = Some(InstructionInfo::new("SUICIDE", 1, 0, GasPriceTier::Special));
+        arr[SELFDESTRUCT as usize] = Some(InstructionInfo::new("SELFDESTRUCT", 1, 0, GasPriceTier::Special));
         arr[CREATE2 as usize] = Some(InstructionInfo::new("CREATE2", 4, 1, GasPriceTier::Special));
         arr[REVERT as usize] = Some(InstructionInfo::new("REVERT", 2, 0, GasPriceTier::Zero));
         arr

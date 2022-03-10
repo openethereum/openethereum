@@ -212,19 +212,19 @@ impl Decodable for Reward {
     }
 }
 
-/// Suicide action.
+/// Selfdestruct action.
 #[derive(Debug, Clone, PartialEq, RlpEncodable, RlpDecodable)]
-pub struct Suicide {
-    /// Suicided address.
+pub struct Selfdestruct {
+    /// Selfdestructd address.
     pub address: Address,
-    /// Suicided contract heir.
+    /// Selfdestructd contract heir.
     pub refund_address: Address,
-    /// Balance of the contract just before suicide.
+    /// Balance of the contract just before selfdestruct.
     pub balance: U256,
 }
 
-impl Suicide {
-    /// Return suicide action bloom.
+impl Selfdestruct {
+    /// Return selfdestruct action bloom.
     pub fn bloom(&self) -> Bloom {
         let mut bloom = Bloom::default();
         bloom.accrue(BloomInput::Raw(self.address.as_bytes()));
@@ -240,8 +240,8 @@ pub enum Action {
     Call(Call),
     /// It's a create action.
     Create(Create),
-    /// Suicide.
-    Suicide(Suicide),
+    /// Selfdestruct.
+    Selfdestruct(Selfdestruct),
     /// Reward
     Reward(Reward),
 }
@@ -258,9 +258,9 @@ impl Encodable for Action {
                 s.append(&1u8);
                 s.append(create);
             }
-            Action::Suicide(ref suicide) => {
+            Action::Selfdestruct(ref selfdestruct) => {
                 s.append(&2u8);
-                s.append(suicide);
+                s.append(selfdestruct);
             }
             Action::Reward(ref reward) => {
                 s.append(&3u8);
@@ -276,7 +276,7 @@ impl Decodable for Action {
         match action_type {
             0 => rlp.val_at(1).map(Action::Call),
             1 => rlp.val_at(1).map(Action::Create),
-            2 => rlp.val_at(1).map(Action::Suicide),
+            2 => rlp.val_at(1).map(Action::Selfdestruct),
             3 => rlp.val_at(1).map(Action::Reward),
             _ => Err(DecoderError::Custom("Invalid action type.")),
         }
@@ -289,7 +289,7 @@ impl Action {
         match *self {
             Action::Call(ref call) => call.bloom(),
             Action::Create(ref create) => create.bloom(),
-            Action::Suicide(ref suicide) => suicide.bloom(),
+            Action::Selfdestruct(ref selfdestruct) => selfdestruct.bloom(),
             Action::Reward(ref reward) => reward.bloom(),
         }
     }

@@ -920,10 +920,10 @@ impl<Cost: CostType> Interpreter<Cost> {
             instructions::STOP => {
                 return Ok(InstructionResult::StopExecution);
             }
-            instructions::SUICIDE => {
+            instructions::SELFDESTRUCT => {
                 let address = u256_to_address(&self.stack.pop_back());
                 ext.al_insert_address(address.clone());
-                ext.suicide(&address)?;
+                ext.selfdestruct(&address)?;
                 return Ok(InstructionResult::StopExecution);
             }
             instructions::LOG0

@@ -118,9 +118,9 @@ impl Filter {
 
                 from_matches && to_matches
             }
-            Action::Suicide(ref suicide) => {
-                let from_matches = self.from_address.matches(&suicide.address);
-                let to_matches = self.to_address.matches(&suicide.refund_address);
+            Action::Selfdestruct(ref selfdestruct) => {
+                let from_matches = self.from_address.matches(&selfdestruct.address);
+                let to_matches = self.to_address.matches(&selfdestruct.refund_address);
                 from_matches && to_matches
             }
             Action::Reward(ref reward) => {
@@ -136,7 +136,7 @@ mod tests {
     use evm::CallType;
     use trace::{
         flat::FlatTrace,
-        trace::{Action, Call, Create, CreateResult, Res, Reward, Suicide},
+        trace::{Action, Call, Create, CreateResult, Res, Reward, Selfdestruct},
         AddressesFilter, Filter, RewardType, TraceError,
     };
 
@@ -336,7 +336,7 @@ mod tests {
         assert!(!f6.matches(&trace));
 
         let trace = FlatTrace {
-            action: Action::Suicide(Suicide {
+            action: Action::Selfdestruct(Selfdestruct {
                 address: Address::from_low_u64_be(1),
                 refund_address: Address::from_low_u64_be(2),
                 balance: 3.into(),

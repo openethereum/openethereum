@@ -184,7 +184,7 @@ pub fn diff_pod(pre: Option<&PodAccount>, post: Option<&PodAccount>) -> Option<A
 		(Some(x), None) => Some(AccountDiff {
 			balance: Diff::Died(x.balance),
 			nonce: Diff::Died(x.nonce),
-			code: Diff::Died(x.code.as_ref().expect("account is deleted; only way to delete account is running SUICIDE; account must have had own code cached to make operation; all caches should remain in place; qed").clone()),
+			code: Diff::Died(x.code.as_ref().expect("account is deleted; only way to delete account is running SELFDESTRUCT; account must have had own code cached to make operation; all caches should remain in place; qed").clone()),
 			storage: x.storage.iter().map(|(k, v)| (k.clone(), Diff::Died(v.clone()))).collect(),
 		}),
 		(Some(pre), Some(post)) => {

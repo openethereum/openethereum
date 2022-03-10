@@ -49,12 +49,12 @@ pub enum Error {
     StorageUpdateError,
     /// Memory access violation
     MemoryAccessViolation,
-    /// Native code resulted in suicide
-    Suicide,
+    /// Native code resulted in selfdestruct
+    Selfdestruct,
     /// Native code requested execution to finish
     Return,
-    /// Suicide was requested but coudn't complete
-    SuicideAbort,
+    /// Selfdestruct was requested but coudn't complete
+    SelfdestructAbort,
     /// Invalid gas state inside interpreter
     InvalidGasState,
     /// Query of the balance resulted in an error
@@ -122,10 +122,10 @@ impl ::std::fmt::Display for Error {
             Error::StorageReadError => write!(f, "Storage read error"),
             Error::StorageUpdateError => write!(f, "Storage update error"),
             Error::MemoryAccessViolation => write!(f, "Memory access violation"),
-            Error::SuicideAbort => write!(f, "Attempt to suicide resulted in an error"),
+            Error::SelfdestructAbort => write!(f, "Attempt to selfdestruct resulted in an error"),
             Error::InvalidGasState => write!(f, "Invalid gas state"),
             Error::BalanceQueryError => write!(f, "Balance query resulted in an error"),
-            Error::Suicide => write!(f, "Suicide result"),
+            Error::Selfdestruct => write!(f, "Selfdestruct result"),
             Error::Return => write!(f, "Return result"),
             Error::Unknown => write!(f, "Unknown runtime function invoked"),
             Error::AllocationFailed => write!(f, "Memory allocation failed (OOM)"),
@@ -676,28 +676,28 @@ impl<'a> Runtime<'a> {
         Ok(())
     }
 
-    /// Pass suicide to state runtime
-    pub fn suicide(&mut self, args: RuntimeArgs) -> Result<()> {
+    /// Pass selfdestruct to state runtime
+    pub fn selfdestruct(&mut self, args: RuntimeArgs) -> Result<()> {
         let refund_address = self.address_at(args.nth_checked(0)?)?;
 
         if self
             .ext
             .exists(&refund_address)
-            .map_err(|_| Error::SuicideAbort)?
+            .map_err(|_| Error::SelfdestructAbort)?
         {
-            trace!(target: "wasm", "Suicide: refund to existing address {}", refund_address);
-            self.adjusted_charge(|schedule| schedule.suicide_gas as u64)?;
+            trace!(target: "wasm", "Selfdestruct: refund to existing address {}", refund_address);
+            self.adjusted_charge(|schedule| schedule.selfdestruct_gas as u64)?;
         } else {
-            trace!(target: "wasm", "Suicide: refund to new address {}", refund_address);
-            self.adjusted_charge(|schedule| schedule.suicide_to_new_account_cost as u64)?;
+            trace!(target: "wasm", "Selfdestruct: refund to new address {}", refund_address);
+            self.adjusted_charge(|schedule| schedule.selfdestruct_to_new_account_cost as u64)?;
         }
 
         self.ext
-            .suicide(&refund_address)
-            .map_err(|_| Error::SuicideAbort)?;
+            .selfdestruct(&refund_address)
+            .map_err(|_| Error::SelfdestructAbort)?;
 
         // We send trap to interpreter so it should abort further execution
-        Err(Error::Suicide.into())
+        Err(Error::Selfdestruct.into())
     }
 
     ///	Signature: `fn blockhash(number: i64, dest: *mut u8)`
@@ -841,7 +841,7 @@ mod ext_impl {
                 SCALL_FUNC => some!(self.scall(args)),
                 VALUE_FUNC => void!(self.value(args)),
                 CREATE_FUNC => some!(self.create(args)),
-                SUICIDE_FUNC => void!(self.suicide(args)),
+                SELFDESTRUCT_FUNC => void!(self.selfdestruct(args)),
                 BLOCKHASH_FUNC => void!(self.blockhash(args)),
                 BLOCKNUMBER_FUNC => some!(self.blocknumber()),
                 COINBASE_FUNC => void!(self.coinbase(args)),

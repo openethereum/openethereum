@@ -1320,7 +1320,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     }
 
     /// Calls contract function with given contract params and stack depth.
-    /// NOTE. It does not finalize the transaction (doesn't do refunds, nor suicides).
+    /// NOTE. It does not finalize the transaction (doesn't do refunds, nor selfdestructs).
     /// Modifies the substate and the output.
     /// Returns either gas_left or `vm::Error`.
     pub fn call_with_stack_depth<T, V>(
@@ -1396,7 +1396,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
     }
 
     /// Creates contract with given contract params and stack depth.
-    /// NOTE. It does not finalize the transaction (doesn't do refunds, nor suicides).
+    /// NOTE. It does not finalize the transaction (doesn't do refunds, nor selfdestructs).
     /// Modifies the substate.
     pub fn create_with_stack_depth<T, V>(
         &mut self,
@@ -1465,7 +1465,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         self.create_with_stack_depth(params, substate, 0, tracer, vm_tracer)
     }
 
-    /// Finalizes the transaction (does refunds and suicides).
+    /// Finalizes the transaction (does refunds and selfdestructs).
     fn finalize<T, V>(
         &mut self,
         t: &SignedTransaction,
@@ -1483,10 +1483,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             "On transaction level, sstore clears refund cannot go below zero."
         );
         let sstore_refunds = U256::from(substate.sstore_clears_refund as u64);
-        // refunds from contract suicides
-        let suicide_refunds =
-            U256::from(schedule.suicide_refund_gas) * U256::from(substate.suicides.len());
-        let refunds_bound = sstore_refunds + suicide_refunds;
+        // refunds from contract selfdestructs
+        let selfdestruct_refunds =
+            U256::from(schedule.selfdestruct_refund_gas) * U256::from(substate.selfdestructs.len());
+        let refunds_bound = sstore_refunds + selfdestruct_refunds;
 
         // real amount to refund
         let gas_left_prerefund = match result {
@@ -1531,8 +1531,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 
         let fees_value = fees_value.saturating_sub(burnt_fee);
 
-        trace!("exec::finalize: t.gas={}, sstore_refunds={}, suicide_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
-			t.tx().gas, sstore_refunds, suicide_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
+        trace!("exec::finalize: t.gas={}, sstore_refunds={}, selfdestruct_refunds={}, refunds_bound={}, gas_left_prerefund={}, refunded={}, gas_left={}, gas_used={}, refund_value={}, fees_value={}\n",
+			t.tx().gas, sstore_refunds, selfdestruct_refunds, refunds_bound, gas_left_prerefund, refunded, gas_left, gas_used, refund_value, fees_value);
 
         let sender = t.sender();
         trace!(
@@ -1565,8 +1565,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             )?;
         };
 
-        // perform suicides
-        for address in &substate.suicides {
+        // perform selfdestructs
+        for address in &substate.selfdestructs {
             self.state.kill_account(address);
         }
 

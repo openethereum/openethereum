@@ -87,7 +87,7 @@ impl From<runtime::Error> for vm::Error {
 }
 
 enum ExecutionOutcome {
-    Suicide,
+    Selfdestruct,
     Return,
     NotSpecial,
 }
@@ -159,8 +159,8 @@ impl WasmInterpreter {
                         .expect("Host errors other than runtime::Error never produced; qed");
 
                     match **runtime_err {
-                        runtime::Error::Suicide => {
-                            execution_outcome = ExecutionOutcome::Suicide;
+                        runtime::Error::Selfdestruct => {
+                            execution_outcome = ExecutionOutcome::Selfdestruct;
                         }
                         runtime::Error::Return => {
                             execution_outcome = ExecutionOutcome::Return;

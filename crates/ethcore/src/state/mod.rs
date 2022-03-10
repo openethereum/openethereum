@@ -2529,7 +2529,7 @@ mod tests {
     }
 
     #[test]
-    fn should_trace_suicide() {
+    fn should_trace_selfdestruct() {
         let _ = env_logger::try_init();
 
         let mut state = get_temp_state();
@@ -2585,7 +2585,7 @@ mod tests {
             FlatTrace {
                 trace_address: vec![0].into_iter().collect(),
                 subtraces: 0,
-                action: trace::Action::Suicide(trace::Suicide {
+                action: trace::Action::Selfdestruct(trace::Selfdestruct {
                     address: Address::from_low_u64_be(0xa),
                     refund_address: Address::from_low_u64_be(0xb),
                     balance: 150.into(),
@@ -3356,7 +3356,7 @@ mod tests {
     }
 
     #[test]
-    fn should_trace_diff_suicided_accounts() {
+    fn should_trace_diff_selfdestructd_accounts() {
         use pod_account;
 
         let a = Address::from_low_u64_be(10);

@@ -94,8 +94,8 @@ pub struct Schedule {
     pub call_value_transfer_gas: usize,
     /// Additional gas for creating new account (`CALL|CALLCODE`)
     pub call_new_account_gas: usize,
-    /// Refund for SUICIDE
-    pub suicide_refund_gas: usize,
+    /// Refund for SELFDESTRUCT
+    pub selfdestruct_refund_gas: usize,
     /// Gas for used memory
     pub memory_gas: usize,
     /// Coefficient used to convert memory size to gas price for memory
@@ -122,14 +122,14 @@ pub struct Schedule {
     pub balance_gas: usize,
     /// Price of EXTCODEHASH
     pub extcodehash_gas: usize,
-    /// Price of SUICIDE
-    pub suicide_gas: usize,
-    /// Amount of additional gas to pay when SUICIDE credits a non-existant account
-    pub suicide_to_new_account_cost: usize,
+    /// Price of SELFDESTRUCT
+    pub selfdestruct_gas: usize,
+    /// Amount of additional gas to pay when SELFDESTRUCT credits a non-existant account
+    pub selfdestruct_to_new_account_cost: usize,
     /// If Some(x): let limit = GAS * (x - 1) / x; let CALL's gas = min(requested, limit). let CREATE's gas = limit.
     /// If None: let CALL's gas = (requested > GAS ? [OOG] : GAS). let CREATE's gas = GAS
     pub sub_gas_cap_divisor: Option<usize>,
-    /// Don't ever make empty accounts; contracts start with nonce=1. Also, don't charge 25k when sending/suicide zero-value.
+    /// Don't ever make empty accounts; contracts start with nonce=1. Also, don't charge 25k when sending/selfdestruct zero-value.
     pub no_empty: bool,
     /// Kill empty accounts if touched.
     pub kill_empty: bool,
@@ -292,7 +292,7 @@ impl Schedule {
             call_stipend: 2300,
             call_value_transfer_gas: 9000,
             call_new_account_gas: 25000,
-            suicide_refund_gas: 24000,
+            selfdestruct_refund_gas: 24000,
             memory_gas: 3,
             quad_coeff_div: 512,
             create_data_gas: 200,
@@ -306,8 +306,8 @@ impl Schedule {
             extcodecopy_base_gas: 700,
             extcodehash_gas: 400,
             balance_gas: 400,
-            suicide_gas: 5000,
-            suicide_to_new_account_cost: 25000,
+            selfdestruct_gas: 5000,
+            selfdestruct_to_new_account_cost: 25000,
             sub_gas_cap_divisor: Some(64),
             no_empty: no_empty,
             kill_empty: kill_empty,
@@ -391,7 +391,7 @@ impl Schedule {
         schedule.eip1559_elasticity_multiplier = 2;
         schedule.eip3198 = true;
 
-        schedule.suicide_refund_gas = 0;
+        schedule.selfdestruct_refund_gas = 0;
         schedule.sstore_refund_gas = EIP3529_SSTORE_CLEARS_SCHEDULE;
         schedule.max_refund_quotient = EIP3529_MAX_REFUND_QUOTIENT;
 
@@ -435,7 +435,7 @@ impl Schedule {
             call_stipend: 2300,
             call_value_transfer_gas: 9000,
             call_new_account_gas: 25000,
-            suicide_refund_gas: 24000,
+            selfdestruct_refund_gas: 24000,
             memory_gas: 3,
             quad_coeff_div: 512,
             create_data_gas: 200,
@@ -449,8 +449,8 @@ impl Schedule {
             extcodecopy_base_gas: 20,
             extcodehash_gas: 400,
             balance_gas: 20,
-            suicide_gas: 0,
-            suicide_to_new_account_cost: 0,
+            selfdestruct_gas: 0,
+            selfdestruct_to_new_account_cost: 0,
             sub_gas_cap_divisor: None,
             no_empty: false,
             kill_empty: false,

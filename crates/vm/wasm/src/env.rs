@@ -37,7 +37,7 @@ pub mod ids {
     pub const DCALL_FUNC: usize = 80;
     pub const VALUE_FUNC: usize = 90;
     pub const CREATE_FUNC: usize = 100;
-    pub const SUICIDE_FUNC: usize = 110;
+    pub const SELFDESTRUCT_FUNC: usize = 110;
     pub const BLOCKHASH_FUNC: usize = 120;
     pub const BLOCKNUMBER_FUNC: usize = 130;
     pub const COINBASE_FUNC: usize = 140;
@@ -91,7 +91,7 @@ pub mod signatures {
 
     pub const CREATE2: StaticSignature = StaticSignature(&[I32, I32, I32, I32, I32], Some(I32));
 
-    pub const SUICIDE: StaticSignature = StaticSignature(&[I32], None);
+    pub const SELFDESTRUCT: StaticSignature = StaticSignature(&[I32], None);
 
     pub const BLOCKHASH: StaticSignature = StaticSignature(&[I64, I32], None);
 
@@ -193,7 +193,7 @@ impl wasmi::ModuleImportResolver for ImportResolver {
             "scall" => host(signatures::SCALL, ids::SCALL_FUNC),
             "value" => host(signatures::VALUE, ids::VALUE_FUNC),
             "create" => host(signatures::CREATE, ids::CREATE_FUNC),
-            "suicide" => host(signatures::SUICIDE, ids::SUICIDE_FUNC),
+            "selfdestruct" => host(signatures::SELFDESTRUCT, ids::SELFDESTRUCT_FUNC),
             "blockhash" => host(signatures::BLOCKHASH, ids::BLOCKHASH_FUNC),
             "blocknumber" => host(signatures::BLOCKNUMBER, ids::BLOCKNUMBER_FUNC),
             "coinbase" => host(signatures::COINBASE, ids::COINBASE_FUNC),

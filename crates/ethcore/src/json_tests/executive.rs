@@ -212,8 +212,8 @@ where
         self.ext.ret(gas, data, apply_state)
     }
 
-    fn suicide(&mut self, refund_address: &Address) -> vm::Result<()> {
-        self.ext.suicide(refund_address)
+    fn selfdestruct(&mut self, refund_address: &Address) -> vm::Result<()> {
+        self.ext.selfdestruct(refund_address)
     }
 
     fn schedule(&self) -> &Schedule {

@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Parity Technologies (UK) Ltd.
+// Copyright 2015-2022 Parity Technologies (UK) Ltd.
 // This file is part of OpenEthereum.
 
 // OpenEthereum is free software: you can redistribute it and/or modify
@@ -65,7 +65,7 @@ pub struct FakeCall {
 pub struct FakeExt {
     pub initial_store: HashMap<H256, H256>,
     pub store: HashMap<H256, H256>,
-    pub suicides: HashSet<Address>,
+    pub selfdestructs: HashSet<Address>,
     pub calls: HashSet<FakeCall>,
     pub sstore_clears: i128,
     pub depth: usize,
@@ -282,8 +282,8 @@ impl Ext for FakeExt {
         unimplemented!();
     }
 
-    fn suicide(&mut self, refund_address: &Address) -> Result<()> {
-        self.suicides.insert(refund_address.clone());
+    fn selfdestruct(&mut self, refund_address: &Address) -> Result<()> {
+        self.selfdestructs.insert(refund_address.clone());
         Ok(())
     }
 

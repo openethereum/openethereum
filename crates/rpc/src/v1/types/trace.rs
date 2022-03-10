@@ -364,10 +364,10 @@ impl From<trace::Reward> for Reward {
     }
 }
 
-/// Suicide
+/// Selfdestruct
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Suicide {
+pub struct Selfdestruct {
     /// Address.
     pub address: H160,
     /// Refund address.
@@ -376,9 +376,9 @@ pub struct Suicide {
     pub balance: U256,
 }
 
-impl From<trace::Suicide> for Suicide {
-    fn from(s: trace::Suicide) -> Self {
-        Suicide {
+impl From<trace::Selfdestruct> for Selfdestruct {
+    fn from(s: trace::Selfdestruct) -> Self {
+        Selfdestruct {
             address: s.address,
             refund_address: s.refund_address,
             balance: s.balance,
@@ -393,8 +393,8 @@ pub enum Action {
     Call(Call),
     /// Create
     Create(Create),
-    /// Suicide
-    Suicide(Suicide),
+    /// Selfdestruct
+    Selfdestruct(Selfdestruct),
     /// Reward
     Reward(Reward),
 }
@@ -404,7 +404,7 @@ impl From<trace::Action> for Action {
         match c {
             trace::Action::Call(call) => Action::Call(call.into()),
             trace::Action::Create(create) => Action::Create(create.into()),
-            trace::Action::Suicide(suicide) => Action::Suicide(suicide.into()),
+            trace::Action::Selfdestruct(selfdestruct) => Action::Selfdestruct(selfdestruct.into()),
             trace::Action::Reward(reward) => Action::Reward(reward.into()),
         }
     }
@@ -514,9 +514,9 @@ impl Serialize for LocalizedTrace {
                 struc.serialize_field("type", "create")?;
                 struc.serialize_field("action", create)?;
             }
-            Action::Suicide(ref suicide) => {
-                struc.serialize_field("type", "suicide")?;
-                struc.serialize_field("action", suicide)?;
+            Action::Selfdestruct(ref selfdestruct) => {
+                struc.serialize_field("type", "selfdestruct")?;
+                struc.serialize_field("action", selfdestruct)?;
             }
             Action::Reward(ref reward) => {
                 struc.serialize_field("type", "reward")?;
@@ -586,9 +586,9 @@ impl Serialize for Trace {
                 struc.serialize_field("type", "create")?;
                 struc.serialize_field("action", create)?;
             }
-            Action::Suicide(ref suicide) => {
-                struc.serialize_field("type", "suicide")?;
-                struc.serialize_field("action", suicide)?;
+            Action::Selfdestruct(ref selfdestruct) => {
+                struc.serialize_field("type", "selfdestruct")?;
+                struc.serialize_field("action", selfdestruct)?;
             }
             Action::Reward(ref reward) => {
                 struc.serialize_field("type", "reward")?;
@@ -807,9 +807,9 @@ mod tests {
     }
 
     #[test]
-    fn test_trace_suicide_serialize() {
+    fn test_trace_selfdestruct_serialize() {
         let t = LocalizedTrace {
-            action: Action::Suicide(Suicide {
+            action: Action::Selfdestruct(Selfdestruct {
                 address: Address::from_low_u64_be(4),
                 refund_address: Address::from_low_u64_be(6),
                 balance: 7.into(),
@@ -825,7 +825,7 @@ mod tests {
         let serialized = serde_json::to_string(&t).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"suicide","action":{"address":"0x0000000000000000000000000000000000000004","refundAddress":"0x0000000000000000000000000000000000000006","balance":"0x7"},"result":null,"traceAddress":[10],"subtraces":1,"transactionPosition":11,"transactionHash":"0x000000000000000000000000000000000000000000000000000000000000000c","blockNumber":13,"blockHash":"0x000000000000000000000000000000000000000000000000000000000000000e"}"#
+            r#"{"type":"selfdestruct","action":{"address":"0x0000000000000000000000000000000000000004","refundAddress":"0x0000000000000000000000000000000000000006","balance":"0x7"},"result":null,"traceAddress":[10],"subtraces":1,"transactionPosition":11,"transactionHash":"0x000000000000000000000000000000000000000000000000000000000000000c","blockNumber":13,"blockHash":"0x000000000000000000000000000000000000000000000000000000000000000e"}"#
         );
     }
 

@@ -22,7 +22,7 @@ use std::cmp::min;
 use trace::{
     trace::{
         Action, Call, CallResult, Create, CreateResult, MemoryDiff, Res, Reward, RewardType,
-        StorageDiff, Suicide, VMExecutedOperation, VMOperation, VMTrace,
+        Selfdestruct, StorageDiff, VMExecutedOperation, VMOperation, VMTrace,
     },
     FlatTrace, Tracer, VMTracer,
 };
@@ -158,14 +158,14 @@ impl Tracer for ExecutiveTracer {
         }
     }
 
-    fn trace_suicide(&mut self, address: Address, balance: U256, refund_address: Address) {
+    fn trace_selfdestruct(&mut self, address: Address, balance: U256, refund_address: Address) {
         if let Some(parentlen) = self.sublen_stack.last_mut() {
             *parentlen += 1;
         }
 
         let trace = FlatTrace {
             subtraces: 0,
-            action: Action::Suicide(Suicide {
+            action: Action::Selfdestruct(Selfdestruct {
                 address,
                 refund_address,
                 balance,
@@ -173,7 +173,7 @@ impl Tracer for ExecutiveTracer {
             result: Res::None,
             trace_address: self.index_stack.clone(),
         };
-        debug!(target: "trace", "Traced suicide {:?}", trace);
+        debug!(target: "trace", "Traced selfdestruct {:?}", trace);
         self.traces.push(trace);
 
         if let Some(index) = self.index_stack.last_mut() {

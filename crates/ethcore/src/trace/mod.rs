@@ -68,8 +68,8 @@ pub trait Tracer: Send {
     /// Finishes a failed trace. Would panic if prepare/done_trace are not balanced.
     fn done_trace_failed(&mut self, error: &VmError);
 
-    /// Stores suicide info.
-    fn trace_suicide(&mut self, address: Address, balance: U256, refund_address: Address);
+    /// Stores selfdestruct info.
+    fn trace_selfdestruct(&mut self, address: Address, balance: U256, refund_address: Address);
 
     /// Stores reward info.
     fn trace_reward(&mut self, author: Address, value: U256, reward_type: RewardType);

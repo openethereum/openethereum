@@ -196,8 +196,9 @@ impl<Gas: evm::CostType> Gasometer<Gas> {
                         && is_value_transfer
                         && !ext.exists_and_not_null(&address)?)
                 {
-                    gas =
-                        overflowing!(gas.overflow_add(schedule.selfdestruct_to_new_account_cost.into()));
+                    gas = overflowing!(
+                        gas.overflow_add(schedule.selfdestruct_to_new_account_cost.into())
+                    );
                 }
 
                 if !ext.al_contains_address(&address) {

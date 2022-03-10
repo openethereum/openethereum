@@ -22,7 +22,7 @@ use std::cmp::min;
 use trace::{
     trace::{
         Action, Call, CallResult, Create, CreateResult, MemoryDiff, Res, Reward, RewardType,
-        StorageDiff, Selfdestruct, VMExecutedOperation, VMOperation, VMTrace,
+        Selfdestruct, StorageDiff, VMExecutedOperation, VMOperation, VMTrace,
     },
     FlatTrace, Tracer, VMTracer,
 };

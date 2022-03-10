@@ -109,7 +109,9 @@ mod tests {
             data: vec![],
         });
         sub_state.sstore_clears_refund = (15000 * 5).into();
-        sub_state.selfdestructs.insert(Address::from_low_u64_be(10u64));
+        sub_state
+            .selfdestructs
+            .insert(Address::from_low_u64_be(10u64));
 
         let mut sub_state_2 = Substate::new();
         sub_state_2

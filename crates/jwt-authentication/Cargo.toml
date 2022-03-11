@@ -1,0 +1,18 @@
+[package]
+name = "jwt-authentication"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+futures = "0.1"
+
+jsonwebtoken = "6.0.0"
+chrono = "0.4.19"
+
+jsonrpc-http-server = "15.0.0"
+
+[dev-dependencies]
+rstest = "0.12.0"

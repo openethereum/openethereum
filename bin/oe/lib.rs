@@ -105,7 +105,6 @@ mod engine_api_apis;
 mod engine_api_rpc;
 mod helpers;
 mod informant;
-mod jwt_handler;
 mod metrics;
 mod modules;
 mod params;

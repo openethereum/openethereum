@@ -59,6 +59,7 @@ cli-signer= { path = "crates/util/cli-signer" }
 parity-daemonize = "0.3"
 parity-local-store = { path = "crates/concensus/miner/local-store" }
 parity-runtime = { path = "crates/runtime/runtime" }
+jwt-authentication = { path = "crates/jwt-authentication" }
 parity-rpc = { path = "crates/rpc" }
 rpc-server = { path = "crates/rpc-servers", package = "oe-rpc-server" }
 engine-api = { path = "crates/engine-api", package = "openethereum-engine-api" }

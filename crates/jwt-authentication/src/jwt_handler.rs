@@ -10,10 +10,11 @@ use crate::clock::Clock;
 
 const IAT_WINDOW_SEC: i64 = 5;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Default)]
 #[cfg_attr(test, derive(serde::Serialize))]
 struct Claims {
     iat: Option<i64>,
+    exp: Option<i64>,
 }
 
 pub struct JwtHandler<C>
@@ -78,12 +79,21 @@ where
             Err(_) => return forbidden("invalid token"),
         };
 
+        let now = self.clock.timestamp();
+
+        // verify 'exp' claim if present.
+        // We do not allow any drifting.
+        if let Some(exp) = claims.exp {
+            if now >= exp {
+                return forbidden("token is expired");
+            }
+        }
+
         // verify `issued-at` claim
         if claims.iat.is_none() {
             return forbidden("missing issued-at");
         };
         let iat = claims.iat.unwrap();
-        let now = self.clock.timestamp();
         if now - iat > IAT_WINDOW_SEC {
             return forbidden("stale token");
         }
@@ -146,7 +156,10 @@ mod tests {
     fn should_proceed_when_token_is_valid() {
         // given
         let iat = Utc::now().timestamp();
-        let claims = Claims { iat: Some(iat) };
+        let claims = Claims {
+            iat: Some(iat),
+            ..Default::default()
+        };
         let header = Header {
             alg: Algorithm::HS256,
             ..Default::default()
@@ -203,7 +216,10 @@ mod tests {
     fn should_respond_with_invalid_token_when_invalid_algorithm_used() {
         // given
         let iat = Utc::now().timestamp();
-        let claims = Claims { iat: Some(iat) };
+        let claims = Claims {
+            iat: Some(iat),
+            ..Default::default()
+        };
         let header = Header {
             alg: Algorithm::HS512,
             ..Default::default()
@@ -224,7 +240,10 @@ mod tests {
     #[test]
     fn should_respond_with_missing_issued_at_when_iat_is_missing() {
         // given
-        let claims = Claims { iat: None };
+        let claims = Claims {
+            iat: None,
+            ..Default::default()
+        };
         let header = Header {
             alg: Algorithm::HS256,
             ..Default::default()
@@ -246,7 +265,10 @@ mod tests {
     fn should_respond_with_stale_token_when_iat_is_too_old() {
         // given
         let iat = Utc::now().timestamp() - (IAT_WINDOW_SEC + 1);
-        let claims = Claims { iat: Some(iat) };
+        let claims = Claims {
+            iat: Some(iat),
+            ..Default::default()
+        };
         let header = Header {
             alg: Algorithm::HS256,
             ..Default::default()
@@ -268,7 +290,10 @@ mod tests {
     fn should_respond_with_future_token_when_iat_is_in_future() {
         // given
         let iat = Utc::now().timestamp() + (IAT_WINDOW_SEC + 2);
-        let claims = Claims { iat: Some(iat) };
+        let claims = Claims {
+            iat: Some(iat),
+            ..Default::default()
+        };
         let header = Header {
             alg: Algorithm::HS256,
             ..Default::default()
@@ -284,5 +309,30 @@ mod tests {
 
         // then
         assert_respond_with_content(action, "future token");
+    }
+
+    #[test]
+    fn should_respond_with_token_is_expired_when_exp_is_too_old() {
+        // given
+        let now = Utc::now().timestamp();
+        let claims = Claims {
+            iat: Some(now),
+            exp: Some(now - 1),
+        };
+        let header = Header {
+            alg: Algorithm::HS256,
+            ..Default::default()
+        };
+        let jwt = encode(&header, &claims, &SECRET).expect("encoding failed.");
+        let request = hyper::Request::get("example.com")
+            .header("authorization", format!("Bearer {}", jwt))
+            .body(Body::empty())
+            .expect("request initialization failed");
+
+        // when
+        let action = jwt_handler(Utc).on_request(request);
+
+        // then
+        assert_respond_with_content(action, "token is expired");
     }
 }

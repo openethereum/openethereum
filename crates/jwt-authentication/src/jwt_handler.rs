@@ -51,7 +51,6 @@ where
             };
 
         let forbidden: fn(&str) -> RequestMiddlewareAction = |content| {
-            println!("Forbidden with {}", content);
             Response {
                 code: StatusCode::FORBIDDEN,
                 content_type: HeaderValue::from_static("text/plain; charset=utf-8"),

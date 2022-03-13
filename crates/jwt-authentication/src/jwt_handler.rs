@@ -6,7 +6,7 @@ use jsonrpc_http_server::{
 use jsonwebtoken::{Algorithm, Validation};
 use std::marker::{Send, Sync};
 
-use crate::clock::Clock;
+use crate::{clock::Clock, Secret};
 
 const IAT_WINDOW_SEC: i64 = 5;
 
@@ -22,20 +22,20 @@ where
     C: Clock + Sync + Send + 'static,
 {
     clock: C,
-    secret: [u8; 32],
+    secret: Secret,
 }
 
 impl<C> JwtHandler<C>
 where
     C: Clock + Sync + Send + 'static,
 {
-    pub fn with_clock(clock: C, secret: [u8; 32]) -> Self {
+    pub fn with_clock(clock: C, secret: Secret) -> Self {
         Self { clock, secret }
     }
 }
 
 impl JwtHandler<Utc> {
-    pub fn new(secret: [u8; 32]) -> Self {
+    pub fn new(secret: Secret) -> Self {
         JwtHandler::with_clock(Utc, secret)
     }
 }
@@ -73,10 +73,11 @@ where
             validation.validate_exp = false;
             validation
         };
-        let claims = match jsonwebtoken::decode::<Claims>(&token, &self.secret, &validation) {
-            Ok(data) => data.claims,
-            Err(_) => return forbidden("invalid token"),
-        };
+        let claims =
+            match jsonwebtoken::decode::<Claims>(&token, &self.secret.as_ref()[..], &validation) {
+                Ok(data) => data.claims,
+                Err(_) => return forbidden("invalid token"),
+            };
 
         let now = self.clock.timestamp();
 
@@ -121,7 +122,7 @@ mod tests {
     ];
 
     fn jwt_handler<C: Clock + Send + Sync + 'static>(clock: C) -> JwtHandler<C> {
-        JwtHandler::with_clock(clock, SECRET)
+        JwtHandler::with_clock(clock, SECRET.into())
     }
 
     fn assert_respond_with_content(action: RequestMiddlewareAction, expected_content: &str) {

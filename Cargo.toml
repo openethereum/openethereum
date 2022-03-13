@@ -121,6 +121,7 @@ opt-level = 3 # makes tests slower to compile, but faster to run
 [profile.release]
 debug = false
 lto = true
+codegen-units = 1
 
 [workspace]
 # This should only list projects that are not

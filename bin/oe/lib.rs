@@ -102,8 +102,6 @@ mod cache;
 mod cli;
 mod configuration;
 mod db;
-mod engine_api_apis;
-mod engine_api_rpc;
 mod helpers;
 mod informant;
 mod metrics;

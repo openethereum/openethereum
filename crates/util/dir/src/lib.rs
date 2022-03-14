@@ -70,6 +70,13 @@ pub const CACHE_PATH: &str = "$LOCAL/cache";
 #[cfg(not(target_os = "windows"))]
 pub const CACHE_PATH: &str = "$BASE/cache";
 
+/// Platform-specific keystore path - Windows only
+#[cfg(target_os = "windows")]
+pub const KEYSTORE_PATH: &str = "$LOCAL/keystore";
+/// Platform-specific keystore path
+#[cfg(not(target_os = "windows"))]
+pub const KEYSTORE_PATH: &str = "$BASE/keystore";
+
 // this const is irrelevent cause we do have migrations now,
 // but we still use it for backwards compatibility
 const LEGACY_CLIENT_DB_VER_STR: &str = "5.3";
@@ -89,6 +96,8 @@ pub struct Directories {
     pub signer: String,
     /// Secrets dir
     pub secretstore: String,
+    /// Dir to store jwt secret
+    pub keystore: String,
 }
 
 impl Default for Directories {
@@ -102,6 +111,7 @@ impl Default for Directories {
             keys: replace_home(&data_dir, "$BASE/keys"),
             signer: replace_home(&data_dir, "$BASE/signer"),
             secretstore: replace_home(&data_dir, "$BASE/secretstore"),
+            keystore: replace_home_and_local(&data_dir, &local_dir, KEYSTORE_PATH),
         }
     }
 }
@@ -112,16 +122,21 @@ impl Directories {
         &self,
         signer_enabled: bool,
         secretstore_enabled: bool,
+        keystore_enabled: bool,
     ) -> Result<(), String> {
         fs::create_dir_all(&self.base).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.db).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.cache).map_err(|e| e.to_string())?;
         fs::create_dir_all(&self.keys).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&self.keystore).map_err(|e| e.to_string())?;
         if signer_enabled {
             fs::create_dir_all(&self.signer).map_err(|e| e.to_string())?;
         }
         if secretstore_enabled {
             fs::create_dir_all(&self.secretstore).map_err(|e| e.to_string())?;
+        }
+        if keystore_enabled {
+            fs::create_dir_all(&self.keystore).map_err(|e| e.to_string())?;
         }
         Ok(())
     }

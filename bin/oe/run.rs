@@ -80,7 +80,9 @@ pub struct RunCmd {
     pub gas_price_percentile: usize,
     pub poll_lifetime: u32,
     pub ws_conf: rpc::WsConfiguration,
+    pub auth_ws_conf: rpc::WsConfiguration,
     pub http_conf: rpc::HttpConfiguration,
+    pub auth_http_conf: rpc::HttpConfiguration,
     pub ipc_conf: rpc::IpcConfiguration,
     pub net_conf: sync::NetworkConfiguration,
     pub network_id: Option<u64>,
@@ -187,6 +189,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     cmd.dirs.create_dirs(
         cmd.acc_conf.unlocked_accounts.len() == 0,
         cmd.secretstore_conf.enabled,
+        cmd.auth_http_conf.enabled || cmd.auth_ws_conf.enabled,
     )?;
 
     //print out running parity environment
@@ -533,6 +536,13 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
         &dependencies,
     )?;
 
+    let auth_http_server = rpc::new_http(
+        "Authenticated HTTP JSON-RPC",
+        "auth-jsonrpc",
+        cmd.auth_http_conf.clone(),
+        &dependencies,
+    )?;
+
     // secret store key server
     let secretstore_deps = secretstore::Dependencies {
         client: client.clone(),
@@ -607,6 +617,7 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
                 watcher,
                 ws_server,
                 http_server,
+                auth_http_server,
                 ipc_server,
                 secretstore_key_server,
                 runtime,

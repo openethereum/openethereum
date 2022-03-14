@@ -76,6 +76,7 @@ use dir::{
 };
 use ethcore_logger::Config as LogConfig;
 use parity_rpc::NetworkSettings;
+use rpc::AuthRpcConfiguration;
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -155,6 +156,8 @@ impl Configuration {
         let ws_conf = self.ws_config()?;
         let snapshot_conf = self.snapshot_config()?;
         let http_conf = self.http_config()?;
+        let auth_http_conf = self.auth_http_config()?;
+        let auth_ws_conf = self.auth_ws_config()?;
         let ipc_conf = self.ipc_config()?;
         let net_conf = self.net_config()?;
         let network_id = self.network_id();
@@ -404,8 +407,10 @@ impl Configuration {
                 gas_price_percentile: self.args.arg_gas_price_percentile,
                 poll_lifetime: self.args.arg_poll_lifetime,
                 ws_conf: ws_conf,
+                auth_ws_conf: auth_ws_conf,
                 snapshot_conf: snapshot_conf,
                 http_conf: http_conf,
+                auth_http_conf: auth_http_conf,
                 ipc_conf: ipc_conf,
                 net_conf: net_conf,
                 network_id: network_id,
@@ -939,7 +944,19 @@ impl Configuration {
                 _ => 5usize,
             },
             keep_alive: !self.args.flag_jsonrpc_no_keep_alive,
+            jwt_secret: None,
         };
+
+        Ok(conf)
+    }
+
+    fn auth_http_config(&self) -> Result<HttpConfiguration, String> {
+        let auth_rpc_conf = self.auth_rpc_conf()?;
+        let mut conf = self.http_config()?;
+        conf.enabled = auth_rpc_conf.http_enabled;
+        conf.apis = auth_rpc_conf.apis;
+        conf.port = auth_rpc_conf.http_port;
+        conf.jwt_secret = Some(auth_rpc_conf.jwt_secret);
 
         Ok(conf)
     }
@@ -960,8 +977,36 @@ impl Configuration {
             support_token_api,
             max_connections: self.args.arg_ws_max_connections,
             max_payload: self.args.arg_ws_max_payload,
+            jwt_secret: None,
         };
 
+        Ok(conf)
+    }
+
+    fn auth_ws_config(&self) -> Result<WsConfiguration, String> {
+        let auth_rpc_conf = self.auth_rpc_conf()?;
+        let mut conf = self.ws_config()?;
+        conf.enabled = auth_rpc_conf.ws_enabled;
+        conf.apis = auth_rpc_conf.apis;
+        conf.port = auth_rpc_conf.ws_port;
+        conf.jwt_secret = Some(auth_rpc_conf.jwt_secret);
+
+        Ok(conf)
+    }
+
+    fn auth_rpc_conf(&self) -> Result<AuthRpcConfiguration, String> {
+        let conf = AuthRpcConfiguration {
+            http_enabled: self.auth_http_enabled(),
+            ws_enabled: self.auth_ws_enabled(),
+            apis: self.args.arg_auth_apis.parse()?,
+            http_port: self.args.arg_ports_shift + self.args.arg_auth_http_port,
+            ws_port: self.args.arg_ports_shift + self.args.arg_auth_ws_port,
+            jwt_secret: self.args.arg_auth_jwt_secret.clone().unwrap_or_else(|| {
+                let mut default_dir: PathBuf = self.directories().keystore.into();
+                default_dir.push("jwt.hex");
+                default_dir.as_path().to_str().unwrap().to_string()
+            }),
+        };
         Ok(conf)
     }
 
@@ -1030,6 +1075,7 @@ impl Configuration {
         let keys_path = replace_home(&data_path, &self.args.arg_keys_path);
         let secretstore_path = replace_home(&data_path, &self.args.arg_secretstore_path);
         let ui_path = replace_home(&data_path, &self.args.arg_ui_path);
+        let keystore_path = replace_home_and_local(&data_path, &local_path, dir::KEYSTORE_PATH);
 
         Directories {
             keys: keys_path,
@@ -1038,6 +1084,7 @@ impl Configuration {
             db: db_path,
             signer: ui_path,
             secretstore: secretstore_path,
+            keystore: keystore_path,
         }
     }
 
@@ -1152,6 +1199,14 @@ impl Configuration {
 
     fn ws_enabled(&self) -> bool {
         !self.args.flag_no_ws
+    }
+
+    fn auth_http_enabled(&self) -> bool {
+        !self.args.flag_no_auth_http
+    }
+
+    fn auth_ws_enabled(&self) -> bool {
+        !self.args.flag_no_auth_ws
     }
 
     fn metrics_enabled(&self) -> bool {
@@ -1500,6 +1555,7 @@ mod tests {
                     support_token_api: true,
                     max_connections: 100,
                     max_payload: 5,
+                    jwt_secret: None
                 },
                 LogConfig {
                     color: !cfg!(windows),
@@ -1542,7 +1598,9 @@ mod tests {
             gas_price_percentile: 50,
             poll_lifetime: 60,
             ws_conf: Default::default(),
+            auth_ws_conf: Default::default(),
             http_conf: Default::default(),
+            auth_http_conf: Default::default(),
             ipc_conf: Default::default(),
             net_conf: default_network_config(),
             network_id: None,

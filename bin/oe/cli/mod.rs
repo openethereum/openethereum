@@ -470,6 +470,31 @@ usage! {
             "--ws-max-payload=[MB]",
             "Specify maximum size for WS JSON-RPC requests in megabytes.",
 
+        ["API and Console Options – Authenticated APIs"]
+            FLAG flag_no_auth_http: (bool) = false, or |c: &Config| c.auth_rpc.as_ref()?.disable_http.clone(),
+            "--no-auth-http",
+            "Disable the HTTP for authenticated JSON-RPC API server.",
+
+            FLAG flag_no_auth_ws: (bool) = false, or |c: &Config| c.auth_rpc.as_ref()?.disable_ws.clone(),
+            "--no-auth-ws",
+            "Disable the WebSockets for authenticated JSON-RPC API server.",
+
+            ARG arg_auth_apis: (String) = "web3,eth,net,engine", or |c: &Config| c.auth_rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            "--auth-apis=[APIS]",
+            "Specify the APIs available through the authenticated JSON-RPC interface (both HTTP and WebSockets) using a comma-delimited list of API names. Possible names are: web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, rpc, secretstore, engine.",
+
+            ARG arg_auth_http_port: (u16) = 8550u16, or |c: &Config| c.auth_rpc.as_ref()?.http_port.clone(),
+            "--auth-http-port=[PORT]",
+            "Specify the port portion of the authenticated HTTP JSON-RPC API server.",
+
+            ARG arg_auth_ws_port: (u16) = 8551u16, or |c: &Config| c.auth_rpc.as_ref()?.ws_port.clone(),
+            "--auth-ws-port=[PORT]",
+            "Specify the port portion of the authenticated WebSockets JSON-RPC API server.",
+
+            ARG arg_auth_jwt_secret: (Option<String>) = None, or |c: &Config| c.auth_rpc.as_ref()?.jwt_secret.clone(),
+            "--jwt-secret=[PATH]",
+            "Specify the path for a file containing the hex-encoded 256 bit secret key to be used for verifying/generating JWT tokens.",
+
         ["Metrics"]
             FLAG flag_metrics: (bool) = false, or |c: &Config| c.metrics.as_ref()?.enable.clone(),
             "--metrics",
@@ -826,6 +851,7 @@ struct Config {
     network: Option<Network>,
     rpc: Option<Rpc>,
     websockets: Option<Ws>,
+    auth_rpc: Option<AuthRpc>,
     ipc: Option<Ipc>,
     secretstore: Option<SecretStore>,
     mining: Option<Mining>,
@@ -916,6 +942,17 @@ struct Ws {
     hosts: Option<Vec<String>>,
     max_connections: Option<usize>,
     max_payload: Option<usize>,
+}
+
+#[derive(Default, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthRpc {
+    disable_http: Option<bool>,
+    disable_ws: Option<bool>,
+    apis: Option<Vec<String>>,
+    http_port: Option<u16>,
+    ws_port: Option<u16>,
+    jwt_secret: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
@@ -1044,7 +1081,7 @@ struct Misc {
 #[cfg(test)]
 mod tests {
     use super::{
-        Account, Args, ArgsError, Config, Footprint, Ipc, Metrics, Mining, Misc, Network,
+        Account, Args, ArgsError, AuthRpc, Config, Footprint, Ipc, Metrics, Mining, Misc, Network,
         Operating, Rpc, SecretStore, Snapshots, Ws,
     };
     use clap::ErrorKind as ClapErrorKind;
@@ -1340,6 +1377,14 @@ mod tests {
                 arg_ws_max_connections: 100,
                 arg_ws_max_payload: 5,
 
+                // AUTH
+                flag_no_auth_http: false,
+                flag_no_auth_ws: false,
+                arg_auth_apis: "eth,net,engine,web3".to_string(),
+                arg_auth_http_port: 8550,
+                arg_auth_ws_port: 8551,
+                arg_auth_jwt_secret: Some("$HOME/jwt/jwt-secret".to_string()),
+
                 // IPC
                 flag_no_ipc: false,
                 arg_ipc_path: "$HOME/.parity/jsonrpc.ipc".into(),
@@ -1546,6 +1591,14 @@ mod tests {
                     experimental_rpcs: None,
                     poll_lifetime: None,
                     allow_missing_blocks: None
+                }),
+                auth_rpc: Some(AuthRpc {
+                    disable_http: Some(true),
+                    disable_ws: Some(true),
+                    apis: None,
+                    http_port: None,
+                    ws_port: None,
+                    jwt_secret: None
                 }),
                 ipc: Some(Ipc {
                     disable: None,

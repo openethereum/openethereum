@@ -76,6 +76,7 @@ stats = { path = "crates/util/stats" }
 prometheus = "0.9.0"
 jsonwebtoken = "6.0.0"
 chrono = "0.4.19"
+ring = "0.14.6"
 
 # ethcore-secretstore = { path = "crates/util/secret-store", optional = true }
 

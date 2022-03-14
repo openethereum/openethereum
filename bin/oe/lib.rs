@@ -60,6 +60,7 @@ extern crate fetch;
 extern crate hyper;
 extern crate journaldb;
 extern crate jsonwebtoken;
+extern crate jwt_authentication as jwt;
 extern crate keccak_hash as hash;
 extern crate kvdb;
 extern crate node_filter;

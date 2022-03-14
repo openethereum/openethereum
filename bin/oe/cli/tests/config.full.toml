@@ -51,6 +51,14 @@ origins = ["none"]
 apis = ["web3", "eth", "net", "parity", "traces", "rpc", "secretstore"]
 hosts = ["none"]
 
+[auth_rpc]
+disable_http = false
+disable_ws = false
+apis = ["eth", "net", "engine", "web3"]
+http_port = 8550
+ws_port = 8551
+jwt_secret = "$HOME/jwt/jwt-secret"
+
 [ipc]
 disable = false
 path = "$HOME/.parity/jsonrpc.ipc"

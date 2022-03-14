@@ -33,7 +33,10 @@ use rpc_utils::{into_domains, with_domain, DAPPS_DOMAIN};
 
 pub use parity_rpc::{HttpServer, IpcServer, RequestMiddleware};
 //pub use parity_rpc::ws::Server as WsServer;
+use jwt::{JwtHandler, Secret};
 pub use parity_rpc::ws::{ws, Server as WsServer};
+use rpc_apis::Api;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HttpConfiguration {
@@ -47,6 +50,7 @@ pub struct HttpConfiguration {
     pub processing_threads: usize,
     pub max_payload: usize,
     pub keep_alive: bool,
+    pub jwt_secret: Option<String>,
 }
 
 impl Default for HttpConfiguration {
@@ -62,6 +66,7 @@ impl Default for HttpConfiguration {
             processing_threads: 4,
             max_payload: 5,
             keep_alive: true,
+            jwt_secret: None,
         }
     }
 }
@@ -100,6 +105,7 @@ pub struct WsConfiguration {
     pub signer_path: PathBuf,
     pub support_token_api: bool,
     pub max_payload: usize,
+    pub jwt_secret: Option<String>,
 }
 
 impl Default for WsConfiguration {
@@ -120,6 +126,7 @@ impl Default for WsConfiguration {
             signer_path: replace_home(&data_dir, "$BASE/signer").into(),
             support_token_api: true,
             max_payload: 5,
+            jwt_secret: None,
         }
     }
 }
@@ -127,6 +134,30 @@ impl Default for WsConfiguration {
 impl WsConfiguration {
     pub fn address(&self) -> Option<rpc::Host> {
         address(self.enabled, &self.interface, self.port, &self.hosts)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthRpcConfiguration {
+    pub http_enabled: bool,
+    pub ws_enabled: bool,
+    pub apis: ApiSet,
+    pub http_port: u16,
+    pub ws_port: u16,
+    pub jwt_secret: String,
+}
+
+impl Default for AuthRpcConfiguration {
+    fn default() -> Self {
+        let data_dir = default_data_path();
+        Self {
+            http_enabled: true,
+            ws_enabled: true,
+            apis: ApiSet::List(HashSet::from([Api::Engine, Api::Web3, Api::Eth, Api::Net])),
+            http_port: 8550,
+            ws_port: 8551,
+            jwt_secret: replace_home(&data_dir, "$BASE/keystore/jwt.hex"),
+        }
     }
 }
 
@@ -238,19 +269,44 @@ pub fn new_http<D: rpc_apis::Dependencies>(
 
     let cors_domains = into_domains(conf.cors);
     let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
-    let health_api = Some(("/api/health", "parity_nodeStatus"));
 
-    let start_result = rpc_server::start_http(
-        &addr,
-        cors_domains,
-        allowed_hosts,
-        health_api,
-        handler,
-        rpc::RpcExtractor,
-        conf.server_threads,
-        conf.max_payload,
-        conf.keep_alive,
-    );
+    let start_result = match conf.jwt_secret {
+        None => {
+            let health_api = Some(("/api/health", "parity_nodeStatus"));
+            rpc_server::start_http(
+                &addr,
+                cors_domains,
+                allowed_hosts,
+                health_api,
+                handler,
+                rpc::RpcExtractor,
+                conf.server_threads,
+                conf.max_payload,
+                conf.keep_alive,
+            )
+        }
+        Some(jwt_secret) => {
+            let random = ring::rand::SystemRandom::new();
+            let secret = Secret::new(jwt_secret.clone(), &random).map_err(|err| {
+                format!(
+                    "Error while creating obtaining a secret at {}: {}",
+                    jwt_secret, err
+                )
+            })?;
+            let jwt_middleware = JwtHandler::new(secret);
+            rpc_server::start_http_with_middleware(
+                &addr,
+                cors_domains,
+                allowed_hosts,
+                handler,
+                rpc::RpcExtractor,
+                jwt_middleware,
+                conf.server_threads,
+                conf.max_payload,
+                conf.keep_alive,
+            )
+        }
+    };
 
     match start_result {
 		Ok(server) => Ok(Some(server)),

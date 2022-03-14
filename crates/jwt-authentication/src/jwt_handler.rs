@@ -54,7 +54,7 @@ where
             Response {
                 code: StatusCode::FORBIDDEN,
                 content_type: HeaderValue::from_static("text/plain; charset=utf-8"),
-                content: content.to_string(),
+                content: format!("Authorization error: {}\n", content),
             }
             .into()
         };
@@ -146,7 +146,10 @@ mod tests {
 
                     let content = response.into_body().concat2().wait().unwrap().into_bytes();
                     let content = str::from_utf8(&content).unwrap();
-                    assert_eq!(expected_content, content, "Invalid content message")
+                    assert!(
+                        content.contains(expected_content),
+                        "Invalid content message"
+                    )
                 }
             }
         }

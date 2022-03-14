@@ -377,6 +377,7 @@ mod tests {
                 },
             ),
             keys: replace_home(&data_dir, "$BASE/keys"),
+            keystore: replace_home(&data_dir, "$BASE/keystore"),
             signer: replace_home(&data_dir, "$BASE/signer"),
             secretstore: replace_home(&data_dir, "$BASE/secretstore"),
         };

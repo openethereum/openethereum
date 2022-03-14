@@ -50,7 +50,7 @@ impl Engine for EngineClient {
             state_root: Default::default(),
             receipts_root: Default::default(),
             logs_bloom: Default::default(),
-            random: Default::default(),
+            prev_randao: Default::default(),
             block_number: Default::default(),
             gas_limit: Default::default(),
             gas_used: Default::default(),

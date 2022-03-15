@@ -209,30 +209,6 @@ pub struct AuthWsConfiguration {
     pub jwt_secret: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct AuthRpcConfiguration {
-    pub http_enabled: bool,
-    pub ws_enabled: bool,
-    pub apis: ApiSet,
-    pub http_port: u16,
-    pub ws_port: u16,
-    pub jwt_secret: String,
-}
-
-impl Default for AuthRpcConfiguration {
-    fn default() -> Self {
-        let data_dir = default_data_path();
-        Self {
-            http_enabled: true,
-            ws_enabled: true,
-            apis: ApiSet::List(HashSet::from([Api::Engine, Api::Web3, Api::Eth, Api::Net])),
-            http_port: 8550,
-            ws_port: 8551,
-            jwt_secret: replace_home(&data_dir, "$BASE/keystore/jwt.hex"),
-        }
-    }
-}
-
 fn address(
     enabled: bool,
     bind_iface: &str,

@@ -548,16 +548,6 @@ usage! {
             "--auth-ws-jwt-secret=[PATH]",
             "Specify the path for a file containing the hex-encoded 256 bit secret key to be used for verifying/generating JWT tokens for authenticated WS JSON-RPC server.",
 
-        ["API and Console Options – Authenticated APIs"]
-
-            ARG arg_auth_apis: (String) = "web3,eth,net,engine", or |c: &Config| c.auth_rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
-            "--auth-apis=[APIS]",
-            "Specify the APIs available through the authenticated JSON-RPC interface (both HTTP and WebSockets) using a comma-delimited list of API names. Possible names are: web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, rpc, secretstore, engine.",
-
-            ARG arg_auth_jwt_secret: (Option<String>) = None, or |c: &Config| c.auth_rpc.as_ref()?.jwt_secret.clone(),
-            "--jwt-secret=[PATH]",
-            "Specify the path for a file containing the hex-encoded 256 bit secret key to be used for verifying/generating JWT tokens.",
-
         ["Metrics"]
             FLAG flag_metrics: (bool) = false, or |c: &Config| c.metrics.as_ref()?.enable.clone(),
             "--metrics",
@@ -916,7 +906,6 @@ struct Config {
     auth_http: Option<AuthHttp>,
     websockets: Option<Ws>,
     auth_websockets: Option<AuthWs>,
-    auth_rpc: Option<AuthRpc>,
     ipc: Option<Ipc>,
     secretstore: Option<SecretStore>,
     mining: Option<Mining>,

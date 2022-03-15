@@ -76,7 +76,7 @@ use dir::{
 };
 use ethcore_logger::Config as LogConfig;
 use parity_rpc::NetworkSettings;
-use rpc::{AuthHttpConfiguration, AuthRpcConfiguration, AuthWsConfiguration};
+use rpc::{AuthHttpConfiguration, AuthWsConfiguration};
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -1041,22 +1041,6 @@ impl Configuration {
             }),
         };
 
-        Ok(conf)
-    }
-
-    fn auth_rpc_conf(&self) -> Result<AuthRpcConfiguration, String> {
-        let conf = AuthRpcConfiguration {
-            http_enabled: self.auth_http_enabled(),
-            ws_enabled: self.auth_ws_enabled(),
-            apis: self.args.arg_auth_apis.parse()?,
-            http_port: self.args.arg_ports_shift + self.args.arg_auth_http_port,
-            ws_port: self.args.arg_ports_shift + self.args.arg_auth_ws_port,
-            jwt_secret: self.args.arg_auth_jwt_secret.clone().unwrap_or_else(|| {
-                let mut default_dir: PathBuf = self.directories().keystore.into();
-                default_dir.push("jwt.hex");
-                default_dir.as_path().to_str().unwrap().to_string()
-            }),
-        };
         Ok(conf)
     }
 

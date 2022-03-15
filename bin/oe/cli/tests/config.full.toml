@@ -51,12 +51,22 @@ origins = ["none"]
 apis = ["web3", "eth", "net", "parity", "traces", "rpc", "secretstore"]
 hosts = ["none"]
 
-[auth_rpc]
-disable_http = false
-disable_ws = false
+[auth_http]
+disable = false
+port = 8550
+interface = "local"
+cors = ["null"]
 apis = ["eth", "net", "engine", "web3"]
-http_port = 8550
-ws_port = 8551
+hosts = ["none"]
+jwt_secret = "$HOME/jwt/jwt-secret"
+
+[auth_websockets]
+disable = false
+port = 8551
+interface = "local"
+origins = ["none"]
+apis = ["eth", "net", "engine", "web3"]
+hosts = ["none"]
 jwt_secret = "$HOME/jwt/jwt-secret"
 
 [ipc]

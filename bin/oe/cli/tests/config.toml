@@ -29,9 +29,11 @@ origins = ["none"]
 disable = true
 port = 8180
 
-[auth_rpc]
-disable_http = true
-disable_ws = true
+[auth_http]
+disable = true
+
+[auth_websockets]
+disable = true
 
 [ipc]
 apis = ["rpc", "eth"]

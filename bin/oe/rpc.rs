@@ -175,6 +175,19 @@ impl WsConfiguration {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthWsConfiguration {
+    pub enabled: bool,
+    pub interface: String,
+    pub port: u16,
+    pub apis: ApiSet,
+    pub max_connections: usize,
+    pub origins: Option<Vec<String>>,
+    pub hosts: Option<Vec<String>>,
+    pub max_payload: usize,
+    pub jwt_secret: String,
+}
+
 impl Default for AuthWsConfiguration {
     fn default() -> Self {
         let data_dir = default_data_path();
@@ -194,19 +207,6 @@ impl Default for AuthWsConfiguration {
             jwt_secret: replace_home(&data_dir, "$BASE/keystore/jwt.hex"),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AuthWsConfiguration {
-    pub enabled: bool,
-    pub interface: String,
-    pub port: u16,
-    pub apis: ApiSet,
-    pub max_connections: usize,
-    pub origins: Option<Vec<String>>,
-    pub hosts: Option<Vec<String>>,
-    pub max_payload: usize,
-    pub jwt_secret: String,
 }
 
 fn address(

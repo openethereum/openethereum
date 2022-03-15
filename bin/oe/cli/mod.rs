@@ -1029,17 +1029,6 @@ struct AuthWs {
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct AuthRpc {
-    disable_http: Option<bool>,
-    disable_ws: Option<bool>,
-    apis: Option<Vec<String>>,
-    http_port: Option<u16>,
-    ws_port: Option<u16>,
-    jwt_secret: Option<String>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct Ipc {
     disable: Option<bool>,
     path: Option<String>,
@@ -1164,10 +1153,11 @@ struct Misc {
 #[cfg(test)]
 mod tests {
     use super::{
-        Account, Args, ArgsError, AuthRpc, Config, Footprint, Ipc, Metrics, Mining, Misc, Network,
+        Account, Args, ArgsError, Config, Footprint, Ipc, Metrics, Mining, Misc, Network,
         Operating, Rpc, SecretStore, Snapshots, Ws,
     };
     use clap::ErrorKind as ClapErrorKind;
+    use cli::{AuthHttp, AuthWs};
     use toml;
 
     #[test]
@@ -1460,13 +1450,28 @@ mod tests {
                 arg_ws_max_connections: 100,
                 arg_ws_max_payload: 5,
 
-                // AUTH
+                // AUTH HTTP
                 flag_no_auth_http: false,
+                flag_auth_http_no_keep_alive: false,
+                arg_auth_http_port: 8550u16,
+                arg_auth_http_interface: "local".to_string(),
+                arg_auth_http_cors: "null".to_string(),
+                arg_auth_http_apis: "eth,net,engine,web3".to_string(),
+                arg_auth_http_hosts: "none".to_string(),
+                arg_auth_http_server_threads: None,
+                arg_auth_http_max_payload: None,
+                arg_auth_http_jwt_secret: Some("$HOME/jwt/jwt-secret".to_string()),
+
+                // AUTH WS
                 flag_no_auth_ws: false,
-                arg_auth_apis: "eth,net,engine,web3".to_string(),
-                arg_auth_http_port: 8550,
-                arg_auth_ws_port: 8551,
-                arg_auth_jwt_secret: Some("$HOME/jwt/jwt-secret".to_string()),
+                arg_auth_ws_port: 8551u16,
+                arg_auth_ws_interface: "local".to_string(),
+                arg_auth_ws_apis: "eth,net,engine,web3".to_string(),
+                arg_auth_ws_hosts: "none".to_string(),
+                arg_auth_ws_origins: "none".to_string(),
+                arg_auth_ws_max_connections: 100,
+                arg_auth_ws_max_payload: 5,
+                arg_auth_ws_jwt_secret: Some("$HOME/jwt/jwt-secret".to_string()),
 
                 // IPC
                 flag_no_ipc: false,
@@ -1675,14 +1680,6 @@ mod tests {
                     poll_lifetime: None,
                     allow_missing_blocks: None
                 }),
-                auth_rpc: Some(AuthRpc {
-                    disable_http: Some(true),
-                    disable_ws: Some(true),
-                    apis: None,
-                    http_port: None,
-                    ws_port: None,
-                    jwt_secret: None
-                }),
                 ipc: Some(Ipc {
                     disable: None,
                     path: None,
@@ -1778,6 +1775,14 @@ mod tests {
                     unsafe_expose: Some(false),
                 }),
                 stratum: None,
+                auth_http: Some(AuthHttp {
+                    disable: Some(true),
+                    ..Default::default()
+                }),
+                auth_websockets: Some(AuthWs {
+                    disable: Some(true),
+                    ..Default::default()
+                }),
             }
         );
     }

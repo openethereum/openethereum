@@ -112,6 +112,8 @@ extern crate tempdir;
 // #[cfg(test)]
 extern crate rpc_server;
 
+extern crate rpc_common;
+
 pub extern crate jsonrpc_ws_server as ws;
 
 mod authcodes;

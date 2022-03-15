@@ -62,6 +62,7 @@ parity-runtime = { path = "crates/runtime/runtime" }
 jwt-authentication = { path = "crates/jwt-authentication" }
 parity-rpc = { path = "crates/rpc" }
 rpc-server = { path = "crates/rpc-servers", package = "oe-rpc-server" }
+rpc-common = { path = "crates/rpc-common" }
 engine-api = { path = "crates/engine-api", package = "openethereum-engine-api" }
 parity-version = { path = "crates/util/version" }
 parity-path = "0.1"

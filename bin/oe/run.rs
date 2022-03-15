@@ -81,7 +81,7 @@ pub struct RunCmd {
     pub gas_price_percentile: usize,
     pub poll_lifetime: u32,
     pub ws_conf: rpc::WsConfiguration,
-    pub auth_ws_conf: rpc::WsConfiguration,
+    pub auth_ws_conf: rpc::AuthWsConfiguration,
     pub http_conf: rpc::HttpConfiguration,
     pub auth_http_conf: rpc::AuthHttpConfiguration,
     pub ipc_conf: rpc::IpcConfiguration,

@@ -76,7 +76,7 @@ use dir::{
 };
 use ethcore_logger::Config as LogConfig;
 use parity_rpc::NetworkSettings;
-use rpc::{AuthHttpConfiguration, AuthRpcConfiguration};
+use rpc::{AuthHttpConfiguration, AuthRpcConfiguration, AuthWsConfiguration};
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -917,12 +917,24 @@ impl Configuration {
         self.hosts(&self.args.arg_ws_hosts, &self.ws_interface())
     }
 
+    fn auth_ws_hosts(&self) -> Option<Vec<String>> {
+        self.hosts(&self.args.arg_auth_ws_hosts, &self.auth_ws_interface())
+    }
+
     fn ws_origins(&self) -> Option<Vec<String>> {
         if self.args.flag_unsafe_expose {
             return None;
         }
 
         Self::parse_hosts(&self.args.arg_ws_origins)
+    }
+
+    fn auth_ws_origins(&self) -> Option<Vec<String>> {
+        if self.args.flag_unsafe_expose {
+            return None;
+        }
+
+        Self::parse_hosts(&self.args.arg_auth_ws_origins)
     }
 
     fn ipc_config(&self) -> Result<IpcConfiguration, String> {
@@ -1012,13 +1024,22 @@ impl Configuration {
         Ok(conf)
     }
 
-    fn auth_ws_config(&self) -> Result<WsConfiguration, String> {
-        let auth_rpc_conf = self.auth_rpc_conf()?;
-        let mut conf = self.ws_config()?;
-        conf.enabled = auth_rpc_conf.ws_enabled;
-        conf.apis = auth_rpc_conf.apis;
-        conf.port = auth_rpc_conf.ws_port;
-        conf.jwt_secret = Some(auth_rpc_conf.jwt_secret);
+    fn auth_ws_config(&self) -> Result<AuthWsConfiguration, String> {
+        let conf = AuthWsConfiguration {
+            enabled: self.auth_ws_enabled(),
+            interface: self.auth_ws_interface(),
+            port: self.args.arg_ports_shift + self.args.arg_auth_ws_port,
+            apis: self.args.arg_auth_ws_apis.parse()?,
+            max_connections: self.args.arg_auth_ws_max_connections,
+            origins: self.auth_ws_origins(),
+            hosts: self.auth_ws_hosts(),
+            max_payload: self.args.arg_auth_ws_max_payload,
+            jwt_secret: self.args.arg_auth_ws_jwt_secret.clone().unwrap_or_else(|| {
+                let mut default_dir: PathBuf = self.directories().keystore.into();
+                default_dir.push("jwt.hex");
+                default_dir.as_path().to_str().unwrap().to_string()
+            }),
+        };
 
         Ok(conf)
     }
@@ -1148,6 +1169,10 @@ impl Configuration {
 
     fn ws_interface(&self) -> String {
         self.interface(&self.args.arg_ws_interface)
+    }
+
+    fn auth_ws_interface(&self) -> String {
+        self.interface(&self.args.arg_auth_ws_interface)
     }
 
     fn metrics_interface(&self) -> String {

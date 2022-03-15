@@ -175,6 +175,40 @@ impl WsConfiguration {
     }
 }
 
+impl Default for AuthWsConfiguration {
+    fn default() -> Self {
+        let data_dir = default_data_path();
+        AuthWsConfiguration {
+            enabled: true,
+            interface: "127.0.0.1".into(),
+            port: 8551,
+            apis: ApiSet::List(HashSet::from([Api::Eth, Api::Engine, Api::Web3, Api::Net])),
+            max_connections: 100,
+            origins: Some(vec![
+                "parity://*".into(),
+                "chrome-extension://*".into(),
+                "moz-extension://*".into(),
+            ]),
+            hosts: Some(vec![]),
+            max_payload: 5,
+            jwt_secret: replace_home(&data_dir, "$BASE/keystore/jwt.hex"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthWsConfiguration {
+    pub enabled: bool,
+    pub interface: String,
+    pub port: u16,
+    pub apis: ApiSet,
+    pub max_connections: usize,
+    pub origins: Option<Vec<String>>,
+    pub hosts: Option<Vec<String>>,
+    pub max_payload: usize,
+    pub jwt_secret: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuthRpcConfiguration {
     pub http_enabled: bool,

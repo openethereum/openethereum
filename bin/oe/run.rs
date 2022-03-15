@@ -55,6 +55,7 @@ use node_filter::NodeFilter;
 use parity_rpc::{informant, is_major_importing, NetworkSettings};
 use parity_runtime::Runtime;
 use parity_version::version;
+use rpc::HttpConfigurationUnion;
 
 // How often we attempt to take a snapshot: only snapshot on blocknumbers that are multiples of this.
 const SNAPSHOT_PERIOD: u64 = 20000;
@@ -82,7 +83,7 @@ pub struct RunCmd {
     pub ws_conf: rpc::WsConfiguration,
     pub auth_ws_conf: rpc::WsConfiguration,
     pub http_conf: rpc::HttpConfiguration,
-    pub auth_http_conf: rpc::HttpConfiguration,
+    pub auth_http_conf: rpc::AuthHttpConfiguration,
     pub ipc_conf: rpc::IpcConfiguration,
     pub net_conf: sync::NetworkConfiguration,
     pub network_id: Option<u64>,
@@ -189,7 +190,8 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     cmd.dirs.create_dirs(
         cmd.acc_conf.unlocked_accounts.len() == 0,
         cmd.secretstore_conf.enabled,
-        cmd.auth_http_conf.enabled || cmd.auth_ws_conf.enabled,
+        cmd.auth_http_conf.enabled,
+        // || cmd.auth_ws_conf.enabled,
     )?;
 
     //print out running parity environment
@@ -532,14 +534,14 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     let http_server = rpc::new_http(
         "HTTP JSON-RPC",
         "jsonrpc",
-        cmd.http_conf.clone(),
+        HttpConfigurationUnion::HttpConfiguration(cmd.http_conf.clone()),
         &dependencies,
     )?;
 
     let auth_http_server = rpc::new_http(
         "Authenticated HTTP JSON-RPC",
         "auth-jsonrpc",
-        cmd.auth_http_conf.clone(),
+        HttpConfigurationUnion::AuthHttpConfiguration(cmd.auth_http_conf.clone()),
         &dependencies,
     )?;
 

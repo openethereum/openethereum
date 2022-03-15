@@ -61,7 +61,7 @@ impl Default for HttpConfiguration {
             port: 8545,
             apis: ApiSet::UnsafeContext,
             cors: Some(vec![]),
-            hosts: Some(vec!["127.0.0.1".into()]),
+            hosts: Some(vec![]),
             server_threads: 1,
             processing_threads: 4,
             max_payload: 5,
@@ -69,6 +69,44 @@ impl Default for HttpConfiguration {
             jwt_secret: None,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthHttpConfiguration {
+    pub enabled: bool,
+    pub interface: String,
+    pub port: u16,
+    pub apis: ApiSet,
+    pub cors: Option<Vec<String>>,
+    pub hosts: Option<Vec<String>>,
+    pub server_threads: usize,
+    pub max_payload: usize,
+    pub keep_alive: bool,
+    pub jwt_secret: String,
+}
+
+impl Default for AuthHttpConfiguration {
+    fn default() -> Self {
+        let data_dir = default_data_path();
+        AuthHttpConfiguration {
+            enabled: true,
+            interface: "127.0.0.1".into(),
+            port: 8550,
+            apis: ApiSet::List(HashSet::from([Api::Eth, Api::Engine, Api::Web3, Api::Net])),
+            cors: None,
+            hosts: None,
+            server_threads: 1,
+            max_payload: 5,
+            keep_alive: true,
+            jwt_secret: replace_home(&data_dir, "$BASE/keystore/jwt.hex"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum HttpConfigurationUnion {
+    HttpConfiguration(HttpConfiguration),
+    AuthHttpConfiguration(AuthHttpConfiguration),
 }
 
 #[derive(Debug, PartialEq)]
@@ -122,7 +160,7 @@ impl Default for WsConfiguration {
                 "chrome-extension://*".into(),
                 "moz-extension://*".into(),
             ]),
-            hosts: Some(vec!["127.0.0.1".into()]),
+            hosts: Some(vec![]),
             signer_path: replace_home(&data_dir, "$BASE/signer").into(),
             support_token_api: true,
             max_payload: 5,
@@ -253,27 +291,28 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
 pub fn new_http<D: rpc_apis::Dependencies>(
     id: &str,
     options: &str,
-    conf: HttpConfiguration,
+    conf: HttpConfigurationUnion,
     deps: &Dependencies<D>,
 ) -> Result<Option<HttpServer>, String> {
-    if !conf.enabled {
-        return Ok(None);
-    }
+    match conf {
+        HttpConfigurationUnion::HttpConfiguration(conf) => {
+            if !conf.enabled {
+                return Ok(None);
+            }
 
-    let domain = DAPPS_DOMAIN;
-    let url = format!("{}:{}", conf.interface, conf.port);
-    let addr = url
-        .parse()
-        .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
-    let handler = setup_apis(conf.apis, deps);
+            let domain = DAPPS_DOMAIN;
+            let url = format!("{}:{}", conf.interface, conf.port);
+            let addr = url
+                .parse()
+                .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+            let handler = setup_apis(conf.apis, deps);
 
-    let cors_domains = into_domains(conf.cors);
-    let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
+            let cors_domains = into_domains(conf.cors);
+            let allowed_hosts =
+                into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
 
-    let start_result = match conf.jwt_secret {
-        None => {
             let health_api = Some(("/api/health", "parity_nodeStatus"));
-            rpc_server::start_http(
+            let start_result = rpc_server::start_http(
                 &addr,
                 cors_domains,
                 allowed_hosts,
@@ -283,18 +322,42 @@ pub fn new_http<D: rpc_apis::Dependencies>(
                 conf.server_threads,
                 conf.max_payload,
                 conf.keep_alive,
-            )
+            );
+
+            match start_result {
+                Ok(server) => Ok(Some(server)),
+                Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
+                    format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
+                ),
+                Err(e) => Err(format!("{} error: {:?}", id, e)),
+            }
         }
-        Some(jwt_secret) => {
+        HttpConfigurationUnion::AuthHttpConfiguration(conf) => {
+            if !conf.enabled {
+                return Ok(None);
+            }
+
+            let domain = DAPPS_DOMAIN;
+            let url = format!("{}:{}", conf.interface, conf.port);
+            let addr = url
+                .parse()
+                .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+            let handler = setup_apis(conf.apis, deps);
+
+            let cors_domains = into_domains(conf.cors);
+            let allowed_hosts =
+                into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
+
             let random = ring::rand::SystemRandom::new();
-            let secret = Secret::new(jwt_secret.clone(), &random).map_err(|err| {
+            let jwt_secret_path = conf.jwt_secret;
+            let secret = Secret::new(jwt_secret_path.clone(), &random).map_err(|err| {
                 format!(
                     "Error while creating obtaining a secret at {}: {}",
-                    jwt_secret, err
+                    jwt_secret_path, err
                 )
             })?;
             let jwt_middleware = JwtHandler::new(secret);
-            rpc_server::start_http_with_middleware(
+            let start_result = rpc_server::start_http_with_middleware(
                 &addr,
                 cors_domains,
                 allowed_hosts,
@@ -304,17 +367,17 @@ pub fn new_http<D: rpc_apis::Dependencies>(
                 conf.server_threads,
                 conf.max_payload,
                 conf.keep_alive,
-            )
-        }
-    };
+            );
 
-    match start_result {
-		Ok(server) => Ok(Some(server)),
-		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
-			format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
-		),
-		Err(e) => Err(format!("{} error: {:?}", id, e)),
-	}
+            match start_result {
+                Ok(server) => Ok(Some(server)),
+                Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
+                    format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
+                ),
+                Err(e) => Err(format!("{} error: {:?}", id, e)),
+            }
+        }
+    }
 }
 
 pub fn new_ipc<D: rpc_apis::Dependencies>(

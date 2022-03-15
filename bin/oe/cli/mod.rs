@@ -470,11 +470,48 @@ usage! {
             "--ws-max-payload=[MB]",
             "Specify maximum size for WS JSON-RPC requests in megabytes.",
 
-        ["API and Console Options – Authenticated APIs"]
-            FLAG flag_no_auth_http: (bool) = false, or |c: &Config| c.auth_rpc.as_ref()?.disable_http.clone(),
+        ["API and Console Options - Authenticated HTTP JSON-RPC"]
+            FLAG flag_no_auth_http: (bool) = false, or |c: &Config| c.auth_http.as_ref()?.disable.clone(),
             "--no-auth-http",
             "Disable the HTTP for authenticated JSON-RPC API server.",
 
+            FLAG flag_auth_http_no_keep_alive: (bool) = false, or |c: &Config| c.auth_http.as_ref()?.keep_alive,
+            "--auth-http-no-keep-alive",
+            "Disable HTTP/1.1 keep alive header. Disabling keep alive will prevent re-using the same TCP connection to fire multiple requests, recommended when using one request per connection.",
+
+            ARG arg_auth_http_port: (u16) = 8550u16, or |c: &Config| c.auth_http.as_ref()?.port.clone(),
+            "--auth-http-port=[PORT]",
+            "Specify the port portion of the authenticated HTTP JSON-RPC API server.",
+
+            ARG arg_auth_http_interface: (String) = "local", or |c: &Config| c.auth_http.as_ref()?.interface.clone(),
+            "--auth-http-interface=[IP]",
+            "Specify the hostname portion of the authenticated HTTP JSON-RPC API server, IP should be an interface's IP address, or all (all interfaces) or local.",
+
+            ARG arg_auth_http_cors: (String) = "none", or |c: &Config| c.auth_http.as_ref()?.cors.as_ref().map(|vec| vec.join(",")),
+            "--auth-http-cors=[URL]",
+            "Specify CORS header for authenticated HTTP JSON-RPC API responses. Special options: \"all\", \"none\".",
+
+            ARG arg_auth_http_apis: (String) = "web3,eth,net,engine", or |c: &Config| c.auth_http.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            "--auth-http-apis=[APIS]",
+            "Specify the APIs available through the authenticated HTTP JSON-RPC interface using a comma-delimited list of API names. Possible names are: all, safe, debug, web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, rpc, secretstore, engine. You can also disable a specific API by putting '-' in the front, example: all,-personal.",
+
+            ARG arg_auth_http_hosts: (String) = "none", or |c: &Config| c.auth_http.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
+            "--auth-http-hosts=[HOSTS]",
+            "List of allowed Host header values. This option will validate the Host header sent by the browser, it is additional security against some attack vectors. Special options: \"all\", \"none\",.",
+
+            ARG arg_auth_http_server_threads: (Option<usize>) = None, or |c: &Config| c.auth_http.as_ref()?.server_threads,
+            "--auth-http-server-threads=[NUM]",
+            "Enables multiple threads handling incoming connections for authenticated HTTP JSON-RPC server.",
+
+            ARG arg_auth_http_max_payload: (Option<usize>) = None, or |c: &Config| c.auth_http.as_ref()?.max_payload,
+            "--auth-http-max-payload=[MB]",
+            "Specify maximum size for authenticated HTTP JSON-RPC requests in megabytes.",
+
+            ARG arg_auth_http_jwt_secret: (Option<String>) = None, or |c: &Config| c.auth_http.as_ref()?.jwt_secret.clone(),
+            "--auth-http-jwt-secret=[PATH]",
+            "Specify the path for a file containing the hex-encoded 256 bit secret key to be used for verifying/generating JWT tokens for authenticated HTTP JSON-RPC server.",
+
+        ["API and Console Options – Authenticated APIs"]
             FLAG flag_no_auth_ws: (bool) = false, or |c: &Config| c.auth_rpc.as_ref()?.disable_ws.clone(),
             "--no-auth-ws",
             "Disable the WebSockets for authenticated JSON-RPC API server.",
@@ -482,10 +519,6 @@ usage! {
             ARG arg_auth_apis: (String) = "web3,eth,net,engine", or |c: &Config| c.auth_rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--auth-apis=[APIS]",
             "Specify the APIs available through the authenticated JSON-RPC interface (both HTTP and WebSockets) using a comma-delimited list of API names. Possible names are: web3, net, eth, pubsub, personal, signer, parity, parity_pubsub, parity_accounts, parity_set, traces, rpc, secretstore, engine.",
-
-            ARG arg_auth_http_port: (u16) = 8550u16, or |c: &Config| c.auth_rpc.as_ref()?.http_port.clone(),
-            "--auth-http-port=[PORT]",
-            "Specify the port portion of the authenticated HTTP JSON-RPC API server.",
 
             ARG arg_auth_ws_port: (u16) = 8551u16, or |c: &Config| c.auth_rpc.as_ref()?.ws_port.clone(),
             "--auth-ws-port=[PORT]",
@@ -850,6 +883,7 @@ struct Config {
     ui: Option<Ui>,
     network: Option<Network>,
     rpc: Option<Rpc>,
+    auth_http: Option<AuthHttp>,
     websockets: Option<Ws>,
     auth_rpc: Option<AuthRpc>,
     ipc: Option<Ipc>,
@@ -942,6 +976,21 @@ struct Ws {
     hosts: Option<Vec<String>>,
     max_connections: Option<usize>,
     max_payload: Option<usize>,
+}
+
+#[derive(Default, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthHttp {
+    disable: Option<bool>,
+    port: Option<u16>,
+    interface: Option<String>,
+    cors: Option<Vec<String>>,
+    apis: Option<Vec<String>>,
+    hosts: Option<Vec<String>>,
+    server_threads: Option<usize>,
+    max_payload: Option<usize>,
+    keep_alive: Option<bool>,
+    jwt_secret: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Deserialize)]

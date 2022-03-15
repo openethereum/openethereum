@@ -76,7 +76,7 @@ use dir::{
 };
 use ethcore_logger::Config as LogConfig;
 use parity_rpc::NetworkSettings;
-use rpc::AuthRpcConfiguration;
+use rpc::{AuthHttpConfiguration, AuthRpcConfiguration};
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -878,6 +878,11 @@ impl Configuration {
         Self::cors(&cors)
     }
 
+    fn auth_http_cors(&self) -> Option<Vec<String>> {
+        let cors = self.args.arg_auth_http_cors.to_owned();
+        Self::cors(&cors)
+    }
+
     fn hosts(&self, hosts: &str, interface: &str) -> Option<Vec<String>> {
         if self.args.flag_unsafe_expose {
             return None;
@@ -902,6 +907,10 @@ impl Configuration {
 
     fn rpc_hosts(&self) -> Option<Vec<String>> {
         self.hosts(&self.args.arg_jsonrpc_hosts, &self.rpc_interface())
+    }
+
+    fn auth_http_hosts(&self) -> Option<Vec<String>> {
+        self.hosts(&self.args.arg_auth_http_hosts, &self.auth_http_interface())
     }
 
     fn ws_hosts(&self) -> Option<Vec<String>> {
@@ -950,13 +959,33 @@ impl Configuration {
         Ok(conf)
     }
 
-    fn auth_http_config(&self) -> Result<HttpConfiguration, String> {
-        let auth_rpc_conf = self.auth_rpc_conf()?;
-        let mut conf = self.http_config()?;
-        conf.enabled = auth_rpc_conf.http_enabled;
-        conf.apis = auth_rpc_conf.apis;
-        conf.port = auth_rpc_conf.http_port;
-        conf.jwt_secret = Some(auth_rpc_conf.jwt_secret);
+    fn auth_http_config(&self) -> Result<AuthHttpConfiguration, String> {
+        let conf = AuthHttpConfiguration {
+            enabled: self.auth_http_enabled(),
+            interface: self.auth_http_interface(),
+            port: self.args.arg_ports_shift + self.args.arg_auth_http_port,
+            apis: self.args.arg_auth_http_apis.parse()?,
+            hosts: self.auth_http_hosts(),
+            cors: self.auth_http_cors(),
+            server_threads: match self.args.arg_auth_http_server_threads {
+                Some(threads) if threads > 0 => threads,
+                _ => 1,
+            },
+            max_payload: match self.args.arg_auth_http_max_payload {
+                Some(max) if max > 0 => max as usize,
+                _ => 5usize,
+            },
+            keep_alive: !self.args.flag_auth_http_no_keep_alive,
+            jwt_secret: self
+                .args
+                .arg_auth_http_jwt_secret
+                .clone()
+                .unwrap_or_else(|| {
+                    let mut default_dir: PathBuf = self.directories().keystore.into();
+                    default_dir.push("jwt.hex");
+                    default_dir.as_path().to_str().unwrap().to_string()
+                }),
+        };
 
         Ok(conf)
     }
@@ -1111,6 +1140,10 @@ impl Configuration {
 
     fn rpc_interface(&self) -> String {
         self.interface(&self.args.arg_jsonrpc_interface)
+    }
+
+    fn auth_http_interface(&self) -> String {
+        self.interface(&self.args.arg_auth_http_interface)
     }
 
     fn ws_interface(&self) -> String {

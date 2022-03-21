@@ -1816,12 +1816,25 @@ impl Engine<EthereumMachine> for AuthorityRound {
     }
 
     // t_nb 8.1.5
+    /// Apply operations on new epoch.
+    /// Apply rewrite bytecode transitions if available.
     fn on_new_block(
         &self,
         block: &mut ExecutedBlock,
         epoch_begin: bool,
         _ancestry: &mut dyn Iterator<Item = ExtendedHeader>,
     ) -> Result<(), Error> {
+        // Apply rewrite bytecode transitions
+        if let Some(rewrites) = self
+            .rewrite_bytecode_transitions
+            .get(&block.header.number())
+        {
+            let state = block.state_mut();
+            for (address, bytecode) in rewrites.iter() {
+                state.reset_code(address, bytecode.clone())?
+            }
+        }
+
         // with immediate transitions, we don't use the epoch mechanism anyway.
         // the genesis is always considered an epoch, but we ignore it intentionally.
         if self.immediate_transitions || !epoch_begin {
@@ -1847,7 +1860,6 @@ impl Engine<EthereumMachine> for AuthorityRound {
     }
 
     /// Apply the block reward on finalisation of the block.
-    /// Apply rewrite bytecode transitions if available.
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let mut beneficiaries = Vec::new();
 
@@ -1916,14 +1928,6 @@ impl Engine<EthereumMachine> for AuthorityRound {
                 .map(|(author, reward_kind)| (author, reward_kind, reward))
                 .collect()
         };
-
-        // Apply rewrite bytecode transitions
-        if let Some(rewrites) = self.rewrite_bytecode_transitions.get(&number) {
-            let state = block.state_mut();
-            for (address, bytecode) in rewrites.iter() {
-                state.reset_code(address, bytecode.clone())?
-            }
-        }
 
         if let Some(signer) = self.signer.read().as_ref() {
             let our_addr = signer.address();

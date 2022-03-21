@@ -1,7 +1,9 @@
 [package]
 name = "oe-rpc-common"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
+authors = ["Rim Rakhimov <rim@blockscout.com"]
+description = "Modules common to RPC APIs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

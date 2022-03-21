@@ -70,7 +70,7 @@ extern crate parity_version;
 extern crate prometheus;
 extern crate stats;
 
-extern crate rpc_server;
+extern crate rpc_servers;
 
 #[macro_use]
 extern crate log as rlog;

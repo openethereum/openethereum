@@ -110,7 +110,7 @@ extern crate ethcore_io as io;
 extern crate tempdir;
 
 // #[cfg(test)]
-extern crate rpc_server;
+extern crate rpc_servers;
 
 extern crate rpc_common;
 

@@ -55,8 +55,8 @@ parity-version = { path = "../util/version" }
 rlp = { version = "0.4.6" }
 stats = { path = "../util/stats" }
 vm = { path = "../vm/vm" }
-rpc-server = { path = "../rpc-servers", package = "oe-rpc-server" }
-rpc-common = { path = "../rpc-common" }
+rpc-servers = { path = "../rpc-servers", package = "oe-rpc-servers" }
+rpc-common = { path = "../rpc-common", package = "oe-rpc-common" }
 
 [dev-dependencies]
 ethcore = { path = "../ethcore", features = ["test-helpers"] }

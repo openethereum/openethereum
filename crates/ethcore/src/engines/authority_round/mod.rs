@@ -3725,7 +3725,7 @@ mod tests {
     }
 
     #[test]
-    fn should_collect_rewrite_bytecode_transitions() {
+    fn should_rewrite_bytecode_according_to_transitions() {
         use state::StateInfo;
 
         let tap = Arc::new(AccountProvider::transient_provider());

@@ -44,7 +44,8 @@ use types::{
 
 use block::{Drain, OpenBlock};
 use client::{
-    ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock, PrepareOpenBlock,
+    BlockInfo, ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock,
+    PrepareOpenBlock,
 };
 use engines::{EngineSigner, Seal};
 use ethjson::crypto::publickey::{Public, Signature};
@@ -338,7 +339,7 @@ pub fn push_block_with_transactions_and_author(
     let b = b.close_and_lock().unwrap();
 
     test_engine.set_signer(signer);
-    let parent_header = client.chain().best_block_header();
+    let parent_header = client.best_block_header();
     let b = match client.engine().generate_seal(&b, &parent_header) {
         Seal::Regular(seal) => b.seal(&*client.engine(), seal).unwrap(),
         _ => panic!("error generating seal"),

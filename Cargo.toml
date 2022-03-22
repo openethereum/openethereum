@@ -60,6 +60,8 @@ parity-daemonize = "0.3"
 parity-local-store = { path = "crates/concensus/miner/local-store" }
 parity-runtime = { path = "crates/runtime/runtime" }
 parity-rpc = { path = "crates/rpc" }
+rpc-servers = { path = "crates/rpc-servers", package = "oe-rpc-servers" }
+rpc-common = { path = "crates/rpc-common", package = "oe-rpc-common" }
 parity-version = { path = "crates/util/version" }
 parity-path = "0.1"
 dir = { path = "crates/util/dir" }

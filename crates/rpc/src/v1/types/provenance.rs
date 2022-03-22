@@ -38,8 +38,6 @@ pub enum Origin {
         /// Session id
         session: H256,
     },
-    /// From the C API
-    CApi,
     /// Unknown
     Unknown,
 }
@@ -57,7 +55,6 @@ impl fmt::Display for Origin {
             Origin::Ipc(ref session) => write!(f, "IPC (session: {})", session),
             Origin::Ws { ref session } => write!(f, "WebSocket (session: {})", session),
             Origin::Signer { ref session } => write!(f, "Secure Session (session: {})", session),
-            Origin::CApi => write!(f, "C API"),
             Origin::Unknown => write!(f, "unknown origin"),
         }
     }

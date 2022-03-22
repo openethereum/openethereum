@@ -14,10 +14,4 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-//! RPC integration tests.
-
-mod helpers;
-mod http_client;
-// #[cfg(test)]
-mod rpc;
-pub mod ws;
+pub mod bytes;

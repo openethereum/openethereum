@@ -75,6 +75,8 @@ extern crate prometheus;
 extern crate rpc_server;
 extern crate stats;
 
+extern crate rpc_servers;
+
 #[macro_use]
 extern crate log as rlog;
 

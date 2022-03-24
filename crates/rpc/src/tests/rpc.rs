@@ -15,7 +15,7 @@
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use http::{self, hyper};
-use rpc_server::{HttpServer, MetaIoHandler};
+use rpc_servers::{HttpServer, MetaIoHandler};
 
 use tests::{helpers::Server, http_client};
 use v1::{extractors, Metadata};
@@ -25,7 +25,7 @@ fn serve(handler: Option<MetaIoHandler<Metadata>>) -> Server<HttpServer> {
     let handler = handler.unwrap_or_default();
 
     Server::new(|_remote| {
-        rpc_server::start_http_with_middleware(
+        rpc_servers::start_http_with_middleware(
             &address,
             http::DomainsValidation::Disabled,
             http::DomainsValidation::Disabled,

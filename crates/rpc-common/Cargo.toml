@@ -1,7 +1,8 @@
 [package]
-name = "rpc-common"
-version = "0.1.0"
+name = "oe-rpc-common"
+version = "0.0.0"
 edition = "2021"
+description = "Modules common to RPC APIs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

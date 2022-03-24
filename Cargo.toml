@@ -61,8 +61,8 @@ parity-local-store = { path = "crates/concensus/miner/local-store" }
 parity-runtime = { path = "crates/runtime/runtime" }
 jwt-authentication = { path = "crates/jwt-authentication" }
 parity-rpc = { path = "crates/rpc" }
-rpc-server = { path = "crates/rpc-servers", package = "oe-rpc-server" }
-rpc-common = { path = "crates/rpc-common" }
+rpc-servers = { path = "crates/rpc-servers", package = "oe-rpc-servers" }
+rpc-common = { path = "crates/rpc-common", package = "oe-rpc-common" }
 engine-api = { path = "crates/engine-api", package = "openethereum-engine-api" }
 parity-version = { path = "crates/util/version" }
 parity-path = "0.1"

@@ -1,6 +1,6 @@
 [package]
 description = "OpenEthereum RPC servers (WS, HTTP, IPC)"
-name = "oe-rpc-server"
+name = "oe-rpc-servers"
 version = "0.0.0"
 license = "GPL-3.0"
 edition = "2021"

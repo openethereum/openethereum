@@ -72,7 +72,6 @@ extern crate parity_rpc;
 extern crate parity_runtime;
 extern crate parity_version;
 extern crate prometheus;
-extern crate rpc_server;
 extern crate stats;
 
 extern crate rpc_servers;

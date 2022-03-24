@@ -1,4 +1,4 @@
-use rpc_server::http;
+use rpc_servers::http;
 use std::collections::HashSet;
 
 pub(crate) const DAPPS_DOMAIN: &'static str = "web3.site";

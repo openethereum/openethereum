@@ -20,6 +20,7 @@ use crate::{
     hash::keccak,
     metrics::MetricsConfiguration,
     miner::pool,
+    rpc::AdditionalEndpoint,
     sync::{self, validate_node_url, NetworkConfiguration},
 };
 use ansi_term::Colour;
@@ -858,6 +859,15 @@ impl Configuration {
         self.args.arg_jsonrpc_apis.clone()
     }
 
+    fn rpc_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
+        self.args
+            .arg_jsonrpc_additional_endpoints
+            .split(',')
+            .filter(|s| s.len() > 0)
+            .map(|s| s.parse())
+            .collect()
+    }
+
     fn cors(cors: &str) -> Option<Vec<String>> {
         match cors {
             "none" => return Some(Vec::new()),
@@ -928,6 +938,7 @@ impl Configuration {
             port: self.args.arg_ports_shift + self.args.arg_jsonrpc_port,
             apis: self.rpc_apis().parse()?,
             hosts: self.rpc_hosts(),
+            additional_endpoints: self.rpc_additional_endpoints()?,
             cors: self.rpc_cors(),
             server_threads: match self.args.arg_jsonrpc_server_threads {
                 Some(threads) if threads > 0 => threads,

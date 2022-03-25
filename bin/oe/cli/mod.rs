@@ -43,7 +43,7 @@ usage! {
             "Manage accounts",
 
             CMD cmd_account_new {
-                "Create a new account (and its associated key) for the given --chain (default: mainnet)",
+                "Create a new account (and its  associated key) for the given --chain (default: mainnet)",
             }
 
             CMD cmd_account_list {
@@ -416,6 +416,10 @@ usage! {
             ARG arg_jsonrpc_hosts: (String) = "none", or |c: &Config| c.rpc.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc-hosts=[HOSTS]",
             "List of allowed Host header values. This option will validate the Host header sent by the browser, it is additional security against some attack vectors. Special options: \"all\", \"none\",.",
+
+            ARG arg_jsonrpc_additional_endpoints: (String) = "", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            "--jsonrpc_additional_endpoints=[host1:port1|api1;api2,host2:port2|api3]",
+            "TODO",
 
             ARG arg_jsonrpc_threads: (usize) = 4usize, or |c: &Config| c.rpc.as_ref()?.processing_threads,
             "--jsonrpc-threads=[THREADS]",
@@ -896,6 +900,7 @@ struct Rpc {
     cors: Option<Vec<String>>,
     apis: Option<Vec<String>>,
     hosts: Option<Vec<String>>,
+    additional_endpoints: Option<Vec<String>>,
     server_threads: Option<usize>,
     processing_threads: Option<usize>,
     max_payload: Option<usize>,
@@ -1324,6 +1329,7 @@ mod tests {
                 arg_jsonrpc_cors: "null".into(),
                 arg_jsonrpc_apis: "web3,eth,net,parity,traces,rpc,secretstore".into(),
                 arg_jsonrpc_hosts: "none".into(),
+                arg_jsonrpc_additional_endpoints: "".into(),
                 arg_jsonrpc_server_threads: None,
                 arg_jsonrpc_threads: 4,
                 arg_jsonrpc_max_payload: None,
@@ -1539,6 +1545,7 @@ mod tests {
                     cors: None,
                     apis: None,
                     hosts: None,
+                    additional_endpoints: None,
                     server_threads: None,
                     processing_threads: None,
                     max_payload: None,

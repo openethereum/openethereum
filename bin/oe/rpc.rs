@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{collections::HashSet, io, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, io, path::PathBuf, str::FromStr, sync::Arc};
 
 use crate::{
     helpers::parity_ipc_path,
@@ -36,6 +36,45 @@ pub use parity_rpc::ws::{ws, Server as WsServer};
 pub const DAPPS_DOMAIN: &'static str = "web3.site";
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AdditionalEndpoint {
+    pub interface: String,
+    pub port: u16,
+    pub apis: ApiSet,
+}
+
+impl FromStr for AdditionalEndpoint {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 0 {
+            return Err("expected non empty string".into());
+        }
+
+        let split: Vec<&str> = s.split('|').collect();
+        if split.len() > 2 {
+            return Err(format!("expected host:port|api0;api2, but got: {}", s));
+        }
+
+        let url: Vec<&str> = split[0].split(':').collect();
+        if url.len() != 2 {
+            return Err(format!("expected host:port|api0;api2, but got: {}", s));
+        }
+
+        let apis = if split.len() == 1 {
+            "".into()
+        } else {
+            split[1].replace(";", ",")
+        };
+
+        Ok(Self {
+            interface: url[0].into(),
+            port: url[1].parse::<u16>().map_err(|e| e.to_string())?,
+            apis: apis.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct HttpConfiguration {
     pub enabled: bool,
     pub interface: String,
@@ -43,6 +82,7 @@ pub struct HttpConfiguration {
     pub apis: ApiSet,
     pub cors: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
+    pub additional_endpoints: Vec<AdditionalEndpoint>,
     pub server_threads: usize,
     pub processing_threads: usize,
     pub max_payload: usize,
@@ -58,6 +98,7 @@ impl Default for HttpConfiguration {
             apis: ApiSet::UnsafeContext,
             cors: Some(vec![]),
             hosts: Some(vec![]),
+            additional_endpoints: vec![],
             server_threads: 1,
             processing_threads: 4,
             max_payload: 5,
@@ -219,14 +260,29 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
 	}
 }
 
+fn format_error(
+    id: &str,
+    options: &str,
+    e: std::io::Result<HttpServer>,
+    url: &str,
+) -> Result<HttpServer, String> {
+    match e {
+        Ok(server) => Ok(server),
+        Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
+            format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
+        ),
+        Err(e) => Err(format!("{} error: {:?}", id, e)),
+    }
+}
+
 pub fn new_http<D: rpc_apis::Dependencies>(
     id: &str,
     options: &str,
     conf: HttpConfiguration,
     deps: &Dependencies<D>,
-) -> Result<Option<HttpServer>, String> {
+) -> Result<Vec<HttpServer>, String> {
     if !conf.enabled {
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     let domain = DAPPS_DOMAIN;
@@ -240,25 +296,51 @@ pub fn new_http<D: rpc_apis::Dependencies>(
     let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
     let health_api = Some(("/api/health", "parity_nodeStatus"));
 
-    let start_result = rpc_servers::start_http(
-        &addr,
-        cors_domains,
-        allowed_hosts,
-        health_api,
-        handler,
-        rpc::RpcExtractor,
-        conf.server_threads,
-        conf.max_payload,
-        conf.keep_alive,
-    );
+    let mut servers = Vec::default();
 
-    match start_result {
-		Ok(server) => Ok(Some(server)),
-		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
-			format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
-		),
-		Err(e) => Err(format!("{} error: {:?}", id, e)),
-	}
+    servers.push(format_error(
+        id,
+        options,
+        rpc_servers::start_http(
+            &addr,
+            cors_domains.clone(),
+            allowed_hosts.clone(),
+            health_api,
+            handler,
+            rpc::RpcExtractor,
+            conf.server_threads,
+            conf.max_payload,
+            conf.keep_alive,
+        ),
+        &url,
+    )?);
+
+    for endpoint in conf.additional_endpoints {
+        let url = format!("{}:{}", endpoint.interface, endpoint.port);
+        let addr = url
+            .parse()
+            .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+        let handler = setup_apis(endpoint.apis, deps);
+
+        servers.push(format_error(
+            id,
+            options,
+            rpc_servers::start_http(
+                &addr,
+                cors_domains.clone(),
+                allowed_hosts.clone(),
+                health_api,
+                handler,
+                rpc::RpcExtractor,
+                conf.server_threads,
+                conf.max_payload,
+                conf.keep_alive,
+            ),
+            &url,
+        )?);
+    }
+
+    Ok(servers)
 }
 
 pub fn new_ipc<D: rpc_apis::Dependencies>(

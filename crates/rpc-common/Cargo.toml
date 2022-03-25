@@ -1,0 +1,14 @@
+[package]
+name = "oe-rpc-common"
+version = "0.0.0"
+edition = "2021"
+description = "Modules common to RPC APIs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0"
+rustc-hex = "1.0"
+
+[dev-dependencies]
+serde_json = "1.0"

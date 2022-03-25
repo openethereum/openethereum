@@ -35,7 +35,7 @@ pub fn serve() -> (Server<ws::Server>, usize, GuardedAuthCodes) {
     let stats = Arc::new(informant::RpcStats::default());
 
     let res = Server::new(|_| {
-        ::start_ws(
+        rpc_servers::start_ws(
             &address,
             io,
             ws::DomainsValidation::Disabled,

@@ -55,6 +55,8 @@ parity-version = { path = "../util/version" }
 rlp = { version = "0.4.6" }
 stats = { path = "../util/stats" }
 vm = { path = "../vm/vm" }
+rpc-servers = { path = "../rpc-servers", package = "oe-rpc-servers" }
+rpc-common = { path = "../rpc-common", package = "oe-rpc-common" }
 
 [dev-dependencies]
 ethcore = { path = "../ethcore", features = ["test-helpers"] }
@@ -65,6 +67,7 @@ fake-fetch = { path = "../net/fake-fetch" }
 macros = { path = "../util/macros" }
 pretty_assertions = "0.1"
 txpool = { path = "../transaction-pool" }
+tempdir = "0.3.7"
 
 [features]
 accounts = ["ethcore-accounts"]

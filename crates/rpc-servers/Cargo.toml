@@ -1,0 +1,14 @@
+[package]
+description = "OpenEthereum RPC servers (WS, HTTP, IPC)"
+name = "oe-rpc-servers"
+version = "0.0.0"
+license = "GPL-3.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+jsonrpc-core = "15.0.0"
+http = { package = "jsonrpc-http-server", version = "15.0.0" }
+ipc = { package = "jsonrpc-ipc-server", version = "15.0.0" }
+ws = { package = "jsonrpc-ws-server", version = "15.0.0" }

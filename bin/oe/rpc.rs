@@ -135,6 +135,7 @@ pub struct WsConfiguration {
     pub interface: String,
     pub port: u16,
     pub apis: ApiSet,
+    pub additional_endpoints: Vec<AdditionalEndpoint>,
     pub max_connections: usize,
     pub origins: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
@@ -151,6 +152,7 @@ impl Default for WsConfiguration {
             interface: "127.0.0.1".into(),
             port: 8546,
             apis: ApiSet::UnsafeContext,
+            additional_endpoints: vec![],
             max_connections: 100,
             origins: Some(vec![
                 "parity://*".into(),
@@ -193,12 +195,24 @@ pub struct Dependencies<D: rpc_apis::Dependencies> {
     pub stats: Arc<RpcStats>,
 }
 
+fn format_ws_error(url: &str, e: Result<WsServer, rpc::ws::Error>) -> Result<WsServer, String> {
+    match e {
+		Ok(server) => Ok(server),
+		Err(rpc::ws::Error::WsError(ws::Error {
+			                            kind: ws::ErrorKind::Io(ref err), ..
+		                            })) if err.kind() == io::ErrorKind::AddrInUse => Err(
+			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
+		),
+		Err(e) => Err(format!("WebSockets error: {:?}", e)),
+	}
+}
+
 pub fn new_ws<D: rpc_apis::Dependencies>(
     conf: WsConfiguration,
     deps: &Dependencies<D>,
-) -> Result<Option<WsServer>, String> {
+) -> Result<Vec<WsServer>, String> {
     if !conf.enabled {
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     let domain = DAPPS_DOMAIN;
@@ -230,37 +244,62 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
         }
         false => None,
     };
-    let start_result = rpc_servers::start_ws(
-        &addr,
-        handler,
-        allowed_origins,
-        allowed_hosts,
-        conf.max_connections,
-        rpc::WsExtractor::new(path.clone()),
-        rpc::WsExtractor::new(path.clone()),
-        rpc::WsStats::new(deps.stats.clone()),
-        conf.max_payload,
-    );
 
-    //	match start_result {
-    //		Ok(server) => Ok(Some(server)),
-    //		Err(rpc::ws::Error::Io(rpc::ws::ErrorKind::Io(ref err), _)) if err.kind() == io::ErrorKind::AddrInUse => Err(
-    //			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
-    //		),
-    //		Err(e) => Err(format!("WebSockets error: {:?}", e)),
-    //	}
-    match start_result {
-		Ok(server) => Ok(Some(server)),
-		Err(rpc::ws::Error::WsError(ws::Error {
-			                            kind: ws::ErrorKind::Io(ref err), ..
-		                            })) if err.kind() == io::ErrorKind::AddrInUse => Err(
-			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
-		),
-		Err(e) => Err(format!("WebSockets error: {:?}", e)),
-	}
+    let mut servers = Vec::default();
+
+    servers.push(format_ws_error(
+        &url,
+        rpc_servers::start_ws(
+            &addr,
+            handler,
+            allowed_origins.clone(),
+            allowed_hosts.clone(),
+            conf.max_connections,
+            rpc::WsExtractor::new(path.clone()),
+            rpc::WsExtractor::new(path.clone()),
+            rpc::WsStats::new(deps.stats.clone()),
+            conf.max_payload,
+        ),
+    )?);
+
+    for endpoint in conf.additional_endpoints {
+        let url = format!("{}:{}", endpoint.interface, endpoint.port);
+        let addr = url
+            .parse()
+            .map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
+
+        let full_handler = setup_apis(rpc_apis::ApiSet::All, deps);
+        let handler = {
+            let mut handler = MetaIoHandler::with_middleware((
+                rpc::WsDispatcher::new(full_handler),
+                Middleware::new(deps.stats.clone(), deps.apis.activity_notifier()),
+            ));
+            let apis = endpoint.apis.list_apis();
+            deps.apis.extend_with_set(&mut handler, &apis);
+
+            handler
+        };
+
+        servers.push(format_ws_error(
+            &url,
+            rpc_servers::start_ws(
+                &addr,
+                handler,
+                allowed_origins.clone(),
+                allowed_hosts.clone(),
+                conf.max_connections,
+                rpc::WsExtractor::new(path.clone()),
+                rpc::WsExtractor::new(path.clone()),
+                rpc::WsStats::new(deps.stats.clone()),
+                conf.max_payload,
+            ),
+        )?);
+    }
+
+    Ok(servers)
 }
 
-fn format_error(
+fn format_rpc_error(
     id: &str,
     options: &str,
     e: std::io::Result<HttpServer>,
@@ -298,7 +337,7 @@ pub fn new_http<D: rpc_apis::Dependencies>(
 
     let mut servers = Vec::default();
 
-    servers.push(format_error(
+    servers.push(format_rpc_error(
         id,
         options,
         rpc_servers::start_http(
@@ -322,7 +361,7 @@ pub fn new_http<D: rpc_apis::Dependencies>(
             .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
         let handler = setup_apis(endpoint.apis, deps);
 
-        servers.push(format_error(
+        servers.push(format_rpc_error(
             id,
             options,
             rpc_servers::start_http(

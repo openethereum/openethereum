@@ -419,7 +419,7 @@ usage! {
 
             ARG arg_jsonrpc_additional_endpoints: (String) = "", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
             "--jsonrpc_additional_endpoints=[host1:port1|api1;api2,host2:port2|api3]",
-            "TODO",
+            "List of additional HTTP JSON-RPC endpoints. For each endpoint you should include host, port and apis.",
 
             ARG arg_jsonrpc_threads: (usize) = 4usize, or |c: &Config| c.rpc.as_ref()?.processing_threads,
             "--jsonrpc-threads=[THREADS]",
@@ -465,6 +465,10 @@ usage! {
             ARG arg_ws_hosts: (String) = "none", or |c: &Config| c.websockets.as_ref()?.hosts.as_ref().map(|vec| vec.join(",")),
             "--ws-hosts=[HOSTS]",
             "List of allowed Host header values. This option will validate the Host header sent by the browser, it is additional security against some attack vectors. Special options: \"all\", \"none\".",
+
+            ARG arg_ws_additional_endpoints: (String) = "", or |c: &Config| c.rpc.as_ref()?.apis.as_ref().map(|vec| vec.join(",")),
+            "--ws_additional_endpoints=[host1:port1|api1;api2,host2:port2|api3]",
+            "List of additional WebSockets JSON-RPC endpoints. For each endpoint you should include host, port and apis.",
 
             ARG arg_ws_max_connections: (usize) = 100usize, or |c: &Config| c.websockets.as_ref()?.max_connections,
             "--ws-max-connections=[CONN]",
@@ -1343,6 +1347,7 @@ mod tests {
                 arg_ws_apis: "web3,eth,net,parity,traces,rpc,secretstore".into(),
                 arg_ws_origins: "none".into(),
                 arg_ws_hosts: "none".into(),
+                arg_ws_additional_endpoints: "".into(),
                 arg_ws_max_connections: 100,
                 arg_ws_max_payload: 5,
 

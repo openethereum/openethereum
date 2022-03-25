@@ -859,13 +859,19 @@ impl Configuration {
         self.args.arg_jsonrpc_apis.clone()
     }
 
-    fn rpc_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
-        self.args
-            .arg_jsonrpc_additional_endpoints
-            .split(',')
+    fn parse_additional_endpoints(s: &str) -> Result<Vec<AdditionalEndpoint>, String> {
+        s.split(',')
             .filter(|s| s.len() > 0)
             .map(|s| s.parse())
             .collect()
+    }
+
+    fn rpc_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
+        Self::parse_additional_endpoints(&self.args.arg_jsonrpc_additional_endpoints)
+    }
+
+    fn ws_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
+        Self::parse_additional_endpoints(&self.args.arg_ws_additional_endpoints)
     }
 
     fn cors(cors: &str) -> Option<Vec<String>> {
@@ -965,6 +971,7 @@ impl Configuration {
             interface: self.ws_interface(),
             port: self.args.arg_ports_shift + self.args.arg_ws_port,
             apis: self.args.arg_ws_apis.parse()?,
+            additional_endpoints: self.ws_additional_endpoints()?,
             hosts: self.ws_hosts(),
             origins: self.ws_origins(),
             signer_path: self.directories().signer.into(),
@@ -1501,6 +1508,7 @@ mod tests {
                     interface: "127.0.0.1".into(),
                     port: 8546,
                     apis: ApiSet::UnsafeContext,
+                    additional_endpoints: vec![],
                     origins: Some(vec![
                         "parity://*".into(),
                         "chrome-extension://*".into(),

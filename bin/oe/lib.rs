@@ -107,6 +107,7 @@ mod params;
 mod presale;
 mod rpc;
 mod rpc_apis;
+mod rpc_endpoint;
 mod run;
 mod secretstore;
 mod signer;

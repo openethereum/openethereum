@@ -20,7 +20,7 @@ use crate::{
     hash::keccak,
     metrics::MetricsConfiguration,
     miner::pool,
-    rpc::AdditionalEndpoint,
+    rpc_endpoint::Endpoint,
     sync::{self, validate_node_url, NetworkConfiguration},
 };
 use ansi_term::Colour;
@@ -859,18 +859,18 @@ impl Configuration {
         self.args.arg_jsonrpc_apis.clone()
     }
 
-    fn parse_additional_endpoints(s: &str) -> Result<Vec<AdditionalEndpoint>, String> {
+    fn parse_additional_endpoints(s: &str) -> Result<Vec<Endpoint>, String> {
         s.split(',')
             .filter(|s| s.len() > 0)
             .map(|s| s.parse())
             .collect()
     }
 
-    fn rpc_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
+    fn rpc_additional_endpoints(&self) -> Result<Vec<Endpoint>, String> {
         Self::parse_additional_endpoints(&self.args.arg_jsonrpc_additional_endpoints)
     }
 
-    fn ws_additional_endpoints(&self) -> Result<Vec<AdditionalEndpoint>, String> {
+    fn ws_additional_endpoints(&self) -> Result<Vec<Endpoint>, String> {
         Self::parse_additional_endpoints(&self.args.arg_ws_additional_endpoints)
     }
 
@@ -1067,17 +1067,22 @@ impl Configuration {
         )
     }
 
-    fn interface(&self, interface: &str) -> String {
-        if self.args.flag_unsafe_expose {
-            return "0.0.0.0".into();
-        }
-
+    /// Maps "local" and "all" interfaces into appropriate ip address
+    pub fn map_interface(interface: &str) -> String {
         match interface {
             "all" => "0.0.0.0",
             "local" => "127.0.0.1",
             x => x,
         }
         .into()
+    }
+
+    fn interface(&self, interface: &str) -> String {
+        if self.args.flag_unsafe_expose {
+            return "0.0.0.0".into();
+        }
+
+        Self::map_interface(interface)
     }
 
     fn rpc_interface(&self) -> String {

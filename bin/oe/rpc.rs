@@ -19,7 +19,7 @@ use std::{collections::HashSet, io, path::PathBuf, sync::Arc};
 use crate::{
     helpers::parity_ipc_path,
     rpc_apis::{self, ApiSet},
-    rpc_endpoint::Endpoint,
+    rpc_endpoint::RpcEndpoint,
 };
 use dir::{default_data_path, helpers::replace_home};
 use jsonrpc_core::MetaIoHandler;
@@ -44,7 +44,7 @@ pub struct HttpConfiguration {
     pub apis: ApiSet,
     pub cors: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
-    pub additional_endpoints: Vec<Endpoint>,
+    pub additional_endpoints: Vec<RpcEndpoint>,
     pub server_threads: usize,
     pub processing_threads: usize,
     pub max_payload: usize,
@@ -97,7 +97,7 @@ pub struct WsConfiguration {
     pub interface: String,
     pub port: u16,
     pub apis: ApiSet,
-    pub additional_endpoints: Vec<Endpoint>,
+    pub additional_endpoints: Vec<RpcEndpoint>,
     pub max_connections: usize,
     pub origins: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
@@ -178,7 +178,7 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
     };
 
     let mut endpoints = conf.additional_endpoints;
-    endpoints.push(Endpoint {
+    endpoints.push(RpcEndpoint {
         interface: conf.interface,
         port: conf.port,
         apis: conf.apis,
@@ -249,7 +249,7 @@ pub fn new_http<D: rpc_apis::Dependencies>(
     let health_api = Some(("/api/health", "parity_nodeStatus"));
 
     let mut endpoints = conf.additional_endpoints;
-    endpoints.push(Endpoint {
+    endpoints.push(RpcEndpoint {
         interface: conf.interface,
         port: conf.port,
         apis: conf.apis,

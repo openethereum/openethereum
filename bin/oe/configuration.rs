@@ -20,7 +20,7 @@ use crate::{
     hash::keccak,
     metrics::MetricsConfiguration,
     miner::pool,
-    rpc_endpoint::Endpoint,
+    rpc_endpoint::RpcEndpoint,
     sync::{self, validate_node_url, NetworkConfiguration},
 };
 use ansi_term::Colour;
@@ -859,18 +859,18 @@ impl Configuration {
         self.args.arg_jsonrpc_apis.clone()
     }
 
-    fn parse_additional_endpoints(s: &str) -> Result<Vec<Endpoint>, String> {
+    fn parse_additional_endpoints(s: &str) -> Result<Vec<RpcEndpoint>, String> {
         s.split(',')
             .filter(|s| s.len() > 0)
             .map(|s| s.parse())
             .collect()
     }
 
-    fn rpc_additional_endpoints(&self) -> Result<Vec<Endpoint>, String> {
+    fn rpc_additional_endpoints(&self) -> Result<Vec<RpcEndpoint>, String> {
         Self::parse_additional_endpoints(&self.args.arg_jsonrpc_additional_endpoints)
     }
 
-    fn ws_additional_endpoints(&self) -> Result<Vec<Endpoint>, String> {
+    fn ws_additional_endpoints(&self) -> Result<Vec<RpcEndpoint>, String> {
         Self::parse_additional_endpoints(&self.args.arg_ws_additional_endpoints)
     }
 

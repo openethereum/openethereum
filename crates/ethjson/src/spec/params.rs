@@ -170,6 +170,8 @@ pub struct Params {
     pub eip1559_fee_collector_transition: Option<Uint>,
     /// Block at which zero gas price transactions start being checked with Certifier contract.
     pub validate_service_transactions_transition: Option<Uint>,
+    /// The amount of total difficulty reached by the network that triggers the consensus upgrade (see EIP-3565)
+    pub terminal_total_difficulty: Option<Uint>,
 }
 
 #[cfg(test)]

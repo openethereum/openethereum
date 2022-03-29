@@ -36,8 +36,8 @@ use vm::{AccessList, ActionParams, ActionValue, CallType, EnvInfo, ParamsType};
 
 use builtin::Builtin;
 use engines::{
-    AuthorityRound, BasicAuthority, Clique, EthEngine, InstantSeal, InstantSealParams, NullEngine,
-    DEFAULT_BLOCKHASH_CONTRACT,
+    AuthorityRound, BasicAuthority, Beacon, Clique, EthEngine, InstantSeal, InstantSealParams,
+    NullEngine, DEFAULT_BLOCKHASH_CONTRACT,
 };
 use error::Error;
 use executive::Executive;
@@ -195,6 +195,8 @@ pub struct CommonParams {
     pub eip1559_fee_collector_transition: BlockNumber,
     /// Block at which zero gas price transactions start being checked with Certifier contract.
     pub validate_service_transactions_transition: BlockNumber,
+    /// The amount of total difficulty reached by the network that triggers the consensus upgrade (see EIP-3565)
+    pub terminal_total_difficulty: Option<U256>,
 }
 
 impl CommonParams {
@@ -483,6 +485,7 @@ impl From<ethjson::spec::Params> for CommonParams {
             validate_service_transactions_transition: p
                 .validate_service_transactions_transition
                 .map_or_else(BlockNumber::max_value, Into::into),
+            terminal_total_difficulty: p.terminal_total_difficulty.map(Into::into),
         }
     }
 }
@@ -767,51 +770,58 @@ impl Spec {
             hard_forks.insert(1);
         }
 
+        let is_pos = params.terminal_total_difficulty.is_some();
+
         let machine = Self::machine(&engine_spec, params, builtins);
 
-        let engine: Arc<dyn EthEngine> = match engine_spec {
-            ethjson::spec::Engine::Null(null) => {
-                Arc::new(NullEngine::new(null.params.into(), machine))
-            }
-            ethjson::spec::Engine::Ethash(ethash) => {
-                // Specific transitions for Ethash-based networks
-                for block in &[
-                    ethash.params.homestead_transition,
-                    ethash.params.dao_hardfork_transition,
-                ] {
-                    if let Some(block) = *block {
-                        hard_forks.insert(block.into());
-                    }
+        let engine: Arc<dyn EthEngine> = if is_pos {
+            // Use Beacon chain engine if POS protocol is enabled
+            Arc::new(Beacon::new(machine))
+        } else {
+            match engine_spec {
+                ethjson::spec::Engine::Null(null) => {
+                    Arc::new(NullEngine::new(null.params.into(), machine))
                 }
-
-                // Ethereum's difficulty bomb delay is a fork too
-                if let Some(delays) = &ethash.params.difficulty_bomb_delays {
-                    for delay in delays.keys().copied() {
-                        hard_forks.insert(delay.into());
+                ethjson::spec::Engine::Ethash(ethash) => {
+                    // Specific transitions for Ethash-based networks
+                    for block in &[
+                        ethash.params.homestead_transition,
+                        ethash.params.dao_hardfork_transition,
+                    ] {
+                        if let Some(block) = *block {
+                            hard_forks.insert(block.into());
+                        }
                     }
-                }
 
-                Arc::new(::ethereum::Ethash::new(
-                    spec_params.cache_dir,
-                    ethash.params.into(),
-                    machine,
-                    spec_params.optimization_setting,
-                ))
-            }
-            ethjson::spec::Engine::InstantSeal(Some(instant_seal)) => {
-                Arc::new(InstantSeal::new(instant_seal.params.into(), machine))
-            }
-            ethjson::spec::Engine::InstantSeal(None) => {
-                Arc::new(InstantSeal::new(InstantSealParams::default(), machine))
-            }
-            ethjson::spec::Engine::BasicAuthority(basic_authority) => {
-                Arc::new(BasicAuthority::new(basic_authority.params.into(), machine))
-            }
-            ethjson::spec::Engine::Clique(clique) => Clique::new(clique.params.into(), machine)
-                .expect("Failed to start Clique consensus engine."),
-            ethjson::spec::Engine::AuthorityRound(authority_round) => {
-                AuthorityRound::new(authority_round.params.into(), machine)
-                    .expect("Failed to start AuthorityRound consensus engine.")
+                    // Ethereum's difficulty bomb delay is a fork too
+                    if let Some(delays) = &ethash.params.difficulty_bomb_delays {
+                        for delay in delays.keys().copied() {
+                            hard_forks.insert(delay.into());
+                        }
+                    }
+
+                    Arc::new(::ethereum::Ethash::new(
+                        spec_params.cache_dir,
+                        ethash.params.into(),
+                        machine,
+                        spec_params.optimization_setting,
+                    ))
+                }
+                ethjson::spec::Engine::InstantSeal(Some(instant_seal)) => {
+                    Arc::new(InstantSeal::new(instant_seal.params.into(), machine))
+                }
+                ethjson::spec::Engine::InstantSeal(None) => {
+                    Arc::new(InstantSeal::new(InstantSealParams::default(), machine))
+                }
+                ethjson::spec::Engine::BasicAuthority(basic_authority) => {
+                    Arc::new(BasicAuthority::new(basic_authority.params.into(), machine))
+                }
+                ethjson::spec::Engine::Clique(clique) => Clique::new(clique.params.into(), machine)
+                    .expect("Failed to start Clique consensus engine."),
+                ethjson::spec::Engine::AuthorityRound(authority_round) => {
+                    AuthorityRound::new(authority_round.params.into(), machine)
+                        .expect("Failed to start AuthorityRound consensus engine.")
+                }
             }
         };
 

@@ -44,9 +44,10 @@ use types::{
 
 use block::{Drain, OpenBlock};
 use client::{
-    ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock, PrepareOpenBlock,
+    BlockInfo, ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock,
+    PrepareOpenBlock,
 };
-use engines::EngineSigner;
+use engines::{EngineSigner, Seal};
 use ethjson::crypto::publickey::{Public, Signature};
 use factory::Factories;
 use miner::Miner;
@@ -318,6 +319,44 @@ pub fn push_block_with_transactions(client: &Arc<Client>, transactions: &[Signed
 
     client.flush_queue();
     client.import_verified_blocks();
+}
+
+pub fn push_block_with_transactions_and_author(
+    client: &Arc<Client>,
+    transactions: &[SignedTransaction],
+    author: Address,
+    signer: Option<Box<dyn EngineSigner>>,
+) {
+    let test_engine = client.engine();
+
+    let mut b = client
+        .prepare_open_block(author, (0.into(), 5000000.into()), Bytes::new())
+        .unwrap();
+
+    for t in transactions {
+        b.push_transaction(t.clone(), None).unwrap();
+    }
+    let b = b.close_and_lock().unwrap();
+
+    test_engine.set_signer(signer);
+    let parent_header = client.best_block_header();
+    let b = match client.engine().generate_seal(&b, &parent_header) {
+        Seal::Regular(seal) => b.seal(&*client.engine(), seal).unwrap(),
+        _ => panic!("error generating seal"),
+    };
+
+    if let Err(e) = client.import_block(
+        Unverified::from_rlp(b.rlp_bytes(), client.engine().params().eip1559_transition).unwrap(),
+    ) {
+        panic!(
+            "error importing block which is valid by definition: {:?}",
+            e
+        );
+    }
+
+    client.flush_queue();
+    client.import_verified_blocks();
+    test_engine.step();
 }
 
 /// Creates dummy client (not test client) with corresponding blocks

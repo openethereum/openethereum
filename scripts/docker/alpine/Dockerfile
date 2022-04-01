@@ -1,4 +1,4 @@
-FROM alpine:latest AS builder
+FROM alpine:3.13.2 AS builder
 
 # show backtraces
 ENV RUST_BACKTRACE 1
@@ -18,7 +18,7 @@ COPY . /openethereum
 RUN cargo build --release --features final --target x86_64-alpine-linux-musl --verbose
 RUN strip target/x86_64-alpine-linux-musl/release/openethereum
 
-FROM alpine:latest
+FROM alpine:3.13.2
 
 # show backtraces
 ENV RUST_BACKTRACE 1

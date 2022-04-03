@@ -1245,6 +1245,12 @@ impl Spec {
     pub fn new_validator_multi() -> Self {
         load_bundled!("test/validator_multi")
     }
+
+    /// Create a new Spec which uses Beacon Chain as underlying consensus engine.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_test_beacon() -> Self {
+        load_bundled!("test/beacon_test")
+    }
 }
 
 #[cfg(test)]

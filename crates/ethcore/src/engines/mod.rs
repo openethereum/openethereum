@@ -27,6 +27,9 @@ mod validator_set;
 pub mod block_reward;
 pub mod signer;
 
+#[cfg(test)]
+mod tests;
+
 pub use self::{
     authority_round::AuthorityRound,
     basic_authority::BasicAuthority,

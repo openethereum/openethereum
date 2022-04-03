@@ -44,7 +44,8 @@ use types::{
 
 use block::{Drain, OpenBlock};
 use client::{
-    ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock, PrepareOpenBlock,
+    BlockChainClient, BlockInfo, ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig,
+    ImportBlock, PrepareOpenBlock,
 };
 use engines::EngineSigner;
 use ethjson::crypto::publickey::{Public, Signature};
@@ -54,6 +55,110 @@ use spec::Spec;
 use state::*;
 use state_db::StateDB;
 use verification::queue::kind::blocks::Unverified;
+
+pub struct TestBlockBuilder {
+    client: Arc<Client>,
+    author: Address,
+    difficulty: Option<U256>,
+    seal: Vec<Bytes>,
+    extra_data: Bytes,
+    transactions: Vec<SignedTransaction>,
+}
+
+impl TestBlockBuilder {
+    pub fn new(client: Arc<Client>) -> Self {
+        Self {
+            client,
+            author: Address::zero(),
+            difficulty: None,
+            seal: vec![],
+            extra_data: vec![],
+            transactions: vec![],
+        }
+    }
+
+    pub fn set_author(mut self, author: Address) -> Self {
+        self.author = author;
+        self
+    }
+
+    pub fn set_difficulty(mut self, difficulty: U256) -> Self {
+        self.difficulty = Some(difficulty);
+        self
+    }
+
+    pub fn set_seal(mut self, seal: Vec<Bytes>) -> Self {
+        self.seal = seal;
+        self
+    }
+
+    pub fn set_extra_data(mut self, extra_data: Bytes) -> Self {
+        self.extra_data = extra_data;
+        self
+    }
+
+    pub fn set_transactions(mut self, transactions: Vec<SignedTransaction>) -> Self {
+        self.transactions = transactions;
+        self
+    }
+
+    pub fn add_transactions(mut self, transactions: Vec<SignedTransaction>) -> Self {
+        self.transactions.extend_from_slice(&transactions[..]);
+        self
+    }
+
+    pub fn add_transaction(self, transaction: SignedTransaction) -> Self {
+        self.add_transactions(vec![transaction])
+    }
+
+    pub fn build(&self) -> Bytes {
+        let engine = self.client.engine();
+
+        let last_hashes = self.client.last_hashes();
+        let last_header = self.client.best_block_header();
+
+        let db = self
+            .client
+            .state_db()
+            .boxed_clone_canon(&last_header.hash());
+
+        let mut b = OpenBlock::new(
+            engine,
+            Default::default(),
+            false,
+            db,
+            &last_header,
+            Arc::new(last_hashes),
+            self.author,
+            (3141562.into(), 31415620.into()),
+            self.extra_data.clone(),
+            false,
+            None,
+        )
+        .unwrap();
+
+        // Force difficulty if specified. Otherwise, the
+        // value set by engine will be kept.
+        match self.difficulty {
+            Some(difficulty) => {
+                b.block_mut().header.set_difficulty(difficulty);
+            }
+            None => {}
+        }
+
+        for tx in self.transactions.iter() {
+            b.push_transaction(tx.clone(), None).unwrap();
+        }
+
+        let b = b
+            .close_and_lock()
+            .unwrap()
+            .seal(engine, self.seal.clone())
+            .unwrap();
+
+        b.rlp_bytes()
+    }
+}
 
 /// Creates test block with corresponding header
 pub fn create_test_block(header: &Header) -> Bytes {

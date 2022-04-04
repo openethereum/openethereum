@@ -102,6 +102,10 @@ pub struct AuthorityRoundParams {
     /// The block number at which the consensus engine switches from AuRa to AuRa with POSDAO
     /// modifications.
     pub posdao_transition: Option<Uint>,
+    /// The block numbers at which the bytecodes should be rewritten for
+    /// the specified contracts (can be more than one per block)
+    #[serde(rename = "rewriteBytecode")]
+    pub rewrite_bytecode_transitions: Option<BTreeMap<Uint, BTreeMap<Address, Bytes>>>,
 }
 
 /// Authority engine deserialization.
@@ -118,6 +122,7 @@ mod tests {
 
     use super::BlockReward;
     use crate::{
+        bytes::Bytes,
         hash::Address,
         spec::{
             authority_round::AuthorityRound, step_duration::StepDuration,
@@ -237,6 +242,71 @@ mod tests {
         assert_eq!(
             deserialized.params.block_reward,
             Some(BlockReward::Multi(rewards))
+        );
+    }
+
+    #[test]
+    fn authority_round_deserialization_rewrite_bytecode_transitions() {
+        let s = r#"{
+			"params": {
+				"stepDuration": "0x02",
+				"validators": {
+					"contract" : "0xc6d9d2cd449a754c494264e1809c50e34d64562b"
+				},
+				"blockReward": {
+                    "0": 5000000,
+                    "100": 150
+                },
+                "rewriteBytecode": {
+                  "21300000": {
+                    "0x1234000000000000000000000000000000000001": "0x111",
+                    "0x1234000000000000000000000000000000000002": "0x222"
+                  },
+                  "21300001": {
+                    "0x1234000000000000000000000000000000000003": "0x333",
+                    "0x1234000000000000000000000000000000000004": "0x444"
+                  }
+                }
+			}
+		}"#;
+        let deserialized: AuthorityRound = serde_json::from_str(s).unwrap();
+        assert_eq!(
+            deserialized.params.step_duration,
+            StepDuration::Single(Uint(U256::from(0x02)))
+        );
+        assert_eq!(
+            deserialized.params.validators,
+            ValidatorSet::Contract(Address(
+                H160::from_str("c6d9d2cd449a754c494264e1809c50e34d64562b").unwrap()
+            ))
+        );
+
+        let mut rewrite_bytecode1: BTreeMap<Address, Bytes> = BTreeMap::new();
+        rewrite_bytecode1.insert(
+            Address(H160::from_str("1234000000000000000000000000000000000001").unwrap()),
+            Bytes::from_str("0x111").unwrap(),
+        );
+        rewrite_bytecode1.insert(
+            Address(H160::from_str("1234000000000000000000000000000000000002").unwrap()),
+            Bytes::from_str("0x222").unwrap(),
+        );
+        let mut rewrite_bytecode2: BTreeMap<Address, Bytes> = BTreeMap::new();
+        rewrite_bytecode2.insert(
+            Address(H160::from_str("1234000000000000000000000000000000000003").unwrap()),
+            Bytes::from_str("0x333").unwrap(),
+        );
+        rewrite_bytecode2.insert(
+            Address(H160::from_str("1234000000000000000000000000000000000004").unwrap()),
+            Bytes::from_str("0x444").unwrap(),
+        );
+
+        let mut rewrite_bytecode_transitions: BTreeMap<Uint, BTreeMap<Address, Bytes>> =
+            BTreeMap::new();
+        rewrite_bytecode_transitions.insert(Uint(21300000.into()), rewrite_bytecode1);
+        rewrite_bytecode_transitions.insert(Uint(21300001.into()), rewrite_bytecode2);
+        assert_eq!(
+            deserialized.params.rewrite_bytecode_transitions,
+            Some(rewrite_bytecode_transitions)
         );
     }
 }

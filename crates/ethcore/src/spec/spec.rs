@@ -1206,6 +1206,10 @@ impl Spec {
         load_bundled!("test/authority_round_block_reward_contract")
     }
 
+    pub fn new_test_round_rewrite_bytecode_transitions() -> Self {
+        load_bundled!("test/authority_round_rewrite_bytecode_transitions")
+    }
+
     /// TestList.sol used in both specs: https://github.com/paritytech/contracts/pull/30/files (link not valid)
     /// Accounts with secrets keccak("0") and keccak("1") are initially the validators.
     /// Create a new Spec with BasicAuthority which uses a contract at address 5 to determine

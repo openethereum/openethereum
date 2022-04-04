@@ -44,8 +44,8 @@ use types::{
 
 use block::{Drain, OpenBlock};
 use client::{
-    BlockInfo, ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig, ImportBlock,
-    PrepareOpenBlock,
+    BlockChainClient, BlockInfo, ChainInfo, ChainMessageType, ChainNotify, Client, ClientConfig,
+    ImportBlock, PrepareOpenBlock,
 };
 use engines::{EngineSigner, Seal};
 use ethjson::crypto::publickey::{Public, Signature};

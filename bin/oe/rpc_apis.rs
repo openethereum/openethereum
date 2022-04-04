@@ -71,6 +71,8 @@ pub enum Api {
     /// Geth-compatible (best-effort) debug API (Potentially UNSAFE)
     /// NOTE We don't aim to support all methods, only the ones that are useful.
     Debug,
+    /// Engine API (https://github.com/ethereum/execution-apis/blob/main/src/engine/specification.md)
+    Engine,
 }
 
 impl FromStr for Api {
@@ -94,6 +96,7 @@ impl FromStr for Api {
             "signer" => Ok(Signer),
             "traces" => Ok(Traces),
             "web3" => Ok(Web3),
+            "engine" => Ok(Engine),
             api => Err(format!("Unknown api: {}", api)),
         }
     }
@@ -174,6 +177,7 @@ fn to_modules(apis: &HashSet<Api>) -> BTreeMap<String, String> {
             Api::Signer => ("signer", "1.0"),
             Api::Traces => ("traces", "1.0"),
             Api::Web3 => ("web3", "1.0"),
+            Api::Engine => ("engine", "1.0"),
         };
         modules.insert(name.into(), version.into());
     }
@@ -245,6 +249,7 @@ impl FullDependencies {
     ) where
         S: core::Middleware<Metadata>,
     {
+        use engine_api::v1::{Engine, EngineClient};
         use parity_rpc::v1::*;
 
         let nonces = Arc::new(Mutex::new(dispatch::Reservations::new(
@@ -418,6 +423,9 @@ impl FullDependencies {
                     #[cfg(feature = "accounts")]
                     handler.extend_with(SecretStoreClient::new(&self.accounts).to_delegate());
                 }
+                Api::Engine => {
+                    handler.extend_with(EngineClient::new().to_delegate());
+                }
             }
         }
     }
@@ -516,6 +524,7 @@ mod test {
         assert_eq!(Api::Traces, "traces".parse().unwrap());
         assert_eq!(Api::Rpc, "rpc".parse().unwrap());
         assert_eq!(Api::SecretStore, "secretstore".parse().unwrap());
+        assert_eq!(Api::Engine, "engine".parse().unwrap());
         assert!("rp".parse::<Api>().is_err());
     }
 
@@ -527,8 +536,8 @@ mod test {
     #[test]
     fn test_api_set_parsing() {
         assert_eq!(
-            ApiSet::List(vec![Api::Web3, Api::Eth].into_iter().collect()),
-            "web3,eth".parse().unwrap()
+            ApiSet::List(vec![Api::Web3, Api::Eth, Api::Engine].into_iter().collect()),
+            "web3,eth,engine".parse().unwrap()
         );
     }
 

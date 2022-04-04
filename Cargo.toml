@@ -59,9 +59,11 @@ cli-signer= { path = "crates/util/cli-signer" }
 parity-daemonize = "0.3"
 parity-local-store = { path = "crates/concensus/miner/local-store" }
 parity-runtime = { path = "crates/runtime/runtime" }
+jwt-authentication = { path = "crates/jwt-authentication" }
 parity-rpc = { path = "crates/rpc" }
 rpc-servers = { path = "crates/rpc-servers", package = "oe-rpc-servers" }
 rpc-common = { path = "crates/rpc-common", package = "oe-rpc-common" }
+engine-api = { path = "crates/engine-api", package = "openethereum-engine-api" }
 parity-version = { path = "crates/util/version" }
 parity-path = "0.1"
 dir = { path = "crates/util/dir" }
@@ -73,6 +75,9 @@ kvdb-rocksdb = "0.1.3"
 journaldb = { path = "crates/db/journaldb" }
 stats = { path = "crates/util/stats" }
 prometheus = "0.9.0"
+jsonwebtoken = "6.0.0"
+chrono = "0.4.19"
+ring = "0.14.6"
 
 # ethcore-secretstore = { path = "crates/util/secret-store", optional = true }
 

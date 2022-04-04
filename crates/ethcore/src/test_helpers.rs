@@ -111,6 +111,7 @@ impl TestBlockBuilder {
         self.add_transactions(vec![transaction])
     }
 
+    #[cfg(test)]
     pub fn build(&self) -> Bytes {
         let engine = self.client.engine();
 

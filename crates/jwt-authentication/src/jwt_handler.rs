@@ -1,3 +1,19 @@
+// Copyright 2015-2020 Parity Technologies (UK) Ltd.
+// This file is part of OpenEthereum.
+
+// OpenEthereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// OpenEthereum is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
+
 use chrono::Utc;
 use jsonrpc_http_server::{
     hyper::{self, http::HeaderValue, Body, StatusCode},
@@ -17,6 +33,7 @@ struct Claims {
     exp: Option<i64>,
 }
 
+/// Handles Jwt authentication for incoming requests.
 pub struct JwtHandler<C>
 where
     C: Clock + Sync + Send + 'static,
@@ -29,12 +46,14 @@ impl<C> JwtHandler<C>
 where
     C: Clock + Sync + Send + 'static,
 {
+    /// Initialize new handler with specified clock.
     pub fn with_clock(clock: C, secret: Secret) -> Self {
         Self { clock, secret }
     }
 }
 
 impl JwtHandler<Utc> {
+    /// Initialize new handler with default Utc system clock.
     pub fn new(secret: Secret) -> Self {
         JwtHandler::with_clock(Utc, secret)
     }

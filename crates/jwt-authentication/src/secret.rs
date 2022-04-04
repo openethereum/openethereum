@@ -1,3 +1,19 @@
+// Copyright 2015-2020 Parity Technologies (UK) Ltd.
+// This file is part of OpenEthereum.
+
+// OpenEthereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// OpenEthereum is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with OpenEthereum.  If not, see <http://www.gnu.org/licenses/>.
+
 use log::info;
 use ring::rand::SecureRandom;
 use std::{
@@ -51,6 +67,8 @@ impl FromStr for Secret {
 }
 
 impl Secret {
+    /// Try to read a secret from specified file. If specified file does not exist,
+    /// generate a new jwt secret and write it into the the file.
     pub fn new(file_path: String, random: &dyn SecureRandom) -> anyhow::Result<Self> {
         if let Ok(data) = fs::read_to_string(&file_path) {
             info!("Reading jwt secret from {}", file_path);

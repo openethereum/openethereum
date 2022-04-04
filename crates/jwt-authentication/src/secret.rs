@@ -40,7 +40,7 @@ impl std::fmt::Display for ParseSecretError {
 impl std::error::Error for ParseSecretError {}
 
 /// Wrapper for 256 bit secret key used in JWT authentication.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Secret([u8; 32]);
 
 impl From<[u8; 32]> for Secret {
@@ -81,6 +81,104 @@ impl Secret {
             fs::write(&file_path, format!("0x{}\n", hex::encode(secret)))?;
             info!("Secret have been written to {}", file_path);
             Ok(Secret(secret))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Secret;
+    use ring::rand::SystemRandom;
+    use std::fs;
+    use tempfile::tempdir;
+    use uuid::Uuid;
+
+    const RANDOM: SystemRandom = SystemRandom;
+
+    #[test]
+    fn should_read_secret_from_file() {
+        // given
+        let dir = tempdir().unwrap();
+        let file_name = format!("{}", Uuid::new_v4());
+        let file_path = dir.path().join(file_name).to_str().unwrap().to_string();
+        let secret = [1u8; 32];
+        let _ = fs::write(&file_path, format!("0x{}", hex::encode(secret.clone()))).unwrap();
+
+        // when
+        let result = Secret::new(file_path, &RANDOM);
+
+        // then
+        match result {
+            Ok(s) => {
+                let expected = Secret(secret);
+                assert_eq!(expected, s, "Incorrect secret");
+            }
+            Err(_) => panic!("Secret initialization should not fail"),
+        }
+    }
+
+    #[test]
+    fn should_fail_to_read_invalid_secret_from_file() {
+        // given
+        let dir = tempdir().unwrap();
+        let file_name = format!("{}", Uuid::new_v4());
+        let file_path = dir.path().join(file_name).to_str().unwrap().to_string();
+        let invalid_secret = [1u8; 5];
+        let _ = fs::write(&file_path, format!("0x{}", hex::encode(invalid_secret))).unwrap();
+
+        // when
+        let result = Secret::new(file_path, &RANDOM);
+
+        // then
+        match result {
+            Ok(_) => panic!("Secret initialization succeeded while should fail"),
+            Err(_) => {}
+        }
+    }
+
+    #[test]
+    fn should_generate_secret_when_file_does_not_exist() {
+        // given
+        let dir = tempdir().unwrap();
+        let file_name = format!("{}", Uuid::new_v4());
+        let file_path = dir.path().join(file_name).to_str().unwrap().to_string();
+
+        // when
+        let result = Secret::new(file_path.clone(), &RANDOM);
+
+        // then
+        match result {
+            Ok(s) => {
+                let stored = Secret::new(file_path, &RANDOM)
+                    .expect("Reading a generated secret should not fail");
+                assert_eq!(s, stored, "Returned and stored secrets are different")
+            }
+            Err(_) => {
+                panic!("Secret initialization should not fail")
+            }
+        }
+    }
+
+    #[test]
+    fn should_fail_to_generate_secret_when_directory_does_not_exist() {
+        // given
+        let dir = tempdir().unwrap();
+        let file_name = format!("{}", Uuid::new_v4());
+        let invalid_file_path = dir
+            .path()
+            .join("invalid")
+            .join(file_name)
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // when
+        let result = Secret::new(invalid_file_path.clone(), &RANDOM);
+
+        // then
+        match result {
+            Ok(_) => panic!("Secret initialization succeeded while should fail"),
+            Err(_) => {}
         }
     }
 }

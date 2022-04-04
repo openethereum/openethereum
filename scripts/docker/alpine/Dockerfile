@@ -1,4 +1,4 @@
-FROM alpine:3.13.2 AS builder
+FROM alpine:edge AS builder
 
 # show backtraces
 ENV RUST_BACKTRACE 1
@@ -18,7 +18,7 @@ COPY . /openethereum
 RUN cargo build --release --features final --target x86_64-alpine-linux-musl --verbose
 RUN strip target/x86_64-alpine-linux-musl/release/openethereum
 
-FROM alpine:3.13.2
+FROM alpine:edge
 
 # show backtraces
 ENV RUST_BACKTRACE 1
@@ -36,7 +36,7 @@ RUN addgroup -g 1000 openethereum \
 
 USER openethereum
 
-EXPOSE 8080 8545 8180
+EXPOSE 8080 8545 8550 8180
 
 WORKDIR /home/openethereum
 

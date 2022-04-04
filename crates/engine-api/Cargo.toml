@@ -1,0 +1,20 @@
+[package]
+description = "OpenEthereum Engine API Servers (WS, HTTP)"
+name = "openethereum-engine-api"
+version = "0.0.1"
+license = "GPL-3.0"
+edition = "2021"
+#authors = ["xDai Chain <admin@xdai.io>"]
+
+[lib]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+rpc-common = { path = "../rpc-common", package = "oe-rpc-common" }
+
+ethereum-types = "0.9.2"
+
+jsonrpc-derive = "15.0.0"
+jsonrpc-core = "15.0.0"

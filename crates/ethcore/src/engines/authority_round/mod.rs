@@ -133,6 +133,9 @@ pub struct AuthorityRoundParams {
     /// If set, this is the block number at which the consensus engine switches from AuRa to AuRa
     /// with POSDAO modifications.
     pub posdao_transition: Option<BlockNumber>,
+    /// The block numbers at which the bytecodes should be rewritten for
+    /// the specified contracts (can be more than one per block)
+    rewrite_bytecode_transitions: BTreeMap<BlockNumber, BTreeMap<Address, Bytes>>,
 }
 
 const U16_MAX: usize = ::std::u16::MAX as usize;
@@ -212,6 +215,20 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             .into_iter()
             .map(|(block_num, address)| (block_num.into(), address.into()))
             .collect();
+        let rewrite_bytecode_transitions: BTreeMap<_, _> = p
+            .rewrite_bytecode_transitions
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(block_num, rewrites)| {
+                (
+                    block_num.into(),
+                    rewrites
+                        .into_iter()
+                        .map(|(address, bytecode)| (address.into(), bytecode.into()))
+                        .collect(),
+                )
+            })
+            .collect();
         AuthorityRoundParams {
             step_durations,
             validators: new_validator_set_posdao(p.validators, p.posdao_transition.map(Into::into)),
@@ -260,6 +277,7 @@ impl From<ethjson::spec::AuthorityRoundParams> for AuthorityRoundParams {
             randomness_contract_address,
             block_gas_limit_contract_transitions,
             posdao_transition: p.posdao_transition.map(Into::into),
+            rewrite_bytecode_transitions,
         }
     }
 }
@@ -684,6 +702,9 @@ pub struct AuthorityRound {
     /// modifications. For details about POSDAO, see the whitepaper:
     /// https://www.xdaichain.com/for-validators/posdao-whitepaper
     posdao_transition: Option<BlockNumber>,
+    /// The block numbers at which the bytecodes should be rewritten for
+    /// the specified contracts (can be more than one per block)
+    rewrite_bytecode_transitions: BTreeMap<BlockNumber, BTreeMap<Address, Bytes>>,
 }
 
 // header-chain validator.
@@ -1051,6 +1072,7 @@ impl AuthorityRound {
             block_gas_limit_contract_transitions: our_params.block_gas_limit_contract_transitions,
             gas_limit_override_cache: Mutex::new(LruCache::new(GAS_LIMIT_OVERRIDE_CACHE_CAPACITY)),
             posdao_transition: our_params.posdao_transition,
+            rewrite_bytecode_transitions: our_params.rewrite_bytecode_transitions,
         });
 
         // Do not initialize timeouts for tests.
@@ -1794,12 +1816,25 @@ impl Engine<EthereumMachine> for AuthorityRound {
     }
 
     // t_nb 8.1.5
+    /// Apply operations on new epoch.
+    /// Apply rewrite bytecode transitions if available.
     fn on_new_block(
         &self,
         block: &mut ExecutedBlock,
         epoch_begin: bool,
         _ancestry: &mut dyn Iterator<Item = ExtendedHeader>,
     ) -> Result<(), Error> {
+        // Apply rewrite bytecode transitions
+        if let Some(rewrites) = self
+            .rewrite_bytecode_transitions
+            .get(&block.header.number())
+        {
+            let state = block.state_mut();
+            for (address, bytecode) in rewrites.iter() {
+                state.reset_code(address, bytecode.clone())?
+            }
+        }
+
         // with immediate transitions, we don't use the epoch mechanism anyway.
         // the genesis is always considered an epoch, but we ignore it intentionally.
         if self.immediate_transitions || !epoch_begin {
@@ -2356,7 +2391,7 @@ mod tests {
     use engines::{
         block_reward::BlockRewardContract,
         validator_set::{SimpleList, TestSet},
-        Engine, EngineError, EthEngine, Seal,
+        Engine, EngineError, EngineSigner, EthEngine, Seal,
     };
     use error::{Error, ErrorKind};
     use ethabi_contract::use_contract;
@@ -2377,7 +2412,7 @@ mod tests {
     };
     use test_helpers::{
         generate_dummy_client_with_spec, generate_dummy_client_with_spec_and_data,
-        get_temp_state_db, TestNotify,
+        get_temp_state_db, push_block_with_transactions_and_author, TestNotify,
     };
     use types::{
         header::Header,
@@ -2407,6 +2442,7 @@ mod tests {
             randomness_contract_address: BTreeMap::new(),
             block_gas_limit_contract_transitions: BTreeMap::new(),
             posdao_transition: Some(0),
+            rewrite_bytecode_transitions: BTreeMap::new(),
         };
 
         // mutate aura params
@@ -3690,5 +3726,130 @@ mod tests {
 		}"#;
         let deserialized: ethjson::spec::AuthorityRound = serde_json::from_str(config).unwrap();
         AuthorityRoundParams::from(deserialized.params);
+    }
+
+    #[test]
+    fn should_rewrite_bytecode_according_to_transitions() {
+        use state::StateInfo;
+
+        let tap = Arc::new(AccountProvider::transient_provider());
+        let addr1 = tap.insert_account(keccak("1").into(), &"1".into()).unwrap();
+        let addr2 = tap.insert_account(keccak("0").into(), &"0".into()).unwrap();
+
+        let client =
+            generate_dummy_client_with_spec(Spec::new_test_round_rewrite_bytecode_transitions);
+        let engine = client.engine();
+        engine.register_client(Arc::downgrade(&client) as _);
+
+        let signer: Option<Box<dyn EngineSigner>> =
+            Some(Box::new((tap.clone(), addr1, "1".into())));
+        push_block_with_transactions_and_author(&client, &vec![], addr1, signer);
+
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000001").unwrap())
+                .unwrap(),
+            None,
+            "First address after block 1"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000002").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![])),
+            "Second address after block 1"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000003").unwrap())
+                .unwrap(),
+            None,
+            "Third address after block 1"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000004").unwrap())
+                .unwrap(),
+            None,
+            "Fourth address after block 1"
+        );
+
+        let signer: Option<Box<dyn EngineSigner>> =
+            Some(Box::new((tap.clone(), addr2, "0".into())));
+        push_block_with_transactions_and_author(&client, &vec![], addr2, signer);
+
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000001").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![1u8; 2])),
+            "First address after block 2"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000002").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![2u8; 2])),
+            "Second address after block 2"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000003").unwrap())
+                .unwrap(),
+            None,
+            "Third address after block 2"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000004").unwrap())
+                .unwrap(),
+            None,
+            "Fourth address after block 2"
+        );
+
+        let signer: Option<Box<dyn EngineSigner>> =
+            Some(Box::new((tap.clone(), addr1, "1".into())));
+        push_block_with_transactions_and_author(&client, &vec![], addr1, signer);
+
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000001").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![1u8; 2])),
+            "First address after block 3"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000002").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![2u8; 2])),
+            "Second address after block 3"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000003").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![3u8; 2])),
+            "Third address after block 3"
+        );
+        assert_eq!(
+            client
+                .state()
+                .code(&Address::from_str("1234000000000000000000000000000000000004").unwrap())
+                .unwrap(),
+            Some(Arc::new(vec![4u8; 2])),
+            "Fourth address after block 3"
+        );
     }
 }

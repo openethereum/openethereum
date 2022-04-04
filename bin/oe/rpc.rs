@@ -50,7 +50,6 @@ pub struct HttpConfiguration {
     pub processing_threads: usize,
     pub max_payload: usize,
     pub keep_alive: bool,
-    pub jwt_secret: Option<String>,
 }
 
 impl Default for HttpConfiguration {
@@ -66,7 +65,6 @@ impl Default for HttpConfiguration {
             processing_threads: 4,
             max_payload: 5,
             keep_alive: true,
-            jwt_secret: None,
         }
     }
 }
@@ -103,10 +101,104 @@ impl Default for AuthHttpConfiguration {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum HttpConfigurationUnion {
+/// Combines authenticated and non-authenticated Http configurations.
+#[derive(Clone)]
+pub enum HttpConfigurationUnion<'a> {
+    /// Non-authenticated Http configuration
     HttpConfiguration(HttpConfiguration),
-    AuthHttpConfiguration(AuthHttpConfiguration),
+    /// Authenticated Http configuration.
+    AuthHttpConfiguration {
+        /// Authenticated configuration
+        configuration: AuthHttpConfiguration,
+        /// Shared random generator. We reuse once defined generator, as it allows
+        /// to avoid its reinitialization for every authenticated configuration.
+        random: &'a ring::rand::SystemRandom,
+    },
+}
+
+// Getters for fields common to all variants of the enum
+impl<'a> HttpConfigurationUnion<'a> {
+    pub fn enabled(&'a self) -> bool {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.enabled,
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.enabled,
+        }
+    }
+    pub fn interface(&'a self) -> String {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.interface.clone(),
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.interface.clone(),
+        }
+    }
+    pub fn port(&'a self) -> u16 {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.port,
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.port,
+        }
+    }
+    pub fn apis(&'a self) -> ApiSet {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.apis.clone(),
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.apis.clone(),
+        }
+    }
+    pub fn cors(&'a self) -> Option<Vec<String>> {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.cors.clone(),
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.cors.clone(),
+        }
+    }
+    pub fn hosts(&'a self) -> Option<Vec<String>> {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.hosts.clone(),
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.hosts.clone(),
+        }
+    }
+    pub fn server_threads(&'a self) -> usize {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.server_threads,
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.server_threads,
+        }
+    }
+    pub fn max_payload(&'a self) -> usize {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.max_payload,
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.max_payload,
+        }
+    }
+    pub fn keep_alive(&'a self) -> bool {
+        match self {
+            HttpConfigurationUnion::HttpConfiguration(conf) => conf.keep_alive,
+            HttpConfigurationUnion::AuthHttpConfiguration {
+                configuration: conf,
+                ..
+            } => conf.keep_alive,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -143,7 +235,6 @@ pub struct WsConfiguration {
     pub signer_path: PathBuf,
     pub support_token_api: bool,
     pub max_payload: usize,
-    pub jwt_secret: Option<String>,
 }
 
 impl Default for WsConfiguration {
@@ -164,7 +255,6 @@ impl Default for WsConfiguration {
             signer_path: replace_home(&data_dir, "$BASE/signer").into(),
             support_token_api: true,
             max_payload: 5,
-            jwt_secret: None,
         }
     }
 }
@@ -304,89 +394,74 @@ pub fn new_http<D: rpc_apis::Dependencies>(
     conf: HttpConfigurationUnion,
     deps: &Dependencies<D>,
 ) -> Result<Option<HttpServer>, String> {
-    match conf {
-        HttpConfigurationUnion::HttpConfiguration(conf) => {
-            if !conf.enabled {
-                return Ok(None);
-            }
+    if !conf.enabled() {
+        return Ok(None);
+    }
 
-            let domain = DAPPS_DOMAIN;
-            let url = format!("{}:{}", conf.interface, conf.port);
-            let addr = url
-                .parse()
-                .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
-            let handler = setup_apis(conf.apis, deps);
+    let domain = DAPPS_DOMAIN;
+    let url = format!("{}:{}", conf.interface(), conf.port());
+    let addr = url
+        .parse()
+        .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+    let handler = setup_apis(conf.apis(), deps);
 
-            let cors_domains = into_domains(conf.cors);
-            let allowed_hosts =
-                into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
+    let cors_domains = into_domains(conf.cors());
+    let allowed_hosts = into_domains(with_domain(conf.hosts(), domain, &Some(url.clone().into())));
 
+    let server_threads = conf.server_threads();
+    let max_payload = conf.max_payload();
+    let keep_alive = conf.keep_alive();
+
+    let start_result = match conf {
+        HttpConfigurationUnion::HttpConfiguration(_conf) => {
             let health_api = Some(("/api/health", "parity_nodeStatus"));
-            let start_result = rpc_servers::start_http(
+            rpc_servers::start_http(
                 &addr,
                 cors_domains,
                 allowed_hosts,
                 health_api,
                 handler,
                 rpc::RpcExtractor,
-                conf.server_threads,
-                conf.max_payload,
-                conf.keep_alive,
-            );
-
-            match start_result {
-                Ok(server) => Ok(Some(server)),
-                Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
-                    format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
-                ),
-                Err(e) => Err(format!("{} error: {:?}", id, e)),
-            }
+                server_threads,
+                max_payload,
+                keep_alive,
+            )
         }
-        HttpConfigurationUnion::AuthHttpConfiguration(conf) => {
-            if !conf.enabled {
-                return Ok(None);
-            }
-
-            let domain = DAPPS_DOMAIN;
-            let url = format!("{}:{}", conf.interface, conf.port);
-            let addr = url
-                .parse()
-                .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
-            let handler = setup_apis(conf.apis, deps);
-
-            let cors_domains = into_domains(conf.cors);
-            let allowed_hosts =
-                into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
-
-            let random = ring::rand::SystemRandom::new();
+        HttpConfigurationUnion::AuthHttpConfiguration {
+            configuration: conf,
+            random,
+        } => {
             let jwt_secret_path = conf.jwt_secret;
-            let secret = Secret::new(jwt_secret_path.clone(), &random).map_err(|err| {
+            let secret = Secret::new(jwt_secret_path.clone(), random).map_err(|err| {
                 format!(
                     "Error while creating obtaining a secret at {}: {}",
                     jwt_secret_path, err
                 )
             })?;
             let jwt_middleware = JwtHandler::new(secret);
-            let start_result = rpc_servers::start_http_with_middleware(
+            rpc_servers::start_http_with_middleware(
                 &addr,
                 cors_domains,
                 allowed_hosts,
                 handler,
                 rpc::RpcExtractor,
                 jwt_middleware,
-                conf.server_threads,
-                conf.max_payload,
-                conf.keep_alive,
-            );
-
-            match start_result {
-                Ok(server) => Ok(Some(server)),
-                Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
-                    format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
-                ),
-                Err(e) => Err(format!("{} error: {:?}", id, e)),
-            }
+                server_threads,
+                max_payload,
+                keep_alive,
+            )
         }
+    };
+
+    match start_result {
+        Ok(server) => Ok(Some(server)),
+        Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
+            format!(
+                "{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.",
+                id, url, options, options
+            )
+        ),
+        Err(e) => Err(format!("{} error: {:?}", id, e)),
     }
 }
 

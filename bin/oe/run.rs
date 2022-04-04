@@ -534,14 +534,18 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     let http_server = rpc::new_http(
         "HTTP JSON-RPC",
         "jsonrpc",
-        HttpConfigurationUnion::HttpConfiguration(cmd.http_conf.clone()),
+        HttpConfigurationUnion::HttpConfiguration(cmd.http_conf),
         &dependencies,
     )?;
 
+    let random = ring::rand::SystemRandom::new();
     let auth_http_server = rpc::new_http(
         "Authenticated HTTP JSON-RPC",
         "auth-jsonrpc",
-        HttpConfigurationUnion::AuthHttpConfiguration(cmd.auth_http_conf.clone()),
+        HttpConfigurationUnion::AuthHttpConfiguration {
+            configuration: cmd.auth_http_conf,
+            random: &random,
+        },
         &dependencies,
     )?;
 

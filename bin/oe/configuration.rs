@@ -965,7 +965,6 @@ impl Configuration {
                 _ => 5usize,
             },
             keep_alive: !self.args.flag_jsonrpc_no_keep_alive,
-            jwt_secret: None,
         };
 
         Ok(conf)
@@ -1018,7 +1017,6 @@ impl Configuration {
             support_token_api,
             max_connections: self.args.arg_ws_max_connections,
             max_payload: self.args.arg_ws_max_payload,
-            jwt_secret: None,
         };
 
         Ok(conf)
@@ -1597,7 +1595,6 @@ mod tests {
                     support_token_api: true,
                     max_connections: 100,
                     max_payload: 5,
-                    jwt_secret: None
                 },
                 LogConfig {
                     color: !cfg!(windows),

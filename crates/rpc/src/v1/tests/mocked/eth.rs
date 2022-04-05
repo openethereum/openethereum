@@ -77,7 +77,7 @@ fn snapshot_service() -> Arc<TestSnapshotService> {
 }
 
 struct EthTester {
-    pub runtime: Runtime,
+    pub _runtime: Runtime,
     pub client: Arc<TestBlockChainClient>,
     pub sync: Arc<TestSyncProvider>,
     pub accounts_provider: Arc<AccountProvider>,
@@ -139,7 +139,7 @@ impl EthTester {
         io.extend_with(filter);
 
         EthTester {
-            runtime,
+            _runtime: runtime,
             client,
             sync,
             accounts_provider: ap,

@@ -336,7 +336,7 @@ fn run_call<T: Informant>(args: Args, informant: T) {
 
 #[derive(Debug, Deserialize)]
 struct Args {
-    cmd_stats: bool,
+    _cmd_stats: bool,
     cmd_state_test: bool,
     cmd_stats_jsontests_vm: bool,
     arg_file: Option<PathBuf>,

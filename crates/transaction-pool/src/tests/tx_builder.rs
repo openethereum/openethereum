@@ -21,7 +21,6 @@ use ethereum_types::BigEndianHash;
 pub struct TransactionBuilder {
     nonce: U256,
     gas_price: U256,
-    gas: U256,
     sender: Address,
     mem_usage: usize,
 }

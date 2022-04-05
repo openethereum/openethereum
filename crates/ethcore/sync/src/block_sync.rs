@@ -46,10 +46,10 @@ const MAX_USELESS_HEADERS_PER_ROUND: usize = 3;
 // logging macros prepend BlockSet context for log filtering
 macro_rules! trace_sync {
 	($self:ident, $fmt:expr, $($arg:tt)+) => {
-		trace!(target: "sync", concat!("{:?}: ", $fmt), $self.block_set, $($arg)+);
+		trace!(target: "sync", concat!("{:?}: ", $fmt), $self.block_set, $($arg)+)
 	};
 	($self:ident, $fmt:expr) => {
-		trace!(target: "sync", concat!("{:?}: ", $fmt), $self.block_set);
+		trace!(target: "sync", concat!("{:?}: ", $fmt), $self.block_set)
 	};
 }
 

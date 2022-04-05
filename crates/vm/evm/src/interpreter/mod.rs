@@ -125,7 +125,7 @@ enum InstructionResult<Gas> {
 #[derive(Debug)]
 struct InterpreterParams {
     /// Address of currently executed code.
-    pub code_address: Address,
+    pub _code_address: Address,
     /// Hash of currently executed code.
     pub code_hash: Option<H256>,
     /// Receive address. Usually equal to code_address,
@@ -144,15 +144,15 @@ struct InterpreterParams {
     /// Input data.
     pub data: Option<Bytes>,
     /// Type of call
-    pub call_type: CallType,
+    pub _call_type: CallType,
     /// Param types encoding
-    pub params_type: ParamsType,
+    pub _params_type: ParamsType,
 }
 
 impl From<ActionParams> for InterpreterParams {
     fn from(params: ActionParams) -> Self {
         InterpreterParams {
-            code_address: params.code_address,
+            _code_address: params.code_address,
             code_hash: params.code_hash,
             address: params.address,
             sender: params.sender,
@@ -161,8 +161,8 @@ impl From<ActionParams> for InterpreterParams {
             gas_price: params.gas_price,
             value: params.value,
             data: params.data,
-            call_type: params.call_type,
-            params_type: params.params_type,
+            _call_type: params.call_type,
+            _params_type: params.params_type,
         }
     }
 }
@@ -832,10 +832,7 @@ impl<Cost: CostType> Interpreter<Cost> {
                         true,
                         CallType::StaticCall,
                     ),
-                    _ => panic!(format!(
-                        "Unexpected instruction {:?} in CALL branch.",
-                        instruction
-                    )),
+                    _ => panic!("Unexpected instruction {:?} in CALL branch.", instruction),
                 };
 
                 // clear return data buffer before creating new call frame.

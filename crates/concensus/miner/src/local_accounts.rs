@@ -23,7 +23,7 @@ use ethereum_types::Address;
 /// Local accounts checker
 pub trait LocalAccounts: Send + Sync {
     /// Returns true if given address should be considered local account.
-    fn is_local(&self, &Address) -> bool;
+    fn is_local(&self, address: &Address) -> bool;
 }
 
 impl LocalAccounts for HashSet<Address> {

@@ -1,11 +1,15 @@
+## OpenEthereum v3.3.5
+
+Enhancements:
+* Support for POSDAO contract hardfork (#633)
+* Update rpc server (#619)
+
 ## OpenEthereum v3.3.4
 
 Enhancements:
 * EIP-712: Update logos and rewrite type parser (now builds on Rust 1.58.1) (#463)
 * Handling of incoming transactions with maxFeePerGas lower than current baseFee (#604)
 * Update transaction replacement (#607)
-
-Bug fixes:
 
 ## OpenEthereum v3.3.3
 

@@ -36,7 +36,7 @@ RUN addgroup -g 1000 openethereum \
 
 USER openethereum
 
-EXPOSE 8080 8545 8180
+EXPOSE 8080 8545 8550 8180
 
 WORKDIR /home/openethereum
 

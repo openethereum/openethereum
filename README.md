@@ -63,7 +63,8 @@ We recommend installing Rust through [rustup](https://www.rustup.rs/). If you do
   $ curl https://sh.rustup.rs -sSf | sh
   ```
 
-  OpenEthereum also requires `clang` (>= 9.0), `clang++`, `pkg-config`, `file`, `make`, and `cmake` packages to be installed.
+  OpenEthereum also requires `clang` (>= 9.0), `clang++`, `pkg-config`, `file`, `make`, `build-essential` and `cmake` packages to be installed, for futher
+	instruction and examples please look also at https://openethereum.github.io/
 
 - OSX:
   ```bash

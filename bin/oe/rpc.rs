@@ -19,6 +19,7 @@ use std::{collections::HashSet, io, path::PathBuf, sync::Arc};
 use crate::{
     helpers::parity_ipc_path,
     rpc_apis::{self, ApiSet},
+    rpc_endpoint::RpcEndpoint,
 };
 use dir::{default_data_path, helpers::replace_home};
 use jsonrpc_core::MetaIoHandler;
@@ -43,6 +44,7 @@ pub struct HttpConfiguration {
     pub apis: ApiSet,
     pub cors: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
+    pub additional_endpoints: Vec<RpcEndpoint>,
     pub server_threads: usize,
     pub processing_threads: usize,
     pub max_payload: usize,
@@ -58,6 +60,7 @@ impl Default for HttpConfiguration {
             apis: ApiSet::UnsafeContext,
             cors: Some(vec![]),
             hosts: Some(vec![]),
+            additional_endpoints: vec![],
             server_threads: 1,
             processing_threads: 4,
             max_payload: 5,
@@ -94,6 +97,7 @@ pub struct WsConfiguration {
     pub interface: String,
     pub port: u16,
     pub apis: ApiSet,
+    pub additional_endpoints: Vec<RpcEndpoint>,
     pub max_connections: usize,
     pub origins: Option<Vec<String>>,
     pub hosts: Option<Vec<String>>,
@@ -110,6 +114,7 @@ impl Default for WsConfiguration {
             interface: "127.0.0.1".into(),
             port: 8546,
             apis: ApiSet::UnsafeContext,
+            additional_endpoints: vec![],
             max_connections: 100,
             origins: Some(vec![
                 "parity://*".into(),
@@ -155,31 +160,13 @@ pub struct Dependencies<D: rpc_apis::Dependencies> {
 pub fn new_ws<D: rpc_apis::Dependencies>(
     conf: WsConfiguration,
     deps: &Dependencies<D>,
-) -> Result<Option<WsServer>, String> {
+) -> Result<Vec<WsServer>, String> {
     if !conf.enabled {
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     let domain = DAPPS_DOMAIN;
-    let url = format!("{}:{}", conf.interface, conf.port);
-    let addr = url
-        .parse()
-        .map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
-
-    let full_handler = setup_apis(rpc_apis::ApiSet::All, deps);
-    let handler = {
-        let mut handler = MetaIoHandler::with_middleware((
-            rpc::WsDispatcher::new(full_handler),
-            Middleware::new(deps.stats.clone(), deps.apis.activity_notifier()),
-        ));
-        let apis = conf.apis.list_apis();
-        deps.apis.extend_with_set(&mut handler, &apis);
-
-        handler
-    };
-
     let allowed_origins = into_domains(with_domain(conf.origins, domain, &None));
-    let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
 
     let signer_path;
     let path = match conf.support_token_api {
@@ -189,34 +176,61 @@ pub fn new_ws<D: rpc_apis::Dependencies>(
         }
         false => None,
     };
-    let start_result = rpc_servers::start_ws(
-        &addr,
-        handler,
-        allowed_origins,
-        allowed_hosts,
-        conf.max_connections,
-        rpc::WsExtractor::new(path.clone()),
-        rpc::WsExtractor::new(path.clone()),
-        rpc::WsStats::new(deps.stats.clone()),
-        conf.max_payload,
-    );
 
-    //	match start_result {
-    //		Ok(server) => Ok(Some(server)),
-    //		Err(rpc::ws::Error::Io(rpc::ws::ErrorKind::Io(ref err), _)) if err.kind() == io::ErrorKind::AddrInUse => Err(
-    //			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
-    //		),
-    //		Err(e) => Err(format!("WebSockets error: {:?}", e)),
-    //	}
-    match start_result {
-		Ok(server) => Ok(Some(server)),
-		Err(rpc::ws::Error::WsError(ws::Error {
-			                            kind: ws::ErrorKind::Io(ref err), ..
-		                            })) if err.kind() == io::ErrorKind::AddrInUse => Err(
-			format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url)
-		),
-		Err(e) => Err(format!("WebSockets error: {:?}", e)),
-	}
+    let mut endpoints = conf.additional_endpoints;
+    endpoints.push(RpcEndpoint {
+        interface: conf.interface,
+        port: conf.port,
+        apis: conf.apis,
+    });
+
+    let max_connections = conf.max_connections;
+    let max_payload = conf.max_payload;
+    let hosts = conf.hosts;
+
+    endpoints
+        .into_iter()
+        .map(|endpoint| {
+            let url = format!("{}:{}", endpoint.interface, endpoint.port);
+            let addr = url
+                .parse()
+                .map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
+
+            let full_handler = setup_apis(rpc_apis::ApiSet::All, deps);
+            let handler = {
+                let mut handler = MetaIoHandler::with_middleware((
+                    rpc::WsDispatcher::new(full_handler),
+                    Middleware::new(deps.stats.clone(), deps.apis.activity_notifier()),
+                ));
+                let apis = endpoint.apis.list_apis();
+                deps.apis.extend_with_set(&mut handler, &apis);
+
+                handler
+            };
+            let allowed_hosts = into_domains(with_domain(hosts.clone(), domain, &Some(url.clone().into())));
+
+            rpc_servers::start_ws(
+                &addr,
+                handler,
+                allowed_origins.clone(),
+                allowed_hosts,
+                max_connections,
+                rpc::WsExtractor::new(path.clone()),
+                rpc::WsExtractor::new(path.clone()),
+                rpc::WsStats::new(deps.stats.clone()),
+                max_payload,
+            )
+            .map_err(|e| {
+                match e {
+                    rpc::ws::Error::WsError(ws::Error {
+                        kind: ws::ErrorKind::Io(ref err), ..
+                    }) if err.kind() == io::ErrorKind::AddrInUse =>
+                        format!("WebSockets address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --ws-port and --ws-interface options.", url),
+                    _ => format!("WebSockets error: {:?}", e),
+                }
+            })
+        })
+        .collect()
 }
 
 pub fn new_http<D: rpc_apis::Dependencies>(
@@ -224,41 +238,54 @@ pub fn new_http<D: rpc_apis::Dependencies>(
     options: &str,
     conf: HttpConfiguration,
     deps: &Dependencies<D>,
-) -> Result<Option<HttpServer>, String> {
+) -> Result<Vec<HttpServer>, String> {
     if !conf.enabled {
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     let domain = DAPPS_DOMAIN;
-    let url = format!("{}:{}", conf.interface, conf.port);
-    let addr = url
-        .parse()
-        .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
-    let handler = setup_apis(conf.apis, deps);
 
     let cors_domains = into_domains(conf.cors);
-    let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
     let health_api = Some(("/api/health", "parity_nodeStatus"));
 
-    let start_result = rpc_servers::start_http(
-        &addr,
-        cors_domains,
-        allowed_hosts,
-        health_api,
-        handler,
-        rpc::RpcExtractor,
-        conf.server_threads,
-        conf.max_payload,
-        conf.keep_alive,
-    );
+    let mut endpoints = conf.additional_endpoints;
+    endpoints.push(RpcEndpoint {
+        interface: conf.interface,
+        port: conf.port,
+        apis: conf.apis,
+    });
 
-    match start_result {
-		Ok(server) => Ok(Some(server)),
-		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
-			format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
-		),
-		Err(e) => Err(format!("{} error: {:?}", id, e)),
-	}
+    let hosts = conf.hosts;
+    let server_threads = conf.server_threads;
+    let max_payload = conf.max_payload;
+    let keep_alive = conf.keep_alive;
+
+    endpoints.into_iter().map(|endpoint| {
+        let url = format!("{}:{}", endpoint.interface, endpoint.port);
+        let addr = url
+            .parse()
+            .map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+        let handler = setup_apis(endpoint.apis, deps);
+        let allowed_hosts = into_domains(with_domain(hosts.clone(), domain, &Some(url.clone().into())));
+
+        rpc_servers::start_http(
+            &addr,
+            cors_domains.clone(),
+            allowed_hosts,
+            health_api,
+            handler,
+            rpc::RpcExtractor,
+            server_threads,
+            max_payload,
+            keep_alive,
+        ).map_err(|e| {
+            if e.kind() == io::ErrorKind::AddrInUse {
+                format!("{} address {} is already in use, make sure that another instance of an Ethereum client is not running or change the address using the --{}-port and --{}-interface options.", id, url, options, options)
+            } else {
+                format!("{} error: {:?}", id, e)
+            }
+        })
+    }).collect()
 }
 
 pub fn new_ipc<D: rpc_apis::Dependencies>(

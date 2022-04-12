@@ -20,6 +20,7 @@ use crate::{
     hash::keccak,
     metrics::MetricsConfiguration,
     miner::pool,
+    rpc_endpoint::RpcEndpoint,
     sync::{self, validate_node_url, NetworkConfiguration},
 };
 use ansi_term::Colour;
@@ -858,6 +859,21 @@ impl Configuration {
         self.args.arg_jsonrpc_apis.clone()
     }
 
+    fn parse_additional_endpoints(s: &str) -> Result<Vec<RpcEndpoint>, String> {
+        s.split(',')
+            .filter(|s| s.len() > 0)
+            .map(|s| s.parse())
+            .collect()
+    }
+
+    fn rpc_additional_endpoints(&self) -> Result<Vec<RpcEndpoint>, String> {
+        Self::parse_additional_endpoints(&self.args.arg_jsonrpc_additional_endpoints)
+    }
+
+    fn ws_additional_endpoints(&self) -> Result<Vec<RpcEndpoint>, String> {
+        Self::parse_additional_endpoints(&self.args.arg_ws_additional_endpoints)
+    }
+
     fn cors(cors: &str) -> Option<Vec<String>> {
         match cors {
             "none" => return Some(Vec::new()),
@@ -928,6 +944,7 @@ impl Configuration {
             port: self.args.arg_ports_shift + self.args.arg_jsonrpc_port,
             apis: self.rpc_apis().parse()?,
             hosts: self.rpc_hosts(),
+            additional_endpoints: self.rpc_additional_endpoints()?,
             cors: self.rpc_cors(),
             server_threads: match self.args.arg_jsonrpc_server_threads {
                 Some(threads) if threads > 0 => threads,
@@ -954,6 +971,7 @@ impl Configuration {
             interface: self.ws_interface(),
             port: self.args.arg_ports_shift + self.args.arg_ws_port,
             apis: self.args.arg_ws_apis.parse()?,
+            additional_endpoints: self.ws_additional_endpoints()?,
             hosts: self.ws_hosts(),
             origins: self.ws_origins(),
             signer_path: self.directories().signer.into(),
@@ -1049,17 +1067,22 @@ impl Configuration {
         )
     }
 
-    fn interface(&self, interface: &str) -> String {
-        if self.args.flag_unsafe_expose {
-            return "0.0.0.0".into();
-        }
-
+    /// Maps "local" and "all" interfaces into appropriate ip address
+    pub fn map_interface(interface: &str) -> String {
         match interface {
             "all" => "0.0.0.0",
             "local" => "127.0.0.1",
             x => x,
         }
         .into()
+    }
+
+    fn interface(&self, interface: &str) -> String {
+        if self.args.flag_unsafe_expose {
+            return "0.0.0.0".into();
+        }
+
+        Self::map_interface(interface)
     }
 
     fn rpc_interface(&self) -> String {
@@ -1490,6 +1513,7 @@ mod tests {
                     interface: "127.0.0.1".into(),
                     port: 8546,
                     apis: ApiSet::UnsafeContext,
+                    additional_endpoints: vec![],
                     origins: Some(vec![
                         "parity://*".into(),
                         "chrome-extension://*".into(),

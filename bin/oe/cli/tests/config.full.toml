@@ -42,6 +42,7 @@ cors = ["null"]
 apis = ["web3", "eth", "net", "parity", "traces", "rpc", "secretstore"]
 hosts = ["none"]
 allow_missing_blocks = false
+additional_endpoints = ["local:9999|web3;eth", "127.0.0.1:9998|all"]
 
 [websockets]
 disable = false
@@ -50,6 +51,7 @@ interface = "local"
 origins = ["none"]
 apis = ["web3", "eth", "net", "parity", "traces", "rpc", "secretstore"]
 hosts = ["none"]
+additional_endpoints = ["local:9999|web3;eth", "127.0.0.1:9998|all"]
 
 [ipc]
 disable = false

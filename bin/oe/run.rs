@@ -520,13 +520,13 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     };
 
     // start rpc servers
-    let ws_server = rpc::new_ws(cmd.ws_conf.clone(), &dependencies)?;
+    let ws_servers = rpc::new_ws(cmd.ws_conf.clone(), &dependencies)?;
     let ipc_server = rpc::new_ipc(cmd.ipc_conf, &dependencies)?;
 
     // start the prometheus metrics server
     start_prometheus_metrics(&cmd.metrics_conf, &dependencies)?;
 
-    let http_server = rpc::new_http(
+    let http_servers = rpc::new_http(
         "HTTP JSON-RPC",
         "jsonrpc",
         cmd.http_conf.clone(),
@@ -605,8 +605,8 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             client_service: Arc::new(service),
             keep_alive: Box::new((
                 watcher,
-                ws_server,
-                http_server,
+                ws_servers,
+                http_servers,
                 ipc_server,
                 secretstore_key_server,
                 runtime,

@@ -123,6 +123,9 @@ opt-level = 3 # makes tests slower to compile, but faster to run
 [profile.release]
 debug = false
 lto = true
+# https://github.com/rust-lang/rust/issues/47745
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+codegen-units = 1
 
 [workspace]
 # This should only list projects that are not

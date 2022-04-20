@@ -26,10 +26,11 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum AddResult<T, S> {
+pub enum AddResult<T, S> { // maybe replace Cheap on Far (TooFarToEnter, TooFar)??
     Ok(T),
-    TooCheapToEnter(T, S),
-    TooCheap { old: T, new: T },
+    TooCheapToEnter(T, S), // the sender submitted maximum number of allowed transactions, and new transaction is worse than all others (i.e. has greater nonce)
+    TooCheap { old: T, new: T }, // new transaction is equal to some transaction in the queue via defined ordering (e.g. nonces are equal),
+                                 // but the new transaction does not provide required improvements to replace the old one (e.g. gasPrice was not sufficiently larger)
     Replaced { old: T, new: T },
     PushedOut { old: T, new: T },
 }
@@ -39,7 +40,7 @@ const PER_SENDER: usize = 8;
 #[derive(Debug)]
 pub struct Transactions<T, S: Scoring<T>> {
     // TODO [ToDr] Consider using something that doesn't require shifting all records.
-    transactions: SmallVec<[Transaction<T>; PER_SENDER]>,
+    transactions: SmallVec<[Transaction<T>; PER_SENDER]>, // SmallVec may actually be not faster than Vec (http://troubles.md/improving-smallvec/). Worth benchmarking
     scores: SmallVec<[S::Score; PER_SENDER]>,
 }
 
@@ -96,7 +97,8 @@ impl<T: fmt::Debug, S: Scoring<T>> Transactions<T, S> {
             })
     }
 
-    fn push_cheapest_transaction(
+    fn push_cheapest_transaction( // maybe we may use `furthest` (or `worst`, as it is already used above) instead of `cheapest` in the name?
+                                  // At least `cheapest` seems not to fully describe the meaning of the function.
         &mut self,
         tx: Transaction<T>,
         scoring: &S,
@@ -105,7 +107,11 @@ impl<T: fmt::Debug, S: Scoring<T>> Transactions<T, S> {
         let index = self.transactions.len();
         if index == max_count && !scoring.should_ignore_sender_limit(&tx) {
             let min_score = self.scores[index - 1].clone();
-            AddResult::TooCheapToEnter(tx, min_score)
+            AddResult::TooCheapToEnter(tx, min_score) // actually not the score, that is important here.
+                                                            // Scores represent the utility of transaction for the miner,
+                                                            // but here the relative order for the specific sender is important,
+                                                            // so it should be some another kind of information (i.e. nonce)
+                                                            // but currently it is not available from the trait.
         } else {
             self.transactions.push(tx.clone());
             self.scores.push(Default::default());

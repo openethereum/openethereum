@@ -127,27 +127,27 @@ const MAX_SKIPPED_TRANSACTIONS: usize = 128;
 #[derive(Debug, PartialEq)]
 pub struct MinerOptions {
     /// Force the miner to reseal, even when nobody has asked for work.
-    pub force_sealing: bool,
+    pub force_sealing: bool, // would it be required? Where actually is force sealing used besides in PoA consensus engines
     /// Reseal on receipt of new external transactions.
     pub reseal_on_external_tx: bool,
     /// Reseal on receipt of new local transactions.
     pub reseal_on_own_tx: bool,
     /// Reseal when new uncle block has been imported.
-    pub reseal_on_uncle: bool,
+    pub reseal_on_uncle: bool, // to be removed, as no uncles anymore
     /// Minimum period between transaction-inspired reseals.
     pub reseal_min_period: Duration,
     /// Maximum period between blocks (enables force sealing after that).
-    pub reseal_max_period: Duration,
+    pub reseal_max_period: Duration, // in general seems to be non-required as well, as sealing should be enabled only from CL
     /// Whether we should fallback to providing all the queue's transactions or just pending.
     pub pending_set: PendingSet,
     /// How many historical work packages can we store before running out?
-    pub work_queue_size: usize,
+    pub work_queue_size: usize, // ???
     /// Can we submit two different solutions for the same block and expect both to result in an import?
-    pub enable_resubmission: bool,
+    pub enable_resubmission: bool, // ???
     /// Create a pending block with maximal possible gas limit.
     /// NOTE: Such block will contain all pending transactions but
     /// will be invalid if mined.
-    pub infinite_pending_block: bool,
+    pub infinite_pending_block: bool, // what is used for?
 
     /// Strategy to use for prioritizing transactions in the queue.
     pub tx_queue_strategy: PrioritizationStrategy,
@@ -156,9 +156,9 @@ pub struct MinerOptions {
     /// Do we want to mark transactions recieved locally (e.g. RPC) as local if we don't have the sending account?
     pub tx_queue_no_unfamiliar_locals: bool,
     /// Do we refuse to accept service transactions even if sender is certified.
-    pub refuse_service_transactions: bool,
+    pub refuse_service_transactions: bool, // service transactions, are they still needed?
     /// Transaction pool limits.
-    pub pool_limits: pool::Options,
+    pub pool_limits: pool::Options, // if that is related to transaction pool, what does this argument do here?
     /// Initial transaction verification options.
     pub pool_verification_options: pool::verifier::Options,
 }
@@ -209,7 +209,7 @@ pub struct AuthoringParams {
 }
 
 /// Block sealing mechanism
-pub enum Author {
+pub enum Author { // After the Merge we may consider sealing as been eliminated at all, so seems we can just set `pub struct Author(Address)`
     /// Sealing block is external and we only need a reward beneficiary (i.e. PoW)
     External(Address),
     /// Sealing is done internally, we need a way to create signatures to seal block (i.e. PoA)
@@ -255,7 +255,7 @@ pub struct Miner {
     gas_pricer: Mutex<GasPricer>,
     options: MinerOptions,
     // TODO [ToDr] Arc is only required because of price updater
-    transaction_queue: Arc<TransactionQueue>,
+    transaction_queue: Arc<TransactionQueue>, // is not the same as usual transaction queue
     engine: Arc<dyn EthEngine>,
     accounts: Arc<dyn LocalAccounts>,
     io_channel: RwLock<Option<IoChannel<ClientIoMessage>>>,

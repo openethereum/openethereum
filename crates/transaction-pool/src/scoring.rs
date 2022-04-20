@@ -22,7 +22,8 @@ use std::{cmp, fmt};
 /// Represents a decision what to do with
 /// a new transaction that tries to enter the pool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Choice {
+pub enum Choice { // is defined in scoring, but used for ShouldReplace::should_replace as well.
+                  // Probably, would be better to move at separate file, as now it seems that the choice is only related to Scoring.
     /// New transaction should be rejected
     /// (i.e. the old transaction that occupies the same spot
     /// is better).
@@ -79,7 +80,8 @@ pub enum Change<T = ()> {
 /// - `choose`: compares transactions `gasPrice` (decides if old transaction should be replaced)
 /// - `update_scores`: score defined as `gasPrice` if `n==0` and `max(scores[n-1], gasPrice)` if `n>0`
 ///
-pub trait Scoring<T>: fmt::Debug {
+pub trait Scoring<T>: fmt::Debug { // I would split ordering related to transactions from the same sender
+                                   // and scores which compare transactions form different senders, as two traits.
     /// A score of a transaction.
     type Score: cmp::Ord + Clone + Default + fmt::Debug + Send + fmt::LowerHex;
     /// Custom scoring update event type.
@@ -94,7 +96,10 @@ pub trait Scoring<T>: fmt::Debug {
     /// Updates the transaction scores given a list of transactions and a change to previous scoring.
     /// NOTE: you can safely assume that both slices have the same length.
     /// (i.e. score at index `i` represents transaction at the same index)
-    fn update_scores(
+    fn update_scores( // seems a little bit out of the trait logic. Maybe should be moved to some other trait?
+                      // It is used only from Transactions type, probably we can move it somewhere near that structure
+                      // Probably, we can split `Scoring` trait on the two traits `Scoring` and `Ordering` (or sth similar),
+                      // and implement both of them for the same structure, which is further provided into methods defined in Transactions
         &self,
         txs: &[Transaction<T>],
         scores: &mut [Self::Score],
@@ -107,7 +112,8 @@ pub trait Scoring<T>: fmt::Debug {
     /// the per-sender limit is exceeded.
     fn should_ignore_sender_limit(&self, _new: &T) -> bool {
         false
-    }
+    } // seems that is used for local transactions.
+      // Feels a little bit unexpected in the trait, but have no idea there it should be better placed
 }
 
 /// A score with a reference to the transaction.

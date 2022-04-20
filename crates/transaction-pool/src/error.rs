@@ -22,7 +22,9 @@ pub enum Error<Hash: fmt::Debug + fmt::LowerHex> {
     /// Transaction is already imported
     AlreadyImported(Hash),
     /// Transaction is too cheap to enter the queue
-    TooCheapToEnter(Hash, String),
+    TooCheapToEnter(Hash, String), // (hash, min_score) - why min_score is a string??
+                                   // A: 'unknown' may be returned as a value if no elements are to remove but the pool is still full
+                                   //     (Most probably it means some bug). Anyway, why not to use Option<U256> instead?
     /// Transaction is too cheap to replace existing transaction that occupies the same slot.
     TooCheapToReplace(Hash, Hash),
 }

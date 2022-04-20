@@ -43,7 +43,7 @@ pub struct Transaction<T> {
     /// Sequential id of the transaction
     pub insertion_id: u64,
     /// Shared transaction
-    pub transaction: Arc<T>,
+    pub transaction: Arc<T>, // why the transaction is wrapped into Arc? What are the places it may be used at the same time? (Probably, in pending block)
 }
 
 impl<T> Clone for Transaction<T> {
@@ -139,10 +139,13 @@ where
     /// new transaction via the supplied `ShouldReplace` implementation and may be evicted.
     ///
     /// The `Listener` will be informed on any drops or rejections.
-    pub fn import(
+    pub fn import( // Current implementation allows following kind of misuse. When I submit transaction
+                   // with relatively low gas price and then submit a future transaction with high gas price. That way I
+                   // secure my first transaction to never be evicted from the txpool even though it has low gas price.
+                   // (Actually, until my future transaction would be evicted first)
         &mut self,
         transaction: T,
-        replace: &dyn ShouldReplace<T>,
+        replace: &dyn ShouldReplace<T>, // why readiness is separate from the pool?
     ) -> error::Result<Arc<T>, T::Hash> {
         let mem_usage = transaction.mem_usage();
 
@@ -227,7 +230,7 @@ where
                 self.listener.rejected(&new, &error);
                 return Err(error);
             }
-            AddResult::TooCheapToEnter(new, score) => {
+            AddResult::TooCheapToEnter(new, score/* min_score */) => { // score is wrong concept to use here. We should use the relative ordering instead
                 let error =
                     error::Error::TooCheapToEnter(new.hash().clone(), format!("{:#x}", score));
                 self.listener.rejected(&new, &error);
@@ -257,13 +260,21 @@ where
     /// Updates best and worst transactions from a sender.
     fn update_senders_worst_and_best(
         &mut self,
-        previous: Option<((S::Score, Transaction<T>), (S::Score, Transaction<T>))>,
+        previous: Option<((S::Score, Transaction<T>), (S::Score, Transaction<T>))>, // couldn't we create a separate type for the pair of (score, transaction)
+                                                                                    // and reuse it here and in Transactions structure?
+                                                                                    // Upd: `ScoreWithRef` seems to be almost that type (though comparison functions differ)
         current: Option<((S::Score, Transaction<T>), (S::Score, Transaction<T>))>,
     ) {
         let worst_collection = &mut self.worst_transactions;
         let best_collection = &mut self.best_transactions;
 
         let is_same = |a: &(S::Score, Transaction<T>), b: &(S::Score, Transaction<T>)| {
+            // ScoreWithRef compares scores and insertion ids of Transactions.
+            // Isn't that condition stronger, as we monotonically increase insertion id for every transaction?
+            //
+            // Actually, there might be a problem when we compare two transactions with the same internal transaction hash,
+            // but different insertion id, as currently in that case the second transaction will not replace the first one,
+            // while if we replace this equality with ScoreWithRef equality, it will. But is it actually a problem???
             a.0 == b.0 && a.1.hash() == b.1.hash()
         };
 
@@ -528,7 +539,8 @@ where
     }
 
     /// Update score of transactions of a particular sender.
-    pub fn update_scores(&mut self, sender: &T::Sender, event: S::Event) {
+    pub fn update_scores(&mut self, sender: &T::Sender, event: S::Event) { // seems that we may just reuse `remove_from_set` with providing `update_scores` as f
+                                                                           // just requires to rename `remove_from_set` on `update_set`
         let res = if let Some(set) = self.transactions.get_mut(sender) {
             let prev = set.worst_and_best();
             set.update_scores(&self.scoring, event);
@@ -642,7 +654,9 @@ where
         // iterate through each sender
         loop {
             if let Some(transactions) = self.transactions.as_mut() {
-                if let Some(scores) = self.scores.as_mut() {
+                if let Some(scores) = self.scores.as_mut() { // It is supposed to be non None, as there is one-to-one correspondence between transactions and scores.
+                                                                                //  However, I still believe we need to encapsulate transaction and score in one type (use `ScoresWithRef`?)
+                                                                                // so that we can eliminate this repetition.
                     // iterate through each transaction from one sender
                     loop {
                         if let Some(tx) = transactions.next() {
@@ -651,11 +665,12 @@ where
                                     Readiness::Ready => {
                                         //return transaction with score higher or equal to desired
                                         if score >= &self.includable_boundary
-                                            || tx.transaction.has_zero_gas_price()
+                                            || tx.transaction.has_zero_gas_price() // I believe `has_zero_gas_price` may be removed after the Merge
                                         {
                                             return Some(tx.transaction.clone());
                                         }
                                     }
+                                    // we may divide state on Stale and Future, and if Future transaction was got, we may skip all other transactions from that sender
                                     state => {
                                         trace!(
                                             "[{:?}] Ignoring {:?} transaction.",

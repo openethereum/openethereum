@@ -62,6 +62,8 @@ pub struct NonceAndGasPrice {
     pub block_base_fee: Option<U256>,
 }
 
+// I still believe it would be better to separate the Scoring transactions and Ordering transactions from the same sender
+// (e.g. to have `NonceOrdering` and `GasPriceScoring`)
 impl NonceAndGasPrice {
     /// Decide if the transaction should even be considered into the pool (if the pool is full).
     ///
@@ -151,7 +153,8 @@ where
                     }
                     ScoringEvent::BlockBaseFeeChanged => {
                         for i in 0..txs.len() {
-                            scores[i] = txs[i].transaction.effective_gas_price(self.block_base_fee);
+                            scores[i] = txs[i].transaction.effective_gas_price(self.block_base_fee); // lines in the loop fully repeat
+                                                                                                     // the lines for `Change::InsertedAt` event.
                             let boost = match txs[i].priority() {
                                 super::Priority::Local => 15,
                                 super::Priority::Retracted => 10,

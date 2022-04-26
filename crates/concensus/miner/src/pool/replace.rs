@@ -99,6 +99,9 @@ impl<S, C> ReplaceByScoreReadinessAndValidity<S, C> {
     where
         T: ScoredTransaction,
     {
+        // `effective_gas_price` is used here, as it used in Scoring as well.
+        // If we can get scores from scores updated in `Scoring::update_scores`,
+        // we can remove `block_base_fee` from the structure fields.
         let old_score = (old.priority(), old.effective_gas_price(self.block_base_fee));
         let new_score = (new.priority(), new.effective_gas_price(self.block_base_fee));
 

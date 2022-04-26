@@ -212,13 +212,19 @@ where
         tx: UnverifiedTransaction,
     ) -> Result<SignedTransaction, transaction::Error> {
         self.engine
-            .verify_transaction_basic(&tx, &self.best_block_header)?;
+            .verify_transaction_basic(&tx, &self.best_block_header)?; // why actually not to reuse `verify_transaction_basic` method here?
+                                                                         // That way it would at least be obvious that `verify_transaction` consists
+                                                                         // of basic verification and something else.
 
         let tx = SignedTransaction::new(tx)?;
 
         self.engine
             .machine()
-            .verify_transaction(&tx, &self.best_block_header, self.chain)?;
+            .verify_transaction(&tx, &self.best_block_header, self.chain)?; // currently verifies only whether transaction is allowed
+                                                                                           // according to transaction permission contract, if there is any.
+                                                                                           // As it is not called for local transactions, doesn't that mean
+                                                                                           // that local transactions that are not allowed due to permission contract
+                                                                                           // will anyway be accepted to the queue (which seems to be wrong)?
         Ok(tx)
     }
 

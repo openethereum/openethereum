@@ -63,7 +63,9 @@ impl Notifier {
 
 impl txpool::Listener<Transaction> for Notifier {
     fn added(&mut self, tx: &Arc<Transaction>, _old: Option<&Arc<Transaction>>) {
-        self.pending.push(*tx.hash());
+        self.pending.push(*tx.hash()); // `added` function is called for all incoming transactions, not only the pending ones.
+                                             // It seems that `pending` in that context has different meaning
+                                             // from what `pending` has meant in transaction_pool (only ready transactions) module.
     }
 }
 

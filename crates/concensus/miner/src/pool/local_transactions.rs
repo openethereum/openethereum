@@ -64,9 +64,9 @@ impl Status {
 /// Keeps track of local transactions that are in the queue or were mined/dropped recently.
 pub struct LocalTransactionsList {
     max_old: usize,
-    transactions: LinkedHashMap<H256, Status>,
+    transactions: LinkedHashMap<H256, Status>, // LinkedHashMap is used, as we want to iterate transaction in the insertion order
     pending: usize,
-    in_chain: Option<Box<dyn Fn(&H256) -> bool + Send + Sync>>,
+    in_chain: Option<Box<dyn Fn(&H256) -> bool + Send + Sync>>, // is used to determine whether culled transaction was mined or just culled.
 }
 
 impl fmt::Debug for LocalTransactionsList {
@@ -159,7 +159,7 @@ impl txpool::Listener<Transaction> for LocalTransactionsList {
         }
 
         debug!(target: "own_tx", "Imported to the pool (hash {:?})", tx.hash());
-        self.clear_old();
+        self.clear_old(); // see comment for `culled`
         self.insert(*tx.hash(), Status::Pending(tx.clone()));
         self.pending += 1;
 
@@ -230,6 +230,10 @@ impl txpool::Listener<Transaction> for LocalTransactionsList {
         self.clear_old();
     }
 
+    // As I understand we do not call `self.clear_old()` here because transactions are usually culled in batches,
+    // so it is cheaper to call `self.clear_old()` once for all culled transactions.
+    // However, as we do not know whether that is the last transaction being culled in the current batch or not,
+    // we call `self.clear_old()` in the beginning of `added` to clear the list of old transactions remained if the last operation was `culled`.
     fn culled(&mut self, tx: &Arc<Transaction>) {
         if !tx.priority().is_local() {
             return;

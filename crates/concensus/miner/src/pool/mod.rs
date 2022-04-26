@@ -66,7 +66,7 @@ pub struct PendingSettings {
     /// Current timestamp (affects readiness of some transactions).
     pub current_timestamp: u64,
     /// Nonce cap (for dust protection; EIP-168)
-    pub nonce_cap: Option<U256>,
+    pub nonce_cap: Option<U256>, // probably we may remove it for after-the-merge client
     /// Maximal number of transactions in pending the set.
     pub max_len: usize,
     /// Ordering of transactions.
@@ -96,7 +96,7 @@ impl PendingSettings {
 
 /// Transaction priority.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy)]
-pub enum Priority {
+pub enum Priority { // priority is  kept in transaction wrapper as one of its argument
     /// Regular transactions received over the network. (no priority boost)
     Regular,
     /// Transactions from retracted blocks (medium priority)
@@ -129,7 +129,7 @@ pub trait ScoredTransaction {
     fn effective_gas_price(&self, block_base_fee: Option<U256>) -> U256;
 
     /// Gets the actual reward miner will get if the transaction is added into the current block.
-    fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256;
+    fn effective_priority_fee(&self, block_base_fee: Option<U256>) -> U256; // is not used anywhere
 
     /// Gets transaction nonce.
     fn nonce(&self) -> U256;
@@ -141,7 +141,8 @@ pub trait ScoredTransaction {
 
 /// Verified transaction stored in the pool.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VerifiedTransaction {
+pub struct VerifiedTransaction { // Is better to create an explicit constructor. Would be easier to make modifications.
+                                 // Also allows creators not to provide `hash` and `sender` fields explicitly, even if they still be in the structure
     transaction: transaction::PendingTransaction,
     // TODO [ToDr] hash and sender should go directly from the transaction
     hash: H256,

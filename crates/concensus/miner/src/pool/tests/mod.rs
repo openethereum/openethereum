@@ -1392,7 +1392,8 @@ fn should_not_return_pending_external_transactions_with_too_low_priority_fee_if_
     should_not_return_pending_external_transactions_with_too_low_priority_fee_if_priority_fees_are_enforced(true)
 }
 
-fn should_not_return_pending_external_transactions_with_too_low_priority_fee_if_priority_fees_are_enforced(
+fn should_not_return_pending_external_transactions_with_too_low_priority_fee_if_priority_fees_are_enforced( // the name of the test is confusing.
+                                                                                                            // It tests both cases: when are enforced and when are not.
     pending_filtered: bool,
 ) {
     // given
@@ -1472,7 +1473,7 @@ fn should_return_correct_cached_pending_depending_on_fees_enforcement_if_enforce
 }
 
 #[test]
-fn should_return_correct_cached_pending_depending_on_fees_enforcement_if_do_not_enforced() {
+fn should_return_correct_cached_pending_depending_on_fees_enforcement_if_do_not_enforced() { // typo: if_not_enforced
     should_return_correct_cached_pending_depending_on_fees_enforcement(false)
 }
 

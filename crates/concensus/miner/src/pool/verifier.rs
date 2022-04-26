@@ -87,7 +87,8 @@ pub enum Transaction {
     /// Locally signed or retracted transaction.
     ///
     /// We can skip consistency verifications and just verify readiness.
-    Local(transaction::PendingTransaction),
+    Local(transaction::PendingTransaction), // seems that VerifiedTransaction::from_pending_transaction is required already for that variant.
+                                            // What is the actual pipeline for UnverifiedTransaction and PendingTransaction??
 }
 
 impl Transaction {
@@ -257,13 +258,16 @@ impl<C: Client> txpool::Verifier<Transaction>
         }
 
         let is_own = tx.is_local();
-        let has_zero_gas_price = tx.has_zero_gas_price();
+        let has_zero_gas_price = tx.has_zero_gas_price(); // may be removed if after the Merge zero gas price (service) transactions to be forbidden
         // Quick exit for non-service and non-local transactions
         //
         // We're checking if the transaction is below configured minimal gas price
         // or the effective minimal gas price in case the pool is full.
 
-        if !has_zero_gas_price && !is_own {
+        if !has_zero_gas_price && !is_own { // zero cost transactions indicates that transaction may be a service transaction,
+                                            // thus, we do not want to reject it too early. However, it still may be not the service transaction
+                                            // if, for example, a user is not allowed to send service transactions. We do not check it here,
+                                            // as it is quite expensive check, and we do not need such a level of assurance at this point yet.
             let max_priority_fee = tx.max_priority_fee();
 
             if max_priority_fee < self.options.minimal_gas_price {
@@ -302,7 +306,7 @@ impl<C: Client> txpool::Verifier<Transaction>
 
         // Some more heavy checks below.
         // Actually recover sender and verify that transaction
-        let is_retracted = tx.is_retracted();
+        let is_retracted = tx.is_retracted(); // we have to save the flag here because `tx` variable will be moved
         let transaction = match tx {
             Transaction::Retracted(tx) | Transaction::Unverified(tx) => {
                 match self.client.verify_transaction(tx) {

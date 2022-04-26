@@ -48,11 +48,14 @@ use super::{client::NonceClient, VerifiedTransaction};
 
 /// Checks readiness of transactions by comparing the nonce to state nonce.
 #[derive(Debug)]
-pub struct State<C> {
+pub struct State<C> { // wouldn't it be better to name structure with something more expressive at least that indicates that it represents readiness by nonce?
     nonces: HashMap<Address, U256>,
     state: C,
     max_nonce: Option<U256>,
-    stale_id: Option<usize>,
+    stale_id: Option<usize>, // is used as an indicator that Future transaction was future for too long time, and should be considered as Stale
+                             // even though its nonce is greater than current state nonce for the corresponding sender.
+                             // If such removal did not exist, it would be possible that future transactions fill the whole transaction pool,
+                             // while non of them could be added into the pending block.
 }
 
 impl<C> State<C> {
@@ -81,7 +84,7 @@ impl<C: NonceClient> txpool::Ready<VerifiedTransaction> for State<C> {
         let state = &self.state;
         let state_nonce = || state.account_nonce(sender);
         let nonce = self.nonces.entry(*sender).or_insert_with(state_nonce);
-        match tx.transaction.tx().nonce.cmp(nonce) {
+        match tx.transaction.tx().nonce.cmp(nonce) { // we can use `tx.nonce()` as VerifiedTransaction implements ScoredTransaction trait
             // Before marking as future check for stale ids
             cmp::Ordering::Greater => match self.stale_id {
                 Some(id) if tx.insertion_id() < id => txpool::Readiness::Stale,
@@ -150,7 +153,7 @@ impl<C: Fn(&Address) -> Option<U256>> txpool::Ready<VerifiedTransaction> for Opt
         let nonce = self
             .nonces
             .entry(*sender)
-            .or_insert_with(|| state(sender).unwrap_or_else(|| tx.transaction.tx().nonce));
+            .or_insert_with(|| state(sender).unwrap_or_else(|| tx.transaction.tx().nonce)); // is it possible that transaction with higher nonce
         match tx.transaction.tx().nonce.cmp(nonce) {
             cmp::Ordering::Greater => txpool::Readiness::Future,
             cmp::Ordering::Less => txpool::Readiness::Stale,

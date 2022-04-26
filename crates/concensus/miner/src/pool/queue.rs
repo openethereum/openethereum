@@ -40,7 +40,9 @@ use pool::{
     verifier, PendingOrdering, PendingSettings, PrioritizationStrategy,
 };
 
-type Listener = (
+type Listener = ( // Using tuples makes it difficult to understand what value we are using when accessing internal listeners.
+                  // It makes sense to implement it as a structure with `local_transactions`, `notifier`, and `logger` fields,
+                  // and implement `txpool::Listener` trait on that structure.
     LocalTransactionsList,
     (listener::Notifier, listener::Logger),
 );
@@ -128,7 +130,8 @@ impl CachedPending {
         self.pending_filtered(block_number, current_timestamp, nonce_cap, max_len, None)
     }
 
-    pub fn pending_filtered(
+    pub fn pending_filtered( // It is called only by the `pending` function, with hardcoded `filter=None` argument.
+                             // May be it makes sense, just to inline that function into `pending` without any filtering?
         &self,
         block_number: u64,
         current_timestamp: u64,
@@ -266,7 +269,9 @@ impl TransactionQueue {
     }
 
     /// If latest block has different base fee than it's parent, then transaction pool scoring needs to be updated.
-    pub fn update_scoring(&self, block_base_fee: U256) {
+    pub fn update_scoring(&self, block_base_fee: U256) { // new block_base_fee is already set via `set_verifier_options`
+                                                         // at that moment (to ensure). So most probably input argument
+                                                         // is not needed in the function
         let update_needed = match self.pool.read().scoring().block_base_fee {
             Some(base_fee) => base_fee != block_base_fee,
             None => true,
@@ -294,11 +299,13 @@ impl TransactionQueue {
     }
 
     /// Sets the in-chain transaction checker for pool listener.
-    pub fn set_in_chain_checker<F>(&self, f: F)
+    pub fn set_in_chain_checker<F>(&self, f: F) // we need it because there is a circular dependency between a client used as a checker,
+                                                // and a miner module which contains that queue.
     where
         F: Fn(&H256) -> bool + Send + Sync + 'static,
     {
-        self.pool.write().listener_mut().0.set_in_chain_checker(f)
+        self.pool.write().listener_mut().0.set_in_chain_checker(f) // would be much more clear:
+                                                                   // `self.pool.write().listener_mut().local_transactions.set_in_chain_checker(f)`
     }
 
     // t_nb 10.2
@@ -333,7 +340,8 @@ impl TransactionQueue {
             client.clone(),
             options,
             self.insertion_id.clone(),
-            transaction_to_replace,
+            transaction_to_replace, // is used as a comparison: if a new transaction is worse than the worst transaction currently in the pool,
+                                    // the new one has no chance to be included into the pool.
         );
 
         let mut replace = replace::ReplaceByScoreReadinessAndValidity::new(
@@ -373,7 +381,7 @@ impl TransactionQueue {
             .collect::<Vec<_>>();
 
         // Notify about imported transactions.
-        (self.pool.write().listener_mut().1).0.notify();
+        (self.pool.write().listener_mut().1).0.notify(); // `self.pool.write().listener_mut().notifier.notify()`
 
         if results.iter().any(|r| r.is_ok()) {
             self.cached_enforced_pending.write().clear();
@@ -388,6 +396,7 @@ impl TransactionQueue {
         let ready = |_tx: &pool::VerifiedTransaction| txpool::Readiness::Ready;
         self.pool
             .read()
+            // maybe it make sense to rename `unordered_pending` to just `unordered`, as we use it here to get all transactions?
             .unordered_pending(ready, Default::default())
             .collect()
     }
@@ -412,6 +421,9 @@ impl TransactionQueue {
         let ready = ready::OptionalState::new(nonce);
         self.pool
             .read()
+            // seems that implementation relies on the fact that transactions from the same sender are iterated
+            // in the nonce order. Current implementation does that, but in description to `unordered_pending` method
+            // it is mentioned that it is not guaranteed in general.
             .unordered_pending(ready, Default::default())
             .map(|tx| tx.hash)
             .collect()
@@ -538,7 +550,8 @@ impl TransactionQueue {
     ///
     /// NOTE This is re-computing the pending set and it might be expensive to do so.
     /// Prefer using cached pending set using `#pending` method.
-    pub fn collect_pending<C, F, T>(
+    pub fn collect_pending<C, F, T>( // is used only internally and always collects into a vector with some filters and length limits applied before.
+                                     // So maybe it is just easier to make a method private and make it return `impl Iterator<Item=T>`?
         &self,
         client: C,
         includable_boundary: U256,
@@ -549,7 +562,7 @@ impl TransactionQueue {
     ) -> T
     where
         C: client::NonceClient,
-        F: FnOnce(
+        F: FnOnce(  // or at least make an iterator generic over its arguments?
             txpool::PendingIterator<
                 pool::VerifiedTransaction,
                 (ready::Condition, ready::State<C>),
@@ -620,7 +633,12 @@ impl TransactionQueue {
             current_id.checked_sub(gap)
         };
 
-        self.recently_rejected.clear();
+        self.recently_rejected.clear(); // clear recently rejected transactions,
+                                        // as after some transactions from the queue were added into the new block
+                                        // and removed from the queue, rejected transactions may find a way into the queue
+                                        // (e.g. transaction was rejected because it was worse than the worst transaction in the pool,
+                                        // and the pool was full; after some of transactions have been culled, the pool may become
+                                        // not full and rejected transaction may be added into the pool)
 
         let mut removed = 0;
         let senders: Vec<_> = {
@@ -751,7 +769,7 @@ impl TransactionQueue {
     /// Local transactions are the ones from accounts managed by this node
     /// and transactions submitted via local RPC (`eth_sendRawTransaction`)
     pub fn has_local_pending_transactions(&self) -> bool {
-        self.pool.read().listener().0.has_pending()
+        self.pool.read().listener().0.has_pending() // `self.pool.read().listener().local_transactions.has_pending()`
     }
 
     /// Returns status of recently seen local transactions.
@@ -759,7 +777,7 @@ impl TransactionQueue {
         self.pool
             .read()
             .listener()
-            .0
+            .0 // `self.pool.read().listener().local_transactions`
             .all_transactions()
             .iter()
             .map(|(a, b)| (*a, b.clone()))
@@ -769,7 +787,7 @@ impl TransactionQueue {
     /// Add a callback to be notified about all transactions entering the pool.
     pub fn add_listener(&self, f: Box<dyn Fn(&[H256]) + Send + Sync>) {
         let mut pool = self.pool.write();
-        (pool.listener_mut().1).0.add(f);
+        (pool.listener_mut().1).0.add(f); // `pool.listener_mut().notifier.add(f)`
     }
 
     /// Check if pending set is cached.

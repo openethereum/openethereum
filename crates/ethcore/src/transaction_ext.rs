@@ -25,6 +25,9 @@ pub trait Transaction {
     fn gas_required(&self, schedule: &Schedule) -> u64;
 }
 
+// `gas_required` is only used by `transaction::TypedTransaction` and not `transaction::Transaction`.
+// It's better to implement trait for `transaction::TypedTransaction` instead, and update functions that uses it
+// not to explicitly convert types.
 impl Transaction for transaction::Transaction {
     fn gas_required(&self, schedule: &Schedule) -> u64 {
         gas_required_for(

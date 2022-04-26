@@ -16,6 +16,9 @@
 
 use crate::VerifiedTransaction;
 
+// why Verifier structure is defined in generic transaction-pool if it is only used in actual miner's transaction pool implementation?
+// If we remove it from here, the transaction-pool crate still successfully compiles
+
 /// Transaction verification.
 ///
 /// Verifier is responsible to decide if the transaction should even be considered for pool inclusion.

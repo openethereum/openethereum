@@ -65,7 +65,7 @@ impl ActionArgument {
     fn matches(&self, value: &Action) -> bool {
         match self {
             Self::eq(expected) => *value == Action::Call(*expected),
-            Self::action(name) => *value == Action::Create && name == "contract_creation",
+            Self::action(name) => *value == Action::Create && name == "contract_creation", // what other possible names may be here??? (none, but it is included in RPC call for some reason)
             Self::None => true,
         }
     }
@@ -100,7 +100,7 @@ impl ValueFilterArgument {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct TransactionFilter {
+pub struct TransactionFilter { // why couldn't we just use Option<_> in fields?
     from: SenderArgument,
     to: ActionArgument,
     gas: ValueFilterArgument,

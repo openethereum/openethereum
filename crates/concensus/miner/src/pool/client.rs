@@ -70,7 +70,8 @@ pub trait Client: fmt::Debug + Sync {
     ) -> Result<transaction::SignedTransaction, transaction::Error>;
 
     /// Estimate minimal gas requirurement for given transaction.
-    fn required_gas(&self, tx: &transaction::Transaction) -> U256;
+    fn required_gas(&self, tx: &transaction::Transaction) -> U256; // I believe that after some eip the client uses only `TypedTransaction`
+                                                                   // which wraps `TypedTransaction`. Probably, it would be better to use `TypedTransaction` as an argument here
 
     /// Fetch account details for given sender.
     fn account_details(&self, address: &Address) -> AccountDetails;

@@ -236,7 +236,7 @@ usage! {
         ["Operating Options"]
             ARG arg_mode: (String) = "last", or |c: &Config| c.parity.as_ref()?.mode.clone(),
             "--mode=[MODE]",
-            "Set the operating mode. MODE can be one of: last - Uses the last-used mode, active if none; active - Parity continuously syncs the chain; passive - Parity syncs initially, then sleeps and wakes regularly to resync; dark - Parity syncs only when the JSON-RPC is active; offline - Parity doesn't sync.",
+            "Set the operating mode. MODE can be one of: last - Uses the last-used mode, active if none; active - OpenEthereum continuously syncs the chain; passive - OpenEthereum syncs initially, then sleeps and wakes regularly to resync; dark - OpenEthereum syncs only when the JSON-RPC is active; offline - OpenEthereum doesn't sync.",
 
             ARG arg_mode_timeout: (u64) = 300u64, or |c: &Config| c.parity.as_ref()?.mode_timeout.clone(),
             "--mode-timeout=[SECS]",

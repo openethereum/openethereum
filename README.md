@@ -113,7 +113,7 @@ $ cargo clean
 This always compiles the latest nightly builds. If you want to build stable, do a
 
 ```bash
-$ git checkout stable
+$ git checkout -b stable
 ```
 
 ### 3.3 Starting OpenEthereum <a id="chapter-0034"></a>

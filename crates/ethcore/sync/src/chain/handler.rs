@@ -758,7 +758,7 @@ impl SyncHandler {
             snapshot_hash,
             snapshot_number,
             block_set: None,
-            client_version: ClientVersion::from(io.peer_version(peer_id)),
+            _client_version: ClientVersion::from(io.peer_version(peer_id)),
         };
 
         trace!(target: "sync", "New peer {} (\

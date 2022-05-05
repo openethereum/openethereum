@@ -367,7 +367,7 @@ pub struct PeerInfo {
     /// Block set requested
     block_set: Option<BlockSet>,
     /// Version of the software the peer is running
-    client_version: ClientVersion,
+    _client_version: ClientVersion,
 }
 
 impl PeerInfo {
@@ -1818,7 +1818,7 @@ pub mod tests {
                 snapshot_hash: None,
                 asking_snapshot_data: None,
                 block_set: None,
-                client_version: ClientVersion::from(""),
+                _client_version: ClientVersion::from(""),
             },
         );
     }

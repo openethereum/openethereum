@@ -37,7 +37,7 @@ pub trait Informant: trace::VMTracer {
     /// Clone sink.
     fn clone_sink(&self) -> Self::Sink;
     /// Display final result.
-    fn finish(result: RunResult<Self::Output>, &mut Self::Sink);
+    fn finish(result: RunResult<Self::Output>, sink: &mut Self::Sink);
 }
 
 /// Execution finished correctly

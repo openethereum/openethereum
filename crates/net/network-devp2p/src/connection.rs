@@ -434,7 +434,7 @@ impl EncryptedConnection {
         let mut packet = vec![0u8; 16 + 16 + len + padding + 16];
         let mut header = header.out();
         header.resize(HEADER_LEN, 0u8);
-        &mut packet[..HEADER_LEN].copy_from_slice(&mut header);
+        packet[..HEADER_LEN].copy_from_slice(&mut header);
         self.encoder.encrypt(&mut packet[..HEADER_LEN])?;
         EncryptedConnection::update_mac(
             &mut self.egress_mac,
@@ -444,7 +444,7 @@ impl EncryptedConnection {
         self.egress_mac
             .clone()
             .finalize(&mut packet[HEADER_LEN..32]);
-        &mut packet[32..32 + len].copy_from_slice(payload);
+        packet[32..32 + len].copy_from_slice(payload);
         self.encoder.encrypt(&mut packet[32..32 + len])?;
         if padding != 0 {
             self.encoder
@@ -526,7 +526,7 @@ impl EncryptedConnection {
         let mut prev = H128::default();
         mac.clone().finalize(prev.as_bytes_mut());
         let mut enc = H128::default();
-        &mut enc[..].copy_from_slice(prev.as_bytes());
+        enc[..].copy_from_slice(prev.as_bytes());
         let mac_encoder = AesEcb256::new(mac_encoder_key.as_bytes())?;
         mac_encoder.encrypt(enc.as_bytes_mut())?;
 

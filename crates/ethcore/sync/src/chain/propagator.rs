@@ -549,7 +549,7 @@ mod tests {
                 snapshot_hash: None,
                 asking_snapshot_data: None,
                 block_set: None,
-                client_version: ClientVersion::from(""),
+                _client_version: ClientVersion::from(""),
             },
         );
         let ss = TestSnapshotService::new();

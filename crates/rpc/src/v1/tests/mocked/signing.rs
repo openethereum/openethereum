@@ -41,9 +41,9 @@ use serde_json;
 use types::transaction::{Action, SignedTransaction, Transaction, TypedTransaction};
 
 struct SigningTester {
-    pub runtime: Runtime,
+    pub _runtime: Runtime,
     pub signer: Arc<SignerService>,
-    pub client: Arc<TestBlockChainClient>,
+    pub _client: Arc<TestBlockChainClient>,
     pub miner: Arc<TestMinerService>,
     pub accounts: Arc<AccountProvider>,
     pub io: IoHandler<Metadata>,
@@ -75,9 +75,9 @@ impl Default for SigningTester {
         io.extend_with(ParitySigning::to_delegate(rpc));
 
         SigningTester {
-            runtime,
+            _runtime: runtime,
             signer: signer,
-            client: client,
+            _client: client,
             miner: miner,
             accounts: accounts,
             io: io,

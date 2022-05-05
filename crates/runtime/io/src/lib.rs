@@ -255,7 +255,7 @@ mod tests {
 
         #[derive(Clone)]
         struct MyMessage {
-            data: u32,
+            _data: u32,
         }
 
         impl IoHandler<MyMessage> for MyHandler {
@@ -286,7 +286,7 @@ mod tests {
 
         #[derive(Clone)]
         struct MyMessage {
-            data: u32,
+            _data: u32,
         }
 
         impl IoHandler<MyMessage> for MyHandler {

@@ -3725,7 +3725,7 @@ mod tests {
 			}
 		}"#;
         let deserialized: ethjson::spec::AuthorityRound = serde_json::from_str(config).unwrap();
-        AuthorityRoundParams::from(deserialized.params);
+        let _ = AuthorityRoundParams::from(deserialized.params);
     }
 
     #[test]

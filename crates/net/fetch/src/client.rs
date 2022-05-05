@@ -722,7 +722,7 @@ mod test {
             .map(|resp| resp.concat2())
             .flatten()
             .map(|body| assert_eq!(&body[..], b"123"))
-            .map_err(|err| panic!(err));
+            .map_err(|err| panic!("{}", err));
 
         runtime.block_on(future).unwrap();
     }

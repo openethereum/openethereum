@@ -48,8 +48,8 @@ fn miner_service() -> Arc<TestMinerService> {
 }
 
 struct EthTester {
-    pub runtime: Runtime,
-    pub client: Arc<TestBlockChainClient>,
+    pub _runtime: Runtime,
+    pub _client: Arc<TestBlockChainClient>,
     pub accounts_provider: Arc<AccountProvider>,
     pub miner: Arc<TestMinerService>,
     pub io: IoHandler<Metadata>,
@@ -82,8 +82,8 @@ impl EthTester {
         io.extend_with(sign);
 
         EthTester {
-            runtime,
-            client,
+            _runtime: runtime,
+            _client: client,
             miner,
             io,
             accounts_provider,

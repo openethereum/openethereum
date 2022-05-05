@@ -1191,6 +1191,10 @@ impl Spec {
         load_bundled!("test/authority_round_block_reward_contract")
     }
 
+    /// Create a new Spec with AuthorityRound consensus which does internal sealing (not
+    /// requiring work). Contains `rewriteBytecode` field specifying hardforks when
+    /// block numbers and contracts should be rewritten. See:
+    /// https://docs.google.com/document/d/10DikWMCVLhemF8FOJRTRI2AXhWa8bE1-kFaOElXN8Wc/edit
     pub fn new_test_round_rewrite_bytecode_transitions() -> Self {
         load_bundled!("test/authority_round_rewrite_bytecode_transitions")
     }

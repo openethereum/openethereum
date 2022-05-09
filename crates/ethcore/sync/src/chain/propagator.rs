@@ -322,28 +322,21 @@ impl SyncPropagator {
         }
     }
 
-    fn select_peers_for_transactions<F>(sync: &ChainSync, filter: F, are_new: bool) -> Vec<PeerId>
+    fn select_peers_for_transactions<F>(sync: &ChainSync, filter: F) -> Vec<PeerId>
     where
         F: Fn(&PeerId) -> bool,
     {
-        let fraction_filter: Box<dyn FnMut(&PeerId) -> bool> = if are_new {
-            // We propagate new transactions to all peers initially.
-            Box::new(|_| true)
-        } else {
-            // Otherwise, we propagate transaction only to squire root of all peers.
-            let mut random = random::new();
-            // sqrt(x)/x scaled to max u32
-            let fraction =
-                ((sync.peers.len() as f64).powf(-0.5) * (u32::max_value() as f64).round()) as u32;
-            let small = sync.peers.len() < MIN_PEERS_PROPAGATION;
-            Box::new(move |_| small || random.next_u32() < fraction)
-        };
+        // sqrt(x)/x scaled to max u32
+        let fraction =
+            ((sync.peers.len() as f64).powf(-0.5) * (u32::max_value() as f64).round()) as u32;
+        let small = sync.peers.len() < MIN_PEERS_PROPAGATION;
 
+        let mut random = random::new();
         sync.peers
             .keys()
             .cloned()
             .filter(filter)
-            .filter(fraction_filter)
+            .filter(|_| small || random.next_u32() < fraction)
             .take(MAX_PEERS_PROPAGATION)
             .collect()
     }
@@ -395,7 +388,7 @@ impl SyncPropagator {
         // usual transactions could be propagated to all peers
         let mut affected_peers = HashSet::new();
         if !transactions.is_empty() {
-            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true, are_new);
+            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true);
             affected_peers = SyncPropagator::propagate_transactions_to_peers(
                 sync,
                 io,
@@ -409,11 +402,10 @@ impl SyncPropagator {
         // most of times service_transactions will be empty
         // => there's no need to merge packets
         if !service_transactions.is_empty() {
-            let service_transactions_peers = SyncPropagator::select_peers_for_transactions(
-                sync,
-                |peer_id| io.peer_version(*peer_id).accepts_service_transaction(),
-                are_new,
-            );
+            let service_transactions_peers =
+                SyncPropagator::select_peers_for_transactions(sync, |peer_id| {
+                    io.peer_version(*peer_id).accepts_service_transaction()
+                });
             let service_transactions_affected_peers =
                 SyncPropagator::propagate_transactions_to_peers(
                     sync,

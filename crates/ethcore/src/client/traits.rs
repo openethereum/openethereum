@@ -387,6 +387,8 @@ pub trait BlockChainClient:
     /// Get verified transaction with specified transaction hash.
     fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>>;
 
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>>;
+
     /// Sorted list of transaction gas prices from at least last sample_size blocks.
     fn gas_price_corpus(&self, sample_size: usize) -> ::stats::Corpus<U256> {
         let mut h = self.chain_info().best_block_hash;

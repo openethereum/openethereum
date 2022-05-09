@@ -90,7 +90,7 @@ use snapshot::{self, io as snapshot_io, SnapshotClient};
 use spec::Spec;
 use state::{self, State};
 use state_db::StateDB;
-use stats::{PrometheusMetrics, PrometheusRegistry};
+use stats::{Corpus, PrometheusMetrics, PrometheusRegistry};
 use trace::{
     self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB,
 };
@@ -2747,6 +2747,10 @@ impl BlockChainClient for Client {
 
     fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>> {
         self.importer.miner.transaction(tx_hash)
+    }
+
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>> {
+        self.importer.miner.transactions(hashes)
     }
 
     fn signing_chain_id(&self) -> Option<u64> {

@@ -106,13 +106,8 @@ impl SyncPropagator {
         tx_hashes: Vec<H256>,
         should_continue: F,
     ) -> usize {
-        let transactions = move |io: &dyn SyncIo| {
-            tx_hashes
-                .iter()
-                .filter_map(|hash| io.chain().transaction(hash))
-                .collect()
-        };
-        SyncPropagator::propagate_transactions(sync, io, transactions, true, should_continue)
+        let get_transactions = |io: &dyn SyncIo| io.chain().transactions(tx_hashes);
+        SyncPropagator::propagate_transactions(sync, io, get_transactions, true, should_continue)
     }
 
     pub fn propagate_ready_transactions<F: FnMut() -> bool>(
@@ -120,8 +115,8 @@ impl SyncPropagator {
         io: &mut dyn SyncIo,
         should_continue: F,
     ) -> usize {
-        let transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
-        SyncPropagator::propagate_transactions(sync, io, transactions, false, should_continue)
+        let get_transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
+        SyncPropagator::propagate_transactions(sync, io, get_transactions, false, should_continue)
     }
 
     fn propagate_transactions_to_peers<F: FnMut() -> bool>(
@@ -376,7 +371,7 @@ impl SyncPropagator {
     ) -> usize
     where
         F: FnMut() -> bool,
-        G: Fn(&dyn SyncIo) -> Vec<Arc<VerifiedTransaction>>,
+        G: FnOnce(&dyn SyncIo) -> Vec<Arc<VerifiedTransaction>>,
     {
         // Early out if nobody to send to.
         if sync.peers.is_empty() {

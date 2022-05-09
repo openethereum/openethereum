@@ -75,7 +75,7 @@ use miner::{self, Miner, MinerService};
 use spec::Spec;
 use state::StateInfo;
 use state_db::StateDB;
-use stats::{PrometheusMetrics, PrometheusRegistry};
+use stats::{Corpus, PrometheusMetrics, PrometheusRegistry};
 use trace::LocalizedTrace;
 use verification::queue::{kind::blocks::Unverified, QueueInfo};
 
@@ -1122,6 +1122,10 @@ impl BlockChainClient for TestBlockChainClient {
 
     fn transaction(&self, tx_hash: &H256) -> Option<Arc<VerifiedTransaction>> {
         self.miner.transaction(tx_hash)
+    }
+
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>> {
+        self.miner.transactions(hashes)
     }
 }
 

@@ -661,6 +661,25 @@ impl TransactionQueue {
         self.pool.read().find(hash)
     }
 
+    /// Retrieves multiple transactions from the pool.
+    ///
+    /// Given transaction hashes looks up that transactions in the pool
+    /// and returns a vector of shared pointers to those of them which
+    /// are in the pool.
+    ///
+    /// Optimizes look ups for several transactions by acquiring read lock only once.
+    pub fn find_mul(
+        &self,
+        hashes: impl Iterator<Item = H256>,
+    ) -> Vec<Arc<pool::VerifiedTransaction>> {
+        let pool = self.pool.read();
+        let mut res = Vec::new();
+        for hash in hashes {
+            pool.find(&hash).map(|tx| res.push(tx));
+        }
+        res
+    }
+
     /// Remove a set of transactions from the pool.
     ///
     /// Given an iterator of transaction hashes

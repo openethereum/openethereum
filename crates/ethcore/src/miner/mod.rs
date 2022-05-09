@@ -196,6 +196,11 @@ pub trait MinerService: Send + Sync {
     /// Query transaction from the pool given it's hash.
     fn transaction(&self, hash: &H256) -> Option<Arc<VerifiedTransaction>>;
 
+    /// Query transactions from the pool given their hashes.
+    /// Is added to allow underlying implementation optimize look ups
+    /// of several transactions.
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>>;
+
     /// Returns next valid nonce for given address.
     ///
     /// This includes nonces of all transactions from this address in the pending queue

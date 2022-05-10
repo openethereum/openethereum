@@ -115,6 +115,7 @@ use rlp::{DecoderError, RlpStream};
 use snapshot::Snapshot;
 use std::{
     cmp,
+    cmp::max,
     collections::{BTreeMap, HashMap, HashSet},
     sync::mpsc,
     time::{Duration, Instant},
@@ -166,6 +167,8 @@ pub const ETH_PROTOCOL_VERSION_63: (u8, u8) = (63, 0x11);
 pub const PAR_PROTOCOL_VERSION_1: (u8, u8) = (1, 0x15);
 /// 2 version of OpenEthereum protocol (consensus messages added).
 pub const PAR_PROTOCOL_VERSION_2: (u8, u8) = (2, 0x16);
+
+pub const MAX_NEW_TRANSACTIONS_TO_PROCESS: usize = 4096;
 
 pub const MAX_BODIES_TO_SEND: usize = 256;
 pub const MAX_HEADERS_TO_SEND: usize = 512;
@@ -558,7 +561,7 @@ impl ChainSyncApi {
                     debug!(target: "sync", "Finished block propagation, took {}ms", as_ms(started));
                 }
                 PriorityTask::PropagateTransactions(time, _) => {
-                    let hashes = sync.new_transaction_hashes(None);
+                    let hashes = sync.new_transaction_hashes(Some(MAX_NEW_TRANSACTIONS_TO_PROCESS));
                     SyncPropagator::propagate_new_transactions(&mut sync, io, hashes, || {
                         check_deadline(deadline).is_some()
                     });
@@ -879,28 +882,22 @@ impl ChainSync {
     /// Get transaction hashes that were imported but not yet processed,
     /// but no more than `max_len` if provided.
     pub fn new_transaction_hashes(&self, max_len: Option<usize>) -> Vec<H256> {
-        let size = std::cmp::min(
-            self.new_transaction_hashes.len(),
-            max_len.unwrap_or(usize::MAX),
-        );
-        let mut hashes = Vec::with_capacity(size);
-        for _ in 0..size {
+        let max_len = max_len.unwrap_or(usize::MAX);
+        // used just to initialize the vector with results
+        let expected_size = cmp::min(self.new_transaction_hashes.len(), max_len);
+        let mut hashes = Vec::with_capacity(expected_size);
+        for _ in 0..max_len {
             match self.new_transaction_hashes.try_recv() {
                 Ok(hash) => hashes.push(hash),
-                Err(err) => {
-                    // In general that should not be the case as the `size`
-                    // must not be greater than number of messages in the channel.
-                    // However if any error occurs we just log it for further analysis and break the loop.
-                    debug!(target: "sync", "Error while receiving new transaction hashes: {}", err);
+                Err(crossbeam_channel::TryRecvError::Empty) => break, // we just collected all available hashes
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    // Receiving end disconnected for some reason. Log it for further analysis.
+                    debug!(target: "sync", "New transaction hashes channel is empty and disconnected");
                     break;
                 }
             }
         }
-        trace!(
-            target: "sync",
-            "New transaction hashes received for processing. Expected: {}. Actual: {}",
-            size, hashes.len()
-        );
+        trace!(target: "sync", "{} new transaction hashes received for processing", hashes.len());
         hashes
     }
 

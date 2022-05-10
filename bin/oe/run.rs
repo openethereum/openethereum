@@ -459,6 +459,21 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
     let tx = ::parking_lot::Mutex::new(priority_tasks);
     let is_ready = Arc::new(atomic::AtomicBool::new(true));
     miner.add_transactions_listener(Box::new(move |hashes| {
+        // transaction is added into the queue
+        for hash in hashes {
+            match new_transaction_hashes.try_send(hash.clone()) {
+                Err(err) => {
+                    trace!(
+                    target: "tx_listener",
+                    "New transaction {} has not been send into the channel: {}. Other transactions have been discarded",
+                    hash, err
+                );
+                    // if any error was encountered it does not make sense to continue further
+                    break
+                }
+                Ok(_) => ()
+            }
+        }
         // we want to have only one PendingTransactions task in the queue.
         if is_ready
             .compare_exchange(
@@ -469,11 +484,6 @@ pub fn execute(cmd: RunCmd, logger: Arc<RotatingLogger>) -> Result<RunningClient
             )
             .is_ok()
         {
-            for hash in hashes {
-                new_transaction_hashes
-                    .send(hash.clone())
-                    .expect("new_transaction_hashes receiving side is disconnected");
-            }
             let task =
                 crate::sync::PriorityTask::PropagateTransactions(Instant::now(), is_ready.clone());
             // we ignore error cause it means that we are closing

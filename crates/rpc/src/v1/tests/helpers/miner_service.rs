@@ -250,6 +250,10 @@ impl MinerService for TestMinerService {
             .map(|tx| Arc::new(VerifiedTransaction::from_pending_block_transaction(tx)))
     }
 
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>> {
+        unimplemented!()
+    }
+
     fn remove_transaction(&self, hash: &H256) -> Option<Arc<VerifiedTransaction>> {
         self.pending_transactions
             .lock()

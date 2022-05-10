@@ -1258,6 +1258,10 @@ impl miner::MinerService for Miner {
         self.transaction_queue.find(hash)
     }
 
+    fn transactions(&self, hashes: Vec<H256>) -> Vec<Arc<VerifiedTransaction>> {
+        self.transaction_queue.find_mul(hashes.into_iter())
+    }
+
     fn remove_transaction(&self, hash: &H256) -> Option<Arc<VerifiedTransaction>> {
         self.transaction_queue
             .remove(::std::iter::once(hash), false)

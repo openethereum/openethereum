@@ -33,7 +33,8 @@ use std::{
 use chain::{
     fork_filter::ForkFilterApi, ChainSyncApi, SyncState, SyncStatus as EthSyncStatus,
     ETH_PROTOCOL_VERSION_63, ETH_PROTOCOL_VERSION_64, ETH_PROTOCOL_VERSION_65,
-    ETH_PROTOCOL_VERSION_66, PAR_PROTOCOL_VERSION_1, PAR_PROTOCOL_VERSION_2,
+    ETH_PROTOCOL_VERSION_66, MAX_NEW_TRANSACTIONS_TO_PROCESS, PAR_PROTOCOL_VERSION_1,
+    PAR_PROTOCOL_VERSION_2,
 };
 use ethcore::{
     client::{BlockChainClient, ChainMessageType, ChainNotify, NewBlocks},
@@ -254,7 +255,8 @@ impl EthSync {
         connection_filter: Option<Arc<dyn ConnectionFilter>>,
     ) -> Result<Arc<EthSync>, Error> {
         let (priority_tasks_tx, priority_tasks_rx) = mpsc::channel();
-        let (new_transaction_hashes_tx, new_transaction_hashes_rx) = crossbeam_channel::unbounded();
+        let (new_transaction_hashes_tx, new_transaction_hashes_rx) =
+            crossbeam_channel::bounded(MAX_NEW_TRANSACTIONS_TO_PROCESS);
         let fork_filter = ForkFilterApi::new(&*params.chain, params.forks);
 
         let sync = ChainSyncApi::new(

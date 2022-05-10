@@ -106,13 +106,8 @@ impl SyncPropagator {
         tx_hashes: Vec<H256>,
         should_continue: F,
     ) -> usize {
-        let transactions = move |io: &dyn SyncIo| {
-            tx_hashes
-                .iter()
-                .filter_map(|hash| io.chain().transaction(hash))
-                .collect()
-        };
-        SyncPropagator::propagate_transactions(sync, io, transactions, true, should_continue)
+        let get_transactions = |io: &dyn SyncIo| io.chain().transactions(tx_hashes);
+        SyncPropagator::propagate_transactions(sync, io, get_transactions, true, should_continue)
     }
 
     pub fn propagate_ready_transactions<F: FnMut() -> bool>(
@@ -120,8 +115,8 @@ impl SyncPropagator {
         io: &mut dyn SyncIo,
         should_continue: F,
     ) -> usize {
-        let transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
-        SyncPropagator::propagate_transactions(sync, io, transactions, false, should_continue)
+        let get_transactions = |io: &dyn SyncIo| io.chain().transactions_to_propagate();
+        SyncPropagator::propagate_transactions(sync, io, get_transactions, false, should_continue)
     }
 
     fn propagate_transactions_to_peers<F: FnMut() -> bool>(
@@ -327,28 +322,21 @@ impl SyncPropagator {
         }
     }
 
-    fn select_peers_for_transactions<F>(sync: &ChainSync, filter: F, are_new: bool) -> Vec<PeerId>
+    fn select_peers_for_transactions<F>(sync: &ChainSync, filter: F) -> Vec<PeerId>
     where
         F: Fn(&PeerId) -> bool,
     {
-        let fraction_filter: Box<dyn FnMut(&PeerId) -> bool> = if are_new {
-            // We propagate new transactions to all peers initially.
-            Box::new(|_| true)
-        } else {
-            // Otherwise, we propagate transaction only to squire root of all peers.
-            let mut random = random::new();
-            // sqrt(x)/x scaled to max u32
-            let fraction =
-                ((sync.peers.len() as f64).powf(-0.5) * (u32::max_value() as f64).round()) as u32;
-            let small = sync.peers.len() < MIN_PEERS_PROPAGATION;
-            Box::new(move |_| small || random.next_u32() < fraction)
-        };
+        // sqrt(x)/x scaled to max u32
+        let fraction =
+            ((sync.peers.len() as f64).powf(-0.5) * (u32::max_value() as f64).round()) as u32;
+        let small = sync.peers.len() < MIN_PEERS_PROPAGATION;
 
+        let mut random = random::new();
         sync.peers
             .keys()
             .cloned()
             .filter(filter)
-            .filter(fraction_filter)
+            .filter(|_| small || random.next_u32() < fraction)
             .take(MAX_PEERS_PROPAGATION)
             .collect()
     }
@@ -376,7 +364,7 @@ impl SyncPropagator {
     ) -> usize
     where
         F: FnMut() -> bool,
-        G: Fn(&dyn SyncIo) -> Vec<Arc<VerifiedTransaction>>,
+        G: FnOnce(&dyn SyncIo) -> Vec<Arc<VerifiedTransaction>>,
     {
         // Early out if nobody to send to.
         if sync.peers.is_empty() {
@@ -400,7 +388,7 @@ impl SyncPropagator {
         // usual transactions could be propagated to all peers
         let mut affected_peers = HashSet::new();
         if !transactions.is_empty() {
-            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true, are_new);
+            let peers = SyncPropagator::select_peers_for_transactions(sync, |_| true);
             affected_peers = SyncPropagator::propagate_transactions_to_peers(
                 sync,
                 io,
@@ -414,11 +402,10 @@ impl SyncPropagator {
         // most of times service_transactions will be empty
         // => there's no need to merge packets
         if !service_transactions.is_empty() {
-            let service_transactions_peers = SyncPropagator::select_peers_for_transactions(
-                sync,
-                |peer_id| io.peer_version(*peer_id).accepts_service_transaction(),
-                are_new,
-            );
+            let service_transactions_peers =
+                SyncPropagator::select_peers_for_transactions(sync, |peer_id| {
+                    io.peer_version(*peer_id).accepts_service_transaction()
+                });
             let service_transactions_affected_peers =
                 SyncPropagator::propagate_transactions_to_peers(
                     sync,
@@ -608,7 +595,7 @@ mod tests {
     }
 
     #[test]
-    fn propagates_new_transactions_to_all_peers() {
+    fn propagates_new_transactions_to_subset_of_peers() {
         let (new_transaction_hashes_tx, new_transaction_hashes_rx) = crossbeam_channel::unbounded();
 
         let mut client = TestBlockChainClient::new();
@@ -625,7 +612,8 @@ mod tests {
         let peer_count =
             SyncPropagator::propagate_new_transactions(&mut sync, &mut io, vec![tx_hash], || true);
 
-        assert_eq!(25, peer_count);
+        // Currently random implementation for test returns 8 peers as result of peers selection.
+        assert_eq!(8, peer_count);
     }
 
     #[test]

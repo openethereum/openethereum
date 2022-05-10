@@ -595,7 +595,7 @@ mod tests {
     }
 
     #[test]
-    fn propagates_new_transactions_to_all_peers() {
+    fn propagates_new_transactions_to_subset_of_peers() {
         let (new_transaction_hashes_tx, new_transaction_hashes_rx) = crossbeam_channel::unbounded();
 
         let mut client = TestBlockChainClient::new();
@@ -612,7 +612,8 @@ mod tests {
         let peer_count =
             SyncPropagator::propagate_new_transactions(&mut sync, &mut io, vec![tx_hash], || true);
 
-        assert_eq!(25, peer_count);
+        // Currently random implementation for test returns 8 peers as result of peers selection.
+        assert_eq!(8, peer_count);
     }
 
     #[test]

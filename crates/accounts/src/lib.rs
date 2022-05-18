@@ -447,7 +447,8 @@ impl AccountProvider {
         message: Message,
     ) -> Result<Signature, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        match self.unlocked_secrets.read().get(&account) {
+        let secret = self.unlocked_secrets.read().get(&account);
+        match secret {
             Some(secret) => Ok(self.sstore.sign_with_secret(&secret, &message)?),
             None => {
                 let password = password

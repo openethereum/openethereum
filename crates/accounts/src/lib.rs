@@ -447,9 +447,11 @@ impl AccountProvider {
         message: Message,
     ) -> Result<Signature, SignError> {
         let account = self.sstore.account_ref(&address)?;
-        match self.unlocked_secrets.read().get(&account) {
+        let secrets = self.unlocked_secrets.read();
+        match secrets.get(&account) {
             Some(secret) => Ok(self.sstore.sign_with_secret(&secret, &message)?),
             None => {
+                std::mem::drop(secrets);
                 let password = password
                     .map(Ok)
                     .unwrap_or_else(|| self.password(&account))?;

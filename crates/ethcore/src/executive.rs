@@ -64,16 +64,16 @@ pub fn contract_address(
             let code_hash = keccak(code);
             let mut buffer = [0u8; 1 + 20 + 32 + 32];
             buffer[0] = 0xff;
-            &mut buffer[1..(1 + 20)].copy_from_slice(&sender[..]);
-            &mut buffer[(1 + 20)..(1 + 20 + 32)].copy_from_slice(&salt[..]);
-            &mut buffer[(1 + 20 + 32)..].copy_from_slice(&code_hash[..]);
+            buffer[1..(1 + 20)].copy_from_slice(&sender[..]);
+            buffer[(1 + 20)..(1 + 20 + 32)].copy_from_slice(&salt[..]);
+            buffer[(1 + 20 + 32)..].copy_from_slice(&code_hash[..]);
             (From::from(keccak(&buffer[..])), Some(code_hash))
         }
         CreateContractAddress::FromSenderAndCodeHash => {
             let code_hash = keccak(code);
             let mut buffer = [0u8; 20 + 32];
-            &mut buffer[..20].copy_from_slice(&sender[..]);
-            &mut buffer[20..].copy_from_slice(&code_hash[..]);
+            buffer[..20].copy_from_slice(&sender[..]);
+            buffer[20..].copy_from_slice(&code_hash[..]);
             (From::from(keccak(&buffer[..])), Some(code_hash))
         }
     }

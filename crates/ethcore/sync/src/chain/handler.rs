@@ -25,7 +25,7 @@ use ethcore::{
 };
 use ethereum_types::{H256, U256};
 use hash::keccak;
-use network::{client_version::ClientVersion, PeerId};
+use network::PeerId;
 use rlp::Rlp;
 use snapshot::ChunkType;
 use std::{cmp, mem, time::Instant};
@@ -758,7 +758,6 @@ impl SyncHandler {
             snapshot_hash,
             snapshot_number,
             block_set: None,
-            client_version: ClientVersion::from(io.peer_version(peer_id)),
         };
 
         trace!(target: "sync", "New peer {} (\

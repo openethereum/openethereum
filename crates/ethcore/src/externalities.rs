@@ -234,10 +234,8 @@ where
                     let index = self.env_info.number - number.low_u64() - 1;
                     assert!(
                         index < self.env_info.last_hashes.len() as u64,
-                        format!(
-                            "Inconsistent env_info, should contain at least {:?} last hashes",
-                            index + 1
-                        )
+                        "Inconsistent env_info, should contain at least {:?} last hashes",
+                        index + 1
                     );
                     let r = self.env_info.last_hashes[index as usize].clone();
                     trace!(

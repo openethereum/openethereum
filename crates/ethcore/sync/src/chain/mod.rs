@@ -108,7 +108,7 @@ use ethcore::{
 use ethereum_types::{H256, U256};
 use fastmap::{H256FastMap, H256FastSet};
 use hash::keccak;
-use network::{self, client_version::ClientVersion, PeerId};
+use network::{self, PeerId};
 use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
 use rand::{seq::SliceRandom, Rng};
 use rlp::{DecoderError, RlpStream};
@@ -366,8 +366,6 @@ pub struct PeerInfo {
     snapshot_number: Option<BlockNumber>,
     /// Block set requested
     block_set: Option<BlockSet>,
-    /// Version of the software the peer is running
-    client_version: ClientVersion,
 }
 
 impl PeerInfo {
@@ -1818,7 +1816,6 @@ pub mod tests {
                 snapshot_hash: None,
                 asking_snapshot_data: None,
                 block_set: None,
-                client_version: ClientVersion::from(""),
             },
         );
     }

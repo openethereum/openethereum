@@ -44,7 +44,7 @@ fn instantiation(b: &mut Criterion) {
 fn compare_to_null_embedded_in_struct(b: &mut Criterion) {
     struct X {
         a_hash: <KeccakHasher as Hasher>::Out,
-    };
+    }
     let x = X {
         a_hash: KeccakHasher::hash(&[0u8][..]),
     };
